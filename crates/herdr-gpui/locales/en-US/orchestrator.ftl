@@ -61,7 +61,7 @@ orchestrator-column-title = TITLE
 orchestrator-column-author = AUTHOR
 orchestrator-column-pull-request = PR
 orchestrator-column-title-branch = TITLE · BRANCH
-orchestrator-column-review = REVIEW
+orchestrator-column-status = STATUS
 orchestrator-column-checks = CHECKS
 orchestrator-column-size = SIZE
 # A row's project when checkouts on several hosts hold it.
@@ -104,10 +104,8 @@ orchestrator-start-agent = Start agent
 orchestrator-badge-blocked = blocked
 orchestrator-badge-draft = draft
 orchestrator-badge-fork = fork
-orchestrator-review-yours = your review
 orchestrator-review-approved = approved
 orchestrator-review-changes = changes requested
-orchestrator-review-required = review required
 orchestrator-review-dismissed = dismissed
 # How long ago a row changed, in a narrow column.
 orchestrator-age-now = now

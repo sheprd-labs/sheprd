@@ -20,6 +20,8 @@ const ISSUE_ROW: f32 = 32.;
 const PULL_REQUEST_ROW: f32 = 40.;
 /// The project column, while several projects are listed.
 const PROJECT_WIDTH: f32 = 130.;
+/// The status column, wide enough for "approved with suggestions".
+const STATUS_WIDTH: f32 = 160.;
 /// The source column, while the list mixes backends.
 const SOURCE_WIDTH: f32 = 22.;
 /// The column holding a row's action, such as Start agent.
@@ -67,6 +69,14 @@ impl OrchestratorView {
     /// when several checkouts of the same repository do.
     fn row_project(&self, row: &ItemRow) -> String {
         let repo = &self.repos[row.repo];
+        // An organization's list mixes repositories: each row names its own.
+        if matches!(
+            repo.remote,
+            Some(crate::orchestrator::RemoteScope::Mine { .. })
+        ) {
+            let source = &self.row_item(row).key.source.repository;
+            return source.rsplit('/').next().unwrap_or(source).to_owned();
+        }
         match self.twins(&self.row_item(row).key.canonical()) {
             0 => self.project_label(repo),
             twins => fl!(
@@ -133,7 +143,7 @@ impl OrchestratorView {
                 } else {
                     head.extend([
                         (fl!("orchestrator-column-author"), Some(100.)),
-                        (fl!("orchestrator-column-review"), Some(124.)),
+                        (fl!("orchestrator-column-status"), Some(STATUS_WIDTH)),
                         (fl!("orchestrator-column-checks"), Some(150.)),
                         (fl!("orchestrator-column-size"), Some(70.)),
                         (fl!("orchestrator-column-run"), Some(30.)),
@@ -595,11 +605,23 @@ impl OrchestratorView {
                             .text_color(rgb(theme.subtext()))
                             .child(item.author.clone().unwrap_or_default()),
                     )
-                    .child(div().flex_none().w(px(124.)).flex().children(review_badge(
-                        look,
-                        status,
-                        self.repos[row.repo].reading_login(),
-                    )))
+                    .child(
+                        div()
+                            .debug_selector({
+                                let key = item.key.canonical();
+                                move || format!("orchestrator-status-{key}")
+                            })
+                            .flex_none()
+                            .w(px(STATUS_WIDTH))
+                            .flex()
+                            .overflow_hidden()
+                            .children(status_badge(
+                                look,
+                                item,
+                                status,
+                                self.repos[row.repo].reading_login(),
+                            )),
+                    )
                     .child(
                         div()
                             .flex_none()
@@ -649,6 +671,7 @@ pub(super) fn source_mark(look: &Look, provider: Provider) -> AnyElement {
 
 pub(super) fn source_icon(provider: Provider) -> &'static str {
     match provider {
+        Provider::Azure => "icons/azure-devops.svg",
         Provider::Github => "icons/github.svg",
         Provider::Beads => "icons/beads.svg",
         Provider::Gitlab => "icons/gitlab.svg",
@@ -721,23 +744,62 @@ fn check_hue(look: &Look, state: CheckState) -> u32 {
     }
 }
 
-/// The review state's word, or that the user is asked to review.
-fn review_badge(look: &Look, status: Option<&PrStatus>, login: Option<&str>) -> Option<Div> {
-    let status = status?;
-    if login.is_some_and(|login| status.requests(login)) {
-        return Some(look.badge(fl!("orchestrator-review-yours"), MAGENTA));
-    }
-    Some(match status.review? {
-        Review::Approved => look.badge(fl!("orchestrator-review-approved"), GREEN),
-        Review::ChangesRequested => look.badge(fl!("orchestrator-review-changes"), RED),
-        Review::Required => look.badge(fl!("orchestrator-review-required"), BLUE),
+/// A pull request's status cell: merged, closed, or draft while it is so,
+/// else where its reviews stand, else open.
+fn status_badge(
+    look: &Look,
+    item: &crate::orchestrator::Item,
+    status: Option<&PrStatus>,
+    login: Option<&str>,
+) -> Option<Div> {
+    let (text, hue) = status_text(item, status, login)?;
+    Some(look.badge(text, hue))
+}
+
+/// The status cell's words and hue; see [`status_badge`].
+pub(super) fn status_text(
+    item: &crate::orchestrator::Item,
+    status: Option<&PrStatus>,
+    login: Option<&str>,
+) -> Option<(String, usize)> {
+    item.pull_request.as_ref()?;
+    let azure = item.key.source.provider == Provider::Azure;
+    Some(match item.state.as_str() {
+        "merged" => (fl!("orchestrator-pr-status-merged"), MAGENTA),
+        "closed" if azure => (fl!("orchestrator-pr-status-abandoned"), RED),
+        "closed" => (fl!("orchestrator-pr-status-closed"), RED),
+        "draft" => (fl!("orchestrator-pr-status-draft"), BLUE),
+        _ => {
+            if let Some(status) = status
+                && login.is_some_and(|login| status.requests(login))
+            {
+                return Some((fl!("orchestrator-pr-status-your-review"), MAGENTA));
+            }
+            match status.and_then(|status| status.review) {
+                Some(Review::Approved) => (fl!("orchestrator-pr-status-approved"), GREEN),
+                Some(Review::ApprovedWithSuggestions) => (
+                    fl!("orchestrator-pr-status-approved-with-suggestions"),
+                    GREEN,
+                ),
+                Some(Review::ChangesRequested) => {
+                    (fl!("orchestrator-pr-status-changes-requested"), RED)
+                }
+                Some(Review::WaitingForAuthor) => {
+                    (fl!("orchestrator-pr-status-waiting-for-author"), YELLOW)
+                }
+                Some(Review::Rejected) => (fl!("orchestrator-pr-status-rejected"), RED),
+                Some(Review::Required) => (fl!("orchestrator-pr-status-review-required"), BLUE),
+                None => (fl!("orchestrator-pr-status-open"), GREEN),
+            }
+        }
     })
 }
 
 fn review_dot(look: &Look, status: Option<&PrStatus>) -> Option<Div> {
     let hue = match status?.review? {
-        Review::Approved => GREEN,
-        Review::ChangesRequested => RED,
+        Review::Approved | Review::ApprovedWithSuggestions => GREEN,
+        Review::ChangesRequested | Review::Rejected => RED,
+        Review::WaitingForAuthor => YELLOW,
         Review::Required => BLUE,
     };
     Some(look.dot(look.hue(hue), 7.))

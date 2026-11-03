@@ -6,6 +6,7 @@ use crate::orchestrator::{
 use chrono::{DateTime, Utc};
 use herdr_client::protocol::AgentStatus;
 
+mod azure_browse;
 mod clicks;
 mod conversation;
 mod conversation_list;
@@ -21,6 +22,8 @@ mod non_projects;
 mod outside_git;
 mod pills;
 mod pr_empty;
+mod pr_status;
+mod project_filter;
 mod refresh;
 mod repo_name;
 mod row_start;
