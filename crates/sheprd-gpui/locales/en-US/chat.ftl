@@ -121,6 +121,8 @@ chat-tool-state-running = running
 chat-tool-state-done = done
 chat-tool-state-failed = failed
 chat-tool-state-stopped = stopped
+chat-tool-state-thinking = thinking
+chat-tool-state-waiting = waiting
 # A sub-agent's steps.
 chat-tool-steps = { $count ->
     [one] { $count } step
@@ -128,17 +130,12 @@ chat-tool-steps = { $count ->
 }
 # A tool that asks the user questions.
 chat-tool-ask-user = Ask user
-chat-tool-more-lines = { $count ->
-    [one] { $count } more line
-   *[other] { $count } more lines
-}
 chat-tool-terminal-elsewhere = Terminal output shows in the program's own view
 # $id is the terminal's identifier.
 chat-tool-terminal = Terminal { $id }: output is available in the program's terminal view.
 # Labels on their own lines around a file's text before and after a change.
 chat-diff-before = Before:
 chat-diff-after = After:
-chat-diff-new-file = New file:
 # Items past the ones listed.
 chat-more = and { $count } more
 
@@ -231,3 +228,13 @@ chat-form-read-only = Read-only transcript
 chat-form-range = { $min } to { $max }
 chat-form-not-ready = The agent is not ready to receive this form
 chat-form-busy = Finish your current message before sending this form
+
+# Rich tool previews and retained source copy controls.
+chat-diff = Diff
+chat-diff-written-content = Written content (previous content unavailable):
+chat-copy-diff-label = Copy diff
+chat-copy-diff-done = Copied the diff
+chat-copy-original-label = Copy original
+chat-copy-original-done = Copied the original source
+chat-copy-remaining-label = Copy remaining output
+chat-copy-remaining-done = Copied the remaining output

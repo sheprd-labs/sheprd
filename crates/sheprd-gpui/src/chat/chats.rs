@@ -11,7 +11,7 @@ use super::{
 use crate::multiline_input::MultilineInput;
 use crate::search_input::SearchInput;
 use gpui::{App, Entity, FocusHandle, ListAlignment, ListState, Window, px};
-use sheprd_chat_protocol::{ClientMessage, Command, Cursor, EndpointId, EntryId};
+use sheprd_chat_protocol::{ClientMessage, Command, Cursor, EntryId};
 use std::{
     collections::HashSet,
     time::{Duration, Instant},
@@ -231,13 +231,14 @@ impl ChatPane {
             .is_some_and(|focus| focus.is_focused(window))
     }
 
-    fn new(target: Target) -> Self {
+    fn new(target: Target, tool_preview: bool) -> Self {
         // `glide` follows the end rather than the list's own tail mode,
         // which jumps there with each chunk.
         let list = ListState::new(0, ListAlignment::Top, px(OVERDRAW));
         let glide = super::glide::Glide::new(&list);
         let mut prepared = Prepared::default();
         prepared.set_remote_links(!target.is_local());
+        prepared.set_tool_preview(tool_preview);
         Self {
             attachments: Vec::new(),
             completion: 0,
@@ -284,6 +285,16 @@ impl ChatPane {
         self.session.synced() && !self.permanent && self.failures < MAX_FAILURES
     }
 
+    /// Visual loading only: input continues to belong to the original pane
+    /// until a first snapshot makes `available` true.
+    pub(crate) fn loading(&self) -> bool {
+        // Program lookup has no link yet, but also no failed attempt/backoff.
+        let connected = self.link.is_some() || (self.generation > 0 && self.retry_at.is_none());
+        #[cfg(feature = "integration-test")]
+        let connected = connected || self.preview;
+        !self.session.synced() && connected && !self.permanent && self.failures == 0
+    }
+
     pub(crate) fn attached(&self) -> bool {
         #[cfg(feature = "integration-test")]
         if self.preview {
@@ -322,6 +333,9 @@ impl ChatPane {
         let resend = self.session.resend();
         match connect(&self.target, self.session.since(), resend) {
             Ok(link) => self.link = Some((self.generation, link)),
+            // The one existing lookup worker has not returned. Reconsider
+            // next poll; this is not an observer/transport failure.
+            Err(Error::Start(super::StartError::ProgramUnknown)) => {}
             Err(error) => self.fail(&error, now),
         }
     }
@@ -502,6 +516,8 @@ pub(crate) enum Toward {
 /// Every chat pane of the window's daemon, in its snapshot's order.
 #[derive(Default)]
 pub(crate) struct Chats {
+    /// Includes workers whose original pane has since been hidden or removed.
+    pub(crate) active_visual_jobs: usize,
     /// The agents installed on each host new chats may start on.
     pub(crate) agents: super::harnesses::Harnesses,
     /// The terminal agent moving into a chat, one at a time.
@@ -533,16 +549,19 @@ pub(crate) struct Chats {
     panes: Vec<ChatPane>,
     /// The `herdr-acp` new chats run.
     pub(crate) program: super::Program,
-    /// Programs whose panes the user turned back to their terminal.
-    raw: HashSet<EndpointId>,
+    /// Exact pane/process/host targets the user turned back to their terminal.
+    /// Two panes may legitimately observe the same session endpoint.
+    raw: HashSet<Target>,
     /// Textures of panes no longer attached, for the window to drop.
     released: Vec<std::sync::Arc<gpui::RenderImage>>,
     /// Chats being continued in the panes Herdr restored.
     pub(super) restore: super::restore::Restore,
-    /// The second a running turn's timer last redrew at.
-    pub(crate) ticked: u64,
     /// A new chat whose tab is being made.
     pub(crate) starting: Option<super::start::Starting>,
+    /// The second a running turn's timer last redrew at.
+    pub(crate) ticked: u64,
+    /// Next visible pane offered a worker slot, so busy splits take turns.
+    pub(crate) visual_cursor: usize,
 }
 
 impl Chats {
@@ -554,7 +573,7 @@ impl Chats {
         target: Target,
         transcript: sheprd_chat_protocol::Transcript,
     ) -> Result<()> {
-        let mut pane = ChatPane::new(target);
+        let mut pane = ChatPane::new(target, super::view::tool_preview(self.measured));
         pane.preview = true;
         pane.session.begin();
         pane.session
@@ -587,7 +606,11 @@ impl Chats {
             return false;
         }
         self.measured = layout;
-        for pane in &self.panes {
+        let tool_preview = super::view::tool_preview(layout);
+        for pane in &mut self.panes {
+            if pane.prepared.set_tool_preview(tool_preview) {
+                pane.refresh_text();
+            }
             pane.list.remeasure();
         }
         true
@@ -671,22 +694,24 @@ impl Chats {
                 Some(index) => self.panes.swap_remove(index),
                 None => {
                     changed = true;
-                    ChatPane::new(target)
+                    ChatPane::new(target, super::view::tool_preview(self.measured))
                 }
             });
         }
         self.panes = panes;
-        let endpoints: HashSet<&EndpointId> = self
-            .panes
-            .iter()
-            .map(|pane| &pane.target.endpoint)
-            .collect();
-        self.raw.retain(|endpoint| endpoints.contains(endpoint));
+        let targets: HashSet<&Target> = self.panes.iter().map(|pane| &pane.target).collect();
+        self.raw.retain(|target| targets.contains(target));
         for pane in &mut self.panes {
+            if pane.target.existing.is_some() && self.existing.take_dismissed(&pane.target.pane_id)
+            {
+                self.raw.insert(pane.target.clone());
+            }
             let due =
                 pane.link.is_none() && !pane.permanent && pane.retry_at.is_none_or(|at| at <= now);
             if due {
+                let loading = pane.loading();
                 pane.start(now, connect);
+                changed |= loading != pane.loading();
             }
         }
         changed
@@ -732,25 +757,25 @@ impl Chats {
     /// Whether `pane_id` shows the chat view rather than its terminal.
     pub(crate) fn shown(&self, pane_id: &str) -> bool {
         self.pane(pane_id)
-            .is_some_and(|pane| pane.available() && !self.raw.contains(&pane.target.endpoint))
+            .is_some_and(|pane| pane.available() && !self.raw.contains(&pane.target))
     }
 
     /// Whether the user turned `pane_id` back to its terminal.
     pub(crate) fn raw(&self, pane_id: &str) -> bool {
         self.pane(pane_id)
-            .is_some_and(|pane| self.raw.contains(&pane.target.endpoint))
+            .is_some_and(|pane| self.raw.contains(&pane.target))
     }
 
     /// Shows the chat view over `pane_id`, or its terminal; `false` when the
     /// pane has no chat to show.
     pub(crate) fn set_raw(&mut self, pane_id: &str, raw: bool) -> bool {
-        let Some(endpoint) = self.pane(pane_id).map(|pane| pane.target.endpoint.clone()) else {
+        let Some(target) = self.pane(pane_id).map(|pane| pane.target.clone()) else {
             return false;
         };
         if raw {
-            self.raw.insert(endpoint);
+            self.raw.insert(target);
         } else {
-            self.raw.remove(&endpoint);
+            self.raw.remove(&target);
         }
         true
     }

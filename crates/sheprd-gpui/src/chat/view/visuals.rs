@@ -29,12 +29,14 @@ pub(super) enum Frame {
 impl SheprdWindow {
     /// An agent message: Markdown text with diagrams, pages, and pictures
     /// between it.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn render_chat_message(
         &self,
         pane_id: &str,
         entry: EntryId,
         parts: &[Part],
         visuals: &Visuals,
+        is_user: bool,
         size: f32,
         cx: &mut Context<Self>,
     ) -> Div {
@@ -57,7 +59,17 @@ impl SheprdWindow {
                     Part::Rich(blocks) => {
                         match self.chat_text_scope(pane_id, entry, Region::Body(index)) {
                             Some(scope) => self
-                                .render_chat_rich(pane_id, blocks, visuals, &scope, size, cx)
+                                .render_chat_rich(
+                                    pane_id,
+                                    blocks,
+                                    visuals,
+                                    &scope,
+                                    is_user
+                                        && self.config.chat.layout
+                                            == crate::config::ChatLayoutMode::IMessage,
+                                    size,
+                                    cx,
+                                )
                                 .into_any_element(),
                             None => div().into_any_element(),
                         }

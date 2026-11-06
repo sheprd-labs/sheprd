@@ -31,6 +31,7 @@ impl SheprdWindow {
             entry.id,
             parts,
             &chat.prepared.visuals,
+            true,
             self.chat_text_size(),
             cx,
         );

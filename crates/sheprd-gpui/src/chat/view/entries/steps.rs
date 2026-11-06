@@ -1,8 +1,13 @@
 //! A sub-agent's own steps, listed in its call's card when it is open: one
 //! quiet line each, its state's mark and its title.
 
-use super::{Hues, tool_header};
-use crate::{SheprdWindow, chat::chats::ChatPane, fonts::StyledFont, i18n::fl};
+use super::Hues;
+use crate::{
+    SheprdWindow,
+    chat::{chats::ChatPane, prepared::tool::label},
+    fonts::StyledFont,
+    i18n::fl,
+};
 use gpui::{prelude::*, *};
 use sheprd_chat_protocol::{EntryId, EntryKind, ToolStatus};
 
@@ -55,7 +60,7 @@ impl SheprdWindow {
                                 .truncate()
                                 .text_font(&self.config.terminal)
                                 .text_color(rgb(theme.muted))
-                                .child(tool_header(&tool.title)),
+                                .child(label(&tool.title, None)),
                         ),
                 )
             }))
