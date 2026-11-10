@@ -461,7 +461,15 @@ impl CoreTerminals {
     /// none is reported until it answers again.
     pub(crate) fn reported(&self, host: &Host, terminal: &TerminalId) -> Option<&TerminalInfo> {
         self.backend_of(host)?;
-        self.infos_of(host)?.get(terminal)
+        self.listed(host, terminal)
+    }
+
+    /// `host`'s last list of `terminal`, found by its address or by its name.
+    /// A restart that finds the stand-in shell still live reuses it under the
+    /// name it was spawned with, so the window holds a name no address key
+    /// answers to; every other pane is held by the address the core gave it.
+    fn listed(&self, host: &Host, terminal: &TerminalId) -> Option<&TerminalInfo> {
+        self.infos_of(host)?.named(terminal)
     }
 
     /// The session over the core whose workspaces `scope` names, while the
