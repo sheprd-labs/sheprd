@@ -4,32 +4,29 @@
 //! any chat. The session's history stays with the agent, which the program
 //! reads back (`sheprd-acp`'s `history`, or an ACP agent's `session/load`).
 //!
-//! Only an idle agent moves: stopping one mid-turn would lose the turn.
-//! Everything that could refuse is checked before the agent is touched, so
-//! a refusal leaves it running. A CLI stops on Ctrl+C alone, which every
-//! agent here takes as "clear the draft" and then "quit". A signal is not
-//! used because Codex dies on SIGTERM with its terminal modes still set, and
-//! the line typed next would reach the shell in the wrong keyboard mode; a
-//! typed `/exit` is not used because a draft would be sent with it.
+//! What may move, and how it stops, is [`sheprd_client::herdr::convert`],
+//! shared with the remote control daemon. This module asks the window's
+//! host through `herdr_cli`, on this machine or over SSH, and types the line
+//! once the window still shows that host.
 
+mod core;
 mod error;
+
+pub(crate) use core::Job as CoreJob;
 
 pub use error::Error;
 
-use super::{Route, discovery, existing, restore::plan};
+use super::{Route, existing};
 use crate::{
     SheprdWindow,
     i18n::{Localize, fl},
-    teleport::{
-        self, AgentKind, Envelope, Host, ProcessInfo, ProcessInfoResult, SessionKind,
-        snapshot::PaneStatus,
-    },
+    teleport::{self, Envelope, Host, ProcessInfo, ProcessInfoResult},
     window::Flash,
 };
-use gpui::Context;
-use sheprd_chat_protocol::{Agent, restore};
+use gpui::{Context, Window};
+use sheprd_chat_protocol::Agent;
 use sheprd_client::{
-    protocol::{AgentStatus, ClientShellAgent, ClientShellSnapshot},
+    herdr::convert::{self, Resume},
     shell_quote,
 };
 use std::{
@@ -39,120 +36,16 @@ use std::{
         atomic::{AtomicBool, Ordering},
         mpsc,
     },
-    time::Duration,
 };
 
-/// How often the pane is asked whether its shell is back.
-const POLL: Duration = Duration::from_millis(500);
-/// How many times it is asked. Copilot takes about ten seconds to leave.
-const ROUNDS: u32 = 60;
-/// Ctrl+C presses sent, one each round: enough for a draft, a menu, and the
-/// two presses that quit, with some to spare. Past these the agent only
-/// needs time.
-const INTERRUPTS: u32 = 8;
-
-/// The agents that can move: Herdr reports their session, and either
-/// `herdr-acp` reads their log or their ACP server replays it. Herdr has no
-/// session for Gemini, and nothing shows Pi's history yet, so it would open
-/// as an empty chat.
-fn convertible(agent: Agent) -> bool {
-    match agent {
-        Agent::Claude | Agent::Codex | Agent::Copilot | Agent::Opencode => true,
-        Agent::Gemini | Agent::Pi => false,
-    }
-}
-
-/// Whether the pane's agent is one that can move at all, however busy it is.
-fn movable(reported: &ClientShellAgent) -> Result<Agent, Error> {
-    if discovery::endpoint(&reported.tokens).is_some() {
-        return Err(Error::AlreadyChat);
-    }
-    let name = reported.agent.as_deref().ok_or(Error::NoAgent)?;
-    let agent: Agent = name.parse().map_err(|_| Error::Unknown(name.to_owned()))?;
-    if !convertible(agent) {
-        return Err(Error::Unsupported(agent));
-    }
-    Ok(agent)
-}
-
-/// Whether what the window sees of a pane lets its agent move.
-fn check(reported: &ClientShellAgent) -> Result<Agent, Error> {
-    let agent = movable(reported)?;
-    match reported.agent_status {
-        AgentStatus::Idle | AgentStatus::Done => Ok(agent),
-        AgentStatus::Working | AgentStatus::Blocked | AgentStatus::Unknown => {
-            Err(Error::Busy(agent))
-        }
-    }
-}
-
-/// The pane of `tab` whose agent its menu would move: the tab's focused pane
-/// when that one can, else its first that can. A busy agent counts, so the
-/// row stays and says why it has to wait rather than vanishing mid-turn.
-fn tab_pane<'a>(snapshot: &'a ClientShellSnapshot, workspace: &str, tab: &str) -> Option<&'a str> {
-    snapshot
-        .agents
-        .iter()
-        .filter(|agent| agent.workspace_id == workspace && agent.tab_id == tab)
-        .filter(|agent| movable(agent).is_ok())
-        .min_by_key(|agent| !agent.focused)
-        .map(|agent| agent.pane_id.as_str())
-}
-
-/// Whether the host's own answer, fresher than the window's snapshot, still
-/// shows `agent` settled in the pane. Only a turn known to be over may end:
-/// an agent waiting for an answer, or one the daemon cannot place, stays.
-fn settled(pane: &teleport::snapshot::Pane, agent: Agent) -> Result<(), Error> {
-    if pane.agent.as_deref() != Some(agent.name()) {
-        return Err(Error::Moved);
-    }
-    match pane.status {
-        PaneStatus::Done | PaneStatus::Idle => Ok(()),
-        PaneStatus::Other | PaneStatus::Working => Err(Error::Busy(agent)),
-    }
-}
-
-/// What continues the conversation, read from the running agent.
-#[derive(Debug, PartialEq, Eq)]
-struct Resume {
-    agent: Agent,
-    cwd: String,
-    /// The original command line's flags, for an agent that takes them.
-    flags: Vec<String>,
-    session: String,
-}
-
-impl Resume {
-    /// The arguments of `herdr-acp`, none of them needing a shell.
-    fn words(&self) -> Vec<&str> {
-        let mut words = vec![
-            "--resume",
-            self.session.as_str(),
-            "--cwd",
-            self.cwd.as_str(),
-            self.agent.name(),
-        ];
-        if !self.flags.is_empty() {
-            words.push("--");
-            words.extend(self.flags.iter().map(String::as_str));
-        }
-        words
-    }
-
-    /// The line typed into the pane's shell. Refusing happens here, before
-    /// the agent stops, so a folder or flag no line can carry costs nothing.
-    fn line(&self, program: Option<&Path>) -> Result<String, Error> {
-        let words = self.words();
-        let line = match program {
-            Some(program) => {
-                let program = program.to_str().ok_or(Error::Line)?;
-                let mut quoted = vec![program];
-                quoted.extend(&words);
-                plan::quoted_line(&quoted)
-            }
-            None => remote_line(&words),
-        };
-        line.ok_or(Error::Line)
+/// The line typed into the pane's shell: this machine's `program`, or for
+/// `None` the one an SSH host finds for itself. Refusing happens here,
+/// before the agent stops, so a folder or flag no line can carry costs
+/// nothing.
+fn line(resume: &Resume, program: Option<&Path>) -> Result<String, convert::Error> {
+    match program {
+        Some(program) => resume.local_line(program),
+        None => remote_line(&resume.words()).ok_or(convert::Error::Line),
     }
 }
 
@@ -169,83 +62,6 @@ fn remote_line(words: &[&str]) -> Option<String> {
         " sh -c '{}'",
         super::remote_program_script(&args.join(" "))
     ))
-}
-
-/// The session in the pane, as Herdr's own integration for `agent` reported
-/// it, and in a form `herdr-acp --resume` takes.
-fn session(pane: &teleport::snapshot::Pane, agent: Agent) -> Result<String, Error> {
-    let reported = pane.agent_session.as_ref().ok_or(Error::NoSession(agent))?;
-    AgentKind::parse(agent.name())
-        .filter(|kind| kind.accepts(reported))
-        .filter(|_| reported.kind == SessionKind::Id)
-        .filter(|_| restore::session_id_is_plain(&reported.value))
-        .map(|_| reported.value.clone())
-        .ok_or(Error::NoSession(agent))
-}
-
-/// Whether the pane's shell, rather than a job it started, has the terminal.
-fn shell_in_front(info: &ProcessInfo) -> bool {
-    info.foreground_process_group_id.is_some() && info.foreground_process_group_id == info.shell_pid
-}
-
-/// What `info` says the pane's agent runs as, and the conversation to
-/// continue. Claude's flags ride along, as the model the terminal agent was
-/// started with; the other agents run a server with flags of its own.
-fn resume(
-    pane: &teleport::snapshot::Pane,
-    info: &ProcessInfo,
-    agent: Agent,
-) -> Result<Resume, Error> {
-    let session = session(pane, agent)?;
-    let processes = existing::agent_processes(agent, info).unwrap_or_default();
-    let process = processes.first().ok_or(Error::NotRunning(agent))?;
-    let cwd = process
-        .cwd
-        .clone()
-        .or_else(|| pane.foreground_cwd.clone())
-        .or_else(|| pane.cwd.clone())
-        .ok_or(Error::NotRunning(agent))?;
-    let flags = match agent {
-        Agent::Claude => AgentKind::Claude.kept_flags(&process.argv),
-        _ => Vec::new(),
-    };
-    Ok(Resume {
-        agent,
-        cwd,
-        flags,
-        session,
-    })
-}
-
-/// Stops the agent: Ctrl+C until the shell is back, at most [`INTERRUPTS`]
-/// of them, then waits out the remaining rounds. It never presses Enter, so
-/// nothing in the agent's input can be answered or sent. Once a key is sent
-/// the agent may be leaving, so a question that fails, such as one dropped
-/// SSH round trip, is asked again rather than abandoning the agent; a lost
-/// connection ends the move through its fence.
-fn stop(
-    agent: Agent,
-    mut returned: impl FnMut() -> Result<bool, Error>,
-    mut interrupt: impl FnMut() -> Result<(), Error>,
-    mut wait: impl FnMut(),
-    cancelled: &AtomicBool,
-) -> Result<(), Error> {
-    for round in 0..ROUNDS {
-        if cancelled.load(Ordering::Acquire) {
-            return Err(Error::Stopped);
-        }
-        match returned() {
-            Ok(true) => return Ok(()),
-            Ok(false) => {}
-            Err(error) if round == 0 => return Err(error),
-            Err(_) => {}
-        }
-        if round < INTERRUPTS {
-            interrupt()?;
-        }
-        wait();
-    }
-    Err(Error::StillRunning(agent))
 }
 
 fn process_info(host: &Host, pane: &str, cancelled: &AtomicBool) -> Result<ProcessInfo, Error> {
@@ -277,10 +93,10 @@ fn run(request: &Request, cancelled: &AtomicBool) -> Result<String, Error> {
     } = request;
     let host = teleport::host_for(&scope.target).map_err(existing::Error::from)?;
     let snapshot = existing::snapshot(&host, cancelled)?.snapshot;
-    let found = snapshot.pane(pane).ok_or(Error::Moved)?;
-    settled(found, *agent)?;
-    let line =
-        resume(found, &process_info(&host, pane, cancelled)?, *agent)?.line(program.as_deref())?;
+    let found = snapshot.pane(pane).ok_or(convert::Error::Moved)?;
+    convert::settled(found, *agent)?;
+    let resume = convert::resume(found, &process_info(&host, pane, cancelled)?, *agent)?;
+    let line = line(&resume, program.as_deref())?;
     if program.is_none() {
         // i18n: data
         let body = format!(" sh -c '{}'\n", super::remote_program_script("--version"));
@@ -291,11 +107,11 @@ fn run(request: &Request, cancelled: &AtomicBool) -> Result<String, Error> {
         // i18n: data
         format!("herdr_cli pane send-keys {pane} ctrl+c\n")
     };
-    stop(
+    convert::stop(
         *agent,
-        || process_info(&host, pane, cancelled).map(|info| shell_in_front(&info)),
+        || process_info(&host, pane, cancelled).map(|info| convert::shell_in_front(&info)),
         || Ok(existing::query(&host, &keys, cancelled).map(drop)?),
-        || std::thread::sleep(POLL),
+        || std::thread::sleep(convert::POLL),
         cancelled,
     )?;
     Ok(line)
@@ -360,6 +176,22 @@ fn spawn(request: Request) -> Result<Job, Error> {
     })
 }
 
+/// The chat key of the herdr-core pane with the keyboard, to move into a
+/// chat in place of Herdr's focused pane; none when no herdr-core pane has
+/// it. A pane on another host's core, or a mirror, is refused rather than
+/// passed over: its terminal ID names another terminal on this computer's
+/// core, and Herdr's focused pane is not the one the user is in.
+pub(crate) fn focused_core_key(
+    focused: Option<(crate::browser::TabId, sheprd_backend::TerminalId)>,
+    drives: impl Fn(crate::browser::TabId) -> bool,
+) -> Result<Option<String>, Error> {
+    match focused {
+        None => Ok(None),
+        Some((tab, _)) if !drives(tab) => Err(Error::NotReachable),
+        Some((_, terminal)) => Ok(Some(super::core_pane::key(&terminal))),
+    }
+}
+
 impl SheprdWindow {
     /// Starts moving the agent in `pane`, else the focused pane, into a
     /// chat, and says which pane and agent. It finishes in the background.
@@ -367,8 +199,11 @@ impl SheprdWindow {
         if !self.config.features.acp_chats {
             return Err(Error::Disabled);
         }
-        if self.chats.converting.is_some() {
+        if self.chats.converting.is_some() || self.chats.converting_core.is_some() {
             return Err(Error::AlreadyConverting);
+        }
+        if let Some(terminal) = pane.and_then(core::terminal) {
+            return self.convert_core_to_chat(terminal);
         }
         let program = match self.chat_route().ok_or(Error::NotReachable)? {
             // `herdr pane process-info` and the typed `sh` line are Unix.
@@ -384,14 +219,14 @@ impl SheprdWindow {
             .ok_or(Error::NotConnected)?;
         let pane = pane
             .or(snapshot.focused_pane_id.as_deref())
-            .ok_or(Error::NoAgent)?
+            .ok_or(convert::Error::NoAgent)?
             .to_owned();
         let reported = snapshot
             .agents
             .iter()
             .find(|agent| agent.pane_id == pane)
-            .ok_or(Error::NoAgent)?;
-        let agent = check(reported)?;
+            .ok_or(convert::Error::NoAgent)?;
+        let agent = convert::check(reported)?;
         let endpoint = &self.endpoints[self.selected_endpoint];
         let scope = existing::Scope {
             target: endpoint.connection.target.clone(),
@@ -417,12 +252,15 @@ impl SheprdWindow {
             return None;
         }
         let snapshot = self.live.snapshot.as_deref()?;
-        tab_pane(snapshot, workspace, tab).map(str::to_owned)
+        convert::tab_pane(snapshot, workspace, tab).map(|(pane, _)| pane.to_owned())
     }
 
-    /// [`Self::convert_to_chat`], reporting a failure as a flash.
-    pub(crate) fn convert_to_chat_or_flash(&mut self, cx: &mut Context<Self>) {
-        if let Err(error) = self.convert_to_chat(None) {
+    /// [`Self::convert_to_chat`] for the pane with the keyboard, a herdr-core
+    /// pane before Herdr's focused one, reporting a failure as a flash.
+    pub(crate) fn convert_to_chat_or_flash(&mut self, window: &Window, cx: &mut Context<Self>) {
+        let focused = self.core_terminals.focused_pane(window, cx);
+        let core = focused_core_key(focused, |tab| self.core_terminals.drives(tab));
+        if let Err(error) = core.and_then(|core| self.convert_to_chat(core.as_deref())) {
             self.flash_convert_error(&error, cx);
         }
         cx.notify();
@@ -465,6 +303,10 @@ impl SheprdWindow {
     /// that left the host could never type the line, so the worker must
     /// stop pressing keys there rather than finish stopping the agent.
     pub(super) fn poll_chat_convert(&mut self, cx: &mut Context<Self>) {
+        if let Some(Err(error)) = self.poll_core_convert() {
+            self.flash_convert_error(&error, cx);
+            cx.notify();
+        }
         let Some(job) = &self.chats.converting else {
             return;
         };
@@ -473,7 +315,7 @@ impl SheprdWindow {
             None => match job.result.try_recv() {
                 Ok(result) => result,
                 Err(mpsc::TryRecvError::Empty) => return,
-                Err(mpsc::TryRecvError::Disconnected) => Err(Error::Stopped),
+                Err(mpsc::TryRecvError::Disconnected) => Err(convert::Error::Stopped.into()),
             },
         };
         let Some(job) = self.chats.converting.take() else {

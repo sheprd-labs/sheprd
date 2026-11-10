@@ -38,6 +38,10 @@ Right-click a linked worktree and choose **Teleport...** to move it to another c
 - the programs running in them, started again with their arguments,
 - agent sessions, resumed with their full history.
 
+Herdr 2 tabs in the worktree's workspace move too, after its Herdr tabs and with their splits. They run in the destination's Herdr 2 when it has `herdr-core`, and in its Herdr otherwise. With **Settings > Tabs > New terminals use Herdr 2** turned on, the Herdr tabs move into the destination's Herdr 2 as well, without their labels, and the workspace there keeps one Herdr shell tab. The review marks each tab that will run in Herdr 2. A tab of more than 16 panes stays in Herdr. Herdr 2 reports no agent session, so Sheprd reads Claude Code's own record of the running process (`~/.claude/sessions/<pid>.json`, checked against the process's start time) and resumes that session on the destination. Other agents in Herdr 2 write a handoff note and start again with it, rather than resuming.
+
+A Herdr 2 workspace on this computer, one Sheprd keeps with no Herdr workspace behind it, teleports the same way. Work coming to this computer lands in such a workspace when new workspaces here use Herdr 2 (that setting is on, or Herdr is not installed): Sheprd adds the worktree with Git under `~/.herdr/worktrees/<repository>/<branch>`, where Herdr would, and opens every tab in Herdr 2. A tab of more than 16 panes cannot open there, and the review says so. Herdr 2 workspaces on SSH hosts and cloud devices are not offered yet.
+
 Ignored files such as `.env` and build output stay behind, and so do submodule contents, environment variables, shell history, background jobs, and unsaved editor buffers.
 
 Teleport works on the local session, saved SSH hosts, and Coder, Daytona, and Railway cloud devices, in either direction. It does not create a cloud machine or install Herdr.
@@ -69,15 +73,17 @@ When `origin` is on GitHub and the destination cannot reach it by itself, the re
 
 ### After the move, and back
 
-Once the destination is ready, the source workspace's programs stop: its tabs are replaced by one idle `teleported` shell tab, and the checkout stays. The row gets a teleport icon, and its menu offers **Go to teleported copy** and **Clear teleported mark**. The copy on the destination offers **Teleport back**. Before work returns, the original checkout's current state is saved to `refs/herdr-teleport/backup/...`.
+Once the destination is ready, the source workspace's programs stop: its tabs are replaced by one idle `teleported` shell tab, its Herdr 2 terminals end and their tabs close, and the checkout stays. The row gets a teleport icon, and its menu offers **Go to teleported copy** and **Clear teleported mark**. The copy on the destination offers **Teleport back**. Before work returns, the original checkout's current state is saved to `refs/herdr-teleport/backup/...`.
 
 ## Smart Dispatch
 
 When more than one host is connected, the **New worktree** dialog and the **New workspace** dialog for a Git checkout offer a host for the new checkout. The three hosts with the most room are tiles, best first; every other host opens from the **Other** field. The host the window shows stays chosen until you pick another, so Enter still creates where it always did.
 
-Hosts rank by spare cores: cores less the 5 minute load average. Each agent working there takes half a core off, a host that would have to clone the repository first takes one, memory above 90% halves its room, and recent checkouts of the same repository on a host add a little. The tiles stop moving after a few seconds so they do not shift under the pointer.
+Hosts rank by spare cores: cores less the 5 minute load average. Each agent working there, in a Herdr pane or in a Herdr 2 terminal on a host whose Herdr 2 tabs the window has open, takes half a core off, a host that would have to clone the repository first takes one, memory above 90% halves its room, and recent checkouts of the same repository on a host add a little. The tiles stop moving after a few seconds so they do not shift under the pointer.
 
 Choosing another host creates the checkout there through the same steps as Teleport: the repository is found, opened, or cloned, and the base commit is sent only when that host lacks it. The window switches to the new workspace when it is ready, and the repository's setup script asks for trust as a local creation does.
+
+This computer takes new work while its new workspaces use Herdr 2 (with **Settings > Tabs > New terminals use Herdr 2**, or with no Herdr 1 installed), even when no Herdr 1 runs here. Git creates the checkout, in the folder Herdr 1 would use, and the window opens it as a Herdr 2 workspace. A worktree left unnamed gets a generated branch name. A Herdr 2 workspace's **New worktree** dialog offers other hosts too, and sends the checkout to their Herdr. Another host counts only when Herdr 1 runs there: Smart Dispatch does not yet create work in another host's Herdr 2. A checkout it sends to this computer's Herdr 2 runs the repository's setup script in a new tab, as a local creation does.
 
 ### New machines from the dialog
 
@@ -92,3 +98,5 @@ Fan-out runs one prompt across several agents, each in its own worktree, so you 
 Fan-outs survive a quit or crash. The next launch shows an unfinished fan-out again as a comparison, and each lane says where it stopped. Nothing runs by itself: **Start agent** or **Send prompt** finishes a lane only when clicked. **Keep** removes the other worktrees after a confirmation; **Forget** lets the fan-out go and leaves every worktree as it is. Up to four fan-outs are kept.
 
 New containers are not offered to fan-out lanes yet, because a new container has no signed-in agent to start.
+
+A workspace Sheprd keeps for Herdr 2 terminals offers **Fan out** too, when its folder is a Git checkout. Git creates each lane's worktree, in the folder Herdr 1 would use, and each agent starts in a Herdr 2 shell there and gets the prompt once it is ready; each lane opens as a Herdr 2 workspace behind the one you are in. Compare, **Keep** and resuming after a quit work as on Herdr 1, and keeping a lane closes the other lanes' workspaces. These lanes stay on this computer: spreading across hosts needs a Herdr 1 workspace of the repository, and another host's Herdr 2 takes no lanes yet.

@@ -106,6 +106,11 @@ Herdr must know the agent's session, which takes its integration: run
 `herdr integration install claude` (or `codex`, `copilot`, `opencode`), then
 restart the agent. Without it the move is refused and the agent keeps running.
 
+Sheprd Remote on a phone offers the same move as **Move Agent into Chat** in a
+terminal tab's menu, for agents on the computer it is paired with, and opens
+the chat once it is up. In a Herdr 2 terminal it moves Claude Code, through
+the same herdr-core path as the desktop (`sheprd_core_client::convert`).
+
 The tab's menu offers the row for an agent that can move, on a host chats reach,
 and shows a refusal in the menu. In a tab with several such agents it moves the
 one in the focused pane, else the first; use `--pane` to choose another.

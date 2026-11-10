@@ -19,6 +19,7 @@ mod device_themes;
 mod double_shift;
 pub(crate) mod file_drop;
 mod file_links;
+pub(crate) use file_links::FileLink;
 mod find;
 mod flash;
 pub(crate) use commands::run_window_command;
@@ -27,6 +28,7 @@ pub(crate) use zen::slide_start;
 mod function_keys;
 pub(crate) mod image_source;
 mod images;
+pub(crate) use images::external_paths;
 mod input;
 mod layout_save;
 pub(crate) use layout_save::LayoutSaves;
@@ -47,6 +49,7 @@ mod report_issue;
 mod select_hint;
 mod selection;
 mod server_keys;
+mod skill_offer;
 mod sound;
 mod status_bar;
 pub(crate) mod system_notifications;
@@ -239,6 +242,12 @@ pub(crate) struct SheprdWindow {
     pub(crate) input_probe: smoke::InputProbe,
     pub(crate) install_warning_shown: bool,
     pub(crate) integrations: crate::integrations::Integrations,
+    /// Git work for a kept workspace's worktree dialog that finished off the
+    /// UI thread, landed on the next tick, which has the window to land in.
+    /// Worktree scripts of kept workspaces the window follows: a new
+    /// checkout's setup until its workspace opens, an archive until it ends.
+    pub(crate) kept_scripts: crate::worktree_scripts::Kept,
+    pub(crate) kept_worktree_done: Vec<menu::KeptDone>,
     /// What a key code types in the active layout, to restore a dropped Shift.
     pub(crate) key_layout: fn(u16) -> Option<prefix::KeyChars>,
     /// The key code and Shift of the key being handled, from AppKit's event.
@@ -269,6 +278,9 @@ pub(crate) struct SheprdWindow {
     /// UTF-16; `None` puts the caret after it.
     pub(crate) marked_selection: Option<std::ops::Range<usize>>,
     pub(crate) menu: menu::MenuState,
+    /// Starts as `config.show_menu_bar`; Toggle Menu Bar flips it for the
+    /// session, and a reload that changes the setting applies it again.
+    pub(crate) menu_bar_visible: bool,
     /// Removing worktrees whose pull request is merged, when enabled.
     pub(crate) merged_cleanup: crate::merged_cleanup::Cleanup,
     /// The mod panel's width; see `crate::mods::panel`.
@@ -690,6 +702,8 @@ impl SheprdWindow {
         self.poll_editor_open(cx);
         self.poll_editor_returns(window, cx);
         self.poll_worktree_source(cx);
+        self.poll_kept_worktree(window, cx);
+        self.poll_kept_scripts(cx);
         self.poll_hover_menu(std::time::Instant::now(), window, cx);
         if self.tick_flash(std::time::Instant::now()) {
             cx.notify();

@@ -80,6 +80,11 @@
             "label": "zsh",
             "cwd": "/work",
             "zoomed": false,
+            "actions": [
+              "rename",
+              "split",
+              "zoom"
+            ],
             "panes": [
               {
                 "pane": "p2",
@@ -94,6 +99,10 @@
               "pane": "p2",
               "title": "Fix the build",
               "changed_ms": 1770000000000
+            },
+            "convert": {
+              "agent": "claude",
+              "pane": "p2"
             }
           }
         ]

@@ -2,7 +2,7 @@
 //! terminal tabs, projected from a snapshot. Pure, so it is tested without
 //! a daemon.
 
-use sheprd_chat_protocol::{EndpointId, TOKEN};
+use sheprd_chat_protocol::{Agent, EndpointId, TOKEN};
 use sheprd_client::protocol::{
     AgentStatus, ClientShellAgent, ClientShellSnapshot, ClientShellWorktree,
 };
@@ -65,6 +65,12 @@ pub(crate) struct Terminal {
     /// The agent Herdr detects in it, such as `claude` run in a shell: the
     /// most pressing when several panes hold one.
     pub(crate) agent: Option<TerminalAgent>,
+    /// Every pane's agent, in the snapshot's order: what each one does,
+    /// which the tab's one agent above cannot say for a split.
+    pub(crate) agents: Vec<TerminalAgent>,
+    /// The pane whose agent its menu offers to move into a chat, with that
+    /// agent; `None` when none can (`sheprd_client::herdr::convert`).
+    pub(crate) convert: Option<(String, Agent)>,
 }
 
 /// An agent Herdr detects in a terminal tab, outside any chat.
@@ -261,18 +267,22 @@ pub(crate) fn project_with(snapshot: &ClientShellSnapshot, listed: Chats) -> Lay
                             focused: pane.focused,
                         })
                         .collect();
-                    let agent = snapshot
+                    let agents: Vec<TerminalAgent> = snapshot
                         .agents
                         .iter()
                         .filter(|agent| agent.tab_id == tab.tab_id)
-                        .max_by_key(|agent| urgency(agent.agent_status))
                         .map(|agent| TerminalAgent {
                             name: agent_kind(agent),
                             status: agent.agent_status,
                             pane: agent.pane_id.clone(),
                             title: agent_title(agent).map(str::to_owned),
                             changed_ms: None,
-                        });
+                        })
+                        .collect();
+                    let agent = agents
+                        .iter()
+                        .max_by_key(|agent| urgency(agent.status))
+                        .cloned();
                     let terminal = Terminal {
                         tab: tab.tab_id.clone(),
                         label: sheprd_client::text::tab_label(snapshot, tab).to_owned(),
@@ -280,6 +290,9 @@ pub(crate) fn project_with(snapshot: &ClientShellSnapshot, listed: Chats) -> Lay
                         zoomed: tab.zoomed,
                         panes,
                         agent,
+                        agents,
+                        convert: sheprd_client::herdr::convert::tab_pane(snapshot, id, &tab.tab_id)
+                            .map(|(pane, agent)| (pane.to_owned(), agent)),
                     };
                     let cwd = terminal.first_pane()?.cwd.clone();
                     Some(Terminal { cwd, ..terminal })

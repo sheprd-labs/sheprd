@@ -68,7 +68,12 @@ direction.
 - It keeps running when Sheprd quits, so the phone works and push keeps
   flowing. Pairing needs Sheprd, because only its dialog approves devices.
 - Without a running Herdr daemon it serves the app shell with a "Herdr is not
-  running" state; it never starts or installs a daemon.
+  running" state; it never installs a daemon, and starts only an installed
+  herdr-core, for a phone's new work, on a machine without Herdr 1 or
+  where the user chose "New terminals use Herdr 2" (`herdr_2_terminals`).
+  It never stops or moves Herdr 1. With a core answering, a new workspace
+  asked for in a named Herdr 1 session is refused (409): Herdr 2 has no
+  sessions, and the request says where the workspace should be.
 
 ## TLS without DNS
 
@@ -287,9 +292,9 @@ focus nor resize anything:
   through it. It is not streamed: 1,000 lines on every change would be far
   more than a phone should take. Live screens wait while history shows and
   return when the view reaches its end or the phone types. A program on the
-  alternate screen has no history here, so its screen stays as it is, and
-  neither has a Herdr 2 pane yet: its read is the emulator's screen, kept
-  with no scrollback.
+  alternate screen has no history here, so its screen stays as it is. A
+  Herdr 2 pane reads the history its shared emulator keeps (1,000 lines,
+  painted by the core's attach when the daemon opens it).
 - **Echo strip**: what was typed but is not on the screen yet shows,
   dotted, above the key rows (backspace takes back what it can). An input
   leaves it once Herdr took it and a screen arrived after, or 1 s after
@@ -307,7 +312,25 @@ focus nor resize anything:
   terminal is, so Claude Code and the like attach it.
 - **Actions** (the sheet): `pane.split {direction: right|down, focus:
   false}`, `pane.zoom`, `pane.close`, `tab.create {focus: false}`,
-  `tab.close`, and moving between panes on the phone only.
+  `tab.close`, and moving between panes on the phone only. A Herdr 2 pane
+  has no layout in herdr-core, so its tab's keeper makes the change:
+  - A tab Sheprd saves is Sheprd's. While Sheprd runs, the daemon asks it
+    (`control::layout`). While it is closed, the daemon edits
+    `browser-tabs.json` itself through `sheprd_session::saved::edit`,
+    touching only that tab's panes, zoom, and names (or a kept workspace's
+    name), and only when the file did not change meanwhile; Sheprd reads it
+    when it starts. A split's shell carries the tab's workspace label, so a
+    Sheprd starting meanwhile still lists it there.
+  - A tab no saved tab holds (every tab on a host Sheprd does not run on, a
+    terminal started outside Sheprd, a phone's new workspace) is the
+    daemon's own: its splits, zoom, and tab, pane, and group names live in
+    `core-tabs.json` in the daemon's state folder, for the core that made
+    them. Sheprd's saved tabs win: a terminal one takes in leaves it.
+  - A Herdr desktop space's tab (`herdr-app` document) is that app's. Each
+    terminal row's `actions` lists what its menu may do (`rename`,
+    `split`, `zoom`); such a tab lists none, and the phone hides them.
+  A workspace with nothing in it gets its first tab from `POST
+  /api/v2/workspaces/{workspace}/terminals`.
 - The same socket now carries New workspace and New chat, which the
   inactive shell connection could never send.
 

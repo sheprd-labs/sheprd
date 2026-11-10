@@ -178,7 +178,7 @@ pub(crate) async fn new_options(
     let folders = tokio::task::spawn_blocking(move || folders(&layout))
         .await
         .map_err(|_| ApiError::Folder)?;
-    let agents = offered(installed_agents(state.hub.program()).await);
+    let agents = offered(installed_agents(state.hub.program().as_deref()).await);
     Ok(Json(NewOptions::new(
         &agents,
         folders.recent,
@@ -285,6 +285,26 @@ pub(crate) async fn start_chat(
         prompted: opened.prompted,
         started: opened.started,
     }))
+}
+
+/// What `POST /api/v2/workspaces/{workspace}/terminals` answers.
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct CreatedTerminal {
+    pub(crate) pane: String,
+}
+
+/// `POST /api/v2/workspaces/{workspace}/terminals`: a shell tab in it,
+/// which a workspace with nothing in it yet has no pane to ask for.
+pub(crate) async fn new_terminal(
+    State(state): State<Shared>,
+    _device: Device,
+    Path(workspace): Path<String>,
+) -> Result<Json<CreatedTerminal>, ApiError> {
+    if state.hub.layout().workspace(&workspace).is_none() {
+        return Err(ApiError::NotFound);
+    }
+    let pane = state.hub.new_terminal(&workspace).await?;
+    Ok(Json(CreatedTerminal { pane }))
 }
 
 /// Refuses a first prompt the chat would refuse anyway, before anything

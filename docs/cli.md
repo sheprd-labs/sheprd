@@ -35,10 +35,20 @@ Every command accepts:
   `{"error": {"code", "message"}}` on standard output.
 - `--window ID`: act in that window (IDs come from `window list`). By default
   a command acts in the window showing the caller's workspace
-  (`HERDR_WORKSPACE_ID`, which Herdr sets in every pane). When no window shows
-  it, as for a session the app does not show, the command exits 5 rather than
-  act on another session's window. Outside Herdr, it acts in the frontmost
-  window.
+  (`HERDR_WORKSPACE_ID`, which Herdr sets in every pane). In a Herdr 2
+  (herdr-core) terminal the caller is that terminal (`HC_TERMINAL_ID`, which
+  herdr-core sets in every terminal): the command acts in the window and
+  workspace of the tab holding it, and pages it opens and their notes belong
+  to it as they would to a Herdr pane. When no window shows it, as for a
+  session the app does not show, the command exits 5 rather than act on
+  another session's window. Outside both, it acts in the frontmost window.
+  From a herdr-core terminal in a workspace Sheprd keeps for Herdr 2, `work`
+  notes, `checkpoint restore`, and `host pr` act on that workspace's
+  checkout; mutes, scripts, and fan-out, which keep Herdr 1's
+  workspace state, exit 8 there for now, as every `work` command does from
+  a terminal in no workspace the window keeps.
+  Teleport works from a workspace the app keeps for Herdr 2 on this
+  computer, as its menu does.
 
 | Exit | Meaning |
 | --- | --- |
@@ -67,7 +77,7 @@ Every command accepts:
 | `window fullscreen [on\|off\|toggle]` | |
 | `window size [WIDTHxHEIGHT]` | Print or set the window's size; windows cannot be moved |
 | `window detach\|reconnect` | Detach from, or reconnect to, the selected host |
-| `ui sidebar\|statusbar [on\|off\|toggle]` | For this window and session |
+| `ui sidebar\|statusbar\|menubar [on\|off\|toggle]` | For this window and session. `menubar` is the in-window menu bar on Linux and Windows; macOS, whose menus are the system's, exits 8 |
 | `ui font-size +\|-\|reset\|POINTS` | The terminal font size for this session |
 | `ui agent-group [NAME\|all]` | List the agents panel's coordinator groups, marking the one shown, or show one group's sessions with its coordinator first, or `all` of them, for this window and session. Exits 5 for a group no coordinator names and 8 unless `[sidebar] coordinator_suffix` is set and the agents panel is shown |
 | `ui panel workspaces\|overview\|pull-requests\|issues\|tasks\|security\|automations\|ports\|usage` | Show an activity bar section: Workspaces with the sidebar expanded, Overview of what needs you on every host, the focused workspace's pull requests or issues across the window, Beads tasks across the window's projects, the vulnerability reports and Dependabot alerts of your repositories, every host's automation scripts and runs, every port this computer's user listens on, or every host's plan usage |
@@ -136,7 +146,7 @@ and builds without embedded pages return exit 8. See [px0](../crates/sheprd-gpui
 | `teleport --to HOST` | Open the teleport dialog for your linked worktree, reviewing HOST; you confirm there |
 | `fan-out PROMPT [--agent KIND[:N]]...` | Open the fan-out dialog prefilled; you start it there |
 | `chat [status]` | The `sheprd-acp` chat panes of the window's host, this machine or an SSH host: agent, status, model, context window use, and whether the chat view or the terminal shows |
-| `chat convert [--pane ID]` | Move the terminal agent in your pane (or ID, else the focused one) into a `sheprd-acp` chat in the same pane, keeping its conversation (see [Moving a terminal agent into a chat](rich-chat.md#moving-a-terminal-agent-into-a-chat)). Returns once the move has started; `chat` shows the chat when it attaches. Exits 6 while the agent works, 5 when the pane has no terminal agent, and 8 for an agent or pane that cannot move |
+| `chat convert [--pane ID]` | Move the terminal agent in your pane (or ID, else the focused one) into a `sheprd-acp` chat in the same pane, keeping its conversation. From a Herdr 2 pane, your pane is your terminal (`HC_TERMINAL_ID`), whose id in `chat` is `core:` and the terminal's (see [Moving a terminal agent into a chat](rich-chat.md#moving-a-terminal-agent-into-a-chat)). Returns once the move has started; `chat` shows the chat when it attaches. Exits 6 while the agent works, 5 when the pane has no terminal agent, and 8 for an agent or pane that cannot move |
 | `chat show\|hide\|toggle [--pane ID]` | Show the native chat view over your pane (or ID, else the focused one), or its terminal |
 | `chat new AGENT [--pane ID]` | Open a tab running a `sheprd-acp` chat with a built-in agent (`claude`, `codex`, `copilot`, `gemini`, `opencode`, `pi`) in the workspace and folder of your pane (or ID). On an SSH host the tab runs that host's `sheprd-acp` (see [Chats on SSH hosts](#chats-on-ssh-hosts)). With no Herdr pane to go by, as when called from a Herdr 2 pane, a Herdr 2 tab in the active group splits its pane in use with the chat instead (see [Chats in Herdr 2 panes](rich-chat.md#chats-in-herdr-2-panes)); its pane id in `chat` is `core:` and the terminal's. Exits 8 when `sheprd-acp` is missing here, the host cannot be reached, or the agent is not installed on it (`sheprd-acp agents` lists those that are) |
 
@@ -181,7 +191,7 @@ not take it either.
 | `cloud destroy ID... \| --batch BATCH` | Ask in the window to delete saved machines at their providers and forget them; the user confirms there, once for all of them. Prints the batch to follow (below) |
 | `cloud wait BATCH [--timeout S]` | Each machine of a batch once all are settled, or after S seconds (default 60, at most 600) |
 | `cloud batches` | The batches the app keeps, newest last; the oldest are left out when they would not fit in one answer |
-| `processes [--pane ID]` | The processes under a pane, with CPU and memory (no app needed) |
+| `processes [--pane ID \| --terminal ID]` | The processes under a Herdr pane or a herdr-core terminal, with CPU and memory; by default the caller's own (`HC_TERMINAL_ID`, else `HERDR_PANE_ID`). No app needed |
 | `search symbol\|file QUERY` | Go to Symbol or Go to File over the current checkout (no app needed) |
 
 ### Settings and services

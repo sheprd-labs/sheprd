@@ -17,6 +17,7 @@ pub(super) struct Poller {
     boot: String,
     /// The document's version and its spaces, `None` when it has none.
     doc: Option<(u64, Option<spaces::Spaces>)>,
+    checkouts: super::checkouts::Checkouts,
     names: spaces::Names,
     saved: Option<(SystemTime, Option<SavedTabs>)>,
 }
@@ -60,10 +61,46 @@ impl Poller {
             self.refresh_saved(tabs);
         }
         let saved = self.saved.as_ref().and_then(|(_, saved)| saved.as_ref());
-        if let Some((_, Some(spaces))) = &self.doc {
-            return spaces.project(boot, terminals, saved, scope, &mut self.names);
-        }
-        projection::project(boot, terminals, saved, scope)
+        let mut layout = match &self.doc {
+            Some((_, Some(spaces))) => {
+                let mut layout = spaces.project(boot, terminals, saved, scope, &mut self.names);
+                projection::lead_kept(&mut layout, saved, scope);
+                layout
+            }
+            _ => projection::project(boot, terminals, saved, scope),
+        };
+        self.checkouts.fill(&mut layout, std::time::Instant::now());
+        layout
+    }
+
+    /// Whether Sheprd keeps workspace `id` for `scope` in its saved tabs.
+    pub(super) fn keeps(&self, scope: &str, id: &str) -> bool {
+        self.saved
+            .as_ref()
+            .and_then(|(_, saved)| saved.as_ref())
+            .is_some_and(|saved| saved.workspaces(scope).any(|workspace| workspace.id == id))
+    }
+
+    /// Every terminal `scope`'s saved tabs hold, watching ones included.
+    pub(super) fn held(&self, scope: Option<&str>) -> std::collections::HashSet<String> {
+        let saved = self.saved.as_ref().and_then(|(_, saved)| saved.as_ref());
+        saved
+            .zip(scope)
+            .into_iter()
+            .flat_map(|(saved, scope)| saved.core_tabs(scope))
+            .flat_map(|tab| tab.panes.terminals())
+            .map(|terminal| terminal.as_str().to_owned())
+            .collect()
+    }
+
+    /// The workspace of `scope`'s saved tab `tab`.
+    pub(super) fn saved_workspace(&self, scope: &str, tab: u64) -> Option<String> {
+        self.saved
+            .as_ref()
+            .and_then(|(_, saved)| saved.as_ref())?
+            .core_tabs(scope)
+            .find(|saved| saved.id == tab)
+            .map(|saved| saved.workspace_id.to_owned())
     }
 
     fn refresh_saved(&mut self, path: &Path) {

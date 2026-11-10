@@ -4,13 +4,15 @@
 //! routes, so one rate limit and `Origin` policy covers every write.
 
 pub(crate) mod changes;
+mod convert;
 mod create;
 mod live;
 mod model;
 mod search;
 mod wire;
 
-pub(crate) use create::{create_workspace, new_options, start_chat};
+pub(crate) use convert::convert;
+pub(crate) use create::{create_workspace, new_options, new_terminal, start_chat};
 pub(crate) use search::search;
 
 use crate::{
@@ -73,6 +75,7 @@ fn home(state: &Shared) -> Home {
 
 /// `GET /api/v2/home`.
 pub(crate) async fn get_home(State(state): State<Shared>, _device: Device) -> Json<Home> {
+    state.hub.wake_for_phone();
     Json(home(&state))
 }
 

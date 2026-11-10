@@ -169,10 +169,7 @@ impl SheprdWindow {
             .snapshot
             .as_ref()
             .map(|snapshot| {
-                snapshot
-                    .tabs
-                    .iter()
-                    .filter(|t| Some(&t.workspace_id) == snapshot.focused_workspace_id.as_ref())
+                self.herdr_tabs_in_front()
                     .map(|t| {
                         (
                             (Pick::Herdr(t.tab_id.clone()), self.strip_label(snapshot, t)),
@@ -186,11 +183,20 @@ impl SheprdWindow {
             .unwrap_or_default();
         let listed: Vec<Listed> = herdr
             .into_iter()
-            .chain(
-                self.browser_tab_labels(cx)
-                    .into_iter()
-                    .map(|entry| (entry, Lead::Icon, false, false)),
-            )
+            .chain(self.browser_tab_labels(cx).into_iter().map(|entry| {
+                // A Herdr 2 terminal tab's marks take room as a Herdr tab's.
+                let face = match &entry.0 {
+                    Pick::Page(id) => cx
+                        .try_global::<crate::browser::Store>()
+                        .and_then(|store| store.get(*id))
+                        .and_then(|tab| self.core_face(tab, cx)),
+                    _ => None,
+                };
+                match face {
+                    Some(face) => (entry, face.lead(), face.zoomed, face.muted),
+                    None => (entry, Lead::Icon, false, false),
+                }
+            }))
             .filter(|((pick, _), _, _, _)| self.group_lists(slot.id, pick))
             .map(|((tab, label), lead, zoomed, muted)| {
                 let shape = TabShape {
@@ -236,10 +242,12 @@ impl SheprdWindow {
             .px(px(layout.padding()))
             .text_color(rgb(self.theme.foreground));
         if let Some(snapshot) = &self.live.snapshot {
-            for tab in snapshot.tabs.iter().filter(|t| {
-                Some(&t.workspace_id) == snapshot.focused_workspace_id.as_ref()
-                    && self.group_lists(slot.id, &Pick::Herdr(t.tab_id.clone()))
-            }) {
+            // Herdr 1's tabs only while its workspace is in front, as the
+            // tab shortcuts count them.
+            for tab in self
+                .herdr_tabs_in_front()
+                .filter(|t| self.group_lists(slot.id, &Pick::Herdr(t.tab_id.clone())))
+            {
                 let id = tab.tab_id.clone();
                 let context_id = id.clone();
                 let close_id = id.clone();
@@ -781,11 +789,11 @@ impl SheprdWindow {
             .then(|| self.render_tab_strip(slot, ends, window, cx));
         let strip_side = strip.is_some().then(|| self.strip_side());
         let bottom = self.tab_bar_position() == TabBarPosition::Bottom;
-        let linked = self
-            .live
-            .snapshot
-            .as_deref()
-            .is_some_and(crate::worktree_identity::focused_is_linked);
+        let front = self.browser_key().map(|(_, workspace)| workspace);
+        let linked = crate::worktree_identity::front_is_linked(
+            &self.sessions(self.selected_endpoint),
+            front.as_deref(),
+        );
         let rule = self.config.worktrees.rule(linked, &self.theme);
         let rule = rule.map(|rule| rule.debug_selector(move || slot.selector("worktree-rule")));
         let strip = crate::worktree_identity::place_rule(strip, rule, bottom);

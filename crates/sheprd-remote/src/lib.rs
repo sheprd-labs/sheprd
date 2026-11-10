@@ -20,6 +20,7 @@ pub mod coder;
 pub mod config;
 #[cfg(feature = "container")]
 pub mod container;
+pub mod core_install;
 #[cfg(any(
     feature = "azure",
     feature = "boat",
@@ -40,5 +41,6 @@ pub mod railway;
 #[cfg(feature = "sprites")]
 pub mod sprites;
 pub mod teleport;
+pub mod work;
 
 pub use error::{Error, Result};

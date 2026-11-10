@@ -272,10 +272,33 @@ final class RemoteClient: Sendable {
 
     /// Runs an action from the sheet; answers the pane to show next, or
     /// `nil` when the pane or tab is gone.
+    /// A terminal tab in `workspace`, which needs no pane there, so a
+    /// workspace with nothing in it yet gets its first; answers its pane.
+    func newTerminal(workspace: String, bearer: String) async throws -> String {
+        struct Answer: Decodable { let pane: String }
+        let answer: Answer = try await send("POST", "/api/v2/workspaces/\(Self.segment(workspace))/terminals", bearer: bearer, timeout: 30)
+        return answer.pane
+    }
+
     func termAction(_ action: TermAction, pane: String, bearer: String) async throws -> String? {
         struct Body: Encodable { let action: TermAction }
         struct Answer: Decodable { let pane: String? }
         let answer: Answer = try await send("POST", "/api/term/\(Self.segment(pane))/action", body: Body(action: action), bearer: bearer)
+        return answer.pane
+    }
+
+    /// Moves the agent `offer` names into a chat in the same pane, as
+    /// Sheprd's Move Agent into Chat does; answers the chat's pane once it is
+    /// up, or `nil` when it is still starting. Stopping the agent can take
+    /// a while, so this waits longer than other requests. A refusal leaves
+    /// the agent running and says why.
+    func convertToChat(_ offer: Home.TerminalRow.ConvertOffer, bearer: String) async throws -> String? {
+        struct Body: Encodable { let agent: String }
+        struct Answer: Decodable { let pane: String? }
+        let answer: Answer = try await send(
+            "POST", "/api/v2/term/\(Self.segment(offer.pane))/convert",
+            body: Body(agent: offer.agent), bearer: bearer, timeout: 90
+        )
         return answer.pane
     }
 

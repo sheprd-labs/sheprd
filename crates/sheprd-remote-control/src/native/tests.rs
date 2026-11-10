@@ -16,6 +16,7 @@ mod pictures;
 mod projection;
 mod reducer;
 mod socket;
+mod tab_actions;
 mod term_scroll;
 mod term_size;
 mod views;
@@ -59,6 +60,8 @@ pub(super) fn layout(endpoint: EndpointId) -> Layout {
                     title: Some("Fix the build".into()),
                     changed_ms: Some(1_770_000_000_000),
                 }),
+                agents: Vec::new(),
+                convert: Some(("p2".into(), sheprd_chat_protocol::Agent::Claude)),
             }],
         }],
     }

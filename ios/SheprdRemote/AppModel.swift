@@ -14,6 +14,11 @@ enum Route: Codable, Hashable {
     case term(PaneKey, title: String)
     case workspace(WorkspaceKey)
     case changes(WorkspaceKey)
+
+    /// Whether this shows the terminal of `pane`, under whatever title.
+    func showsTerminal(_ pane: PaneKey) -> Bool {
+        if case let .term(key, _) = self { key == pane } else { false }
+    }
 }
 
 /// The app's state: paired computers, their live links, and the tokens
@@ -31,6 +36,10 @@ final class AppModel {
     var message: String?
     /// Set by a deep link; the root view shows it and clears it.
     var pendingRoute: Route?
+    /// The terminal on screen that `pendingRoute` takes the place of, as
+    /// when its pane became a chat: Back must not return to a terminal
+    /// that is gone. The root view clears it with `pendingRoute`.
+    var pendingRouteReplaces: PaneKey?
     /// The workspace a tab on Home asked to go to; the root view shows it
     /// and clears it.
     var pendingWorkspace: WorkspaceKey?
@@ -347,8 +356,16 @@ final class AppModel {
             message = "\(link.computer.isEmpty ? "That computer" : link.computer) is not paired with this phone."
             return
         }
+        let key = PaneKey(device: computer.device, pane: link.pane)
+        // An agent in a plain terminal alerts too, and opens its terminal,
+        // even before this phone has heard of a new one.
+        let terminal = fleet.terminalItems.first { $0.computer.device == computer.device && $0.terminal.panes.contains { $0.pane == link.pane } }
+        if link.terminal || terminal != nil {
+            pendingRoute = .term(key, title: terminal?.terminal.label ?? "Terminal")
+            return
+        }
         let title = fleet.chatItems.first { $0.computer.device == computer.device && $0.chat.pane == link.pane }?.chat.title
-        pendingRoute = .chat(PaneKey(device: computer.device, pane: link.pane), title: title ?? "Chat")
+        pendingRoute = .chat(key, title: title ?? "Chat")
     }
 
     /// The computers nearby whose pairing dialog is open now, by

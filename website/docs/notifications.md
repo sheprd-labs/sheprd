@@ -68,6 +68,8 @@ Nothing from a muted place asks for you: no toast, no OS notification, no sound,
 
 A workspace or tab mute does not hold back `herdr notification show` messages or terminal bells, which Herdr sends without saying where they came from, nor [phone notifications](remote-control.md). A device mute does hold back the first two.
 
+Herdr 2 tabs and the workspaces Sheprd keeps for them mute the same way, from the tab menu and the workspace menu. A muted Herdr 2 tab also rings no terminal bell, since Sheprd hears its bells itself, and a Herdr 2 tab in a Herdr 1 workspace follows that workspace's mute.
+
 Mutes stay in Sheprd, survive restarts and renames, and are forgotten when the workspace or tab closes. A device's mute holds while it is offline, until you lift it or remove the device.
 
 ## Notification sounds
@@ -118,6 +120,8 @@ sound = false     # play the system alert sound
 ```
 
 A burst rings at most once per 500 ms. **QA > Ring Bell in 3 Seconds** previews both, giving you time to switch to another app.
+
+Herdr 2 terminals ring the same way while their tab is in the workspace shown; a tab in another workspace stays quiet. A mirror tab never rings: the tab driving the terminal does.
 
 ## Dock and taskbar badges
 

@@ -6,7 +6,9 @@ use gpui::{Entity, TestAppContext, VisualTestContext};
 mod automation;
 #[cfg(feature = "cloud")]
 mod cloud_setup;
+mod core_window;
 mod info;
+mod kept_pr;
 mod muting;
 mod ports;
 mod pr;

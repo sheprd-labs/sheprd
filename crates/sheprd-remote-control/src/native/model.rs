@@ -115,9 +115,54 @@ pub(crate) struct Terminal {
     pub(crate) label: String,
     pub(crate) cwd: Option<String>,
     pub(crate) zoomed: bool,
+    /// What its menu may do besides closing: a Herdr desktop space's tab
+    /// keeps its layout and names in that app. Older servers send none and
+    /// allow every one.
+    #[serde(default = "TabAction::all")]
+    pub(crate) actions: Vec<TabAction>,
     pub(crate) panes: Vec<Pane>,
     /// The agent Herdr detects in the tab, the most pressing first.
     pub(crate) agent: Option<TerminalAgent>,
+    /// What the tab's menu offers to move into a chat
+    /// (`POST /api/v2/term/{pane}/convert`); absent when nothing can, and
+    /// from older servers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) convert: Option<ConvertOffer>,
+}
+
+/// What a terminal tab's menu may do with it.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum TabAction {
+    // keep-sorted start
+    Rename,
+    Split,
+    Zoom,
+    // keep-sorted end
+}
+
+impl TabAction {
+    pub(crate) fn all() -> Vec<Self> {
+        vec![Self::Rename, Self::Split, Self::Zoom]
+    }
+
+    /// What a phone may do with the tab `tab`.
+    fn of(tab: &str) -> Vec<Self> {
+        if hub::arrangeable(tab) {
+            Self::all()
+        } else {
+            Vec::new()
+        }
+    }
+}
+
+/// A terminal agent a phone may move into a chat: its pane, and the agent
+/// it is, which the request names back so a replaced agent is refused.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub(crate) struct ConvertOffer {
+    /// Herdr's name for the agent, such as `claude`.
+    pub(crate) agent: String,
+    pub(crate) pane: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -308,6 +353,7 @@ fn terminal(terminal: &hub::Terminal) -> Terminal {
         label: terminal.label.clone(),
         cwd: terminal.cwd.clone(),
         zoomed: terminal.zoomed,
+        actions: TabAction::of(&terminal.tab),
         panes: terminal
             .panes
             .iter()
@@ -324,6 +370,10 @@ fn terminal(terminal: &hub::Terminal) -> Terminal {
             pane: Some(agent.pane.clone()),
             title: agent.title.clone(),
             changed_ms: agent.changed_ms,
+        }),
+        convert: terminal.convert.as_ref().map(|(pane, agent)| ConvertOffer {
+            agent: agent.name().to_owned(),
+            pane: pane.clone(),
         }),
     }
 }

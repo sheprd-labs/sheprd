@@ -26,6 +26,11 @@ struct TerminalScreen: View {
     @State private var problem: String?
     @State private var clipboardHasText = UIPasteboard.general.hasStrings
     @State private var renaming = false
+    /// A move of the tab's agent into a chat is under way.
+    @State private var converting = false
+    /// Whether this screen is shown, so a move that ends after the person
+    /// left it does not pull them back to its chat.
+    @State private var shown = false
     @State private var newName = ""
     /// Lines a swipe in progress has scrolled the terminal so far.
     @State private var swiped = 0
@@ -178,19 +183,36 @@ struct TerminalScreen: View {
                 // A menu grows out of the button it opens from; a
                 // confirmation dialog would float in the middle instead.
                 Menu {
+                    // A Herdr desktop space's tab keeps its layout and
+                    // names there; the computer says what it would refuse.
                     Section {
-                        Button("Split Right", systemImage: "rectangle.split.2x1") { run(.splitRight) }
-                        Button("Split Down", systemImage: "rectangle.split.1x2") { run(.splitDown) }
-                        if item?.terminal.zoomed == true {
-                            Button("Unzoom", systemImage: "arrow.down.right.and.arrow.up.left") { run(.zoom) }
-                        } else {
-                            Button("Zoom", systemImage: "arrow.up.left.and.arrow.down.right") { run(.zoom) }
+                        if offers(.split) {
+                            Button("Split Right", systemImage: "rectangle.split.2x1") { run(.splitRight) }
+                            Button("Split Down", systemImage: "rectangle.split.1x2") { run(.splitDown) }
+                        }
+                        if offers(.zoom) {
+                            if item?.terminal.zoomed == true {
+                                Button("Unzoom", systemImage: "arrow.down.right.and.arrow.up.left") { run(.zoom) }
+                            } else {
+                                Button("Zoom", systemImage: "arrow.up.left.and.arrow.down.right") { run(.zoom) }
+                            }
                         }
                     }
-                    Section {
-                        Button("Rename Tab…", systemImage: "pencil") {
-                            newName = item?.terminal.label ?? title
-                            renaming = true
+                    if let offer = item?.terminal.convert {
+                        Section {
+                            Button(
+                                converting ? "Moving into Chat…" : "Move Agent into Chat",
+                                systemImage: "bubble.left.and.text.bubble.right"
+                            ) { convert(offer) }
+                            .disabled(converting)
+                        }
+                    }
+                    if offers(.rename) {
+                        Section {
+                            Button("Rename Tab…", systemImage: "pencil") {
+                                newName = item?.terminal.label ?? title
+                                renaming = true
+                            }
                         }
                     }
                     Section {
@@ -218,7 +240,9 @@ struct TerminalScreen: View {
             picks = []
             Task { await upload(item) }
         }
+        .onDisappear { shown = false }
         .onAppear {
+            shown = true
             store = model.fleet.openTerm(key)
             model.recentDevice = key.device
             if typing == nil { typing = TermTyping(key: key, fleet: model.fleet) }
@@ -370,6 +394,40 @@ struct TerminalScreen: View {
                 problem = error.localizedDescription
             }
         }
+    }
+
+    /// Moves the tab's agent into a chat in the same pane, as Sheprd's Move
+    /// Agent into Chat does, and opens the chat in this terminal's place
+    /// once it is up, unless the person has left this screen meanwhile. The
+    /// computer refuses a busy agent, one Herdr reports no session for, or
+    /// one replaced since the offer, and says why; the agent then keeps
+    /// running here.
+    private func convert(_ offer: Home.TerminalRow.ConvertOffer) {
+        converting = true
+        Task {
+            defer { converting = false }
+            do {
+                let chat = try await model.fleet.call(key.device) { client, token in
+                    try await client.convertToChat(offer, bearer: token)
+                }
+                if let chat {
+                    problem = nil
+                    guard shown else { return }
+                    model.pendingRouteReplaces = key
+                    model.pendingRoute = .chat(PaneKey(device: key.device, pane: chat), title: name)
+                } else {
+                    problem = "The chat is still starting; it shows in your list once it is up."
+                }
+            } catch {
+                problem = error.localizedDescription
+            }
+        }
+    }
+
+    /// Whether the computer would do `action` with this tab; one that has
+    /// not listed it yet allows them all.
+    private func offers(_ action: Home.TerminalRow.Action) -> Bool {
+        item?.terminal.offers(action) ?? true
     }
 
     private func run(_ action: TermAction) {

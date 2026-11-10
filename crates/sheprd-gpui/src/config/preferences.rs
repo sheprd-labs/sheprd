@@ -28,8 +28,11 @@ pub(crate) enum Preference {
     ShowAgentsHeader(bool),
     /// `herdr_2_terminals`: new tabs on this computer run in herdr-core.
     Herdr2Terminals(bool),
+    /// `herdr_2_scrollback`: lines each Herdr 2 terminal keeps.
+    Herdr2Scrollback(u32),
     ShowSidebarSearch(bool),
     ShowRepositoryIcons(bool),
+    ShowMenuBar(bool),
     ShowWindowControls(bool),
     /// `status_icons`: the set agent status is drawn with.
     StatusIcons(StatusIcons),
@@ -171,6 +174,9 @@ impl Config {
                 Preference::Herdr2Terminals(value) => {
                     (None, "herdr_2_terminals", Some(value.into()))
                 }
+                Preference::Herdr2Scrollback(lines) => {
+                    (None, "herdr_2_scrollback", Some(i64::from(lines).into()))
+                }
                 Preference::ShowSidebarSearch(value) => {
                     (None, "show_sidebar_search", Some(value.into()))
                 }
@@ -180,6 +186,7 @@ impl Config {
                 Preference::ShowDeviceIcons(value) => {
                     (None, "show_device_icons", Some(value.into()))
                 }
+                Preference::ShowMenuBar(value) => (None, "show_menu_bar", Some(value.into())),
                 Preference::ShowWindowControls(value) => {
                     (None, "show_window_controls", Some(value.into()))
                 }

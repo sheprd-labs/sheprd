@@ -21,6 +21,7 @@
 mod alerts;
 mod batch;
 mod closed;
+mod core;
 mod excerpt;
 mod hosts;
 mod inputs;
@@ -66,6 +67,10 @@ pub enum Error {
     /// Herdr's own refusal: `code` is its wire code, `message` remote text.
     #[error("{message}")]
     ReplyRefused { code: String, message: String },
+    #[error("Cannot reach herdr-core: {0}")]
+    ReplyCore(#[source] sheprd_core_client::Error),
+    #[error("The agent left its terminal before the reply was typed")]
+    ReplyGone,
     #[error("Cannot run the host's herdr command: {0}")]
     ReplyScript(#[source] sheprd_client::Error),
 }
@@ -169,6 +174,17 @@ impl SheprdWindow {
                 pr,
                 crate::notification_mutes::Mutes::any(cx),
             ));
+            // This computer's Herdr 2 agents follow its Herdr 1 ones.
+            if self.is_core_overview_host(&endpoint.id) {
+                rows.extend(self.core_overview_rows(&self.overview.since));
+            }
+        }
+        if !self
+            .endpoints
+            .iter()
+            .any(|endpoint| self.is_core_overview_host(&endpoint.id))
+        {
+            rows.extend(self.core_overview_rows(&self.overview.since));
         }
         let mut runs = HashSet::new();
         for (tab, view) in self.orchestrator_views() {
@@ -260,6 +276,7 @@ impl SheprdWindow {
             self.poll_overview_reopen(cx);
             return;
         }
+        let core = self.observe_core_overview(now);
         let mut live: HashMap<&str, Vec<&str>> = HashMap::new();
         for (index, endpoint) in self.endpoints.iter().enumerate() {
             let state = if index == self.selected_endpoint {
@@ -286,6 +303,7 @@ impl SheprdWindow {
                     .collect(),
             );
         }
+        live.insert(core::ENDPOINT, core.iter().map(String::as_str).collect());
         self.overview.since.retain(&live);
         let rows = self.overview_rows(cx);
         for (index, endpoint) in self.endpoints.iter().enumerate() {
@@ -304,10 +322,11 @@ impl SheprdWindow {
                     .observe(&endpoint.id, snapshot, &rows, now);
             }
         }
+        self.observe_closed_core_agents(&rows, now, cx);
         let endpoints = &self.endpoints;
-        self.overview
-            .closed
-            .retain_hosts(|id| endpoints.iter().any(|endpoint| endpoint.id == id));
+        self.overview.closed.retain_hosts(|id| {
+            id == core::ENDPOINT || endpoints.iter().any(|endpoint| endpoint.id == id)
+        });
         self.poll_overview_reopen(cx);
         self.poll_overview_replies(cx);
         self.refresh_overview_excerpts(&rows, cx);
@@ -461,6 +480,11 @@ impl SheprdWindow {
                 window.focus(&self.focus, cx);
             }
             Open::Run(_) => self.show_activity_panel(ActivityPanel::Issues, window, cx),
+            Open::Core { tab, terminal } => {
+                self.show_activity_panel(ActivityPanel::Workspaces, window, cx);
+                self.activity.return_to = Some(ActivityPanel::Overview);
+                self.open_core_overview_row(*tab, terminal, window, cx);
+            }
         }
         cx.notify();
     }
@@ -471,13 +495,14 @@ impl SheprdWindow {
         let Some(agent) = self.overview.closed.get(id).cloned() else {
             return;
         };
-        let Open::Pane {
-            endpoint,
-            workspace,
-            ..
-        } = &agent.row.open
-        else {
-            return;
+        let (endpoint, workspace) = match &agent.row.open {
+            Open::Pane {
+                endpoint,
+                workspace,
+                ..
+            } => (endpoint, workspace),
+            Open::Core { .. } => return self.open_closed_core_agent(&agent, window, cx),
+            Open::Run(_) => return,
         };
         let current = self.endpoints.iter().enumerate().any(|(index, host)| {
             let live = if index == self.selected_endpoint {

@@ -31,6 +31,8 @@ mod coder_dialog;
 #[cfg(test)]
 mod configured_rows;
 #[cfg(test)]
+mod core_agents;
+#[cfg(test)]
 mod device_footer;
 #[cfg(test)]
 mod device_footer_setting;
@@ -630,7 +632,7 @@ pub(crate) fn fixture_window(window: &mut Window, cx: &mut Context<SheprdWindow>
         selection_follow: Default::default(),
         find: None,
         copy_mode: None,
-        core_terminals: Default::default(),
+        core_terminals: crate::core_terminals::CoreTerminals::shared(cx),
         find_memory: Default::default(),
         flash: None,
         flash_motion: Default::default(),
@@ -694,6 +696,7 @@ pub(crate) fn fixture_window(window: &mut Window, cx: &mut Context<SheprdWindow>
         sidebar_visible: true,
         sidebar_start_pending: true,
         status_bar_visible: true,
+        menu_bar_visible: true,
         zen: Default::default(),
         device_filter: Default::default(),
         device_tag_filter: None,
@@ -779,6 +782,8 @@ pub(crate) fn fixture_window(window: &mut Window, cx: &mut Context<SheprdWindow>
         menu: crate::menu::MenuState::new(cx),
         settings: Default::default(),
         integrations: Default::default(),
+        kept_scripts: Default::default(),
+        kept_worktree_done: Vec::new(),
         install_warning_shown: false,
         version_notice_shown: false,
         collapsed_repos: Default::default(),

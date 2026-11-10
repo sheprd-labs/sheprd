@@ -35,7 +35,7 @@ pub(crate) use pace::Typed;
 pub(crate) use render::now_ms;
 pub(crate) use stream::Connected;
 pub(crate) use tags::Tags;
-pub(crate) use terminal::read_screen;
+pub(crate) use terminal::read_scrolled;
 pub(crate) use uploads::Uploads;
 
 use crate::control::DeviceId;
@@ -227,6 +227,7 @@ pub(crate) fn router(state: Shared) -> Router {
         .route("/api/v2/new", get(crate::native::new_options))
         .route("/api/v2/search", get(crate::native::search))
         .route("/api/v2/tags", get(tags::get).put(tags::put))
+        .route("/api/v2/term/{pane}/convert", post(crate::native::convert))
         .route("/api/v2/update", get(update::status).post(update::request))
         .route("/api/v2/workspaces", post(crate::native::create_workspace))
         .route(
@@ -248,6 +249,10 @@ pub(crate) fn router(state: Shared) -> Router {
         .route(
             "/api/v2/workspaces/{workspace}/checks/{job}/log",
             get(crate::native::changes::check_log),
+        )
+        .route(
+            "/api/v2/workspaces/{workspace}/terminals",
+            post(crate::native::new_terminal),
         )
         .route(
             "/api/v2/workspaces/{workspace}/rename",
@@ -467,6 +472,12 @@ impl IntoResponse for ApiError {
             Self::Hub(crate::hub::Error::UnknownChat | crate::hub::Error::UnknownWorkspace) => {
                 StatusCode::NOT_FOUND
             }
+            Self::Hub(crate::hub::Error::Convert(
+                crate::hub::ConvertError::AlreadyConverting
+                | crate::hub::ConvertError::Platform
+                | crate::hub::ConvertError::Refused(_),
+            ))
+            | Self::Hub(crate::hub::Error::SessionOnHerdr2) => StatusCode::CONFLICT,
             Self::Hub(_) | Self::NoPush => StatusCode::SERVICE_UNAVAILABLE,
         };
         // The request line only has the status. A computer without push
