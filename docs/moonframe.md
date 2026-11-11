@@ -117,7 +117,7 @@ Send a message with `to = "provider:sheprd"`:
 | `{ toggle_device = id }`, `{ select_device = id }` | Folds a device's header, or selects the device |
 | `{ toggle_agent_sort = true }` | Switches the agents between grouped and by priority |
 | `{ move_workspace = id, target = id, after = bool }` | Moves a workspace of the selected device before (or after) another, as dropping its row there does; the worktrees mod sends it when a row with `carry` is dropped on one with `accept` |
-| `{ sidebar_width = true }` as a `pointer` | Resizes the sidebar from a drag of its edge (`phase`, `dx`); a double click puts back the default width. The shell draws the edge as a hairline lit on hover (`.sheprd-left-edge` in `style.luau`) |
+| `{ sidebar_width = true }` as a `pointer` | Resizes the sidebar from a drag of its edge (`phase`, `dx`); a double click puts back the default width. The shell draws the edge as a hairline beside the left column, its grip lit on hover and overhanging the main area so it never covers the lists' scrollbars (`.sheprd-left-edge` in `style.luau`) |
 | `{ open_build_pr = true }` | Opens the pull request a worktree build came from |
 
 A row on another device adds `endpoint = id` to its message; without it the

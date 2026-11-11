@@ -62,20 +62,24 @@ return mod {
 							style = { background = theme.sidebar },
 							ui.mount "worktrees",
 							ui.mount "agents",
-							-- Its edge resizes it, as Sheprd's does; a double click
-							-- puts back the default width.
-							ui.row {
-								class = "sheprd-left-edge",
-								float = "right",
-								width = 7,
-								justify = "end",
-								cursor = "ew-resize",
-								tooltip = "Drag to resize, double-click to reset",
-								pointer = { sidebar_width = true },
-								to = "provider:sheprd",
-								ui.column { class = "sheprd-left-edge-line", width = 1, grow = true, self_align = "stretch" },
-							},
 						},
+					},
+				} else false,
+				-- The left column's edge, a hairline beside it as Sheprd's border
+				-- is. Its grip resizes the column, as Sheprd's does, and a double
+				-- click puts back the default width. The grip overhangs the main
+				-- area rather than the column, where the lists' scrollbars are.
+				if state.left > 0 then ui.column {
+					class = "sheprd-left-edge-line",
+					width = 1,
+					shrink = false,
+					ui.row {
+						class = "sheprd-left-edge",
+						float = { top = 0, bottom = 0, left = 0, right = -6 },
+						cursor = "ew-resize",
+						tooltip = "Drag to resize, double-click to reset",
+						pointer = { sidebar_width = true },
+						to = "provider:sheprd",
 					},
 				} else false,
 				ui.column {
