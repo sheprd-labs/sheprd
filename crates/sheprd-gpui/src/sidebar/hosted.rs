@@ -166,6 +166,9 @@ fn layout_state(name: &str, metrics: &SidebarMetrics) -> Value {
         "child_indent": metrics.child_indent,
         "gap": metrics.gap,
         "name": name,
+        // How far rows step in under a device's header, as several devices
+        // list them; the sidebar has no tag sections to add theirs.
+        "nest": metrics.nest,
         "outline": metrics.highlight == Highlight::Outline,
         "padding": metrics.padding,
         "pr_counts": metrics.pr_counts,

@@ -234,6 +234,7 @@ local function classic_row(workspace: any, last: boolean, layout: any, theme: an
 		theme = theme,
 		-- With guides, the indent is the guide's, inside the row.
 		indent = if child and not guided then layout.child_indent else 0,
+		nest = layout.nest,
 		msg = { sheprd = focus(workspace) },
 		context = { sheprd = menu(workspace) },
 		carry = carry(workspace),
@@ -280,6 +281,7 @@ local function superset_row(workspace: any, layout: any, theme: any)
 		layout = { padding = layout.padding, row_padding = 5 },
 		theme = theme,
 		indent = if workspace.child then layout.padding else 0,
+		nest = layout.nest,
 		msg = { sheprd = focus(workspace) },
 		context = { sheprd = menu(workspace) },
 		carry = carry(workspace),
@@ -312,7 +314,7 @@ end
 
 -- Orca's cards: a status column beside the name, and a quieter meta line
 -- with the branch and the pull request.
-local function orca_row(workspace: any, theme: any)
+local function orca_row(workspace: any, layout: any, theme: any)
 	local meta = {}
 	if branch(workspace) then
 		table.insert(meta, workspace.branch)
@@ -327,6 +329,7 @@ local function orca_row(workspace: any, theme: any)
 		layout = { padding = 8, row_padding = 5, spacing = 4 },
 		theme = theme,
 		indent = if workspace.child then 12 else 0,
+		nest = layout.nest,
 		msg = { sheprd = focus(workspace) },
 		context = { sheprd = menu(workspace) },
 		carry = carry(workspace),
@@ -357,6 +360,7 @@ local function minimal_row(workspace: any, layout: any, theme: any)
 		layout = layout,
 		theme = theme,
 		indent = if workspace.child then layout.child_indent else 0,
+		nest = layout.nest,
 		msg = { sheprd = focus(workspace) },
 		context = { sheprd = menu(workspace) },
 		carry = carry(workspace),
@@ -390,7 +394,7 @@ local function workspace_row(workspace: any, last: boolean, layout: any, theme: 
 	if kind == "superset" then
 		return with_note(superset_row(workspace, layout, theme), workspace, theme)
 	elseif kind == "orca" then
-		return with_note(orca_row(workspace, theme), workspace, theme)
+		return with_note(orca_row(workspace, layout, theme), workspace, theme)
 	elseif kind == "minimal" then
 		return with_note(minimal_row(workspace, layout, theme), workspace, theme)
 	end
@@ -671,7 +675,10 @@ return mod {
 			rows = results(devices, state.query, state.selected, layout, theme)
 		else
 			-- Each device under its header when several are listed, as
-			-- Sheprd's sidebar shows them; one device's rows stand alone.
+			-- Sheprd's sidebar shows them, its rows stepped in by the
+			-- layout's `nest`; one device's rows stand alone.
+			local nested = table.clone(layout)
+			nested.nest = if sheprd.multi then layout.nest or 0 else 0
 			for _, device in devices do
 				if sheprd.multi then
 					table.insert(rows, device_header(device, layout, theme))
@@ -679,7 +686,7 @@ return mod {
 				local list = device.workspaces or {}
 				for index, workspace in list do
 					local following = list[index + 1]
-					table.insert(rows, workspace_row(workspace, not (following and following.child), layout, theme))
+					table.insert(rows, workspace_row(workspace, not (following and following.child), nested, theme))
 				end
 			end
 		end
