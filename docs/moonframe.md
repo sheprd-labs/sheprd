@@ -1,11 +1,37 @@
 # Sheprd on Moonframe
 
-`just run-moonframe` starts Sheprd in a window [Moonframe](https://moonframe.dev)
-lays out. It is the `moonframe` feature of `sheprd-gpui`, off by default, so the
-app `just run` starts is unchanged. A build with it opens this window on a plain
-launch; `sheprd` commands and `--socket` or `--session` launches stay the app's
-own. Quit Sheprd first, as both use your settings and daemon. CI builds and
-tests the feature (the all-features legs) and loads its Luau with `--check`.
+Sheprd opens in a window [Moonframe](https://moonframe.dev) lays out: the
+`moonframe` feature of `sheprd-gpui`, on by default, so releases ship it. A
+plain launch opens this window; `sheprd` commands and `--socket` or `--session`
+launches stay the app's own, as without the feature. CI builds and tests it
+with every leg and loads its Luau with `--check`, both the copy compiled in
+and the sources.
+
+## The classic window
+
+Turn off **Settings > General > Moonframe window** (`moonframe_window = false`
+under `[features]`) and Sheprd opens its classic window from the next launch.
+`sheprd --classic` opens the classic window once, whatever the setting says.
+The setting is off by default on Windows: Moonframe finds its folders through
+`HOME` and the XDG variables, which Windows does not set for the apps it
+starts, so it would remember no window placement and write its files to a new
+temporary folder at each launch.
+
+The two windows keep their state apart. The classic window's settings, log,
+and saved tabs stay under `herdr` as before; Moonframe keeps its own under
+the name `sheprd`: `~/.config/sheprd` (your copies of the layout's files),
+`~/.cache/sheprd` (the layout written out to run), and `~/.local/state/sheprd`
+(where the window was, and each mod's state). Both read the same settings
+file and talk to the same daemon.
+
+## Builds
+
+| Build | Layout | Developer tools |
+| --- | --- | --- |
+| Default (`just run`, releases) | Compiled in, written to `~/.cache/sheprd/app/<hash>` to run | None |
+| `moonframe-studio` (`just run-moonframe`) | Read from `crates/sheprd-gpui/moonframe/app`, reloaded on save | Developer Mode, Inspect Element, the sparkles agent |
+
+`just run-moonframe` uses your settings and daemon, so quit Sheprd first.
 
 Everything around the terminals is Luau in `crates/sheprd-gpui/moonframe/app`:
 
@@ -26,13 +52,15 @@ The terminals, tabs, and pages stay one Rust view, placed with
 
 ## Changing it
 
-Saving a file reloads the window. To keep a change of your own, copy the file
-to the same path under `~/.config/sheprd-moonframe` and edit the copy; deleting
-it brings the original back. The sparkles at the bottom right ask an agent to
-make a change, and it asks before each edit. View > Inspect Element (⌥⌘I, or
-⇧⌘X to go straight to picking) shows what built any part, and its file and line.
+In `just run-moonframe`, saving a file reloads the window. To keep a change of
+your own in any build, copy the file to the same path under `~/.config/sheprd`
+and edit the copy; deleting it brings the original back. In
+`just run-moonframe`, the sparkles at the bottom right ask an agent to make a
+change, and it asks before each edit, and View > Inspect Element (⌥⌘I, or ⇧⌘X
+to go straight to picking) shows what built any part, and its file and line.
 
-Run `just run-moonframe --check` after a change. It loads what is
+Run `just run-moonframe --check` after a change (`sheprd --check` checks the
+copy a build carries). It loads what is
 drawn at that moment, so a mistake in a row that only appears with an agent
 shows in the log when one appears: `unknown key` names it.
 
@@ -65,9 +93,9 @@ Moonframe's own widgets follow Sheprd's theme and UI font without reading these.
 ## Menus
 
 The menu bar is Sheprd's own, as its window has it (Sheprd, File, Edit, View,
-Terminal, Window), with Moonframe's Developer menu before Window: Developer
-Mode and, while it is on, Components, Reload Modules, Undo and Redo, Inspect
-Element, Developer Tools and Slow Animations. A menu item reaches Sheprd
+Terminal, Window). `just run-moonframe` adds Moonframe's Developer menu before
+Window: Developer Mode and, while it is on, Components, Reload Modules, Undo
+and Redo, Inspect Element, Developer Tools and Slow Animations. A menu item reaches Sheprd
 wherever the focus is, in the Luau layout or a terminal.
 
 ## Asking Sheprd for something
@@ -114,20 +142,21 @@ workspaces, and no menu that opens as the pointer rests on a row.
 ## Measuring
 
 Compare release builds: a debug window shows a yellow `dev build` strip, and
-runs several times slower. GPUI times every frame in either app, so the same
+runs several times slower. GPUI times every frame in either window, so the same
 line reads both:
 
 ```sh
-ZED_MEASUREMENTS=1 RUST_LOG=moonframe::perf=debug target/moonframe/release/sheprd
-ZED_MEASUREMENTS=1 target/release/sheprd
+ZED_MEASUREMENTS=1 RUST_LOG=moonframe::perf=debug target/release/sheprd
+ZED_MEASUREMENTS=1 target/release/sheprd --classic
 ```
 
 `frame duration` is one frame's draw and present. `moonframe::perf` adds what
 each publish and message ran. Machine load moves these a lot, so alternate the
-two apps and compare medians.
+two windows and compare medians.
 
-`just bench-moonframe /path/to/herdr` does that for you: it builds both apps,
-runs each in turn on a private daemon with 14 linked worktrees, through idle,
+`just bench-moonframe /path/to/herdr` does that for you: it builds the app,
+runs each window in turn on a private daemon with 14 linked worktrees, through idle,
 terminal output, agents changing state, and focusing each workspace, and
 prints the medians of three rounds. It opens windows, so it needs a desktop.
-`scripts/bench_frames.py` takes other binaries, round counts, and `--json`.
+`scripts/bench_frames.py` takes other commands (`NAME=BINARY ARGS...`), round
+counts, and `--json`.
