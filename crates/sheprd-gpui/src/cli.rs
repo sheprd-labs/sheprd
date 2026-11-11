@@ -238,6 +238,10 @@ impl LaunchOptions {
                     }
                 }
                 Some("--dev") => development = true,
+                // Opens the classic window this once rather than the Luau
+                // one, which only a launch without arguments opens; it
+                // changes nothing else, so builds without that window take it too.
+                Some("--classic") => {}
                 #[cfg(feature = "integration-test")]
                 Some(flag @ ("--integration-test" | "--sidebar-test" | "--performance-test")) => {
                     let next = match flag {

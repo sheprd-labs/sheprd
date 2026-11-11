@@ -230,14 +230,25 @@ struct Shared {
     woken: Receiver<()>,
 }
 
-/// Whether this launch opens the Luau window: a plain launch, or Moonframe's
-/// own `--check` of the layout. Anything else (a `sheprd` command for the
-/// running app, `--socket`, `--session`) is the app's, as without the feature.
-pub(crate) fn wanted(args: &[std::ffi::OsString]) -> bool {
+/// Whether this launch opens the Luau window: a plain launch while `chosen`
+/// says the user keeps it, or Moonframe's own `--check` of the layout.
+/// Anything else (a `sheprd` command for the running app, `--classic`,
+/// `--socket`, `--session`) is the app's, as without the feature.
+pub(crate) fn wanted(args: &[std::ffi::OsString], chosen: impl FnOnce() -> bool) -> bool {
     match args {
-        [] => true,
+        [] => chosen(),
         [first, ..] => first == "--check",
     }
+}
+
+/// Whether the user keeps the Luau window: `moonframe_window` under
+/// `[features]`. Read as the first frame's settings are, writing nothing; a
+/// file that does not parse leaves the default, and the app reports it.
+pub(crate) fn chosen() -> bool {
+    crate::config::Config::load_startup().map_or_else(
+        |_| crate::config::Features::default().moonframe_window,
+        |config| config.features.moonframe_window,
+    )
 }
 
 /// Runs the app in the Luau window until it quits. The app's private entry
