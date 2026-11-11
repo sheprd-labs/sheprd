@@ -119,8 +119,8 @@ image                = { default-features = false, features = ["gif", "jpeg", "p
 # The sandboxed Luau interpreter behind automation scripts, built from source.
 mlua                 = { features = ["error-send", "luau"], version = "0.12.2" }
 # The `moonframe` feature of `sheprd-gpui` lays out the window in Luau; pinned to
-# the merge of moonframehq/moonframe#154 (rusqlite 0.41, as this workspace).
-moonframe            = { default-features = false, git = "https://github.com/moonframehq/moonframe", rev = "d5ec032df69c62056829507d282ab7f735b40c1f" }
+# a commit on moonframehq/moonframe's main.
+moonframe            = { default-features = false, git = "https://github.com/moonframehq/moonframe", rev = "5427ce724df21734b7c80cb0310468c88d7a682b" }
 # Mermaid fences in chat answers become diagrams: parse, lay out, and write
 # SVG in pure Rust; GPUI rasterizes the SVG. No CLI and no PNG writer.
 mermaid-rs-renderer  = { default-features = false, version = "0.3.1" }
