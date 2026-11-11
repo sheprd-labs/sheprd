@@ -54,6 +54,7 @@ impl SheprdWindow {
                     (_, Some(Location::Orchestrator { .. })) => "icons/pulse.svg",
                     (_, Some(Location::Devices)) => "icons/devices.svg",
                     (_, Some(Location::CoreTerminal { .. })) => "icons/terminal.svg",
+                    (_, Some(Location::Machine { .. })) => "icons/computer.svg",
                     _ => GLOBE,
                 };
                 // A terminal tab running an agent shows how it is doing and

@@ -21,6 +21,8 @@ pub(super) enum Section {
     Plugins,
     #[cfg(feature = "cloud")]
     CloudDevices,
+    #[cfg(target_os = "macos")]
+    Machines,
     RemoteControl,
     Configuration,
 }
@@ -85,6 +87,8 @@ impl Section {
         Self::Plugins,
         #[cfg(feature = "cloud")]
         Self::CloudDevices,
+        #[cfg(target_os = "macos")]
+        Self::Machines,
         Self::RemoteControl,
         Self::Configuration,
     ];
@@ -110,6 +114,8 @@ impl Section {
             Self::Plugins => "settings-section-plugins",
             #[cfg(feature = "cloud")]
             Self::CloudDevices => "settings-section-cloud-devices",
+            #[cfg(target_os = "macos")]
+            Self::Machines => "settings-section-machines",
             Self::RemoteControl => "settings-section-remote-control",
             Self::Configuration => "settings-section-configuration",
         }
@@ -128,6 +134,8 @@ impl Section {
             Self::TextShortcuts => "settings-text-shortcuts-lead",
             #[cfg(feature = "cloud")]
             Self::CloudDevices => "settings-lead-cloud-devices",
+            #[cfg(target_os = "macos")]
+            Self::Machines => "settings-lead-machines",
             Self::RemoteControl => "settings-lead-remote-control",
             Self::Configuration => "settings-lead-configuration",
             Self::General | Self::Tabs | Self::Notifications => return None,
@@ -149,6 +157,8 @@ impl Section {
             Self::Integrations | Self::Plugins => Some(Group::Connect),
             #[cfg(feature = "cloud")]
             Self::CloudDevices => Some(Group::Connect),
+            #[cfg(target_os = "macos")]
+            Self::Machines => Some(Group::Connect),
             Self::RemoteControl => Some(Group::Connect),
             Self::Configuration => Some(Group::Advanced),
         }
@@ -170,6 +180,8 @@ impl Section {
             Self::Plugins => "icons/plug.svg",
             #[cfg(feature = "cloud")]
             Self::CloudDevices => "icons/globe.svg",
+            #[cfg(target_os = "macos")]
+            Self::Machines => "icons/computer.svg",
             Self::RemoteControl => "icons/phone.svg",
             Self::Configuration => "icons/file.svg",
         }

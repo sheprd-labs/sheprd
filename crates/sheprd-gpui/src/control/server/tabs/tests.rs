@@ -10,6 +10,7 @@ use crate::{
 use gpui::{Entity, VisualTestContext};
 use std::{path::Path, sync::Arc};
 
+mod machine;
 mod px0;
 mod review;
 mod windows;
