@@ -1,5 +1,5 @@
 -- The window's layout. Everything here is yours to move, and each part is a
--- mod in mods/: copy one to ~/.config/sheprd-moonframe/mods to change it.
+-- mod in mods/: copy one to ~/.config/sheprd/mods to change it.
 -- Only the terminals and pages in the middle are drawn by Sheprd in Rust.
 
 local function region(name: string)
@@ -93,12 +93,13 @@ return mod {
 			-- A worktree build's strip, across the window's foot.
 			ui.mount "build",
 			-- The sparkles (the built-in feedback mod): say what to change, and
-			-- an agent changes this layout, asking before each edit.
-			ui.row {
+			-- an agent changes this layout, asking before each edit. Only
+			-- `just run-moonframe` has them, with the agent behind `app.acp`.
+			if app.acp then ui.row {
 				class = "feedback-corner",
 				float = { at = "bottom-right", inset = 40 },
 				ui.mount "feedback",
-			},
+			} else false,
 		}
 	end,
 }

@@ -1,7 +1,8 @@
-//! All of Sheprd in a window Moonframe lays out from `moonframe/app/main.luau`,
-//! so the layout around it can change without a rebuild: the `moonframe`
-//! feature, off by default. A build with it opens this window on a plain
-//! launch; see [`wanted`].
+//! All of Sheprd in a window Moonframe lays out from `moonframe/app/main.luau`:
+//! the `moonframe` feature, on by default. A build with it opens this window
+//! on a plain launch unless the user chose the classic one; see [`wanted`].
+//! Release builds run the layout compiled into the binary; `moonframe-studio`
+//! reads it from this checkout instead, so saving a file reloads it.
 
 use {
     crate::embed::{Action, Drag, Host, HostedState, Menu, Region, Sizes, Stamp, Startup},
@@ -23,6 +24,23 @@ use {
 
 mod theme;
 
+/// Moonframe's name for the app, which names its folders: `~/.config/sheprd`
+/// (the user's copies of the layout's files), `~/.cache/sheprd` (the layout
+/// written out to run) and `~/.local/state/sheprd` (where the window was, and
+/// each mod's state). The classic window keeps its own under `herdr`, so
+/// neither reads or writes the other's. Moonframe finds these through `HOME`
+/// or the XDG variables, which Windows does not set for apps it starts.
+const NAME: &str = "sheprd";
+/// The layout, compiled in: a release has no checkout to read it from. The
+/// sparkles' agent provider is left out with the tools that start it.
+#[cfg(not(feature = "moonframe-studio"))]
+#[derive(moonframe::rust_embed::RustEmbed)]
+#[crate_path = "moonframe::rust_embed"]
+#[folder = "moonframe/app"]
+#[exclude = "providers/acp/*"]
+#[exclude = ".DS_Store"]
+#[exclude = "*/.DS_Store"]
+struct Layout;
 /// How often state is read anyway: the machine's load, the activity counts
 /// and Git's marks change without the window saying so.
 const REFRESH: Duration = Duration::from_secs(2);
@@ -278,20 +296,32 @@ pub(crate) fn run() -> ExitCode {
         wake,
         woken,
     }));
-    Moonframe::new("sheprd-moonframe")
-        .title("Sheprd")
-        .app_id("dev.sheprd.moonframe")
-        .version(env!("CARGO_PKG_VERSION"))
+    // Sheprd's identity: its name in the menu bar and its release version. The
+    // id is what Moonframe gives its windows, the Wayland app ID and X11
+    // WM_CLASS that Sheprd's desktop entry matches; the bundle and the
+    // notifications keep the bundle's own (`APP_ID`).
+    let moonframe = Moonframe::new(NAME)
+        .title(crate::constants::WINDOW_TITLE)
+        .app_id(crate::constants::LINUX_APP_ID)
+        .version(crate::constants::APP_VERSION);
+    // The sources, so saving reloads, and the sparkles: ask an agent to
+    // change the layout or add something.
+    #[cfg(feature = "moonframe-studio")]
+    let moonframe = moonframe
         .app_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/moonframe/app"))
+        .keep(["feedback"]);
+    #[cfg(not(feature = "moonframe-studio"))]
+    let moonframe = moonframe
+        .project_dir(env!("CARGO_MANIFEST_DIR"))
+        .embedded_app::<Layout>();
+    moonframe
         .icon(ICON_PNG)
         .assets(crate::embed::assets())
-        // Sheprd's own menu bar, as its window has it; Moonframe adds its
-        // Developer menu.
+        // Sheprd's own menu bar, as its window has it; `moonframe-studio`
+        // adds Moonframe's Developer menu.
         .menus(crate::embed::menus)
         // Sheprd's log file, which its Logs window reads, beside stderr.
         .log_layer(crate::embed::log_layer())
-        // The sparkles: ask an agent to change the layout or add something.
-        .keep(["feedback"])
         .native("sheprd", move || bridge.clone())
         .native("sheprd_load", move || load.clone())
         .native("sheprd_theme", move || theme.clone())
