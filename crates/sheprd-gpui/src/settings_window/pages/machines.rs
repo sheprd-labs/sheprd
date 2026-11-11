@@ -6,7 +6,7 @@ use super::{SettingsWindow, ui};
 use crate::{
     SheprdWindow,
     i18n::{Localize as _, fl},
-    machine::{self, Display, Limits, Listing, Name, Settings, Status},
+    machine::{self, Display, Limits, Listing, Name, Patch, Status},
     settings_window::Section,
 };
 use gpui::{prelude::*, *};
@@ -41,6 +41,9 @@ pub(in crate::settings_window) struct MachinesPage {
     deleting: Option<Name>,
     /// What went wrong last, for the user.
     failure: Option<String>,
+    /// Counts reads of the folders, so one that finishes after a newer one
+    /// is dropped rather than drawn.
+    reads: u64,
     /// What each machine was doing when last drawn: a change moves its disk
     /// use, so the folders are read again.
     seen: HashMap<Name, Status>,
@@ -54,12 +57,24 @@ pub(in crate::settings_window) fn gigabytes(bytes: u64) -> String {
 impl SettingsWindow {
     /// Reads the machines' folders again, off the UI thread.
     pub(in crate::settings_window) fn open_machines(&mut self, cx: &mut Context<Self>) {
+        self.machines.reads += 1;
+        let read_number = self.machines.reads;
         let read = cx.background_executor().spawn(async { machine::list() });
         cx.spawn(async move |this, cx| {
             let listed = read.await;
             let _ = this.update(cx, |this, cx| {
+                if this.machines.reads != read_number {
+                    return;
+                }
                 match listed {
-                    Ok(listings) => this.machines.listings = Some(listings),
+                    // What waits to be written is newer than what was read.
+                    Ok(mut listings) => {
+                        for listing in &mut listings {
+                            let queued = machine::queued_settings(&listing.name);
+                            listing.settings = queued.apply(listing.settings);
+                        }
+                        this.machines.listings = Some(listings);
+                    }
                     Err(error) => this.machines.failure = Some(error.localize()),
                 }
                 cx.notify();
@@ -87,7 +102,9 @@ impl SettingsWindow {
         }
     }
 
-    fn change_machine(&mut self, name: &Name, settings: Settings, cx: &mut Context<Self>) {
+    /// Shows `patch` at once and queues it for disk. Only the fields it
+    /// changes are written, over whatever the folder holds by then.
+    fn change_machine(&mut self, name: &Name, patch: Patch, cx: &mut Context<Self>) {
         if let Some(listing) = self
             .machines
             .listings
@@ -95,10 +112,10 @@ impl SettingsWindow {
             .flatten()
             .find(|listing| listing.name == *name)
         {
-            listing.settings = settings;
+            listing.settings = patch.apply(listing.settings);
         }
         cx.notify();
-        if !machine::queue_settings(name.clone(), settings) {
+        if !machine::queue_settings(name.clone(), patch) {
             return;
         }
         let write = cx
@@ -108,7 +125,8 @@ impl SettingsWindow {
             let written = write.await;
             let _ = this.update(cx, |this, cx| {
                 this.machines.failure = written.err().map(|error| error.localize());
-                cx.notify();
+                // Picks up what changed elsewhere meanwhile.
+                this.open_machines(cx);
             });
         })
         .detach();
@@ -206,7 +224,11 @@ impl SettingsWindow {
                 limits.cpus.clone(),
                 cx,
                 move |this, cpus, cx| {
-                    this.change_machine(&name, Settings { cpus, ..settings }, cx);
+                    let patch = Patch {
+                        cpus: Some(cpus),
+                        ..Patch::default()
+                    };
+                    this.change_machine(&name, patch, cx);
                 },
             )
         };
@@ -222,11 +244,11 @@ impl SettingsWindow {
                 limits.memory_gib.clone(),
                 cx,
                 move |this, memory_gib, cx| {
-                    let changed = Settings {
-                        memory_gib,
-                        ..settings
+                    let patch = Patch {
+                        memory_gib: Some(memory_gib),
+                        ..Patch::default()
                     };
-                    this.change_machine(&name, changed, cx);
+                    this.change_machine(&name, patch, cx);
                 },
             )
         };
@@ -243,14 +265,11 @@ impl SettingsWindow {
                 true,
                 move |display, _, cx| {
                     let _ = this.update(cx, |this, cx| {
-                        this.change_machine(
-                            &name,
-                            Settings {
-                                display,
-                                ..settings
-                            },
-                            cx,
-                        );
+                        let patch = Patch {
+                            display: Some(display),
+                            ..Patch::default()
+                        };
+                        this.change_machine(&name, patch, cx);
                     });
                 },
             )

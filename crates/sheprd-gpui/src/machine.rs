@@ -24,8 +24,11 @@ mod vm;
 pub use error::{Error, Result};
 #[cfg(target_os = "macos")]
 pub(crate) use {
-    settings::{Display, Limits, Settings},
-    store::{Listing, discard_state, drain_settings, list, queue_settings, update_settings},
+    settings::{Display, Limits, Patch, Settings},
+    store::{
+        Listing, discard_state, drain_settings, list, queue_settings, queued_settings,
+        update_settings,
+    },
     vm::{Status, delete, release, running, shut_down, start, status, suspend, view},
 };
 

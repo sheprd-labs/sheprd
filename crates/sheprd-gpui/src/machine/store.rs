@@ -1,7 +1,7 @@
 //! A machine's folder on disk. Everything here reaches the disk, so it runs
 //! off the main thread.
 
-use super::{Error, Name, Result, Settings};
+use super::{Error, Name, Patch, Result, Settings};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
     collections::HashMap,
@@ -101,12 +101,12 @@ fn disk_bytes(folder: &Path) -> u64 {
         .sum()
 }
 
-/// Keeps `settings` for machine `name`'s next boot.
-fn save_settings(name: &Name, settings: &Settings) -> Result<()> {
-    update_settings(name, |_| Ok(*settings)).map(|_| ())
+/// Lays `patch` over machine `name`'s settings for its next boot.
+fn save_settings(name: &Name, patch: &Patch) -> Result<()> {
+    update_settings(name, |settings| Ok(patch.apply(settings))).map(|_| ())
 }
 
-/// Settings on their way to disk, latest per machine. One writer drains them,
+/// Changes on their way to disk, merged per machine. One writer drains them,
 /// so an older click cannot land after a newer one. There is one queue for the
 /// app: a window may close with choices in it, and a new window then adds to
 /// the same queue rather than racing it.
@@ -115,10 +115,21 @@ struct SettingsQueue(Mutex<Queued>);
 
 static QUEUE: LazyLock<SettingsQueue> = LazyLock::new(SettingsQueue::default);
 
-/// Queues `settings` for machine `name`'s next boot. True when no writer
-/// runs, so the caller starts [`drain_settings`].
-pub(crate) fn queue_settings(name: Name, settings: Settings) -> bool {
-    QUEUE.push(name, settings)
+/// Queues `patch` for machine `name`'s next boot. True when no writer runs,
+/// so the caller starts [`drain_settings`].
+pub(crate) fn queue_settings(name: Name, patch: Patch) -> bool {
+    QUEUE.push(name, patch)
+}
+
+/// What is queued for machine `name` and not yet written, to lay over what
+/// its folder says.
+pub(crate) fn queued_settings(name: &Name) -> Patch {
+    QUEUE
+        .queued()
+        .pending
+        .get(name)
+        .copied()
+        .unwrap_or_default()
 }
 
 /// Writes what is queued, and what arrives meanwhile, off the main thread.
@@ -128,7 +139,7 @@ pub(crate) fn drain_settings() -> Result<()> {
 
 #[derive(Debug, Default)]
 struct Queued {
-    pending: HashMap<Name, Settings>,
+    pending: HashMap<Name, Patch>,
     draining: bool,
 }
 
@@ -137,32 +148,34 @@ impl SettingsQueue {
         self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Queues `settings`. True when no writer runs, so the caller starts one.
-    fn push(&self, name: Name, settings: Settings) -> bool {
+    /// Queues `patch` after what waits already. True when no writer runs, so
+    /// the caller starts one.
+    fn push(&self, name: Name, patch: Patch) -> bool {
         let mut queued = self.queued();
-        queued.pending.insert(name, settings);
+        let waiting = queued.pending.entry(name).or_default();
+        *waiting = waiting.then(patch);
         !std::mem::replace(&mut queued.draining, true)
     }
 
     /// Writes all that is queued, and what arrives meanwhile, off the main
     /// thread. It returns the last failure, after trying the rest.
-    fn drain(&self, mut write: impl FnMut(&Name, &Settings) -> Result<()>) -> Result<()> {
+    fn drain(&self, mut write: impl FnMut(&Name, &Patch) -> Result<()>) -> Result<()> {
         let mut outcome = Ok(());
         loop {
             let next = {
                 let mut queued = self.queued();
                 let name = queued.pending.keys().next().cloned();
                 let next = name.and_then(|name| {
-                    let settings = queued.pending.remove(&name)?;
-                    Some((name, settings))
+                    let patch = queued.pending.remove(&name)?;
+                    Some((name, patch))
                 });
                 queued.draining = next.is_some();
                 next
             };
-            let Some((name, settings)) = next else {
+            let Some((name, patch)) = next else {
                 return outcome;
             };
-            if let Err(error) = write(&name, &settings) {
+            if let Err(error) = write(&name, &patch) {
                 outcome = Err(error);
             }
         }

@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
-use super::{Listing, MachinesPage, Name, Settings, gigabytes};
+use super::{Listing, MachinesPage, Name, gigabytes};
+use crate::machine::Settings;
 use crate::settings_window::{Section, SettingsWindow, tests::skill_fixture};
 use gpui::{TestAppContext, VisualTestContext};
 

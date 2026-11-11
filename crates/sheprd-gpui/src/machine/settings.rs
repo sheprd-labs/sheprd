@@ -103,6 +103,36 @@ impl Default for Settings {
     }
 }
 
+/// The fields of [`Settings`] someone changed. It is laid over what is on disk
+/// when it is written, so a change made meanwhile to another field, from the
+/// command line or another window, is kept.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Patch {
+    pub(crate) cpus: Option<u16>,
+    pub(crate) display: Option<Display>,
+    pub(crate) memory_gib: Option<u16>,
+}
+
+impl Patch {
+    /// This patch, then `later` over it.
+    pub(crate) fn then(self, later: Self) -> Self {
+        Self {
+            cpus: later.cpus.or(self.cpus),
+            display: later.display.or(self.display),
+            memory_gib: later.memory_gib.or(self.memory_gib),
+        }
+    }
+
+    /// `settings` with what this patch changes.
+    pub(crate) fn apply(self, settings: Settings) -> Settings {
+        Settings {
+            cpus: self.cpus.unwrap_or(settings.cpus),
+            display: self.display.unwrap_or(settings.display),
+            memory_gib: self.memory_gib.unwrap_or(settings.memory_gib),
+        }
+    }
+}
+
 /// What this Mac can give a machine.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Limits {

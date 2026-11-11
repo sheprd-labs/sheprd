@@ -183,10 +183,10 @@ fn name(text: &str) -> Name {
     Name::try_from(text.to_owned()).unwrap()
 }
 
-fn with_cpus(cpus: u16) -> Settings {
-    Settings {
-        cpus,
-        ..Settings::default()
+fn with_cpus(cpus: u16) -> Patch {
+    Patch {
+        cpus: Some(cpus),
+        ..Patch::default()
     }
 }
 
@@ -206,12 +206,12 @@ fn only_a_machines_latest_choice_is_written() {
     queue.push(name("work"), with_cpus(6));
     let mut written = Vec::new();
     queue
-        .drain(|_, settings| {
-            written.push(settings.cpus);
+        .drain(|_, patch| {
+            written.push(patch.cpus);
             Ok(())
         })
         .unwrap();
-    assert_eq!(written, [6]);
+    assert_eq!(written, [Some(6)]);
 }
 
 #[test]
@@ -220,15 +220,15 @@ fn a_choice_made_during_a_write_is_written_by_the_same_writer() {
     queue.push(name("work"), with_cpus(4));
     let mut written = Vec::new();
     queue
-        .drain(|_, settings| {
-            written.push(settings.cpus);
-            if settings.cpus == 4 {
+        .drain(|_, patch| {
+            written.push(patch.cpus);
+            if patch.cpus == Some(4) {
                 assert!(!queue.push(name("work"), with_cpus(6)));
             }
             Ok(())
         })
         .unwrap();
-    assert_eq!(written, [4, 6]);
+    assert_eq!(written, [Some(4), Some(6)]);
 }
 
 #[test]
@@ -247,4 +247,52 @@ fn a_failed_write_is_reported_and_the_rest_still_written() {
     });
     assert!(matches!(outcome, Err(Error::InvalidDisplay)));
     assert_eq!(tried, 2);
+}
+
+#[test]
+fn changes_to_different_fields_are_all_written() {
+    let queue = SettingsQueue::default();
+    queue.push(name("work"), with_cpus(6));
+    queue.push(
+        name("work"),
+        Patch {
+            memory_gib: Some(12),
+            ..Patch::default()
+        },
+    );
+    let mut written = Vec::new();
+    queue
+        .drain(|_, patch| {
+            written.push(*patch);
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(
+        written,
+        [Patch {
+            cpus: Some(6),
+            memory_gib: Some(12),
+            ..Patch::default()
+        }]
+    );
+}
+
+#[test]
+fn a_patch_keeps_what_was_changed_elsewhere() {
+    let root = tempfile::tempdir().unwrap();
+    let folder = installed(root.path(), "work");
+    update_in(&folder, |settings| {
+        Ok(Settings {
+            cpus: 6,
+            ..settings
+        })
+    })
+    .unwrap();
+    let memory = Patch {
+        memory_gib: Some(12),
+        ..Patch::default()
+    };
+    let saved = update_in(&folder, |settings| Ok(memory.apply(settings))).unwrap();
+    assert_eq!(saved.cpus, 6);
+    assert_eq!(saved.memory_gib, 12);
 }
