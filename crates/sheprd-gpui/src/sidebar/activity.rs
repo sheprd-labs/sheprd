@@ -7,7 +7,9 @@
 //! Security the Dependabot alerts of every repository (`crate::security`),
 //! listed only once GitHub reports them on for one, Automations the
 //! `herdr-automate` scripts and runs of every host (`crate::automations`),
-//! and Usage the plan limits of every host (`crate::usage::section`).
+//! Ports every TCP port this computer's user listens on
+//! (`crate::local_ports`), and Usage the plan limits of every host
+//! (`crate::usage::section`).
 //! `[sidebar] activity_bar = false` turns the bar off, and `[sidebar]
 //! automations = false` leaves Automations off it. With the bar on, the
 //! sidebar toggle sits at the end of the Workspaces title, and collapsing the
@@ -45,14 +47,16 @@ const TITLE_END: f32 = 4.;
 /// One breath of a busy icon's pulse.
 const BUSY_PULSE: std::time::Duration = std::time::Duration::from_millis(1600);
 
-fn label(panel: ActivityPanel) -> SharedString {
+pub(super) fn label(panel: ActivityPanel) -> SharedString {
     match panel {
         ActivityPanel::Overview => fl!("sidebar-activity-overview"),
         ActivityPanel::Workspaces => fl!("sidebar-activity-workspaces"),
         ActivityPanel::PullRequests => fl!("sidebar-activity-pull-requests"),
         ActivityPanel::Issues => fl!("sidebar-activity-issues"),
+        ActivityPanel::Tasks => fl!("sidebar-activity-tasks"),
         ActivityPanel::Security => fl!("sidebar-activity-security"),
         ActivityPanel::Automations => fl!("sidebar-activity-automations"),
+        ActivityPanel::Ports => fl!("sidebar-activity-ports"),
         ActivityPanel::Usage => fl!("sidebar-activity-usage"),
     }
     .into()
@@ -64,8 +68,10 @@ fn icon(panel: ActivityPanel) -> &'static str {
         ActivityPanel::Workspaces => "icons/terminal.svg",
         ActivityPanel::PullRequests => "icons/pull-request.svg",
         ActivityPanel::Issues => "icons/issue.svg",
+        ActivityPanel::Tasks => "icons/beads.svg",
         ActivityPanel::Security => "icons/shield.svg",
         ActivityPanel::Automations => "icons/automations.svg",
+        ActivityPanel::Ports => "icons/plug.svg",
         ActivityPanel::Usage => "icons/chart.svg",
     }
 }
@@ -94,6 +100,8 @@ pub(crate) struct Activity {
     /// The section the window left for a pane it opened, which Back
     /// returns to before walking the focus trail.
     pub(crate) return_to: Option<ActivityPanel>,
+    /// Whether a listed project has Beads, so the bar offers Tasks.
+    pub(crate) tasks_listed: bool,
     /// What holds the keyboard while Overview or Usage is shown, so typing
     /// never reaches a terminal the section hides.
     pub(crate) section_focus: Option<FocusHandle>,
@@ -204,17 +212,19 @@ impl SheprdWindow {
     }
 
     /// Whether the bar lists `panel`. A section turned off in the settings
-    /// is not listed, and a window left on it shows Workspaces.
+    /// is not listed, and a window left on it shows Workspaces. Tasks is
+    /// listed while a project uses Beads.
     pub(crate) fn activity_panel_listed(&self, panel: ActivityPanel) -> bool {
         match panel {
             ActivityPanel::Automations => self.config.sidebar_style.automations,
+            ActivityPanel::Tasks => self.activity.tasks_listed,
             _ => true,
         }
     }
 
     /// The section the bar marks: the one picked, or Workspaces when that
     /// one is no longer listed.
-    fn activity_panel(&self) -> ActivityPanel {
+    pub(crate) fn activity_panel(&self) -> ActivityPanel {
         Some(self.activity.panel)
             .filter(|panel| self.activity_panel_listed(*panel))
             .unwrap_or_default()
@@ -305,6 +315,7 @@ impl SheprdWindow {
                 ActivityPanel::Overview
                 | ActivityPanel::Security
                 | ActivityPanel::Automations
+                | ActivityPanel::Ports
                 | ActivityPanel::Usage,
             ) => {
                 let focus = self
@@ -334,8 +345,9 @@ impl SheprdWindow {
             ActivityPanel::Overview => self.render_overview(cx),
             ActivityPanel::Security => self.render_security_section(window, cx),
             ActivityPanel::Automations => self.render_automations_section(cx),
+            ActivityPanel::Ports => self.render_local_ports_section(cx),
             ActivityPanel::Usage => self.render_usage_section(cx),
-            ActivityPanel::PullRequests | ActivityPanel::Issues => {
+            ActivityPanel::PullRequests | ActivityPanel::Issues | ActivityPanel::Tasks => {
                 return self.render_orchestrator_section();
             }
         };
@@ -402,7 +414,7 @@ impl SheprdWindow {
         }
     }
 
-    fn render_activity_bar(&self, cx: &mut Context<Self>) -> Stateful<Div> {
+    pub(crate) fn render_activity_bar(&self, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = &self.theme;
         let counts = self.activity_counts(cx);
         let bar = div()
@@ -631,7 +643,7 @@ impl SheprdWindow {
     /// The section's name over the sidebar, across its width, ended by the
     /// sidebar toggle. Over the rail, too narrow for the name, the toggle
     /// stands alone.
-    fn panel_title(&self, panel: ActivityPanel, cx: &mut Context<Self>) -> Div {
+    pub(crate) fn panel_title(&self, panel: ActivityPanel, cx: &mut Context<Self>) -> Div {
         let expanded = self.sidebar_visible;
         let theme = &self.theme;
         let font = &self.config.sidebar;
@@ -716,8 +728,10 @@ fn panel_selector(panel: ActivityPanel) -> &'static str {
         ActivityPanel::Workspaces => "activity-workspaces",
         ActivityPanel::PullRequests => "activity-pull-requests",
         ActivityPanel::Issues => "activity-issues",
+        ActivityPanel::Tasks => "activity-tasks",
         ActivityPanel::Security => "activity-security",
         ActivityPanel::Automations => "activity-automations",
+        ActivityPanel::Ports => "activity-ports",
         ActivityPanel::Usage => "activity-usage",
     }
 }

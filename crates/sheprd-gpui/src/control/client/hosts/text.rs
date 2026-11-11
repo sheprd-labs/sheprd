@@ -2,7 +2,7 @@
 //! without an app; `finish` makes the app's text safe to print.
 use crate::control::protocol::{
     app::HostInfo,
-    hosts::{CheckInfo, CommentInfo, LoadInfo, Ports, PrInfo, Reply},
+    hosts::{CheckInfo, CommentInfo, LoadInfo, LocalPorts, Ports, PrInfo, Reply},
 };
 use std::fmt::Write as _;
 
@@ -89,6 +89,23 @@ pub(super) fn comments(comments: &[CommentInfo]) -> String {
         .join("\n")
 }
 
+pub(super) fn update_asked(host: &str, latest: &str) -> String {
+    if latest == "newer" {
+        format!("Asked to update Sheprd on {host}; it updates only once the user confirms")
+    } else {
+        format!(
+            "Asked to update Sheprd on {host} to {latest}; it updates only once the user confirms"
+        )
+    }
+}
+
+pub(super) fn no_update(host: &str, note: Option<&str>) -> String {
+    match note {
+        Some(note) => format!("Nothing to update on {host}: {note}"),
+        None => format!("Sheprd on {host} offers no newer release"),
+    }
+}
+
 pub(super) fn hosts(hosts: &[HostInfo]) -> String {
     if hosts.is_empty() {
         return "The window has no hosts".into();
@@ -97,11 +114,21 @@ pub(super) fn hosts(hosts: &[HostInfo]) -> String {
         .iter()
         .map(|host| {
             format!(
-                "{} {} ({}): {}",
+                "{} {} ({}): {}{}{}{}",
                 if host.selected { ">" } else { " " },
                 host.label,
                 host.id,
-                host.status
+                host.status,
+                if host.muted { ", muted" } else { "" },
+                if host.tags.is_empty() {
+                    String::new()
+                } else {
+                    format!(" [{}]", host.tags.join(", "))
+                },
+                match &host.update {
+                    Some(version) => format!(", Sheprd {version} available"),
+                    None => String::new(),
+                }
             )
         })
         .collect::<Vec<_>>()
@@ -150,6 +177,57 @@ pub(super) fn ports(ports: &Ports) -> String {
         text.push('\n');
     }
     if let Some(note) = note {
+        text.push_str(note);
+    }
+    text.trim_end().to_owned()
+}
+
+pub(super) fn local_ports(ports: &LocalPorts) -> String {
+    let mut text = String::new();
+    if ports.listening.is_empty() {
+        text.push_str("Nothing on this computer listens on a TCP port\n");
+    }
+    for port in &ports.listening {
+        if port.name.is_empty() || port.name == port.process {
+            let _ = write!(
+                text,
+                "{:<24} {} (pid {})",
+                port.bind, port.process, port.pid
+            );
+        } else {
+            let _ = write!(
+                text,
+                "{:<24} {} ({}, pid {})",
+                port.bind, port.name, port.process, port.pid
+            );
+        }
+        if port.system {
+            text.push_str(" system");
+        }
+        if port.paused {
+            text.push_str(" paused");
+        }
+        if let Some(cpu) = port.cpu_percent {
+            let _ = write!(text, " cpu {cpu:.1}%");
+        }
+        if let Some(memory) = port.memory_bytes {
+            let _ = write!(text, " mem {} MB", memory >> 20);
+        }
+        if let Some(uptime) = port.uptime_seconds {
+            let _ = write!(text, " up {}", duration(uptime));
+        }
+        if let Some(directory) = &port.directory {
+            let _ = write!(text, "  {directory}");
+        }
+        if let Some(workspace) = &port.workspace {
+            let _ = write!(text, "  workspace {workspace}");
+        }
+        if let Some(url) = &port.url {
+            let _ = write!(text, "  {url}");
+        }
+        text.push('\n');
+    }
+    if let Some(note) = &ports.note {
         text.push_str(note);
     }
     text.trim_end().to_owned()

@@ -11,7 +11,7 @@ use super::{
 use crate::multiline_input::MultilineInput;
 use crate::search_input::SearchInput;
 use gpui::{App, Entity, FocusHandle, ListAlignment, ListState, Window, px};
-use sheprd_chat_protocol::{ClientMessage, Command, Cursor, EndpointId, EntryId};
+use sheprd_chat_protocol::{ClientMessage, Command, Cursor, EntryId};
 use std::{
     collections::HashSet,
     time::{Duration, Instant},
@@ -90,6 +90,8 @@ pub(crate) enum Menu {
     Setting(String),
     /// Every setting the header has no button for.
     Settings,
+    /// The person's text shortcuts, from the composer's button.
+    Shortcuts,
 }
 
 /// What takes the user's typing in a chat.
@@ -148,8 +150,10 @@ pub(crate) struct ChatPane {
     pub(crate) prepared: Prepared,
     #[cfg(feature = "integration-test")]
     preview: bool,
-    /// Whether the plan and changed files show beside the entries.
+    /// Whether the rail shows beside the entries.
     pub(crate) rail: bool,
+    /// Which of the rail's sections show.
+    pub(crate) rail_folds: super::rail_folds::RailFolds,
     /// A read-only overlay owns the keyboard without installing an input handler.
     pub(crate) read_only_focus: Option<FocusHandle>,
     retry_at: Option<Instant>,
@@ -160,6 +164,9 @@ pub(crate) struct ChatPane {
     /// the composer changes, since typing does not redraw the window.
     pub(crate) send: SendButton,
     pub(crate) session: Session,
+    /// How much of the text shortcuts' popover shows, as it opens and
+    /// closes with [`Menu::Shortcuts`].
+    pub(crate) shortcuts: crate::motion::Toggle,
     /// Whether the steps running now show in full under the working row.
     pub(crate) steps: crate::motion::Toggle,
     pub(crate) target: Target,
@@ -260,12 +267,14 @@ impl ChatPane {
             #[cfg(feature = "integration-test")]
             preview: false,
             rail: true,
+            rail_folds: Default::default(),
             read_only_focus: None,
             retry_at: None,
             running: Default::default(),
             selection: Default::default(),
             send: SendButton::Off,
             session: Session::default(),
+            shortcuts: Default::default(),
             steps: Default::default(),
             target,
             terminal_size: Default::default(),
@@ -282,6 +291,20 @@ impl ChatPane {
     /// transcript, and its program is reachable or only briefly away.
     pub(crate) fn available(&self) -> bool {
         self.session.synced() && !self.permanent && self.failures < MAX_FAILURES
+    }
+
+    /// Whether an observed agent's first transcript is still on its way.
+    /// Visual only: input stays with the original pane until `available`.
+    pub(crate) fn loading(&self) -> bool {
+        // The helper lookup leaves no link yet, but no failed attempt either.
+        let connected = self.link.is_some() || (self.generation > 0 && self.retry_at.is_none());
+        #[cfg(feature = "integration-test")]
+        let connected = connected || self.preview;
+        self.target.existing.is_some()
+            && !self.session.synced()
+            && connected
+            && !self.permanent
+            && self.failures == 0
     }
 
     pub(crate) fn attached(&self) -> bool {
@@ -322,6 +345,9 @@ impl ChatPane {
         let resend = self.session.resend();
         match connect(&self.target, self.session.since(), resend) {
             Ok(link) => self.link = Some((self.generation, link)),
+            // The lookup has not returned yet: try again next poll. This is
+            // not a failure of the observer or its transport.
+            Err(Error::Start(super::StartError::ProgramUnknown)) => {}
             Err(error) => self.fail(&error, now),
         }
     }
@@ -381,6 +407,8 @@ impl ChatPane {
         }
         if changed {
             self.sync_view();
+            let busy = self.session.transcript().running().total() > 0;
+            self.rail_folds.follow(busy, crate::motion::now());
         }
         changed
     }
@@ -502,10 +530,14 @@ pub(crate) enum Toward {
 /// Every chat pane of the window's daemon, in its snapshot's order.
 #[derive(Default)]
 pub(crate) struct Chats {
+    /// Visual workers running, including those of panes since hidden or gone.
+    pub(crate) active_visual_jobs: usize,
     /// The agents installed on each host new chats may start on.
     pub(crate) agents: super::harnesses::Harnesses,
     /// The terminal agent moving into a chat, one at a time.
     pub(crate) converting: Option<super::convert::Job>,
+    /// The herdr-core agent moving into a chat, one at a time with the above.
+    pub(crate) converting_core: Option<super::convert::CoreJob>,
     /// Exact CLI sessions already running in this connected daemon's panes.
     pub(crate) existing: super::existing::Existing,
     /// The agent a chat was last started with, which the strips' one-button
@@ -533,8 +565,9 @@ pub(crate) struct Chats {
     panes: Vec<ChatPane>,
     /// The `herdr-acp` new chats run.
     pub(crate) program: super::Program,
-    /// Programs whose panes the user turned back to their terminal.
-    raw: HashSet<EndpointId>,
+    /// Exact pane/process/host targets the user turned back to their terminal.
+    /// Two panes may legitimately observe the same session endpoint.
+    raw: HashSet<Target>,
     /// Textures of panes no longer attached, for the window to drop.
     released: Vec<std::sync::Arc<gpui::RenderImage>>,
     /// Chats being continued in the panes Herdr restored.
@@ -543,6 +576,8 @@ pub(crate) struct Chats {
     pub(crate) ticked: u64,
     /// A new chat whose tab is being made.
     pub(crate) starting: Option<super::start::Starting>,
+    /// The visible pane offered a worker next, so busy splits take turns.
+    pub(crate) visual_cursor: usize,
 }
 
 impl Chats {
@@ -676,17 +711,19 @@ impl Chats {
             });
         }
         self.panes = panes;
-        let endpoints: HashSet<&EndpointId> = self
-            .panes
-            .iter()
-            .map(|pane| &pane.target.endpoint)
-            .collect();
-        self.raw.retain(|endpoint| endpoints.contains(endpoint));
+        let targets: HashSet<&Target> = self.panes.iter().map(|pane| &pane.target).collect();
+        self.raw.retain(|target| targets.contains(target));
         for pane in &mut self.panes {
+            if pane.target.existing.is_some() && self.existing.take_dismissed(&pane.target.pane_id)
+            {
+                self.raw.insert(pane.target.clone());
+            }
             let due =
                 pane.link.is_none() && !pane.permanent && pane.retry_at.is_none_or(|at| at <= now);
             if due {
+                let loading = pane.loading();
                 pane.start(now, connect);
+                changed |= loading != pane.loading();
             }
         }
         changed
@@ -732,25 +769,25 @@ impl Chats {
     /// Whether `pane_id` shows the chat view rather than its terminal.
     pub(crate) fn shown(&self, pane_id: &str) -> bool {
         self.pane(pane_id)
-            .is_some_and(|pane| pane.available() && !self.raw.contains(&pane.target.endpoint))
+            .is_some_and(|pane| pane.available() && !self.raw.contains(&pane.target))
     }
 
     /// Whether the user turned `pane_id` back to its terminal.
     pub(crate) fn raw(&self, pane_id: &str) -> bool {
         self.pane(pane_id)
-            .is_some_and(|pane| self.raw.contains(&pane.target.endpoint))
+            .is_some_and(|pane| self.raw.contains(&pane.target))
     }
 
     /// Shows the chat view over `pane_id`, or its terminal; `false` when the
     /// pane has no chat to show.
     pub(crate) fn set_raw(&mut self, pane_id: &str, raw: bool) -> bool {
-        let Some(endpoint) = self.pane(pane_id).map(|pane| pane.target.endpoint.clone()) else {
+        let Some(target) = self.pane(pane_id).map(|pane| pane.target.clone()) else {
             return false;
         };
         if raw {
-            self.raw.insert(endpoint);
+            self.raw.insert(target);
         } else {
-            self.raw.remove(&endpoint);
+            self.raw.remove(&target);
         }
         true
     }

@@ -16,6 +16,7 @@ pub(super) enum Section {
     Tabs,
     Code,
     Notifications,
+    TextShortcuts,
     Integrations,
     Plugins,
     #[cfg(feature = "cloud")]
@@ -81,6 +82,7 @@ impl Section {
         Self::Tabs,
         Self::Code,
         Self::Notifications,
+        Self::TextShortcuts,
         Self::Integrations,
         Self::Plugins,
         #[cfg(feature = "cloud")]
@@ -107,6 +109,7 @@ impl Section {
             Self::Tabs => "settings-section-tabs-and-panes",
             Self::Code => "settings-section-code",
             Self::Notifications => "settings-section-notifications",
+            Self::TextShortcuts => "settings-text-shortcuts-section",
             Self::Integrations => "settings-section-integrations",
             Self::Plugins => "settings-section-plugins",
             #[cfg(feature = "cloud")]
@@ -128,6 +131,7 @@ impl Section {
             Self::Code => "settings-lead-code",
             Self::Integrations => "settings-lead-integrations",
             Self::Plugins => "settings-lead-plugins",
+            Self::TextShortcuts => "settings-text-shortcuts-lead",
             #[cfg(feature = "cloud")]
             Self::CloudDevices => "settings-lead-cloud-devices",
             #[cfg(target_os = "macos")]
@@ -147,7 +151,9 @@ impl Section {
             Self::Theme | Self::Sidebar | Self::Indicators | Self::Fonts | Self::StatusBar => {
                 Some(Group::Appearance)
             }
-            Self::Tabs | Self::Code | Self::Notifications => Some(Group::Behaviour),
+            Self::Tabs | Self::Code | Self::Notifications | Self::TextShortcuts => {
+                Some(Group::Behaviour)
+            }
             Self::Integrations | Self::Plugins => Some(Group::Connect),
             #[cfg(feature = "cloud")]
             Self::CloudDevices => Some(Group::Connect),
@@ -169,6 +175,7 @@ impl Section {
             Self::Tabs => "icons/tabs.svg",
             Self::Code => "icons/vscode.svg",
             Self::Notifications => "icons/bell.svg",
+            Self::TextShortcuts => "icons/note.svg",
             Self::Integrations => "icons/agent-generic.svg",
             Self::Plugins => "icons/plug.svg",
             #[cfg(feature = "cloud")]

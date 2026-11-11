@@ -11,6 +11,7 @@ use std::{collections::HashMap, path::PathBuf, str::FromStr};
 /// Where an item comes from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Provider {
+    Azure,
     Github,
     Gitlab,
     Beads,
@@ -19,6 +20,7 @@ pub enum Provider {
 impl Provider {
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::Azure => "azure",
             Self::Github => "github",
             Self::Gitlab => "gitlab",
             Self::Beads => "beads",
@@ -31,6 +33,7 @@ impl FromStr for Provider {
 
     fn from_str(value: &str) -> Result<Self> {
         match value {
+            "azure" => Ok(Self::Azure),
             "github" => Ok(Self::Github),
             "gitlab" => Ok(Self::Gitlab),
             "beads" => Ok(Self::Beads),
@@ -127,8 +130,10 @@ impl Item {
         let number = key.native_id.strip_prefix("pr/").unwrap_or(&key.native_id);
         let identifier = match key.source.provider {
             Provider::Beads => key.native_id.clone(),
-            // GitLab calls a merge request `!iid`; its issues stay `#iid`.
-            Provider::Gitlab if key.native_id.starts_with("pr/") => format!("!{number}"),
+            // GitLab and Azure DevOps write a pull request `!id`; issues stay `#id`.
+            Provider::Azure | Provider::Gitlab if key.native_id.starts_with("pr/") => {
+                format!("!{number}")
+            }
             _ => format!("#{number}"),
         };
         Self {
@@ -142,6 +147,8 @@ impl Item {
             labels: Vec::new(),
             parent_id: None,
             blocked_by: Vec::new(),
+            assignee: None,
+            acceptance: None,
             priority: None,
             created_at: None,
             updated_at: None,
@@ -178,10 +185,15 @@ pub struct Item {
     pub identifier: String,
     pub title: String,
     pub description: Option<String>,
+    /// A bead's acceptance criteria; other providers have none.
+    pub acceptance: Option<String>,
     /// The provider's own state word, such as `open`, `merged`, or `in_progress`.
     pub state: String,
     pub url: Option<String>,
     pub author: Option<String>,
+    /// Who a bead is assigned to, which is who claimed it once it is in
+    /// progress; other providers leave it empty.
+    pub assignee: Option<String>,
     pub labels: Vec<String>,
     pub parent_id: Option<String>,
     pub blocked_by: Vec<String>,
@@ -301,10 +313,35 @@ pub struct HerdrSession {
     pub host: Option<String>,
     /// The Herdr `--session` name, `None` for the default session.
     pub session: Option<String>,
-    pub workspace_id: String,
-    pub pane_id: String,
+    pub pane: Pane,
     pub agent_name: String,
     pub updated_at: DateTime<Utc>,
+}
+
+/// The terminal a run's agent is in, by the Herdr that runs it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Pane {
+    /// Herdr 1's pane, in the workspace made for the run's worktree.
+    Herdr1 {
+        workspace_id: String,
+        pane_id: String,
+    },
+    /// herdr-core's terminal, a shell in the run's worktree the agent was
+    /// typed into. herdr-core keeps no workspaces: the app keeps the one
+    /// that shows it.
+    Herdr2 { terminal: String },
+}
+
+/// Which Herdr a dispatch starts its worktree and agent through, on the
+/// repository's own host.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Terminals {
+    /// `herdr worktree create` and `herdr agent start`.
+    #[default]
+    Herdr1,
+    /// Git for the worktree, in the folder Herdr 1 would use, and the agent
+    /// typed into a herdr-core shell there (`sheprd_remote::work`).
+    Herdr2,
 }
 
 /// An agent Herdr shows on one of the client's connected hosts.

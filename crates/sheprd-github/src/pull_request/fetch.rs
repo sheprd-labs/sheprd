@@ -27,7 +27,7 @@ fragment PullRequestFields on PullRequest {
   commits(last: 1) { nodes { commit { statusCheckRollup {
     contexts(first: 100) {
       pageInfo { hasNextPage }
-      nodes { __typename ... on CheckRun { name status conclusion } ... on StatusContext { context state } }
+      nodes { __typename ... on CheckRun { name status conclusion databaseId detailsUrl } ... on StatusContext { context state targetUrl } }
     }
   } } } }
 }"#
@@ -108,12 +108,8 @@ impl Origins {
     }
 }
 
-#[cfg(test)]
-pub(super) fn fetch(
-    input: &Input,
-    token: &secrecy::SecretString,
-    cancelled: impl Fn() -> bool,
-) -> Result {
+/// Read one verified local checkout. Blocking, bounded, and cancellable.
+pub fn fetch(input: &Input, token: &secrecy::SecretString, cancelled: impl Fn() -> bool) -> Result {
     let tokens = crate::Tokens::from(std::sync::Arc::new(token.clone()));
     let mut batch = super::batch::fetch_batch(
         vec![input.clone()],

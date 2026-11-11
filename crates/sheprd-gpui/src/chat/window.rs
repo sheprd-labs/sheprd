@@ -5,7 +5,6 @@
 use super::{
     chats::{self, ChatInput, Connect},
     discovery,
-    visual::{DiagramStyle, Output, VisualId},
 };
 use crate::{
     SheprdWindow,
@@ -14,8 +13,10 @@ use crate::{
     search_input::SearchInput,
 };
 use gpui::{prelude::*, *};
-use sheprd_chat_protocol::{Attachment, Command, MAX_ATTACHMENTS, MAX_PROMPT_SIZE, Status, assist};
+use sheprd_chat_protocol::{Attachment, Command, MAX_ATTACHMENTS, MAX_PROMPT_SIZE, Status};
 use std::time::Instant;
+
+pub(super) mod visuals;
 
 impl SheprdWindow {
     /// Runs every tick: attaches to the selected daemon's chat panes when it
@@ -129,6 +130,7 @@ impl SheprdWindow {
         self.prepare_chat_visuals(window, cx);
         let font = self.chat_font();
         let theme = self.theme.clone();
+        let shortcuts = crate::text_shortcuts::Store::current(cx);
         for pane in self.chats.panes_mut() {
             if !pane.available() {
                 continue;
@@ -169,14 +171,22 @@ impl SheprdWindow {
                 pane.send = send;
                 changed = true;
             }
-            let found = assist::completions(pane.session.transcript(), &text);
+            let found = super::shortcuts::completions(
+                &shortcuts.shortcuts,
+                pane.session.transcript(),
+                &text,
+            );
             if pane.completion >= found.len() {
                 pane.completion = 0;
             }
-            let ghost = found
-                .get(pane.completion)
-                .and_then(|command| command.name.strip_prefix(text.get(1..).unwrap_or("")))
-                .map(str::to_owned);
+            // Only a command's name completes the text typed.
+            let ghost = match found.get(pane.completion) {
+                Some(super::shortcuts::Completion::Command(command)) => command
+                    .name
+                    .strip_prefix(text.get(1..).unwrap_or(""))
+                    .map(str::to_owned),
+                _ => None,
+            };
             composer.update(cx, |input, cx| {
                 input.set_completion(ghost, cx);
                 input.set_appearance(font.clone(), theme.clone(), cx);
@@ -192,13 +202,13 @@ impl SheprdWindow {
                 );
             });
         }
-        // A running turn's timer moves once a second.
+        // A running turn's timer moves once a second, and so does the time
+        // of a shell that outlives its turn.
         let second = super::now_ms() / 1000;
-        if self
-            .chats
-            .panes()
-            .any(|pane| pane.session.transcript().turn.is_some())
-            && self.chats.ticked != second
+        if self.chats.panes().any(|pane| {
+            let transcript = pane.session.transcript();
+            transcript.turn.is_some() || transcript.running().total() > 0
+        }) && self.chats.ticked != second
         {
             self.chats.ticked = second;
             changed = true;
@@ -210,59 +220,6 @@ impl SheprdWindow {
         if changed {
             self.redraw_terminal(cx);
         }
-    }
-
-    /// Starts the pictures and diagrams each chat waits for on the
-    /// background executor, and drops the textures no entry draws any more.
-    pub(super) fn prepare_chat_visuals(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        for texture in self.chats.take_released() {
-            cx.drop_image(texture, Some(window));
-        }
-        #[cfg(any(target_os = "macos", windows))]
-        for page in self.chats.take_closed_pages() {
-            self.close_chat_page(page);
-        }
-        let font = self.chat_font();
-        let style = DiagramStyle::of(&self.theme, &font);
-        let renderer = cx.svg_renderer();
-        for pane in self.chats.panes_mut() {
-            for texture in pane.prepared.visuals.take_released() {
-                cx.drop_image(texture, Some(window));
-            }
-            for job in pane.prepared.visuals.jobs(&style, &renderer) {
-                let pane_id = pane.target.pane_id.clone();
-                let task = cx.background_spawn(async move { job.run() });
-                cx.spawn(async move |this, cx| {
-                    let (id, ticket, drawn) = task.await;
-                    let _ = this.update(cx, |this, cx| {
-                        this.finish_chat_visual(&pane_id, id, ticket, drawn, cx);
-                    });
-                })
-                .detach();
-            }
-        }
-    }
-
-    fn finish_chat_visual(
-        &mut self,
-        pane_id: &str,
-        id: VisualId,
-        ticket: u64,
-        drawn: super::visual::Result<Output>,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(pane) = self.chats.pane_mut(pane_id) else {
-            return;
-        };
-        if !pane.prepared.visuals.finish(id, ticket, drawn) {
-            return;
-        }
-        // The row's height changed with what it now draws.
-        let entries: Vec<_> = pane.prepared.drawing(id).collect();
-        for entry in entries {
-            pane.remeasure(entry);
-        }
-        self.redraw_terminal(cx);
     }
 
     /// The keyboard destination of the visible, Herdr-focused chat. A mirror
@@ -401,6 +358,10 @@ impl SheprdWindow {
             return;
         };
         match event.keystroke.key.as_str() {
+            "enter" if menu == chats::Menu::Shortcuts => {
+                let query = search.read(cx).text().to_owned();
+                self.pick_first_chat_shortcut(pane_id, &query, window, cx);
+            }
             "enter" => {
                 let query = search.read(cx).text().to_owned();
                 let picked = match &menu {
@@ -567,18 +528,25 @@ impl SheprdWindow {
             return;
         }
         let text = input.read(cx).text().to_owned();
-        let found = assist::completions(pane.session.transcript(), &text).len();
+        let shortcuts = crate::text_shortcuts::Store::current(cx);
+        let completions =
+            super::shortcuts::completions(&shortcuts.shortcuts, pane.session.transcript(), &text);
+        let found = completions.len();
+        let chosen = completions
+            .get(pane.completion)
+            .map(super::shortcuts::Completion::chosen);
         let key = event.keystroke.key.as_str();
         match key {
-            "tab" if found > 0 => {
-                let Some(name) = assist::completions(pane.session.transcript(), &text)
-                    .get(pane.completion)
-                    .map(|command| command.name.clone())
-                else {
-                    return;
-                };
-                self.complete_chat_command(pane_id, &name, window, cx);
-            }
+            "tab" if found > 0 => match chosen {
+                Some(super::shortcuts::Chosen::Shortcut(text)) => {
+                    let picked = super::shortcuts::Picked::Slash;
+                    self.use_chat_shortcut(pane_id, &text, picked, window, cx);
+                }
+                Some(super::shortcuts::Chosen::Command(name)) => {
+                    self.complete_chat_command(pane_id, &name, window, cx);
+                }
+                None => return,
+            },
             "up" | "down" if found > 0 => {
                 pane.completion = if key == "up" {
                     pane.completion.saturating_sub(1)
@@ -875,7 +843,7 @@ impl SheprdWindow {
         cx.notify();
     }
 
-    fn submit_chat_prompt(
+    pub(super) fn submit_chat_prompt(
         &mut self,
         pane_id: &str,
         input: &Entity<MultilineInput>,

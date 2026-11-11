@@ -12,6 +12,7 @@
 #![cfg_attr(test, allow(clippy::disallowed_methods))]
 
 pub mod actions;
+pub mod azure;
 pub mod beads;
 pub mod cache;
 mod error;
@@ -35,8 +36,8 @@ pub use location::{Repository, database_path};
 #[cfg(any(test, feature = "test-support"))]
 pub use model::Workspace;
 pub use model::{
-    Activity, Backend, Checkpoint, HerdrSession, Item, ItemKey, Owner, Provider, PullRequest, Run,
-    RunState, SourceKey,
+    Activity, Backend, Checkpoint, HerdrSession, Item, ItemKey, Owner, Pane, Provider, PullRequest,
+    Run, RunState, SourceKey, Terminals,
 };
 pub use naming::LiveBranch;
 pub use prompt::nonce;
@@ -44,7 +45,9 @@ pub use repo::github_repository;
 pub use review::{CheckState, PrStatus, Review};
 #[cfg(any(test, feature = "test-support"))]
 pub use service::SourceStatus;
-pub use service::{Notice, Request, Service, Snapshot, SyncState, Timing};
+pub use service::{
+    Notice, RemoteRequest, RemoteScope, Request, Service, Snapshot, Stores, SyncState, Timing,
+};
 pub use store::{Access, SCHEMA_VERSION, Store};
 
 #[cfg(all(test, unix))]

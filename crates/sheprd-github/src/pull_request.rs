@@ -17,11 +17,11 @@ mod tests;
 pub use {
     cache::Cache,
     error::Error,
-    fetch::{local_checkout, run, run_bytes},
+    fetch::{fetch, local_checkout, run, run_bytes},
     lookup::Lookup,
     model::{
-        Input, MergeMethod, Origin, Outcome, PullRequest, ReviewDecision, State, Tone, clean,
-        fork_branch_number, repository_input, workspace_input,
+        CheckDetail, Input, MergeMethod, Origin, Outcome, PullRequest, ReviewDecision, Standing,
+        State, Tone, clean, fork_branch_number, key_input, repository_input, workspace_input,
     },
     remote::{Base, Remote, base_repository, remote_repository},
     store::{Store, View},

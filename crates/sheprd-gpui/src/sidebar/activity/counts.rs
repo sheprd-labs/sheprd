@@ -1,24 +1,30 @@
 //! The bar's count bubbles: what needs the user, as the Overview counted it
 //! on the last tick, and from the orchestrator views the window holds, open
-//! pull requests and open issues, the open critical and high Dependabot
-//! alerts, and the automation scripts waiting for approval or after a
-//! failed run. An item two views list, such as one repository open in two
+//! pull requests, open issues, and open beads, the open critical and high Dependabot
+//! alerts, the automation scripts waiting for approval or after a failed
+//! run, and the servers this computer's user runs (`[sidebar]
+//! ports_count`). An item two views list, such as one repository open in two
 //! workspaces, counts once. Each count keeps when its newest item last
 //! changed, which the bar compares with when the section was last open.
 
 use super::ActivityPanel;
-use crate::{SheprdWindow, orchestrator::Item};
+use crate::{
+    SheprdWindow,
+    orchestrator::{Item, Provider},
+};
 use chrono::{DateTime, Utc};
 use gpui::App;
 use std::collections::HashSet;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(super) struct Counts {
+pub(in crate::sidebar) struct Counts {
     needs: Count,
     pull_requests: Count,
     issues: Count,
+    tasks: Count,
     security: Count,
     automations: Count,
+    ports: Count,
 }
 
 /// How many items a bubble counts, and when the newest of them changed.
@@ -42,10 +48,14 @@ impl Counts {
             } else {
                 &mut self.issues
             };
-            if seen.insert(item.key.canonical()) {
-                count.items += 1;
+            let new = seen.insert(item.key.canonical());
+            let changed = item.updated_at.or(item.created_at);
+            count.items += usize::from(new);
+            count.latest = count.latest.max(changed);
+            if item.key.source.provider == Provider::Beads {
+                self.tasks.items += usize::from(new);
+                self.tasks.latest = self.tasks.latest.max(changed);
             }
-            count.latest = count.latest.max(item.updated_at.or(item.created_at));
         }
     }
 
@@ -53,20 +63,22 @@ impl Counts {
         match panel {
             ActivityPanel::Overview => Some(self.needs),
             ActivityPanel::Workspaces | ActivityPanel::Usage => None,
+            ActivityPanel::Ports => Some(self.ports),
             ActivityPanel::PullRequests => Some(self.pull_requests),
             ActivityPanel::Issues => Some(self.issues),
+            ActivityPanel::Tasks => Some(self.tasks),
             ActivityPanel::Security => Some(self.security),
             ActivityPanel::Automations => Some(self.automations),
         }
     }
 
     /// The bar's count for `panel`, if it shows one.
-    pub(super) fn of(self, panel: ActivityPanel) -> Option<usize> {
+    pub(in crate::sidebar) fn of(self, panel: ActivityPanel) -> Option<usize> {
         self.count(panel).map(|count| count.items)
     }
 
     /// When the newest item `panel` counts changed, when known.
-    pub(super) fn latest(self, panel: ActivityPanel) -> Option<DateTime<Utc>> {
+    pub(in crate::sidebar) fn latest(self, panel: ActivityPanel) -> Option<DateTime<Utc>> {
         self.count(panel)?.latest
     }
 }
@@ -78,7 +90,7 @@ fn open(item: &Item) -> bool {
 }
 
 impl SheprdWindow {
-    pub(super) fn activity_counts(&self, cx: &App) -> Counts {
+    pub(in crate::sidebar) fn activity_counts(&self, cx: &App) -> Counts {
         let mut counts = Counts {
             needs: Count {
                 items: self.overview_needing(),
@@ -91,6 +103,16 @@ impl SheprdWindow {
             automations: Count {
                 items: self.automations.needing(),
                 latest: self.automations.needing_since(),
+            },
+            // The user's own servers, as the Ports section last listed them;
+            // a server starting is not news, so it carries no time.
+            ports: Count {
+                items: if self.config.sidebar_style.ports_count {
+                    self.local_ports.serving().unwrap_or(0)
+                } else {
+                    0
+                },
+                latest: None,
             },
             ..Counts::default()
         };

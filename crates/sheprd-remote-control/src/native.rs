@@ -3,13 +3,16 @@
 //! follows the views it subscribes to. Commands keep the web app's `POST`
 //! routes, so one rate limit and `Origin` policy covers every write.
 
+pub(crate) mod changes;
+mod convert;
 mod create;
 mod live;
 mod model;
 mod search;
 mod wire;
 
-pub(crate) use create::{create_workspace, new_options, start_chat};
+pub(crate) use convert::convert;
+pub(crate) use create::{create_workspace, new_options, new_terminal, start_chat};
 pub(crate) use search::search;
 
 use crate::{
@@ -27,6 +30,7 @@ use axum::{
     response::Response,
 };
 use model::{ChatSnapshot, Home, Sources};
+use secrecy::SecretString;
 use std::{collections::HashMap, time::Duration};
 use tokio::sync::mpsc;
 use wire::{ClientMessage, ServerMessage};
@@ -56,18 +60,25 @@ fn home(state: &Shared) -> Home {
         })
         .collect();
     let pull_requests = state.pull_requests.borrow().clone();
-    Home::project(Sources {
+    let mut home = Home::project(Sources {
         computer: &state.computer,
         fingerprint: &state.fingerprint,
         layout: &layout,
         load: *state.load.borrow(),
         summaries,
         pull_requests: &pull_requests,
-    })
+        shortcuts_ms: state.shortcuts.current().updated_ms,
+        tags: state.tags.current(),
+        version: crate::server::version(),
+        waiting: state.attention().len(),
+    });
+    home.github = Some(state.github.enabled());
+    home
 }
 
 /// `GET /api/v2/home`.
 pub(crate) async fn get_home(State(state): State<Shared>, _device: Device) -> Json<Home> {
+    state.hub.wake_for_phone();
     Json(home(&state))
 }
 
@@ -101,7 +112,7 @@ pub(crate) async fn live(
         return Err(ApiError::TooManyStreams);
     }
     // `Device` accepted this token, so it is present.
-    let token = bearer(&headers).unwrap_or_default().to_owned();
+    let token = SecretString::from(bearer(&headers).unwrap_or_default());
     Ok(upgrade
         .max_message_size(MAX_INBOUND)
         .max_frame_size(MAX_INBOUND)
@@ -111,7 +122,7 @@ pub(crate) async fn live(
 /// Carries messages between the socket and the session until either ends:
 /// the phone closes, sends a binary or oversized frame, or the session
 /// says `bye`.
-async fn serve(mut socket: WebSocket, state: Shared, device: DeviceId, token: String) {
+async fn serve(mut socket: WebSocket, state: Shared, device: DeviceId, token: SecretString) {
     let _connected = Connected::new(state.clone(), device.clone());
     let (to_phone, mut outbound) = mpsc::channel(OUTBOUND_QUEUE);
     let (inbound, from_phone) = mpsc::channel(INBOUND_QUEUE);
@@ -137,7 +148,7 @@ async fn serve(mut socket: WebSocket, state: Shared, device: DeviceId, token: St
                         Err(_) => Some("that message is not one this socket reads"),
                     };
                     if let Some(message) = reply {
-                        let error = ServerMessage::Error { message: message.to_owned() };
+                        let error = ServerMessage::Error { message: message.to_owned(), view: None };
                         if !send(&mut socket, &error).await {
                             break;
                         }

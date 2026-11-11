@@ -6,6 +6,7 @@ import SwiftUI
 /// agent last started, with the other agents folded below them.
 struct WorkspaceScreen: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.routeOpener) private var opener
     let key: WorkspaceKey
     @State private var agents: [AgentChoice] = []
     /// What a tap is starting: an agent's id, or `terminal`.
@@ -15,6 +16,12 @@ struct WorkspaceScreen: View {
     @State private var showsOthers = false
     /// A tab just started, shown as soon as it exists.
     @State private var opened: Route?
+    /// Files changed and not committed; `nil` until Sheprd says.
+    @State private var changedFiles: Int?
+    @State private var renaming = false
+    @State private var newName = ""
+    /// Why the last rename failed, shown apart from a tab that did not start.
+    @State private var renameProblem: String?
 
     private static let terminal = "terminal"
 
@@ -40,19 +47,22 @@ struct WorkspaceScreen: View {
                     // tinted web link.
                     Link(destination: url) { PullRequestRow(pullRequest: pullRequest) }.tint(.primary)
                 }
+                if workspace.branch != nil {
+                    RouteLink(.changes(key)) { ChangesRow(count: changedFiles) }
+                }
             }
             Section {
                 ForEach(chats) { item in
-                    NavigationLink(value: Route.chat(item.key, title: item.chat.title)) { ChatRowLabel(item: item, showsComputer: false, showsWorkspace: false) }
+                    RouteLink(.chat(item.key, title: item.chat.title)) { ChatRowLabel(item: item, showsComputer: false, showsWorkspace: false) }
                 }
                 ForEach(terminals.filter { $0.agent != nil }) { item in
                     if let route = item.route {
-                        NavigationLink(value: route) { AgentTerminalRowLabel(item: item, showsComputer: false, showsWorkspace: false) }
+                        RouteLink(route) { AgentTerminalRowLabel(item: item, showsComputer: false, showsWorkspace: false) }
                     }
                 }
                 ForEach(terminals.filter { $0.agent == nil }) { item in
                     if let pane = item.terminal.firstPane {
-                        NavigationLink(value: Route.term(PaneKey(device: key.device, pane: pane.pane), title: item.terminal.label)) {
+                        RouteLink(.term(PaneKey(device: key.device, pane: pane.pane), title: item.terminal.label)) {
                             TerminalRowLabel(terminal: item.terminal)
                         }
                     }
@@ -65,12 +75,35 @@ struct WorkspaceScreen: View {
         }
         .navigationTitle(workspace.label)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .tabBar)
+        // The iPad's sidebar keeps its tabs below a workspace.
+        .toolbar(opener == nil ? .hidden : .automatic, for: .tabBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Button {
+                    newName = workspace.label
+                    renaming = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(workspace.label).font(.headline).lineLimit(1)
+                        Image(systemName: "pencil.circle.fill").font(.caption).foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Renames the workspace")
+            }
+        }
         .onAppear {
             model.recentDevice = key.device
             #if DEBUG
-            // The simulator loop's `-otherAgents YES` unfolds the agents.
+            // The simulator loop's `-otherAgents YES` unfolds the agents,
+            // and `-renameWorkspace YES` opens the rename alert.
             if UserDefaults.standard.bool(forKey: "otherAgents") { showsOthers = true }
+            // `-openChanges YES` opens the workspace's changes.
+            if UserDefaults.standard.bool(forKey: "openChanges"), opened == nil { opened = .changes(key) }
+            if UserDefaults.standard.bool(forKey: "renameWorkspace") {
+                newName = workspace.label
+                renaming = true
+            }
             #endif
         }
         // This screen is right behind what it opens, so Back is the way here.
@@ -88,9 +121,40 @@ struct WorkspaceScreen: View {
                 try? await Task.sleep(for: .seconds(3))
             }
         }
+        // Again on each return, as an agent may have changed more since.
+        .task(id: machine.status) {
+            guard isOnline(machine), workspace.branch != nil else { return }
+            let (device, id) = (key.device, key.workspace)
+            changedFiles = try? await model.fleet.call(device) { client, token in
+                try await client.changes(workspace: id, scope: .uncommitted, bearer: token)
+            }.total
+        }
         .alert("The tab did not start", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
         } message: {
             Text(problem ?? "")
+        }
+        .alert("Rename Workspace", isPresented: $renaming) {
+            TextField("Name", text: $newName)
+                .textInputAutocapitalization(.never)
+            Button("Cancel", role: .cancel) {}
+            Button("Rename") { rename(to: newName) }
+                .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+        } message: {
+            Text("The name shows in Sheprd and in your lists.")
+        }
+        .alert("The workspace was not renamed", isPresented: Binding(get: { renameProblem != nil }, set: { if !$0 { renameProblem = nil } })) {
+        } message: {
+            Text(renameProblem ?? "")
+        }
+    }
+
+    private func rename(to label: String) {
+        Task {
+            do {
+                try await model.fleet.renameWorkspace(key, to: label)
+            } catch {
+                renameProblem = error.localizedDescription
+            }
         }
     }
 
@@ -108,7 +172,6 @@ struct WorkspaceScreen: View {
                 } action: {
                     openTerminal(in: workspace)
                 }
-                .disabled(workspace.anyPane == nil)
                 if let recent {
                     bigButton(recent.name, id: recent.id) { AgentIcon(agent: recent.id, size: 40) } action: {
                         start(recent, in: workspace)
@@ -118,6 +181,7 @@ struct WorkspaceScreen: View {
             }
             .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
             .listRowSeparator(.hidden, edges: .bottom)
+            if let recent { StartChoiceRow(agent: recent.name) }
             if !others.isEmpty {
                 Button {
                     withAnimation { showsOthers.toggle() }
@@ -126,6 +190,7 @@ struct WorkspaceScreen: View {
                         Text("Other agents")
                         Spacer()
                         if !showsOthers {
+                            if others.contains(where: { model.startChoice(for: $0.name).bypasses }) { Self.unasked }
                             HStack(spacing: 4) { ForEach(others) { AgentIcon(agent: $0.id, size: 22) } }
                                 .transition(.opacity)
                                 .accessibilityHidden(true)
@@ -144,20 +209,32 @@ struct WorkspaceScreen: View {
                         } label: {
                             HStack(spacing: 12) {
                                 AgentIcon(agent: agent.id, size: 28)
-                                Text(agent.name)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(agent.name)
+                                    if let label = model.startChoice(for: agent.name).label {
+                                        Text(label).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }
                                 Spacer()
+                                if model.startChoice(for: agent.name).bypasses { Self.unasked }
                                 if starting == agent.id { ProgressView() }
                             }
                             .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("New \(agent.name) tab")
+                        .accessibilityValue(model.startChoice(for: agent.name).label ?? "")
                         .contextMenu { firstPrompt(agent, in: workspace) }
                     }
                 }
             }
         }
         .disabled(!online || starting != nil)
+    }
+
+    /// Says a new tab would run tools without asking.
+    private static var unasked: some View {
+        Image(systemName: "bolt.shield.fill").foregroundStyle(.red).accessibilityLabel("Runs without asking")
     }
 
     private func firstPrompt(_ agent: AgentChoice, in workspace: Home.Workspace) -> some View {
@@ -185,17 +262,24 @@ struct WorkspaceScreen: View {
         if case .online = machine.status { true } else { false }
     }
 
+    /// A tab just started: beside the sidebar on an iPad, else pushed.
+    private func show(_ route: Route) {
+        if let opener { opener.open(route) } else { opened = route }
+    }
+
     private func start(_ agent: AgentChoice, in workspace: Home.Workspace) {
         let (device, id) = (key.device, workspace.id)
+        let start = model.startChoice(for: agent.name).start
         starting = agent.id
         Task {
             defer { starting = nil }
             do {
                 let created = try await model.fleet.call(device) { client, token in
-                    try await client.startChat(NewChatRequest(agent: agent.id), workspace: id, bearer: token)
+                    try await client.startChat(NewChatRequest(agent: agent.id, start: start), workspace: id, bearer: token)
                 }
                 model.recentAgent = agent.id
-                if let pane = created.pane { opened = .chat(PaneKey(device: device, pane: pane), title: agent.name) }
+                if let problem = model.startProblem(created, start: start, device: device) { model.notice = problem }
+                if let pane = created.pane { show(.chat(PaneKey(device: device, pane: pane), title: agent.name)) }
             } catch {
                 problem = error.localizedDescription
             }
@@ -204,17 +288,23 @@ struct WorkspaceScreen: View {
 
     /// Sheprd opens a tab in the workspace of the pane an action names, so
     /// any of its panes will do.
+    /// A terminal tab beside the workspace's panes, or its first one, which
+    /// the computer starts in the workspace's folder.
     private func openTerminal(in workspace: Home.Workspace) {
-        guard let pane = workspace.anyPane else { return }
+        let pane = workspace.anyPane
+        let id = workspace.id
         let device = key.device
         starting = Self.terminal
         Task {
             defer { starting = nil }
             do {
-                let created = try await model.fleet.call(device) { client, token in
-                    try await client.termAction(.newTab, pane: pane, bearer: token)
+                let created = try await model.fleet.call(device) { client, token -> String? in
+                    if let pane {
+                        return try await client.termAction(.newTab, pane: pane, bearer: token)
+                    }
+                    return try await client.newTerminal(workspace: id, bearer: token)
                 }
-                if let created { opened = .term(PaneKey(device: device, pane: created), title: "Terminal") }
+                if let created { show(.term(PaneKey(device: device, pane: created), title: "Terminal")) }
             } catch {
                 problem = error.localizedDescription
             }
@@ -260,6 +350,32 @@ private struct PullRequestRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Pull request \(pullRequest.number), \(tone.label)")
         .accessibilityAddTraits(.isLink)
+    }
+}
+
+/// Opens the workspace's changes, saying how many files are uncommitted.
+private struct ChangesRow: View {
+    var count: Int?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "plusminus").font(.system(size: 14, weight: .semibold))
+                .frame(width: 28, height: 28).background(.fill.secondary, in: .rect(cornerRadius: 28 * 0.28))
+            Text("Changes").frame(maxWidth: .infinity, alignment: .leading)
+            if let count {
+                Text(count, format: .number).foregroundStyle(.secondary).monospacedDigit()
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+    }
+
+    private var label: String {
+        switch count {
+        case nil: "Changes"
+        case 1?: "Changes, 1 file"
+        case let count?: "Changes, \(count) files"
+        }
     }
 }
 

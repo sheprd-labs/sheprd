@@ -393,6 +393,12 @@ pub(super) const CATALOG: &[Entry] = &[
     entry(Section::Tabs, "tabs-position", "settings-tabs-position", ""),
     entry(
         Section::Tabs,
+        "tabs-agent-title",
+        "settings-tabs-agent-title",
+        "settings-tabs-agent-title-description",
+    ),
+    entry(
+        Section::Tabs,
         "tabs-hide-single",
         "settings-tabs-hide-single",
         "",
@@ -423,6 +429,12 @@ pub(super) const CATALOG: &[Entry] = &[
     ),
     entry(
         Section::Tabs,
+        "tabs-herdr-2-scrollback",
+        "settings-tabs-herdr-2-scrollback",
+        "settings-tabs-herdr-2-scrollback-description",
+    ),
+    entry(
+        Section::Tabs,
         "tabs-pane-history",
         "settings-tabs-pane-history",
         "settings-tabs-pane-history-description",
@@ -444,6 +456,12 @@ pub(super) const CATALOG: &[Entry] = &[
         "notif-finished",
         "settings-notif-finished",
         "settings-notif-finished-description",
+    ),
+    entry(
+        Section::Notifications,
+        "notif-quiet-hours",
+        "settings-notif-quiet-hours",
+        "settings-notif-quiet-hours-description",
     ),
     entry(
         Section::Notifications,
@@ -474,6 +492,12 @@ pub(super) const CATALOG: &[Entry] = &[
         "notif-volume",
         "settings-notif-volume",
         "settings-notif-volume-description",
+    ),
+    entry(
+        Section::TextShortcuts,
+        "text-shortcuts-add",
+        "settings-text-shortcuts-add",
+        "settings-text-shortcuts-add-description",
     ),
     entry(
         Section::Integrations,

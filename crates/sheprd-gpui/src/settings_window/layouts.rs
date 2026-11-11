@@ -2,6 +2,7 @@
 // i18n: migrated
 use super::SettingsWindow;
 use crate::config::{Config, LayoutMode};
+use crate::window::main_window::MainWindow;
 use gpui::{App, Context, Global};
 
 #[derive(Default)]
@@ -33,6 +34,14 @@ pub(super) fn clear_layout_draft(cx: &mut App) {
     draft.revision = draft.revision.wrapping_add(1);
 }
 
+/// Leaves `mode` as a draft being edited, as a click in Settings does.
+#[cfg(test)]
+pub(super) fn draft_layout(mode: LayoutMode, cx: &mut App) {
+    let draft = cx.default_global::<LayoutDraft>();
+    draft.active = true;
+    draft.mode = Some(mode);
+}
+
 #[cfg(test)]
 #[derive(Clone)]
 pub(super) struct LayoutIo {
@@ -55,13 +64,11 @@ impl SettingsWindow {
     }
 
     pub(super) fn broadcast_layout(&self, cx: &mut Context<Self>) {
-        for handle in cx.windows() {
-            if let Some(handle) = handle.downcast::<crate::SheprdWindow>() {
-                let _ = handle.update(cx, |view, _, cx| {
-                    view.config.layout.mode = self.config.layout.mode;
-                    cx.notify();
-                });
-            }
+        for handle in MainWindow::all(cx) {
+            let _ = handle.update(cx, |view, _, cx| {
+                view.config.layout.mode = self.config.layout.mode;
+                cx.notify();
+            });
         }
         let mut appearance = cx
             .try_global::<crate::app::InitialAppearance>()

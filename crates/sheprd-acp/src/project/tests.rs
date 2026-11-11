@@ -5,7 +5,10 @@ use serde_json::{Value, json};
 use super::*;
 
 mod activities;
+mod direct_subagents;
+mod edits;
 mod images;
+mod todos;
 mod tool_start;
 
 fn update(value: Value) -> wire::SessionUpdate {

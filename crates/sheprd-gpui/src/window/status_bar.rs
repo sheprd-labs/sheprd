@@ -8,6 +8,7 @@ use crate::i18n::{Localize, fl};
 use crate::{
     APP_VERSION,
     config::status_bar::{AwakeScope, Button},
+    device_tags::Status,
     state::ConnectionStatus,
 };
 use gpui::{prelude::*, *};
@@ -23,14 +24,21 @@ const MODEL_WIDTH: f32 = 160.;
 
 impl SheprdWindow {
     /// The bar's height, which grows with the UI font.
-    pub(super) fn status_bar_height(&self) -> f32 {
+    pub(crate) fn status_bar_height(&self) -> f32 {
         (self.config.ui.size * 1.5 + 4.).max(22.)
     }
 
-    pub(super) fn render_status_bar(&self, cx: &mut Context<Self>) -> Stateful<Div> {
-        let status = (!matches!(self.live.status, ConnectionStatus::Connected)
-            || self.local_error.is_some()
-            || self.live.error.is_some())
+    pub(crate) fn render_status_bar(&self, cx: &mut Context<Self>) -> Stateful<Div> {
+        // A host with no Herdr 1 at all runs its terminals in herdr-core, so
+        // its Herdr 1 is never connected and saying so would ask the user to
+        // install one the window does not need.
+        let reports = self
+            .live
+            .reports_herdr_1(self.sessions(self.selected_endpoint).core_answers);
+        let status = (reports
+            && (!matches!(self.live.status, ConnectionStatus::Connected)
+                || self.local_error.is_some()
+                || self.live.error.is_some()))
         .then(|| self.live.status_text(self.local_error.as_deref()));
         let items = self.config.status_bar;
         let height = px(self.status_bar_height());
@@ -59,6 +67,7 @@ impl SheprdWindow {
             .text_color(rgb(self.theme.foreground))
             .children(self.render_agent_model(cx))
             .children(usage)
+            .children(self.render_device_tags_status(cx))
             .when_some(
                 self.prefix_armed
                     .then(|| self.keymap().prefix_label())
@@ -93,7 +102,7 @@ impl SheprdWindow {
                         .child(fl!("status-bar-resize-keys")),
                 )
             })
-            .when(!self.live.status.is_connected(), |bar| {
+            .when(reports && !self.live.status.is_connected(), |bar| {
                 bar.child(self.connection_dot())
             })
             .child(
@@ -196,6 +205,32 @@ impl SheprdWindow {
     /// The focused agent's model, from the `model` and `effort` tokens its
     /// integration reports. For Claude, clicking it opens Claude's own model
     /// picker; other agents show the model only.
+    /// How tags stand with the phones, once something is tagged and a phone
+    /// is paired to read them.
+    fn render_device_tags_status(&self, cx: &Context<Self>) -> Option<Div> {
+        let status = crate::device_tags::DeviceTags::status(cx)?;
+        let phones = crate::remote::Supervisor::devices(cx)?.len();
+        if phones == 0 {
+            return None;
+        }
+        let theme = &self.theme;
+        let (color, text) = match status {
+            Status::Synced => (theme.palette[2], fl!("device-tags-synced", count = phones)),
+            Status::Waiting(count) => (theme.palette[3], fl!("device-tags-waiting", count = count)),
+        };
+        Some(
+            div()
+                .debug_selector(|| "device-tags-status".into())
+                .row()
+                .flex_none()
+                .items_center()
+                .gap(px(4.))
+                .text_color(rgb(theme.subtext()))
+                .child(glyph("icons/phone.svg", theme.ink(color)))
+                .child(text),
+        )
+    }
+
     fn render_agent_model(&self, cx: &mut Context<Self>) -> Option<Stateful<Div>> {
         let agent = self.focused_agent()?;
         let label = model_label(agent)?;

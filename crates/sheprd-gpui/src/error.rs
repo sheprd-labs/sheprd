@@ -184,6 +184,8 @@ pub enum Error {
         "macOS has not allowed Sheprd on your local network. Turn on Sheprd in System Settings › Privacy & Security › Local Network, then search again"
     )]
     LocalNetworkDenied,
+    #[error(transparent)]
+    LocalPorts(#[from] crate::local_ports::Error),
     #[error("Worktree notes stay in this app and are never sent to the daemon")]
     LocalWorktreeNote,
     #[error("Could not read the log {}: {source}", path.display())]
@@ -218,6 +220,8 @@ pub enum Error {
     NotificationMutes(#[from] crate::notification_mutes::Error),
     #[error("The current directory is not in a Git checkout.")]
     NotInCheckout,
+    #[error(transparent)]
+    Orchestrator(#[from] crate::orchestrator::Error),
     #[error("Could not read the orchestrator's database: {0}")]
     OrchestratorItems(#[source] crate::orchestrator::Error),
     #[error(transparent)]
@@ -262,6 +266,8 @@ pub enum Error {
     RemoteAgentTools(#[source] sheprd_client::Error),
     #[error(transparent)]
     RemoteControl(#[from] crate::remote::Error),
+    #[error(transparent)]
+    RemoteUpdate(#[from] crate::remote_update::Error),
     #[error("{method}: {source}")]
     Request {
         method: sheprd_client::Method,

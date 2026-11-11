@@ -36,6 +36,7 @@ sheprd-client.workspace         = true
 sheprd-commands.workspace       = true
 sheprd-control-protocol.workspace = true
 sheprd-core-client.workspace    = true
+sheprd-session.workspace        = true
 sheprd-credentials.workspace    = true
 sheprd-diagnostics.workspace    = true
 sheprd-github.workspace         = true
@@ -65,6 +66,13 @@ secrecy.workspace              = true
 serde.workspace                = true
 serde_ignored.workspace        = true
 serde_json.workspace           = true
+# The `moonframe` feature: Sheprd in a window Moonframe lays out in Luau.
+# `acp` runs the agent behind the sparkles (the built-in `feedback` mod);
+# `studio` is Developer Mode (Inspect Element, the Developer tools). Not
+# `syntax`: its SQL grammar pins `cc` to a range the workspace can't share.
+async-channel = { optional = true, workspace = true }
+futures-lite  = { optional = true, workspace = true }
+moonframe     = { features = ["acp", "studio"], optional = true, workspace = true }
 sha2.workspace                 = true
 skrifa.workspace               = true
 sysinfo.workspace              = true
@@ -105,7 +113,7 @@ test-case.workspace = true
 libc.workspace = true
 
 [features]
-default = ["azure", "boat", "coder", "container", "daytona", "opensandbox", "railway", "sprites"]
+default = ["azure", "boat", "boxd", "coder", "container", "daytona", "opensandbox", "railway", "sprites"]
 # Machines from cloud providers as devices: the shared device list, background
 # jobs, and connector. Turned on by each provider below; not useful alone.
 cloud = ["sheprd-client/cloud", "sheprd-remote/cloud", "sheprd-usage/cloud", "sheprd-vcs/cloud"]
@@ -114,6 +122,8 @@ cloud = ["sheprd-client/cloud", "sheprd-remote/cloud", "sheprd-usage/cloud", "sh
 azure = ["cloud", "sheprd-client/azure", "sheprd-remote/azure", "sheprd-usage/azure", "sheprd-vcs/azure"]
 # Boat sandboxes as devices, with an API key and per-machine SSH key setup.
 boat = ["cloud", "sheprd-client/boat", "sheprd-remote/boat"]
+# boxd machines as devices, with an API key and this app as their exec relay.
+boxd = ["cloud", "sheprd-client/boxd", "sheprd-remote/boxd"]
 # Coder workspaces as devices, with OAuth2 sign-in.
 coder = ["cloud", "sheprd-client/coder", "sheprd-remote/coder"]
 # Containers on this computer's Docker or Podman engine as devices.
@@ -131,6 +141,15 @@ sprites = ["cloud", "sheprd-client/sprites", "sheprd-remote/sprites"]
 # provides `Window::render_to_image`, so `--capture` needs no screen-recording
 # permission.
 mockup = ["gpui_platform/test-support"]
+# Development only: a plain launch opens Sheprd in a window Moonframe lays out
+# from `moonframe/app` (Luau), with Inspect Element and the sparkles agent to
+# change it live; `sheprd` commands and `--socket`/`--session` launches stay
+# the app's own. Off by default: without it the app is unchanged.
+# `just run-moonframe` builds and runs it.
+moonframe = ["dep:async-channel", "dep:futures-lite", "dep:moonframe"]
+# With `moonframe`: writes the window's rendered frame to `MOONFRAME_CAPTURE`,
+# for checks where the session has no screen recording permission.
+moonframe-capture = ["moonframe", "moonframe/capture"]
 integration-test = [
   "sheprd-github/test-support",
   "objc2-app-kit/NSPasteboardItem",
@@ -190,6 +209,7 @@ nix.workspace          = true
 oo7.workspace          = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
+accesskit_macos.workspace       = true
 font-kit.workspace              = true
 block2.workspace                = true
 dispatch2.workspace             = true

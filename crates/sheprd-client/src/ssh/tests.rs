@@ -1,9 +1,11 @@
 use super::*;
 
+mod child_bridge;
 #[cfg(unix)]
 mod command;
 #[cfg(unix)]
 mod config_dir;
+mod core_probe;
 mod forward;
 mod incompatible;
 #[cfg(unix)]
@@ -11,8 +13,6 @@ mod mise;
 mod probe_failure;
 mod serve;
 mod windows_host;
-#[cfg(windows)]
-mod windows_pipes;
 
 #[cfg(unix)]
 #[test]

@@ -7,7 +7,9 @@
 //! It never blocks: the [`Service`] worker does the I/O, and the host pushes
 //! the theme, live agent statuses, and the GitHub account from its tick.
 
+mod browse;
 mod conversation;
+mod core_removal;
 mod detail;
 mod dispatch;
 mod hosts;
@@ -18,10 +20,14 @@ mod look;
 mod markdown;
 pub(crate) mod pane;
 mod pills;
+mod pr_cells;
+mod projects;
 mod pull;
+mod remote;
 mod repo;
 mod rows;
 mod status;
+mod tasks;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
@@ -43,7 +49,9 @@ use repo::Repo;
 pub(crate) use rows::Tab;
 use rows::{Filters, Runs, Sort};
 use std::{
+    cell::Cell,
     collections::{HashMap, HashSet},
+    rc::Rc,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -60,12 +68,28 @@ pub(crate) enum Event {
         endpoint: usize,
         pane_id: String,
     },
+    /// Show a Herdr 2 run's agent: the workspace the app keeps at its
+    /// checkout on this machine, kept with `terminal` as its tab when none is.
+    OpenCoreRun {
+        path: std::path::PathBuf,
+        terminal: String,
+        label: String,
+    },
+    /// Close the workspace the app keeps at `path` on this machine: a
+    /// removed Herdr 2 run's checkout.
+    CloseCoreRun {
+        path: std::path::PathBuf,
+    },
     /// Show a run's Herdr workspace on the host it is on: `None` for this
     /// machine, else an SSH destination.
     OpenWorkspace {
         host: Option<String>,
         session: Option<String>,
         workspace_id: String,
+    },
+    /// Show the workspace holding the project with repository key `repo`.
+    OpenProject {
+        repo: String,
     },
     /// Open a web address, such as an issue's page, in a browser tab.
     OpenUrl(String),
@@ -84,6 +108,17 @@ impl EventEmitter<Event> for OrchestratorView {}
 
 /// How long Refresh spins before the workers' own sync states take over.
 const REFRESH_GRACE: Duration = Duration::from_millis(1500);
+
+/// A dropdown under the search row; one is open at a time.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Menu {
+    Sort,
+    State,
+    /// Browsing Azure DevOps organizations.
+    Projects,
+    /// Which listed projects the list shows.
+    Repos,
+}
 
 /// The detail page of one item.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -165,7 +200,10 @@ pub(crate) struct OrchestratorView {
     live_branches: Arc<Vec<super::LiveBranch>>,
     tab: Tab,
     sort: Sort,
-    sort_open: bool,
+    /// The dropdown open under the search row, if any.
+    menu: Option<Menu>,
+    /// How many repositories the Browse menu draws: its pages so far.
+    browse_rows: usize,
     filters: Filters,
     /// The Pull requests tab's Mine and Review requested toggles.
     yours: rows::Yours,
@@ -173,6 +211,8 @@ pub(crate) struct OrchestratorView {
     filters_open: bool,
     /// Only issues with this label.
     label: Option<String>,
+    /// What only the Tasks list narrows by.
+    task_filters: tasks::TaskFilters,
     collapsed: HashSet<String>,
     search: Entity<SearchInput>,
     query: String,
@@ -180,6 +220,9 @@ pub(crate) struct OrchestratorView {
     selected: Option<String>,
     detail: Option<Detail>,
     pane_width: f32,
+    /// The list's width as last laid out, which decides the columns its rows
+    /// keep beside an open item.
+    list_width: Rc<Cell<f32>>,
     focus: FocusHandle,
     scroll: UniformListScrollHandle,
     /// The shown list's lines: headings and rows.
@@ -207,6 +250,11 @@ pub(crate) struct OrchestratorView {
     merge_open: bool,
     /// Hosts a dispatch could go to, while the dialog is open.
     hosts: Arc<Vec<crate::dispatch::Candidate>>,
+    /// Which Herdr starts a dispatch on this machine.
+    local_terminals: super::Terminals,
+    /// Herdr 2 runs being removed here, by ID, with their checkouts, whose
+    /// kept workspaces close once the worker forgot the run.
+    core_removals: Vec<(String, std::path::PathBuf)>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -250,17 +298,20 @@ impl OrchestratorView {
             live_branches: Arc::default(),
             tab: Tab::default(),
             sort: Sort::default(),
-            sort_open: false,
+            menu: None,
+            browse_rows: browse::MAX_ROWS,
             filters: Filters::default(),
             yours: rows::Yours::default(),
             filters_open: false,
             label: None,
+            task_filters: tasks::TaskFilters::default(),
             collapsed: HashSet::new(),
             search,
             query: String::new(),
             selected: None,
             detail: None,
             pane_width: PANE_DEFAULT,
+            list_width: Rc::default(),
             focus: cx.focus_handle(),
             scroll: UniformListScrollHandle::new(),
             lines: Vec::new(),
@@ -277,6 +328,8 @@ impl OrchestratorView {
             avatars: conversation::Avatars::default(),
             merge_open: false,
             hosts: Arc::default(),
+            local_terminals: super::Terminals::default(),
+            core_removals: Vec::new(),
             _subscriptions: vec![subscription],
         }
     }
@@ -349,9 +402,11 @@ impl OrchestratorView {
         }
         if read {
             self.discard_non_projects();
+            self.sync_remotes();
             self.reconcile_agents();
             self.refresh_rows();
             self.follow_pull_request();
+            self.close_removed_core_runs(cx);
             changed = true;
         }
         if self.pr.poll() {
@@ -398,7 +453,8 @@ impl OrchestratorView {
     /// The hosts the listed repositories are on, once each.
     pub(crate) fn targets(&self) -> Vec<sheprd_client::ConnectTarget> {
         let mut targets: Vec<sheprd_client::ConnectTarget> = Vec::new();
-        for repo in &self.repos {
+        // A repository read without a checkout is on no host.
+        for repo in self.repos.iter().filter(|repo| repo.remote.is_none()) {
             if !targets.contains(&repo.request.target) {
                 targets.push(repo.request.target.clone());
             }
@@ -438,6 +494,12 @@ impl OrchestratorView {
         }
         self.hosts = Arc::new(hosts);
         cx.notify();
+    }
+
+    /// Which Herdr starts a dispatch on this machine: Herdr 2 when the
+    /// window's workspaces here use herdr-core.
+    pub(crate) fn set_local_terminals(&mut self, terminals: super::Terminals) {
+        self.local_terminals = terminals;
     }
 
     /// The banner's text, for tests outside the view.
@@ -511,7 +573,7 @@ impl OrchestratorView {
         for repo in self
             .repos
             .iter_mut()
-            .filter(|repo| repo.request.target == *target)
+            .filter(|repo| repo.remote.is_none() && repo.request.target == *target)
         {
             repo.login = login.clone();
             let same = match (&token, &repo.request.token) {
@@ -580,13 +642,26 @@ impl OrchestratorView {
         })
     }
 
-    /// A GitLab source waits for a token that works.
-    pub(crate) fn gitlab_needs_sign_in(&self) -> bool {
+    /// A `provider` source waits for a token that works.
+    pub(crate) fn needs_sign_in(&self, provider: Provider) -> bool {
         self.repos
             .iter()
             .flat_map(|repo| &repo.snapshot.sources)
             .any(|status| {
-                status.key.provider == Provider::Gitlab && matches!(status.state, SyncState::SignIn)
+                status.key.provider == provider && matches!(status.state, SyncState::SignIn)
+            })
+    }
+
+    /// The Azure DevOps organizations this view's repositories are read
+    /// from, lowercase, as tokens are saved for them.
+    pub(crate) fn azure_organizations(&self) -> impl Iterator<Item = String> + '_ {
+        self.repos
+            .iter()
+            .flat_map(|repo| &repo.snapshot.sources)
+            .filter(|status| status.key.provider == Provider::Azure)
+            .filter_map(|status| {
+                sheprd_orchestrator::azure::Repository::organization(&status.key)
+                    .map(str::to_ascii_lowercase)
             })
     }
 
@@ -634,7 +709,7 @@ impl OrchestratorView {
         // The open item belongs to the list left behind.
         self.detail = None;
         self.merge_open = false;
-        self.sort_open = false;
+        self.menu = None;
         self.refresh_rows();
         self.follow_pull_request();
         cx.notify();
@@ -697,6 +772,10 @@ impl OrchestratorView {
                 endpoint: agent.endpoint,
                 pane_id: agent.pane_id.clone(),
             });
+            return;
+        }
+        if let Some(event) = core_run(&runs, run) {
+            cx.emit(event);
             return;
         }
         let workspace = self.snapshot().runs.get(run).and_then(|run| {
@@ -779,8 +858,8 @@ impl OrchestratorView {
                 cx.notify();
                 true
             }
-            ("escape", None) if self.sort_open => {
-                self.sort_open = false;
+            ("escape", None) if self.menu.is_some() => {
+                self.menu = None;
                 cx.notify();
                 true
             }
@@ -866,4 +945,22 @@ impl Render for OrchestratorView {
             .child(body)
             .children(overlay)
     }
+}
+
+/// The event showing run `run` when Herdr 2 runs its agent on this machine:
+/// its checkout and the herdr-core terminal its session records.
+fn core_run(runs: &Runs<'_>, run: usize) -> Option<Event> {
+    let session = runs.session(run)?;
+    let super::Pane::Herdr2 { terminal } = &session.pane else {
+        return None;
+    };
+    let workspace = runs.runs.get(run)?.workspace.as_ref()?;
+    if session.host.is_some() {
+        return None;
+    }
+    Some(Event::OpenCoreRun {
+        path: workspace.path.clone()?,
+        terminal: terminal.clone(),
+        label: workspace.branch.clone(),
+    })
 }

@@ -5,7 +5,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 use sheprd_remote_control::{
-    app::enroll,
+    app::{enroll, shortcuts, tags},
     control::DeviceId,
     server::{self, Invocation},
 };
@@ -16,12 +16,25 @@ const MAX_INPUT: u64 = 64 * 1024;
 
 fn main() -> ExitCode {
     let options = match server::parse(std::env::args_os()) {
-        Ok(Invocation::Serve(options)) => options,
+        Ok(Invocation::Serve(options)) => *options,
         Ok(Invocation::Enroll { state_dir }) => return host(state_dir, run_enroll),
         Ok(Invocation::Revoke { state_dir, device }) => {
             return host(state_dir, |state_dir| {
                 enroll::revoke(state_dir, DeviceId(device))?;
                 Ok(())
+            });
+        }
+        Ok(Invocation::Shortcuts { state_dir, offer }) => {
+            return host(state_dir, |state_dir| {
+                let limit = sheprd_remote_control::control::shortcuts::MAX_WIRE_BYTES as u64;
+                let offer = read_offer(offer, limit)?;
+                print_json(&shortcuts::exchange(state_dir, offer)?)
+            });
+        }
+        Ok(Invocation::Tags { state_dir, offer }) => {
+            return host(state_dir, |state_dir| {
+                let offer = read_offer(offer, MAX_INPUT)?;
+                print_json(&tags::exchange(state_dir, offer)?)
             });
         }
         Ok(Invocation::Help) => {
@@ -85,6 +98,31 @@ fn run_enroll(state_dir: &std::path::Path) -> sheprd_remote_control::Result<()> 
     println!(
         "{}",
         serde_json::to_string(&enrolled).map_err(std::io::Error::from)?
+    );
+    Ok(())
+}
+
+/// The offer on standard input, at most `limit` bytes, when `offer` asks
+/// for one.
+fn read_offer<T: serde::de::DeserializeOwned>(
+    offer: bool,
+    limit: u64,
+) -> sheprd_remote_control::Result<Option<T>> {
+    let offer = offer
+        .then(|| {
+            let mut text = String::new();
+            std::io::stdin().take(limit).read_to_string(&mut text)?;
+            serde_json::from_str(&text).map_err(std::io::Error::from)
+        })
+        .transpose()?;
+    Ok(offer)
+}
+
+/// Prints what stands, as one line of JSON.
+fn print_json(value: &impl serde::Serialize) -> sheprd_remote_control::Result<()> {
+    println!(
+        "{}",
+        serde_json::to_string(value).map_err(std::io::Error::from)?
     );
     Ok(())
 }

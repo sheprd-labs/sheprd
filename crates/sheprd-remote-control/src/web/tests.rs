@@ -9,16 +9,24 @@ use axum::{
     extract::ConnectInfo,
     http::Request as HttpRequest,
 };
+use secrecy::ExposeSecret as _;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower::ServiceExt;
 
 mod apps;
+mod attention;
+mod changes;
+mod convert;
 #[cfg(unix)]
 mod echo;
+mod empty_core;
+mod github;
 mod handoff;
 mod hosts;
 mod indicators;
+mod layout;
 mod nearby;
+mod new_terminal;
 mod origins;
 mod pace;
 mod pairing;
@@ -26,10 +34,16 @@ mod presence;
 mod pull_requests;
 mod rename;
 mod routes;
+mod service_worker;
+mod shortcuts;
 mod stream;
 #[cfg(unix)]
 mod streaming;
+mod tags;
+#[cfg(unix)]
+mod term_history;
 mod terminal;
+mod update;
 mod uploads;
 
 pub(crate) const ORIGIN: &str = "https://192.168.1.20:7443";
@@ -58,22 +72,29 @@ pub(crate) fn state_with(dir: &std::path::Path, hub: Arc<Hub>) -> Shared {
         apns: None,
         apps: auth.apps(),
         auth: Mutex::new(auth),
+        changes: Default::default(),
         computer: "Studio".into(),
         connected: Mutex::new(HashMap::new()),
         fingerprint: authority.fingerprint().to_owned(),
+        github: Default::default(),
         authority: Some(authority),
         hub,
+        live_activities: crate::app::config::ActivityDetail::default(),
         load: tokio::sync::watch::channel(None).1,
         look: Look::load(dir),
         names: RwLock::new(names),
         near: Mutex::default(),
+        opened: crate::web::attention::Opened::default(),
         port: 7443,
         privacy: Privacy::Generic,
         pull_requests,
         push: None,
         reports: Mutex::new(report_limit()),
         seen: Mutex::new(seen),
+        shortcuts: Shortcuts::load(crate::app::shortcuts::file(dir)),
+        tags: Tags::load(crate::app::tags::file(dir)),
         typed: Typed::default(),
+        updates: Mutex::default(),
         uploads: Uploads::new(dir),
     })
 }
@@ -139,7 +160,7 @@ pub(crate) fn signed_in(state: &Shared, seed: u8) -> (DeviceId, String) {
             now,
         )
         .unwrap();
-    (device, session.token)
+    (device, session.token.expose_secret().to_owned())
 }
 
 pub(crate) fn get(path: &str) -> HttpRequest<Body> {

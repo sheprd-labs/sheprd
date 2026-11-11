@@ -12,6 +12,7 @@ pub(in crate::settings_window) mod remote_control;
 mod sidebar;
 mod status_bar;
 mod tabs;
+pub(in crate::settings_window) mod text_shortcuts;
 mod theme;
 mod window;
 
@@ -20,6 +21,7 @@ use crate::i18n::{self, fl};
 pub(super) use fonts::size_control;
 use gpui::{prelude::*, *};
 pub(super) use language::language_choices;
+pub(super) use notifications::quiet_hours_choices;
 pub(super) use sidebar::Spacing;
 pub(super) use window::padding_ids;
 

@@ -11,8 +11,10 @@ use super::{
 use crate::{
     control::DeviceId,
     hub::{Chat, Event},
-    web::{Shared, now_ms, read_screen},
+    web::attention::Watching,
+    web::{Shared, now_ms},
 };
+use secrecy::{ExposeSecret as _, SecretString};
 use sheprd_chat_protocol::{Change, Cursor, EntryKind, Transcript};
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::{
@@ -117,20 +119,23 @@ impl Views {
 /// signing `device` in, which ends with a `bye`.
 pub(crate) async fn run(
     state: Shared,
-    token: String,
+    token: SecretString,
     device: DeviceId,
     mut inbound: mpsc::Receiver<ClientMessage>,
     outbound: Outbound,
 ) {
     let mut views = Views::default();
-    let lost = access_lost(&state, &token, &device);
+    let lost = access_lost(&state, token.expose_secret(), &device);
     tokio::pin!(lost);
     loop {
         tokio::select! {
             message = inbound.recv() => match message {
                 Some(message) => {
-                    if let Some(error) = handle(&state, &mut views, message, &outbound) {
-                        let message = ServerMessage::Error { message: error.to_owned() };
+                    if let Some((error, view)) = handle(&state, &device, &mut views, message, &outbound) {
+                        // The phone shows it on the view; this says why a
+                        // view never came when only the computer is at hand.
+                        tracing::info!(?view, error, "a phone's request was refused");
+                        let message = ServerMessage::Error { message: error.to_owned(), view };
                         if outbound.send(message).await.is_err() {
                             return;
                         }
@@ -147,44 +152,63 @@ pub(crate) async fn run(
     }
 }
 
+/// What the phone is told when a request cannot be done, and the view it
+/// is about.
+type Refusal = (&'static str, Option<View>);
+
 /// Starts or stops a view; what the phone is told when it cannot.
 fn handle(
     state: &Shared,
+    device: &DeviceId,
     views: &mut Views,
     message: ClientMessage,
     outbound: &Outbound,
-) -> Option<&'static str> {
+) -> Option<Refusal> {
     let (view, since, size) = match message {
         ClientMessage::Unsubscribe { view } => {
+            tracing::debug!(?view, "a phone stopped following a view");
             views.stop(&view);
             return None;
         }
         ClientMessage::Subscribe { view, since, size } => (view, since, size),
         ClientMessage::TermScroll { pane, lines } => {
+            let refused = |message| Some((message, Some(View::Term { pane: pane.clone() })));
             if lines == 0 {
-                return Some("scroll out of range");
+                return refused("scroll out of range");
             }
             let lines = lines.clamp(-MAX_SCROLL_LINES, MAX_SCROLL_LINES);
-            return (!views.scroll(&pane, lines)).then_some(CANNOT_SCROLL);
+            return if views.scroll(&pane, lines) {
+                None
+            } else {
+                refused(CANNOT_SCROLL)
+            };
         }
     };
     if !views.admits(&view) {
-        return Some("too many views on one connection");
+        return Some(("too many views on one connection", Some(view)));
     }
+    tracing::debug!(?view, ?size, "a phone follows a view");
     let layout = state.hub.layout();
     let out = outbound.clone();
     let state = state.clone();
     match view.clone() {
-        View::Home => views.start(view, follow_home(state, out)),
+        View::Home => {
+            state.hub.wake_for_phone();
+            views.start(view, follow_home(state, out))
+        }
         View::Chat { pane } => {
             let Some(link) = layout.chat(&pane).and_then(|_| state.hub.chat(&pane)) else {
-                return Some("no such chat");
+                return Some(("no such chat", Some(view)));
             };
-            views.start(view, follow_chat(state, link, since, out));
+            let watching = Watching::new(&state, &pane);
+            views.start(view, async move {
+                let _watching = watching;
+                follow_chat(state, link, since, out).await;
+            });
         }
         View::Term { pane } => {
             if layout.terminal(&pane).is_none() {
-                return Some("no such terminal");
+                return Some(("no such terminal", Some(view)));
             }
             // A size out of range follows at the layout's size instead.
             let (size, refused) = match size {
@@ -194,13 +218,15 @@ fn handle(
             if !views.resize(&pane, size) {
                 let (size, follow) = watch::channel(size);
                 let (scrolls, scrolled) = mpsc::channel(SCROLL_QUEUE);
-                views.start(
-                    view,
-                    follow_term(state, pane.clone(), follow, scrolled, out),
-                );
+                let watching = Watching::new(&state, &pane);
+                let term = follow_term(state, device.clone(), pane.clone(), follow, scrolled, out);
+                views.start(view.clone(), async move {
+                    let _watching = watching;
+                    term.await;
+                });
                 views.terms.insert(pane, TermControl { size, scrolls });
             }
-            return refused;
+            return refused.map(|message| (message, Some(view)));
         }
     }
     None
@@ -237,6 +263,9 @@ async fn follow_home(state: Shared, out: Outbound) {
     let mut layout = state.hub.watch_layout();
     let mut pull_requests = state.pull_requests.subscribe();
     let mut load = state.load.clone();
+    let mut tags = state.tags.subscribe();
+    let mut shortcuts = state.shortcuts.subscribe();
+    let mut opened = state.opened.changed();
     let mut sent = None;
     loop {
         let current = home(&state);
@@ -258,6 +287,9 @@ async fn follow_home(state: Shared, out: Outbound) {
                 },
                 changed = layout.changed() => if changed.is_err() { return } else { break },
                 changed = pull_requests.changed() => if changed.is_err() { return } else { break },
+                changed = tags.changed() => if changed.is_err() { return } else { break },
+                changed = shortcuts.changed() => if changed.is_err() { return } else { break },
+                changed = opened.changed() => if changed.is_err() { return } else { break },
                 // A stopped sampler leaves the last figures standing.
                 changed = load.changed(), if load.has_changed().is_ok() => if changed.is_ok() { break },
                 () = out.closed() => return,
@@ -450,15 +482,15 @@ async fn follow_chat(state: Shared, link: Arc<Chat>, since: Option<Cursor>, out:
 /// and `scrolls` scroll it.
 async fn follow_term(
     state: Shared,
+    device: DeviceId,
     pane: String,
     mut size: watch::Receiver<Option<TermSize>>,
     mut scrolls: mpsc::Receiver<i32>,
     out: Outbound,
 ) {
-    let mut pace = state.typed.pace(&pane);
-    let reload = ServerMessage::Reload {
-        view: View::Term { pane: pane.clone() },
-    };
+    let mut pace = state.typed.pace_for(&pane, &device);
+    let view = View::Term { pane: pane.clone() };
+    let reload = ServerMessage::Reload { view: view.clone() };
     let mut last = None;
     let mut failures = 0;
     // Dropped on every exit, which lets Herdr size the terminal back.
@@ -467,12 +499,13 @@ async fn follow_term(
     let mut told = false;
     loop {
         if state.hub.layout().terminal(&pane).is_none() {
+            tracing::info!(pane, "a followed terminal left the layout");
             let _ = out.send(reload).await;
             return;
         }
         let wanted = *size.borrow_and_update();
         sizing.apply(&state, &pane, wanted).await;
-        match read_screen(&state, &pane).await {
+        match sizing.read(&state, &pane).await {
             Ok(text) => {
                 failures = 0;
                 if last.as_ref() != Some(&text) {
@@ -488,16 +521,31 @@ async fn follow_term(
                     last = Some(text);
                 }
             }
-            Err(_) => {
+            Err(error) => {
                 failures += 1;
+                tracing::warn!(pane, %error, failures, "a followed terminal could not be read");
                 if failures >= SCREEN_FAILURES {
-                    let _ = out.send(reload).await;
+                    // Said before the reload, so a phone that still has
+                    // nothing to draw shows why instead of waiting.
+                    let message = ServerMessage::Error {
+                        message: format!("This terminal could not be read: {error}"),
+                        view: Some(view),
+                    };
+                    if out.send(message).await.is_ok() {
+                        let _ = out.send(reload).await;
+                    }
                     return;
                 }
             }
         }
         tokio::select! {
-            () = pace.wait() => {}
+            () = pace.wait() => {
+                // What this phone types shows at the live screen, as
+                // typing into a scrolled terminal does.
+                if pace.typed_here() {
+                    sizing.live();
+                }
+            }
             () = out.closed() => return,
             // Subscribed again: the screen goes out again, at the new size.
             changed = size.changed() => {
@@ -507,12 +555,15 @@ async fn follow_term(
                 last = None;
             }
             Some(lines) = scrolls.recv() => {
-                if sizing.scroll(lines) {
+                if sizing.scroll(&pane, lines) {
                     // Read at once and again shortly, as after typing.
                     state.typed.typed(&pane);
                 } else if !told {
                     told = true;
-                    let message = ServerMessage::Error { message: CANNOT_SCROLL.to_owned() };
+                    let message = ServerMessage::Error {
+                        message: CANNOT_SCROLL.to_owned(),
+                        view: Some(view.clone()),
+                    };
                     if out.send(message).await.is_err() {
                         return;
                     }

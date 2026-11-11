@@ -1,5 +1,6 @@
 //! `status`, `app`, `window`, `ui`, and `run`.
 use super::{in_free_window, in_window, main_windows, window_for};
+use crate::window::main_window::MainWindow;
 use crate::{
     SheprdWindow,
     constants::APP_VERSION,
@@ -18,7 +19,8 @@ const QUIT_DELAY: Duration = Duration::from_millis(200);
 
 impl SheprdWindow {
     /// The hosts this window shows, with their connection status.
-    pub(crate) fn control_hosts(&self) -> Vec<HostInfo> {
+    pub(crate) fn control_hosts(&self, cx: &App) -> Vec<HostInfo> {
+        let mutes = crate::notification_mutes::Mutes::of(cx);
         self.endpoints
             .iter()
             .enumerate()
@@ -40,12 +42,15 @@ impl SheprdWindow {
                     label: endpoint.label.clone(),
                     status: status.to_owned(),
                     selected,
+                    muted: mutes.is_some_and(|mutes| mutes.host(&endpoint.id)),
+                    tags: self.device_tags.of(&endpoint.id).to_vec(),
+                    update: self.remote_update_offer(endpoint),
                 }
             })
             .collect()
     }
 
-    fn control_info(&self, window: &Window) -> WindowInfo {
+    fn control_info(&self, window: &Window, cx: &App) -> WindowInfo {
         let bounds = window.bounds();
         WindowInfo {
             id: window.window_handle().window_id().as_u64(),
@@ -59,7 +64,7 @@ impl SheprdWindow {
                 .snapshot
                 .as_ref()
                 .and_then(|snapshot| snapshot.focused_workspace_id.clone()),
-            hosts: self.control_hosts(),
+            hosts: self.control_hosts(cx),
         }
     }
 }
@@ -69,7 +74,7 @@ fn windows(cx: &mut App) -> Vec<WindowInfo> {
         .into_iter()
         .filter_map(|handle| {
             handle
-                .update(cx, |view, window, _| view.control_info(window))
+                .update(cx, |view, window, cx| view.control_info(window, cx))
                 .ok()
         })
         .collect()
@@ -87,8 +92,9 @@ pub(super) fn status(_: &Caller, cx: &mut App) -> Response {
 
 /// Brings `handle`'s window forward. Deferred: activating a window updates
 /// it, which cannot happen inside another update.
-fn activate(handle: gpui::WindowHandle<SheprdWindow>, cx: &mut App) {
+fn activate(handle: &MainWindow, cx: &mut App) {
     cx.activate(true);
+    let handle = handle.clone();
     cx.defer(move |cx| {
         let _ = handle.update(cx, |_, window, _| window.activate_window());
     });
@@ -98,7 +104,7 @@ pub(super) fn app(call: Call<AppOp>, cx: &mut App) -> Response {
     match call.op {
         AppOp::Focus => match window_for(&call.caller, cx) {
             Ok(handle) => {
-                activate(handle, cx);
+                activate(&handle, cx);
                 Response::done("Brought Sheprd forward")
             }
             Err(response) => response,
@@ -132,7 +138,7 @@ fn open(caller: &Caller, path: String, cx: &mut App) -> Response {
         open_in(view, path, window, cx)
     });
     if matches!(opened, Response::Done { .. }) {
-        activate(handle, cx);
+        activate(&handle, cx);
     }
     opened
 }
@@ -204,6 +210,11 @@ pub(super) fn window(call: Call<WindowOp>, cx: &mut App) -> Response {
                 windows: windows(cx),
             },
         },
+        WindowOp::Alerts => in_window(caller, cx, |view, _, _| Response::App {
+            reply: Reply::Alerts {
+                alerts: view.alert_infos(),
+            },
+        }),
         WindowOp::New { session } => {
             let target = match session {
                 Some(name) => {
@@ -226,7 +237,7 @@ pub(super) fn window(call: Call<WindowOp>, cx: &mut App) -> Response {
         }
         WindowOp::Focus => match window_for(caller, cx) {
             Ok(handle) => {
-                activate(handle, cx);
+                activate(&handle, cx);
                 Response::done(format!("Focused window {}", handle.window_id().as_u64()))
             }
             Err(response) => response,
@@ -288,18 +299,23 @@ pub(super) fn ui(call: Call<UiOp>, cx: &mut App) -> Response {
                 );
             }
             if !view.activity_panel_listed(panel) {
-                return Response::error(
-                    ErrorCode::Unsupported,
-                    format!(
+                let why = match panel {
+                    crate::sidebar::ActivityPanel::Tasks => {
+                        "No project in this window has a .beads folder".to_owned()
+                    }
+                    panel => format!(
                         "{} is turned off: [sidebar] {} = false",
                         panel.name(),
                         panel.name()
                     ),
-                );
+                };
+                return Response::error(ErrorCode::Unsupported, why);
             }
             view.show_activity_panel(panel, window, cx);
             Response::done(format!("Showing {}", panel.name()))
         }
+        UiOp::AgentGroups => agent_groups(view),
+        UiOp::AgentGroup { name } => pick_agent_group(view, name, cx),
         UiOp::StatusBar { switch } => {
             let visible = switch.apply(view.status_bar_visible);
             if visible != view.status_bar_visible {
@@ -310,6 +326,24 @@ pub(super) fn ui(call: Call<UiOp>, cx: &mut App) -> Response {
                 "Status bar shown"
             } else {
                 "Status bar hidden"
+            })
+        }
+        UiOp::MenuBar { switch } => {
+            if !crate::menus::IN_WINDOW {
+                return Response::error(
+                    ErrorCode::Unsupported,
+                    "macOS keeps the menus in the system's menu bar",
+                );
+            }
+            let visible = switch.apply(view.menu_bar_visible);
+            if visible != view.menu_bar_visible {
+                view.menu_bar_visible = visible;
+                cx.notify();
+            }
+            Response::done(if visible {
+                "Menu bar shown"
+            } else {
+                "Menu bar hidden"
             })
         }
         UiOp::FontSize { size } => {
@@ -328,6 +362,48 @@ pub(super) fn ui(call: Call<UiOp>, cx: &mut App) -> Response {
             }
         }
     })
+}
+
+/// Groups live in the agents panel, so without it there is nothing to show.
+fn no_agent_groups() -> Response {
+    Response::error(
+        ErrorCode::Unsupported,
+        "No coordinator groups: set [sidebar] coordinator_suffix and show the agents panel",
+    )
+}
+
+fn agent_groups(view: &SheprdWindow) -> Response {
+    let Some(groups) = view.agent_groups() else {
+        return no_agent_groups();
+    };
+    Response::App {
+        reply: Reply::AgentGroups {
+            current: view.agent_group.clone(),
+            groups: groups.names().iter().map(|&name| name.to_owned()).collect(),
+        },
+    }
+}
+
+fn pick_agent_group(
+    view: &mut SheprdWindow,
+    name: Option<String>,
+    cx: &mut gpui::Context<SheprdWindow>,
+) -> Response {
+    let Some(groups) = view.agent_groups() else {
+        return no_agent_groups();
+    };
+    if let Some(name) = &name
+        && !groups.names().contains(&name.as_str())
+    {
+        return super::not_found(format!("No coordinator group is named {name}"));
+    }
+    let message = name.as_ref().map_or_else(
+        || "Showing every agent group".to_owned(),
+        |name| format!("Showing agent group {name}"),
+    );
+    view.agent_group = name;
+    cx.notify();
+    Response::done(message)
 }
 
 pub(super) fn command(call: Call<CommandOp>, cx: &mut App) -> Response {

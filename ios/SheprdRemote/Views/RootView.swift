@@ -12,6 +12,7 @@ struct RootView: View {
     @State private var tab = RootTab.home
     @State private var homePath: [Route] = []
     @State private var workspacesPath = NavigationPath()
+    @State private var workspacesQuery = ""
     @State private var selection: Route?
     @State private var windowWidth: CGFloat = 0
     @State private var window = WindowState()
@@ -52,15 +53,17 @@ struct RootView: View {
         }
         // The split view presents it itself, over whichever sheet is open.
         .sheet(isPresented: Binding(get: { window.pairing && !wide }, set: { window.pairing = $0 })) { PairView() }
-        .alert("Not sent", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } })) {
+        .alert(model.noticeTitle ?? "Not sent", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil; model.noticeTitle = nil } })) {
         } message: {
             Text(model.notice ?? "")
         }
-        .sheet(item: Bindable(model).creating) { creating in
-            switch creating {
-            case let .workspace(device, folder): NewWorkspaceSheet(device: device, folder: folder)
-            case let .chat(device, workspace, label, agent): NewChatSheet(device: device, workspace: workspace, label: label, agent: agent)
-            }
+        // A panel's sheet presents it over itself, as here it would be
+        // behind it.
+        .sheet(item: Binding(get: { window.panelOpen ? nil : model.creating }, set: { model.creating = $0 })) {
+            CreatingSheet(creating: $0)
+        }
+        .sheet(item: Bindable(model).voice, onDismiss: nil) { session in
+            VoiceSheet(session: session)
         }
         // A panel's sheet draws it instead, as here it would be behind it.
         .nearbyCard(window, when: !window.panelOpen)
@@ -87,6 +90,15 @@ struct RootView: View {
         #if DEBUG
         .task { await followLaunchArguments() }
         #endif
+        // The microphone never stays open behind the app, or its lock.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { model.voice = nil }
+        }
+        .onChange(of: LockState.shared.locked) { _, locked in
+            guard !locked, let talk = model.pendingTalk else { return }
+            model.pendingTalk = nil
+            model.talk(saying: talk.words)
+        }
         .onChange(of: model.pendingTab) { _, wanted in
             guard let wanted else { return }
             tab = wanted
@@ -94,16 +106,25 @@ struct RootView: View {
         }
         .onChange(of: model.pendingRoute) { _, route in
             guard let route else { return }
+            let replaced = model.pendingRouteReplaces
+            model.pendingRouteReplaces = nil
             if wide {
                 selection = route
+            } else if replaced != nil, tab == .workspaces, !workspacesPath.isEmpty {
+                // The terminal being replaced is the one on screen, on top
+                // of this tab's stack; the route takes its place there.
+                workspacesPath.removeLast()
+                workspacesPath.append(route)
             } else {
                 tab = .home
+                if let replaced { homePath.removeAll { $0.showsTerminal(replaced) } }
                 homePath.append(route)
             }
             model.pendingRoute = nil
         }
         .onChange(of: model.pendingWorkspace) { _, key in
-            guard let key else { return }
+            // The split view opens it in its sidebar's Workspaces tab.
+            guard let key, !wide else { return }
             showWorkspace(key)
             model.pendingWorkspace = nil
         }
@@ -141,7 +162,7 @@ struct RootView: View {
             }
             .badge(model.fleet.waiting)
             Tab("Workspaces", systemImage: "square.stack.3d.up", value: RootTab.workspaces) {
-                NavigationStack(path: $workspacesPath) { WorkspacesTab().withRoutes() }
+                NavigationStack(path: $workspacesPath) { WorkspacesTab(query: $workspacesQuery).withRoutes() }
                     .slidesTabBar(hidden: !workspacesPath.isEmpty)
                     .connectionToast(pairing: $window.pairing)
             }
@@ -165,7 +186,9 @@ extension RootView {
     /// `-openComputer YES` opens the first computer's page from Workspaces,
     /// and `-editComputers YES` puts Settings' computers in Edit. In a
     /// chat, `-session YES` opens its session sheet and `-draft TEXT`
-    /// types into the composer.
+    /// types into the composer. `-voiceSay TEXT` runs a spoken command as
+    /// if it were heard, as the simulator has no microphone, and
+    /// `-voiceThen TEXT` follows it with another.
     func followLaunchArguments() async {
         let defaults = UserDefaults.standard
         if let link = defaults.string(forKey: "pairLink"),
@@ -182,6 +205,25 @@ extension RootView {
         case "workspaces": tab = .workspaces
         case "settings": tab = .settings
         default: break
+        }
+        if let tags = defaults.string(forKey: "computerTags"), let computer = model.computers.first {
+            model.setTags(tags.split(separator: ",").map(String.init), for: computer)
+        }
+        if let words = defaults.string(forKey: "voiceSay") {
+            try? await Task.sleep(for: .seconds(3))
+            model.talk(saying: words)
+            // `-voiceConfirm YES` presses Start.
+            if defaults.bool(forKey: "voiceConfirm") {
+                try? await Task.sleep(for: .seconds(5))
+                await model.voice?.confirm()
+            }
+            // `-voiceThen TEXT` says something next, as a follow-up.
+            if let next = defaults.string(forKey: "voiceThen") {
+                try? await Task.sleep(for: .seconds(8))
+                model.voice = nil
+                try? await Task.sleep(for: .seconds(1))
+                model.talk(saying: next)
+            }
         }
         if defaults.bool(forKey: "newWorkspace") {
             try? await Task.sleep(for: .seconds(2))
@@ -204,6 +246,18 @@ extension RootView {
 }
 #endif
 
+/// The form for a new workspace or chat, wherever it is presented.
+struct CreatingSheet: View {
+    let creating: Creating
+
+    var body: some View {
+        switch creating {
+        case let .workspace(device, folder, session): NewWorkspaceSheet(device: device, folder: folder, session: session)
+        case let .chat(device, workspace, label, agent): NewChatSheet(device: device, workspace: workspace, label: label, agent: agent)
+        }
+    }
+}
+
 extension View {
     func withRoutes() -> some View {
         navigationDestination(for: Route.self) { $0.screen }
@@ -224,6 +278,7 @@ extension Route {
         case let .chat(key, title): ChatScreen(key: key, title: title)
         case let .term(key, title): TerminalScreen(key: key, title: title)
         case let .workspace(key): WorkspaceScreen(key: key)
+        case let .changes(key): ChangesScreen(key: key)
         }
     }
 }

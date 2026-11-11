@@ -4,6 +4,7 @@ use control::BrowserCommand;
 mod automation;
 mod browser_zoom;
 mod chat;
+mod chat_shortcuts;
 mod cloud_batch;
 mod cloud_exec;
 mod cloud_images;
@@ -11,13 +12,17 @@ mod cloud_setup;
 mod control_commands;
 mod language;
 mod links;
+mod local_ports;
 mod machine;
+mod menu_bar;
 mod mods;
 mod open_command;
 mod px0;
 mod quota;
 mod remote;
+mod remote_update;
 mod security;
+mod ui_agent_group;
 mod ui_panel;
 
 #[test]

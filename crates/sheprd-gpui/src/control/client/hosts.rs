@@ -70,12 +70,24 @@ pub(super) fn host(command: HostCommand, context: &Context) -> crate::Result<Out
     let op = match command {
         HostCommand::List => HostOp::List,
         HostCommand::Select(id) => HostOp::Select { id },
+        HostCommand::Mute { host, muted } => HostOp::Mute { host, muted },
+        HostCommand::Tag { id, tags } => HostOp::Tag { id, tags },
+        HostCommand::Update(host) => HostOp::Update { host },
     };
     match context.call(Request::Host, op)? {
         Response::Done { message } => Ok(Output::message(message)),
         Response::Host {
             reply: Reply::Hosts { hosts },
         } => Output::data(text::hosts(&hosts), &hosts),
+        Response::Host {
+            reply: Reply::Update { host, latest, note },
+        } => {
+            let json = serde_json::json!({ "host": host, "latest": latest, "note": note });
+            match latest {
+                Some(latest) => Output::data(text::update_asked(&host, &latest), &json),
+                None => Ok(Output::data(text::no_update(&host, note.as_deref()), &json)?.nothing()),
+            }
+        }
         response => Err(unexpected(response)),
     }
 }
@@ -100,6 +112,8 @@ pub(super) fn ports(command: PortsCommand, context: &Context) -> crate::Result<O
         PortsCommand::Forward(port) => HostOp::Forward { port },
         PortsCommand::Unforward(port) => HostOp::Unforward { port },
         PortsCommand::Open(port) => HostOp::OpenPort { port },
+        PortsCommand::All => HostOp::LocalPorts,
+        PortsCommand::Signal(port, action) => HostOp::SignalPort { port, action },
     };
     match context.call(Request::Host, op)? {
         Response::Done { message } => Ok(Output::message(message)),
@@ -108,6 +122,13 @@ pub(super) fn ports(command: PortsCommand, context: &Context) -> crate::Result<O
         } => {
             let empty = ports.listening.is_empty() && ports.forwards.is_empty();
             let output = Output::data(text::ports(&ports), &ports)?;
+            Ok(if empty { output.nothing() } else { output })
+        }
+        Response::Host {
+            reply: Reply::LocalPorts(ports),
+        } => {
+            let empty = ports.listening.is_empty();
+            let output = Output::data(text::local_ports(&ports), &ports)?;
             Ok(if empty { output.nothing() } else { output })
         }
         response => Err(unexpected(response)),

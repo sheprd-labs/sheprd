@@ -20,12 +20,13 @@ use super::{
     protocol::{Caller, ErrorCode, MAX_WAIT_SECONDS, Request, Response},
     socket, socket_path, valid_caller,
 };
+use crate::window::main_window::MainWindow;
 use crate::{
     SheprdWindow,
     browser::{Feedback, FeedbackKey, Scope},
 };
 use browser::{feedback, notes, open_browser, reload, serve_waiters};
-use gpui::{App, Context, Window, WindowHandle};
+use gpui::{App, Context, Window};
 use std::{
     path::Path,
     time::{Duration, Instant},
@@ -125,10 +126,7 @@ fn not_found(message: impl Into<String>) -> Response {
 /// The window a request acts in: the one `--window` named; else the one
 /// showing the caller's workspace (on the caller's own daemon when it names
 /// one); else, for a caller outside any workspace, the frontmost.
-pub(super) fn window_for(
-    caller: &Caller,
-    cx: &mut App,
-) -> Result<WindowHandle<SheprdWindow>, Response> {
+pub(super) fn window_for(caller: &Caller, cx: &mut App) -> Result<MainWindow, Response> {
     if !valid_caller(caller) {
         return Err(Response::error(
             ErrorCode::InvalidRequest,
@@ -142,8 +140,45 @@ pub(super) fn window_for(
             .find(|handle| handle.window_id().as_u64() == id)
             .ok_or_else(|| not_found(format!("Sheprd has no window {id}")));
     }
+    // A herdr-core terminal outside any Herdr workspace is found by the tab
+    // that holds it.
+    if caller.workspace_id.is_none()
+        && let Some(terminal) = &caller.terminal_id
+    {
+        let target = target(caller);
+        return windows
+            .into_iter()
+            .find(|handle| {
+                handle
+                    .read_with(cx, |view, _| view.control_target(&target, false).is_some())
+                    .unwrap_or(false)
+            })
+            .ok_or_else(|| {
+                Response::error(
+                    ErrorCode::WorkspaceNotFound,
+                    format!("No Sheprd window shows herdr-core terminal {terminal}"),
+                )
+            });
+    }
     if let Some(workspace) = &caller.workspace_id {
         let target = target(caller);
+        // Several windows may show the workspace of a herdr-core terminal
+        // in a Herdr workspace; the one holding its tab is the caller's.
+        if let Some(terminal) = caller.terminal_id.as_deref() {
+            for strict in target.strictness() {
+                let holder = windows.iter().find(|handle| {
+                    handle
+                        .read_with(cx, |view, _| {
+                            view.holds_core_terminal(terminal)
+                                && view.control_target(&target, *strict).is_some()
+                        })
+                        .unwrap_or(false)
+                });
+                if let Some(handle) = holder {
+                    return Ok(handle.clone());
+                }
+            }
+        }
         for strict in target.strictness() {
             for handle in &windows {
                 let shows = handle
@@ -152,7 +187,7 @@ pub(super) fn window_for(
                     })
                     .unwrap_or(false);
                 if shows {
-                    return Ok(*handle);
+                    return Ok(handle.clone());
                 }
             }
         }
@@ -167,7 +202,7 @@ pub(super) fn window_for(
                     .unwrap_or(false)
             });
             if let Some(handle) = own {
-                return Ok(*handle);
+                return Ok(handle.clone());
             }
         }
         // The caller's workspace is in no window, perhaps of a session the
@@ -189,6 +224,7 @@ pub(super) fn target(caller: &Caller) -> Target<'_> {
         daemon: caller.daemon_socket.as_deref().map(Path::new),
         workspace: caller.workspace_id.as_deref(),
         pane: caller.pane_id.as_deref(),
+        terminal: caller.terminal_id.as_deref(),
     }
 }
 

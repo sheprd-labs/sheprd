@@ -7,10 +7,11 @@
 
 use super::{SettingsWindow, on_value, ui};
 use crate::direction::Logical;
+use crate::window::main_window::MainWindow;
 use crate::{
     config::{
         preferences::Preference,
-        remote::{Bind, Certificate, Edit, Privacy},
+        remote::{ActivityDetail, Bind, Certificate, Edit, Privacy},
     },
     i18n::{Localize, fl},
     remote::{Health, Supervisor, supervisor::Lease},
@@ -388,6 +389,33 @@ impl SettingsWindow {
                     }),
                 )),
             )
+            .child(
+                ui::row(
+                    theme,
+                    "remote-live-activities",
+                    fl!("settings-remote-live-activities"),
+                )
+                .description(fl!("settings-remote-live-activities-note"))
+                .control(ui::segmented(
+                    theme,
+                    "remote-live-activities-control",
+                    &[
+                        (
+                            ActivityDetail::Detailed,
+                            fl!("settings-remote-live-activities-detailed"),
+                        ),
+                        (
+                            ActivityDetail::Generic,
+                            fl!("settings-remote-live-activities-generic"),
+                        ),
+                    ],
+                    Some(remote.live_activities),
+                    !self.busy(),
+                    on_value(cx, |this, detail, _, cx| {
+                        this.save_remote(Edit::LiveActivities(detail), cx)
+                    }),
+                )),
+            )
             .child(ui::section(
                 theme,
                 &fl!("settings-remote-section-devices"),
@@ -685,10 +713,7 @@ impl SettingsWindow {
             return;
         };
         let target = source.entity_id();
-        for handle in cx.windows() {
-            let Some(handle) = handle.downcast::<crate::SheprdWindow>() else {
-                continue;
-            };
+        for handle in MainWindow::all(cx) {
             let _ = handle.update(cx, |view, window, cx| {
                 if cx.entity_id() != target {
                     return;

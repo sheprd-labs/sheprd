@@ -65,7 +65,8 @@ impl SheprdWindow {
         // which grow with the font as the label does.
         let (arrow_width, dot) = (scaled(font, HOST_ARROW_WIDTH), scaled(font, STATUS_WIDTH));
         let host_label_width =
-            (look.content_width(width) - arrow_width - 2. * host_gap - dot).max(0.);
+            (look.content_width(width) - look.group_indent - arrow_width - 2. * host_gap - dot)
+                .max(0.);
         let prefix = if pinned { "sticky-" } else { "" };
         let endpoint_id = endpoint.id.clone();
         let collapse_id = endpoint_id.clone();
@@ -110,10 +111,17 @@ impl SheprdWindow {
         let working_width = working.as_ref().map_or(0., |text| {
             text.chars().count() as f32 * super::metrics::glyph_width(font) + host_gap
         });
-        // The removal pulse, the count, and the gauges take their room from
-        // the label, not from the status.
+        // A muted device keeps its mark while offline, when it has no snapshot.
+        let muted =
+            crate::notification_mutes::Mutes::any(cx).is_some_and(|mutes| mutes.host(&endpoint.id));
+        let muted_size = (line_height(font) * 0.75).round();
+        let update = self.update_pill(endpoint, prefix, font, cx);
+        // The removal pulse, the count, the mute mark, the update pill, and
+        // the gauges take their room from the label, not from the status.
         let label_width = (host_label_width
             - if removing { dot + host_gap } else { 0. }
+            - if muted { muted_size + host_gap } else { 0. }
+            - update.as_ref().map_or(0., |(width, _)| width + host_gap)
             - working_width
             - gauges.as_ref().map_or(0., |(width, ..)| width + host_gap))
         .max(0.);
@@ -153,6 +161,7 @@ impl SheprdWindow {
                         &endpoint_label,
                         connected,
                         working.as_deref(),
+                        muted,
                     ))
                     .aria_selected(selected)
                     .map(|control| {
@@ -173,7 +182,8 @@ impl SheprdWindow {
             .flex()
             .flex_col()
             .justify_center()
-            .px(px(content_x))
+            .ps(px(content_x + look.group_indent))
+            .pe(px(content_x))
             // Rows scrolling underneath show through anything translucent, so
             // the copy paints the sidebar's own background. It stops hover and
             // clicks reaching those rows but not the wheel, which must keep
@@ -319,6 +329,13 @@ impl SheprdWindow {
                             )
                         },
                     )
+                    .when_some(update, |row, (_, pill)| row.child(pill))
+                    .when(muted, |row| {
+                        row.child(
+                            crate::icons::muted(theme, muted_size)
+                                .debug_selector(|| format!("{prefix}host-muted-{endpoint_id}")),
+                        )
+                    })
                     .child(
                         div()
                             .debug_selector(|| format!("{prefix}host-status-{endpoint_id}"))
@@ -375,7 +392,7 @@ impl SheprdWindow {
     }
 
     /// Folds or unfolds a device's header, from its arrow or a screen reader.
-    fn toggle_device(&mut self, endpoint_id: &str, cx: &mut Context<Self>) {
+    pub(super) fn toggle_device(&mut self, endpoint_id: &str, cx: &mut Context<Self>) {
         if let Some(endpoint) = self.endpoints.iter_mut().find(|e| e.id == endpoint_id) {
             endpoint.collapsed = !endpoint.collapsed;
         }
@@ -410,7 +427,7 @@ impl SheprdWindow {
         } else {
             &endpoint.live
         };
-        let tally = crate::devices_overview::online_tally(endpoint, live)?;
+        let tally = crate::devices_overview::online_tally(endpoint, live, &self.sessions(index))?;
         Some(format!("{}/{}", tally.working, tally.total()))
     }
 
