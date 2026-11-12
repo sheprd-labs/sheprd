@@ -163,9 +163,15 @@ change. It is off by default.
 - Each pane is tried once. A refusal, such as a missing Herdr integration, is
   logged and leaves the terminal; a chat moved back to its terminal stays
   there.
-- Typing into the agent's pane from this window keeps its terminal, since a
-  move would clear what is typed. Text typed from another client, such as the
+- Typing, composing, or pasting into the agent's pane from this window keeps
+  its terminal, since a move would clear what is typed. Moving the pointer,
+  scrolling, or clicking does not. Text typed from another client, such as the
   Herdr TUI, is not seen: that is what the wait is for.
+- Several Sheprd windows on one daemon move each agent once: a window claims
+  the pane before it stops the agent, and the others leave it alone. The same
+  claim keeps **Move Agent into Chat** in one window from racing a move
+  another window started. Two separate Sheprd processes do not see each
+  other's claims.
 - A tool that must keep an agent in its terminal can mark the pane:
   `herdr pane report-metadata PANE --source ID --token sheprd_terminal=keep`.
 - Agents move one at a time, so ten started together move one after another.

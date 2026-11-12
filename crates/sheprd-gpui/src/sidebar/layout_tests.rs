@@ -737,6 +737,7 @@ pub(crate) fn fixture_window(window: &mut Window, cx: &mut Context<SheprdWindow>
         focus,
         options: ConnectOptions::default(),
         last_queued_options: None,
+        last_typed: None,
         pending_resize: None,
         last_input: None,
         last_pointer: None,

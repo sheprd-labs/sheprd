@@ -40,6 +40,14 @@ impl SheprdWindow {
         self.last_input = Some(Instant::now());
     }
 
+    /// Records that the window just typed, composed, or pasted into the
+    /// focused pane: use of the window, and a draft the pane may now hold.
+    pub(crate) fn note_typing(&mut self) {
+        let now = Instant::now();
+        self.last_input = Some(now);
+        self.last_typed = Some(now);
+    }
+
     /// Records the pointer at `position` over the panes as use only when it
     /// moved, and returns whether it did: platforms such as Windows report
     /// move events for a cursor that did not move, and a resting cursor must

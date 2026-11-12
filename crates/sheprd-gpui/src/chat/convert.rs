@@ -9,6 +9,7 @@
 //! host through `herdr_cli`, on this machine or over SSH, and types the line
 //! once the window still shows that host.
 
+pub(in crate::chat) mod claim;
 mod core;
 mod error;
 mod remote;
@@ -145,6 +146,9 @@ pub(crate) struct Job {
     /// outcome is logged and handed back rather than flashed.
     pub(super) automatic: bool,
     cancelled: Arc<AtomicBool>,
+    /// Keeps every other window of this app off the pane until the move
+    /// has typed its line or given up.
+    _claim: Option<claim::Claim<'static>>,
     pane: String,
     result: mpsc::Receiver<Result<String, Error>>,
     scope: existing::Scope,
@@ -166,6 +170,7 @@ impl Job {
         let job = Self {
             automatic: false,
             cancelled: cancelled.clone(),
+            _claim: None,
             pane: pane.to_owned(),
             result,
             scope,
@@ -180,7 +185,7 @@ impl Drop for Job {
     }
 }
 
-fn spawn(request: Request) -> Result<Job, Error> {
+fn spawn(request: Request, claim: claim::Claim<'static>) -> Result<Job, Error> {
     let cancelled = Arc::new(AtomicBool::new(false));
     let flag = cancelled.clone();
     let (sender, result) = mpsc::sync_channel(1);
@@ -195,6 +200,7 @@ fn spawn(request: Request) -> Result<Job, Error> {
     Ok(Job {
         automatic: false,
         cancelled,
+        _claim: Some(claim),
         pane,
         result,
         scope,
@@ -263,12 +269,19 @@ impl SheprdWindow {
             selection: self.selection_epoch,
             connection: endpoint.generation,
         };
-        self.chats.converting = Some(spawn(Request {
-            agent,
-            pane: pane.clone(),
-            program,
-            scope,
-        })?);
+        // Another window of this app may be moving the same agent.
+        let claim = claim::CLAIMS
+            .claim(&scope.boot, &pane)
+            .ok_or(Error::Claimed)?;
+        self.chats.converting = Some(spawn(
+            Request {
+                agent,
+                pane: pane.clone(),
+                program,
+                scope,
+            },
+            claim,
+        )?);
         Ok((pane, agent))
     }
 

@@ -57,8 +57,10 @@ pub(crate) struct Tick {
     pub(crate) now: Instant,
     /// Whether a move is already under way, which the next one waits for.
     pub(crate) busy: bool,
-    /// When this window last sent input to Herdr's focused pane.
-    pub(crate) last_input: Option<Instant>,
+    /// When this window last typed, composed, or pasted into Herdr's
+    /// focused pane. Pointer motion, wheels, and clicks do not count: they
+    /// leave no draft, and the window notes them for any pane it shows.
+    pub(crate) last_typed: Option<Instant>,
 }
 
 /// The new agents of one daemon, and the panes that are done with.
@@ -154,7 +156,7 @@ impl Tracker {
             }
             let since = *watch.idle_since.get_or_insert(tick.now);
             let focused = snapshot.focused_pane_id.as_deref() == Some(pane.as_str());
-            if focused && tick.last_input.is_some_and(|input| input >= since) {
+            if focused && tick.last_typed.is_some_and(|input| input >= since) {
                 // Someone is typing in this terminal: it is theirs.
                 self.settled.insert(pane.clone());
                 self.watching.remove(pane);
@@ -196,7 +198,7 @@ impl SheprdWindow {
         let tick = Tick {
             now,
             busy: self.chats.converting.is_some() || self.chats.converting_core.is_some(),
-            last_input: self.last_input,
+            last_typed: self.last_typed,
         };
         let Some(pane) = self.chats.auto_convert.poll(scope, snapshot, tick) else {
             return;

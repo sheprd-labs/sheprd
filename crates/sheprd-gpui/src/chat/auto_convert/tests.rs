@@ -57,7 +57,7 @@ fn tick(now: Instant) -> Tick {
     Tick {
         now,
         busy: false,
-        last_input: None,
+        last_typed: None,
     }
 }
 
@@ -191,7 +191,7 @@ fn typing_into_the_focused_pane_keeps_its_terminal() {
     focused.focused_pane_id = Some("p1".into());
     tracker.poll(scope("b1"), &focused, tick(start));
     let typed = Tick {
-        last_input: Some(start + Duration::from_secs(2)),
+        last_typed: Some(start + Duration::from_secs(2)),
         ..tick(start + SETTLE)
     };
     assert_eq!(tracker.poll(scope("b1"), &focused, typed), None);
@@ -210,7 +210,7 @@ fn input_before_the_agent_was_ready_does_not_count() {
     focused.focused_pane_id = Some("p1".into());
     tracker.poll(scope("b1"), &focused, tick(start));
     let typed = Tick {
-        last_input: Some(start - Duration::from_secs(1)),
+        last_typed: Some(start - Duration::from_secs(1)),
         ..tick(start + SETTLE)
     };
     assert_eq!(
@@ -306,4 +306,66 @@ fn a_closed_pane_is_forgotten() {
     tracker.poll(scope("b1"), &snapshot(&[]), tick(start));
     assert!(tracker.settled.is_empty());
     assert!(tracker.watching.is_empty());
+}
+
+#[test]
+fn two_windows_on_one_daemon_move_a_new_agent_once() {
+    // Each window keeps its own tracker, so both find the agent due at once;
+    // the claim `convert_to_chat` takes lets only one of them move it.
+    let claims = convert::claim::Claims::new();
+    let start = Instant::now();
+    let mut windows = [
+        tracker(&snapshot(&[]), start),
+        tracker(&snapshot(&[]), start),
+    ];
+    let new = snapshot(&[("p1", "claude", IDLE, 1)]);
+    for tracker in &mut windows {
+        tracker.poll(scope("b1"), &new, tick(start));
+    }
+    let due: Vec<_> = windows
+        .iter_mut()
+        .filter_map(|tracker| tracker.poll(scope("b1"), &new, tick(start + SETTLE)))
+        .collect();
+    assert_eq!(due, ["p1", "p1"]);
+    let moves: Vec<_> = due
+        .iter()
+        .filter_map(|pane| claims.claim(&new.boot_id, pane))
+        .collect();
+    assert_eq!(moves.len(), 1, "exactly one window moves the agent");
+    // The window that lost settled the pane as tried: it never comes back.
+    for tracker in &mut windows {
+        assert_eq!(
+            tracker.poll(scope("b1"), &new, tick(start + SETTLE * 3)),
+            None
+        );
+    }
+}
+
+#[test]
+fn pointer_use_without_typing_lets_a_focused_agent_move() {
+    // The window notes the pointer as use, but it carries no typing stamp.
+    let start = Instant::now();
+    let mut tracker = tracker(&snapshot(&[]), start);
+    let mut focused = snapshot(&[("p1", "claude", IDLE, 1)]);
+    focused.focused_pane_id = Some("p1".into());
+    tracker.poll(scope("b1"), &focused, tick(start));
+    assert_eq!(
+        tracker.poll(scope("b1"), &focused, tick(start + SETTLE)),
+        Some("p1".into())
+    );
+}
+
+#[test]
+fn typing_into_the_focused_pane_while_it_settles_keeps_its_terminal() {
+    let start = Instant::now();
+    let mut tracker = tracker(&snapshot(&[]), start);
+    let mut focused = snapshot(&[("p1", "claude", IDLE, 1)]);
+    focused.focused_pane_id = Some("p1".into());
+    tracker.poll(scope("b1"), &focused, tick(start));
+    // A key typed right at the deadline still wins over the move.
+    let typed = Tick {
+        last_typed: Some(start + SETTLE),
+        ..tick(start + SETTLE)
+    };
+    assert_eq!(tracker.poll(scope("b1"), &focused, typed), None);
 }
