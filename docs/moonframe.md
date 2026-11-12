@@ -45,7 +45,7 @@ Everything around the terminals is Luau in `crates/sheprd-gpui/moonframe/app`:
 | `mods/activity/main.luau` | The activity bar |
 | `mods/worktrees/main.luau` | The left pane's head and worktree rows, linked worktrees under their checkout, drawn in the sidebar layout Sheprd's config names (`layout = "orca"`, `compact`, `minimal`, ...) |
 | `mods/agents/main.luau` | The agents under the worktrees, in Sheprd's sort and the same layout |
-| `mods/details/main.luau` | The right pane; open it from Details in the status bar |
+| `mods/details/main.luau` | The right pane; the toggle at the end of the title bar opens it |
 | `mods/status/main.luau` | The status bar |
 | `components/sheprd-*.luau` | What the worktrees and agents share: a row highlighted as the layout marks the selected one, the status dot, and the section names |
 | `style.luau` | The hover looks, for every mod |
@@ -81,7 +81,7 @@ shows in the log when one appears: `unknown key` names it.
 | `layout` | The configured sidebar layout's `name` and spacing: `padding`, `gap`, `row_padding`, `style_padding`, `child_indent`, `nest` (how far a device's rows step in under its header), `inset`, `spacing`, `radius`, `outline` (rounded highlights), `tree_lines`, `title_case`, `workspace_details`, `child_details`, `pr_counts` |
 | `panels`, `panel` | The activity panels (`id`, `label`, `count`, `unseen`) and the current one's `id` |
 | `connected`, `status` | Whether the daemon answers, and what to say about it |
-| `section`, `sidebar_visible`, `status_bar_visible` | What the window shows |
+| `section`, `sidebar_visible`, `status_bar_visible`, `details_visible` | What the window shows; `details_visible` follows the toggle at the end of the title bar, and the shell shows the details pane by it |
 | `usage` | The status bar's usage as Sheprd's own bar shows it, or `nil` while hidden or empty: `segments` (each provider's `id`, `name`, `locked`, `stale`, `meter` with `used` as a fraction and its `color`, `labels` with `text` and `color`, and `balance`), `busy`, `error`, and the words `unavailable` and `refresh_label` |
 
 Two parts change on their own, so they have their own providers and a change
@@ -89,7 +89,7 @@ runs only the views that read them:
 
 | Provider | Holds |
 | --- | --- |
-| `app.sheprd_load` | `cpu` and `memory`, as percentages |
+| `app.sheprd_load` | The selected host's load as Sheprd's own status bar shows it, or `nil` while hidden: `cpu` and `memory` as percentages with `cpu_color` and `memory_color`, the labels `cpu_label` and `memory_label` in `label_color`, and while the bar is detailed `history` (the CPU sparkline, oldest first: `value` as a fraction and `color`, or `false` before it is sampled), `meter` (memory: `used`, `color`) and `track`; `unavailable` when the host never answered |
 | `app.sheprd_theme` | `accent`, `active`, `added` and `removed` (change counts), `background`, `danger`, `dirty` and `dirty_ink` (the uncommitted-work chip), `foreground`, `muted`, `on_accent` and `on_muted` (text over those), `sidebar`, `sidebar_size` (the named size nearest the sidebar font's size over the UI size), `status` (each agent status's color), `subtext`, `success`, `surface`, `warning` |
 
 Moonframe's own widgets follow Sheprd's theme and UI font without reading these.

@@ -10,11 +10,10 @@ return mod {
 	-- Sheprd's own window opens at 1200 by 780 too.
 	window = { size = { width = 1200, height = 780 }, titlebar = "hidden", traffic_lights = { x = 9, y = 9 } },
 
-	init = function(previous)
-		-- Sizes come from Sheprd as soon as it starts; `details` is the user's.
+	init = function()
+		-- Sizes come from Sheprd as soon as it starts.
 		return {
 			activity_bar = 48,
-			details = previous and previous.details or false,
 			header = 34,
 			left = 300,
 			status_bar = 24,
@@ -22,9 +21,7 @@ return mod {
 	end,
 
 	update = function(state, msg)
-		if msg == "toggle-details" then
-			state.details = not state.details
-		elseif type(msg) == "table" and msg.left then
+		if type(msg) == "table" and msg.left then
 			-- Zero is meant: the activity bar turned off, or Zen mode hiding
 			-- the left column, and then neither is drawn.
 			state.activity_bar = msg.activity_bar
@@ -36,6 +33,7 @@ return mod {
 
 	view = function(state, app)
 		local theme = app.sheprd_theme or {}
+		local sheprd = app.sheprd or {}
 		return ui.column {
 			grow = true,
 			gap = "none",
@@ -89,7 +87,8 @@ return mod {
 						id = "body",
 						divider = false,
 						ui.pane { ui.column { grow = true, gap = "none", region "main" } },
-						ui.pane { size = 300, min = 200, visible = state.details, ui.mount "details" },
+						-- Opened by the toggle that ends Sheprd's title bar.
+						ui.pane { size = 300, min = 200, visible = sheprd.details_visible == true, ui.mount "details" },
 					},
 					ui.row { height = state.status_bar, shrink = false, gap = "none", style = { background = theme.surface }, ui.column { grow = true, gap = "none", ui.mount "status" } },
 				},

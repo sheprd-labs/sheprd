@@ -70,6 +70,7 @@ pub struct Stamp {
     agent_sort: AgentSort,
     agents_list: bool,
     connected: bool,
+    details_visible: bool,
     /// Every device's snapshot and folds; see `hosted_devices_stamp`.
     devices: u64,
     metrics: SidebarMetrics,
@@ -92,6 +93,7 @@ impl PartialEq for Stamp {
             && self.agent_sort == other.agent_sort
             && self.agents_list == other.agents_list
             && self.connected == other.connected
+            && self.details_visible == other.details_visible
             && self.devices == other.devices
             && self.metrics == other.metrics
             && self.panel == other.panel
@@ -250,6 +252,7 @@ impl SheprdWindow {
             agent_sort: self.agent_sort,
             agents_list: self.hosted_agents_list(),
             connected: self.live.status.is_connected(),
+            details_visible: self.details_visible,
             devices: self.hosted_devices_stamp(),
             panel: self.activity_panel(),
             section: self.activity_section().is_some(),
@@ -313,14 +316,9 @@ impl SheprdWindow {
                 })
             })
             .collect();
-        let reading = self.selected_host().and_then(|host| {
-            self.system_load
-                .get(&host)
-                .and_then(|load| load.latest().copied())
-        });
         let theme = &self.theme;
         HostedState {
-            load: load_state(reading.as_ref()),
+            load: self.hosted_load(),
             palette: Palette {
                 accent: theme.primary(),
                 active: theme.active,
@@ -351,6 +349,7 @@ impl SheprdWindow {
                 },
                 "layout": layout_state(self.config.layout.mode.name(), &self.hosted_metrics()),
                 "connected": self.live.status.is_connected(),
+                "details_visible": self.details_visible,
                 "panel": panel_id(self.activity_panel()),
                 "panels": panels,
                 "section": self.activity_section().is_some(),

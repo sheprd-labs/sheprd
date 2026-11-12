@@ -1,5 +1,4 @@
 -- The status bar: the connection, then the machine's load and quick commands.
-local meter = use "meter"
 
 local function run(command: string)
 	return { command = command }
@@ -93,6 +92,51 @@ local function usage(state: any, theme: any)
 	return ui.row(row)
 end
 
+-- The selected host's load as Sheprd's own bar draws it
+-- (`app.sheprd_load`, src/system_load/hosted.rs): CPU as a sparkline of its
+-- recent samples, memory as a meter, each with its share, in their
+-- severity's colors; the graphs only while the bar is detailed.
+local function load_item(load: any)
+	if load.unavailable then
+		return ui.text { load.unavailable, style = { color = load.label_color } }
+	end
+	local function label(text: string)
+		return ui.text { text, shrink = false, style = { color = load.label_color } }
+	end
+	local function share(value: number, color: string)
+		return ui.text { `{math.floor(value + 0.5)}%`, shrink = false, style = { color = color } }
+	end
+	local cpu: any = { class = "sheprd-load-cpu", align = "center", shrink = false, style = { gap = 5 }, label(load.cpu_label) }
+	if load.history then
+		local bars: any = { class = "sheprd-sparkline", align = "end", height = 11, shrink = false, style = { gap = 1 } }
+		for _, bar in load.history do
+			table.insert(bars, if bar
+				then ui.row { width = 2, height = math.max(11 * bar.value, 1), shrink = false, style = { background = bar.color, radius = 0.5 } }
+				else ui.row { width = 2, height = 1, shrink = false, style = { background = load.track } })
+		end
+		table.insert(cpu, ui.row(bars))
+	end
+	if load.cpu then
+		table.insert(cpu, share(load.cpu, load.cpu_color))
+	end
+	local row: any = { class = "sheprd-load", align = "center", shrink = false, style = { gap = 10 }, ui.row(cpu) }
+	if load.memory then
+		local memory: any = { class = "sheprd-load-memory", align = "center", shrink = false, style = { gap = 5 }, label(load.memory_label) }
+		if load.meter then
+			table.insert(memory, ui.row {
+				width = 32,
+				height = 5,
+				shrink = false,
+				style = { background = load.track, radius = 3 },
+				ui.row { width = 32 * load.meter.used, height = 5, style = { background = load.meter.color, radius = 3 } },
+			})
+		end
+		table.insert(memory, share(load.memory, load.memory_color))
+		table.insert(row, ui.row(memory))
+	end
+	return ui.row(row)
+end
+
 local function item(icon: string, text: string, color: string, msg: any, to: string?)
 	return ui.row {
 		class = "status-item",
@@ -108,10 +152,7 @@ local function item(icon: string, text: string, color: string, msg: any, to: str
 end
 
 return mod {
-	-- The meters' text at the UI size too, over the component's small one.
 	styles = {
-		[".meter-label"] = { size = "normal" },
-		[".meter-percent"] = { size = "normal" },
 		[".usage-segment:hover"] = { background = "secondary" },
 		[".usage-refresh:hover"] = { background = "secondary" },
 	},
@@ -124,7 +165,6 @@ return mod {
 
 	view = function(_, app)
 		local sheprd = app.sheprd or { agents = {} }
-		local load = app.sheprd_load or {}
 		local working = 0
 		for _, agent in sheprd.agents do
 			if agent.status == "working" then
@@ -141,9 +181,7 @@ return mod {
 			if working > 0 then item("bot", `{working} working`, theme.accent) else false,
 			if sheprd.usage then usage(sheprd.usage, theme) else false,
 			ui.spacer(),
-			if load.cpu then meter { label = "CPU", value = load.cpu / 100, width = 40, warn = 0.8 } else false,
-			if load.memory then meter { label = "MEM", value = load.memory / 100, width = 40, warn = 0.8 } else false,
-			item("panel-right", "Details", theme.subtext, "toggle-details", "shell"),
+			if app.sheprd_load then load_item(app.sheprd_load) else false,
 			item("palette", "Theme", theme.subtext, run "themes", "provider:sheprd"),
 			item("command", "Commands", theme.subtext, run "command_palette", "provider:sheprd"),
 		}

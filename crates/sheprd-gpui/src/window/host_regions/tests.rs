@@ -26,3 +26,25 @@ fn a_hosted_window_leaves_its_regions_to_the_host(cx: &mut TestAppContext) {
     assert!(cx.debug_bounds("activity").is_none());
     assert!(cx.debug_bounds("window-body").is_some());
 }
+
+#[gpui::test]
+fn a_hosted_window_ends_its_title_bar_with_the_details_toggle(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(crate::sidebar::layout_tests::fixture_window);
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+    assert!(
+        cx.debug_bounds("toggle-details").is_none(),
+        "only a host has the pane"
+    );
+
+    view.update(cx, |view, _| view.hosted = true);
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+    let toggle = cx.debug_bounds("toggle-details").unwrap();
+    cx.simulate_click(toggle.center(), Default::default());
+    let shown = view.update(cx, |view, cx| {
+        (
+            view.details_visible,
+            view.hosted_state(cx).main["details_visible"].clone(),
+        )
+    });
+    assert_eq!(shown, (true, serde_json::Value::Bool(true)));
+}
