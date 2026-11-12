@@ -730,8 +730,9 @@ return mod {
 			class = "sheprd-worktrees",
 			grow = true,
 			gap = "none",
-			-- Sheprd's sidebar font: see src/theme.rs.
-			style = { background = theme.sidebar, font = "mono" },
+			-- Sheprd's sidebar font (src/luau_window/theme.rs) at the size
+			-- step nearest its own (`sidebar_size`, src/sidebar/hosted.rs).
+			style = { background = theme.sidebar, font = "mono", size = theme.sidebar_size },
 			ui.row {
 				class = "sheprd-head",
 				align = "center",

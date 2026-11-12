@@ -2,6 +2,7 @@ use super::*;
 use gpui::TestAppContext;
 
 mod nest;
+mod sidebar_size;
 
 #[gpui::test]
 fn the_state_lists_each_workspace_with_what_its_row_shows(cx: &mut TestAppContext) {

@@ -158,6 +158,27 @@ fn agent_state(
     })
 }
 
+/// Moonframe's named text sizes and their scale of its base, the UI size.
+const TEXT_STEPS: [(&str, f32); 7] = [
+    ("small", 0.85),
+    ("normal", 1.0),
+    ("large", 1.2),
+    ("title", 1.5),
+    ("headline", 1.75),
+    ("display", 2.25),
+    ("hero", 3.0),
+];
+
+/// The named size nearest `size` over Moonframe's `base`: how the sidebar's
+/// own font size reaches Luau, which names sizes rather than pixels.
+fn text_step(size: f32, base: f32) -> &'static str {
+    let ratio = size / base;
+    TEXT_STEPS
+        .iter()
+        .min_by(|(_, a), (_, b)| (a - ratio).abs().total_cmp(&(b - ratio).abs()))
+        .map_or("normal", |(name, _)| name)
+}
+
 /// The configured layout's name and the spacing it and the config's
 /// overrides select, as the window's own rows read them.
 fn layout_state(name: &str, metrics: &SidebarMetrics) -> Value {
@@ -356,6 +377,9 @@ impl SheprdWindow {
                 "on_muted": hex(self.theme.text_on(self.theme.muted)),
                 "removed": hex(self.theme.ink(self.theme.palette[1])),
                 "sidebar": hex(self.theme.sidebar_background()),
+                // The sidebar's font size, as Moonframe names sizes over the
+                // UI size its text starts from.
+                "sidebar_size": text_step(self.config.sidebar.size, self.config.ui.size),
                 "subtext": hex(self.theme.subtext()),
                 "success": hex(self.theme.palette[2]),
                 "surface": hex(self.theme.surface),

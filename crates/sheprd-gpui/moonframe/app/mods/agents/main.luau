@@ -135,8 +135,9 @@ return mod {
 			class = "sheprd-agents",
 			shrink = false,
 			gap = "none",
-			-- Sheprd's sidebar font: see src/theme.rs.
-			style = { background = theme.sidebar, font = "mono" },
+			-- Sheprd's sidebar font (src/luau_window/theme.rs) at the size
+			-- step nearest its own (`sidebar_size`, src/sidebar/hosted.rs).
+			style = { background = theme.sidebar, font = "mono", size = theme.sidebar_size },
 			ui.row { class = "sheprd-rule", height = 1, shrink = false, style = { background = theme.active } },
 			subhead {
 				text = "agents",

@@ -89,10 +89,12 @@ runs only the views that read them:
 | Provider | Holds |
 | --- | --- |
 | `app.sheprd_load` | `cpu` and `memory`, as percentages |
-| `app.sheprd_theme` | `accent`, `active`, `added` and `removed` (change counts), `background`, `danger`, `dirty` and `dirty_ink` (the uncommitted-work chip), `foreground`, `muted`, `on_accent` and `on_muted` (text over those), `sidebar`, `status` (each agent status's color), `subtext`, `success`, `surface`, `warning` |
+| `app.sheprd_theme` | `accent`, `active`, `added` and `removed` (change counts), `background`, `danger`, `dirty` and `dirty_ink` (the uncommitted-work chip), `foreground`, `muted`, `on_accent` and `on_muted` (text over those), `sidebar`, `sidebar_size` (the named size nearest the sidebar font's size over the UI size), `status` (each agent status's color), `subtext`, `success`, `surface`, `warning` |
 
 Moonframe's own widgets follow Sheprd's theme and UI font without reading these.
-`font = "mono"` is Sheprd's sidebar font.
+`font = "mono"` is Sheprd's sidebar font, though only its family: set
+`size = theme.sidebar_size` beside it for the sidebar's size, as the
+worktrees and agents do.
 
 ## Menus
 
