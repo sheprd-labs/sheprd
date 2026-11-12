@@ -96,7 +96,7 @@
             lockFile = ./Cargo.lock;
             # All Moonframe crates share this pinned Git checkout, including
             # when the optional feature is off and Cargo only vendors it.
-            outputHashes."moonframe-1.0.1" = "sha256-mPWue5me46AlCRZJ0cPjdkfxKzl9gCIu+Ne86dYJy84=";
+            outputHashes."moonframe-1.1.1" = "sha256-2A+j88FsQc5iOyKLvcMJswtwq+KTjyP1obdelCEHMWg=";
           };
           # The app starts chats with the sheprd-acp beside its executable,
           # runs the sheprd-remote-control beside it as a user service, runs
