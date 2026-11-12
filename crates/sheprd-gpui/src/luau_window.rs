@@ -217,6 +217,8 @@ fn action(message: &Data) -> Option<Action> {
         .or_else(|| flag("fold_all").map(Action::FoldAll))
         .or_else(|| flag("toggle_agent_sort").map(|_| Action::ToggleAgentSort))
         .or_else(|| flag("open_build_pr").map(|_| Action::OpenBuildPullRequest))
+        .or_else(|| text("usage").map(Action::Usage))
+        .or_else(|| flag("usage_refresh").map(|_| Action::UsageRefresh))
 }
 
 /// A drag of the sidebar's edge: `pointer = { sidebar_width = true }` sends

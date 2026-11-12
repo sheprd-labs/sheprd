@@ -22,6 +22,11 @@ fn each_message_becomes_its_action() {
     assert_eq!(of("panel"), Some(Action::Panel("x".into())));
     assert_eq!(of("toggle_device"), Some(Action::ToggleDevice("x".into())));
     assert_eq!(of("select_device"), Some(Action::SelectDevice("x".into())));
+    assert_eq!(of("usage"), Some(Action::Usage("x".into())));
+    assert_eq!(
+        action(&Data::map([("usage_refresh", true.into())])),
+        Some(Action::UsageRefresh)
+    );
 }
 
 #[test]

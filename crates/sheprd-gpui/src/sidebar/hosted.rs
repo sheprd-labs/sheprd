@@ -217,7 +217,7 @@ fn status_colors(theme: &Theme) -> Value {
 }
 
 /// `color` as `#rrggbb`, how a mod's style names one.
-fn hex(color: u32) -> String {
+pub(crate) fn hex(color: u32) -> String {
     format!("#{:06x}", color & 0xff_ffff)
 }
 
@@ -357,6 +357,7 @@ impl SheprdWindow {
                 "sidebar_visible": self.sidebar_visible,
                 "status": self.live.status_text(self.local_error.as_deref()),
                 "status_bar_visible": self.status_bar_visible,
+                "usage": self.hosted_usage(),
             "workspaces": self.hosted_workspaces(cx),
                 "devices": self.hosted_devices(cx),
                 "multi": self.endpoints.len() > 1,

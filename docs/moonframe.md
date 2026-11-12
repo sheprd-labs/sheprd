@@ -82,6 +82,7 @@ shows in the log when one appears: `unknown key` names it.
 | `panels`, `panel` | The activity panels (`id`, `label`, `count`, `unseen`) and the current one's `id` |
 | `connected`, `status` | Whether the daemon answers, and what to say about it |
 | `section`, `sidebar_visible`, `status_bar_visible` | What the window shows |
+| `usage` | The status bar's usage as Sheprd's own bar shows it, or `nil` while hidden or empty: `segments` (each provider's `id`, `name`, `locked`, `stale`, `meter` with `used` as a fraction and its `color`, `labels` with `text` and `color`, and `balance`), `busy`, `error`, and the words `unavailable` and `refresh_label` |
 
 Two parts change on their own, so they have their own providers and a change
 runs only the views that read them:
@@ -125,6 +126,7 @@ Send a message with `to = "provider:sheprd"`:
 | `{ move_workspace = id, target = id, after = bool }` | Moves a workspace of the selected device before (or after) another, as dropping its row there does; the worktrees mod sends it when a row with `carry` is dropped on one with `accept` |
 | `{ sidebar_width = true }` as a `pointer` | Resizes the sidebar from a drag of its edge (`phase`, `dx`); a double click puts back the default width. The shell draws the edge as a hairline beside the left column, its grip lit on hover and overhanging the main area so it never covers the lists' scrollbars (`.sheprd-left-edge` in `style.luau`) |
 | `{ open_build_pr = true }` | Opens the pull request a worktree build came from |
+| `{ usage = id }`, `{ usage_refresh = true }` | Opens a usage provider's panel above the status bar, or reads usage again |
 
 A row on another device adds `endpoint = id` to its message; without it the
 selected device is meant.
