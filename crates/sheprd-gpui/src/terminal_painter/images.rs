@@ -209,6 +209,8 @@ struct Entry {
     bytes: usize,
     used: Instant,
     tick: u64,
+    /// Last paint that placed this image itself, never as a fallback.
+    placed: u64,
 }
 
 /// What a paint should do about one image.
@@ -230,8 +232,9 @@ type Finished = Arc<Mutex<Vec<(u64, Result<RgbaImage>)>>>;
 #[derive(Default)]
 pub(crate) struct ImageCache {
     entries: HashMap<u64, Entry>,
-    /// Newest ready texture for each continuous replacement lineage: shown by
-    /// a paint, or finished decoding since. Decodes that finish for a frame the
+    /// Newest completed frame for each continuous replacement lineage: shown
+    /// by a paint, or finished decoding since. Failures guard against stale
+    /// fallbacks too. Decodes that finish for a frame the
     /// scene has already moved past must still advance it, or a stream that
     /// outruns the decoder would freeze on its first frame.
     shown: HashMap<u64, u64>,
@@ -265,6 +268,7 @@ impl ImageCache {
         if let Some(entry) = self.entries.get_mut(&serial) {
             entry.used = now;
             entry.tick = self.tick;
+            entry.placed = self.tick;
             return match &entry.state {
                 State::Ready(texture) => Lookup::Ready(texture.clone()),
                 State::Decoding => Lookup::Wait,
@@ -282,6 +286,7 @@ impl ImageCache {
                 bytes: 0,
                 used: now,
                 tick: self.tick,
+                placed: self.tick,
             },
         );
         Lookup::Decode
@@ -296,7 +301,6 @@ impl ImageCache {
             return;
         };
         self.decoding -= 1;
-        let decoded = result.is_ok();
         match result {
             Ok(texture) => {
                 let dimensions = texture.size(0);
@@ -311,11 +315,9 @@ impl ImageCache {
                 entry.state = State::Failed;
             }
         }
-        // Serials only grow, so a newer ready texture replaces an older one
+        // Serials only grow, so a newer completion replaces an older one
         // and a slow older decode never moves the lineage back.
-        if let Some(lineage) = self.pending.remove(&serial)
-            && decoded
-        {
+        if let Some(lineage) = self.pending.remove(&serial) {
             self.advance(lineage, serial);
         }
     }
@@ -372,7 +374,13 @@ impl ImageCache {
         released
     }
 
-    /// Makes `serial` the newest ready frame of `lineage`. The frame it
+    /// Moves a frame to its current lineage without leaving old mappings.
+    fn show(&mut self, lineage: u64, serial: u64) {
+        self.shown.retain(|_, shown| *shown != serial);
+        self.shown.insert(lineage, serial);
+    }
+
+    /// Makes `serial` the newest completed frame of `lineage`. The frame it
     /// replaces, or `serial` itself when it is older and not used since the
     /// shown frame was, will not be placed again.
     fn advance(&mut self, lineage: u64, serial: u64) {
@@ -388,7 +396,16 @@ impl ImageCache {
                 }
             }
             previous => {
-                self.shown.insert(lineage, serial);
+                // Fallback use must not count as placing an older frame again:
+                // streams touch the fallback on every paint while decoding.
+                let placed = |serial| self.entries.get(&serial).map(|entry| entry.placed);
+                if let Some(shown) = previous
+                    && placed(shown) > placed(serial)
+                {
+                    self.superseded.push(serial);
+                    return;
+                }
+                self.show(lineage, serial);
                 self.superseded.extend(previous);
             }
         }
@@ -410,6 +427,10 @@ impl ImageCache {
             Lookup::Decode | Lookup::Wait => {
                 if matches!(lookup, Lookup::Decode) {
                     self.pending.insert(image.serial(), image.lineage());
+                } else if let Some(lineage) = self.pending.get_mut(&image.serial()) {
+                    // Retained bytes can change lineage without restarting
+                    // their decode, even when no fallback exists to paint.
+                    *lineage = image.lineage();
                 }
                 let serial = self.shown.get(&image.lineage())?;
                 let entry = self.entries.get_mut(serial)?;
@@ -421,7 +442,7 @@ impl ImageCache {
                 Some(texture.clone())
             }
             Lookup::Failed => {
-                self.shown.remove(&image.lineage());
+                self.show(image.lineage(), image.serial());
                 None
             }
         }

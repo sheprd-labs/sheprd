@@ -108,3 +108,92 @@ fn collected_images_always_start_fresh_lineages() {
         next.get(&a).unwrap().lineage()
     );
 }
+
+fn retained_replacement_placed_again(shown_scene: bool, different_size: bool) {
+    let mut store = ImageStore::default();
+    let a = key(1, SurfaceGraphicsFormat::Rgba);
+    receive(&mut store, placed(&[&a], true), shown_scene);
+    let old = store.published().get(&a).unwrap().clone();
+    let mut b = a.clone();
+    b.data_fingerprint = 2;
+    receive(&mut store, placed(&[&b], true), shown_scene);
+    let before = store.published().get(&b).unwrap().clone();
+    assert_eq!(old.lineage(), before.lineage());
+    let mut gap = SurfaceGraphicsScene {
+        retained_assets: vec![b.clone()],
+        ..Default::default()
+    };
+    if different_size {
+        let mut x = a.clone();
+        x.data_fingerprint = 3;
+        x.image_width = 1;
+        x.data_len = 8;
+        gap.assets.push(asset(&x));
+        gap.placements.push(placement(&x));
+    }
+    receive(&mut store, surface(gap), shown_scene);
+    let mut again = placed(&[&b], false);
+    let changed = if shown_scene {
+        store.receive_shown_scene(&mut again.graphics)
+    } else {
+        let changed = store.receive(&mut again);
+        store.show();
+        changed
+    };
+    let after = store.published().get(&b).unwrap().clone();
+    assert_eq!(before.serial(), after.serial());
+    assert!(Arc::ptr_eq(before.data(), after.data()));
+    assert_ne!(
+        before.lineage(),
+        after.lineage(),
+        "shown_scene={shown_scene}"
+    );
+    assert!(changed, "lineage changes must be published");
+}
+
+#[test]
+fn a_retained_replacement_placed_after_an_empty_scene_starts_a_new_lineage() {
+    for shown_scene in [false, true] {
+        retained_replacement_placed_again(shown_scene, false);
+    }
+}
+
+#[test]
+fn a_retained_replacement_placed_after_another_size_starts_a_new_lineage() {
+    for shown_scene in [false, true] {
+        retained_replacement_placed_again(shown_scene, true);
+    }
+}
+
+#[test]
+fn continuously_placed_retained_images_do_not_churn_lineages() {
+    for shown_scene in [false, true] {
+        for ambiguous in [false, true] {
+            let mut store = ImageStore::default();
+            let a = key(1, SurfaceGraphicsFormat::Rgba);
+            let mut b = a.clone();
+            b.data_fingerprint = 2;
+            let keys = if ambiguous { vec![&a, &b] } else { vec![&b] };
+            receive(&mut store, placed(&keys, true), shown_scene);
+            let before = store.published();
+            for _ in 0..3 {
+                let mut next = placed(&keys, false);
+                let changed = if shown_scene {
+                    store.receive_shown_scene(&mut next.graphics)
+                } else {
+                    let changed = store.receive(&mut next);
+                    assert!(!store.show());
+                    changed
+                };
+                assert!(!changed);
+                let after = store.published();
+                for key in &keys {
+                    assert_eq!(
+                        before.get(key).unwrap().lineage(),
+                        after.get(key).unwrap().lineage()
+                    );
+                }
+            }
+        }
+    }
+}

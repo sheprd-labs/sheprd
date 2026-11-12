@@ -171,6 +171,21 @@ impl ImageStore {
             .iter()
             .map(|placement| &placement.asset)
             .collect();
+        // A retained image placed after a gap or another lineage must not
+        // fall back to a frame from before that discontinuity.
+        for key in &placed_now {
+            let Some(image) = self.images.get_mut(*key) else {
+                continue;
+            };
+            let continued = self
+                .placed
+                .get(&key.source)
+                .is_some_and(|previous| previous.2.is_none_or(|lineage| lineage == image.lineage));
+            if !continued {
+                image.lineage = NEXT_SERIAL.fetch_add(1, Ordering::Relaxed);
+                changed = true;
+            }
+        }
         for asset in assets {
             if self.images.contains_key(&asset.key) || !self.latest.contains(&asset.key) {
                 continue;
