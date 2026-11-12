@@ -216,8 +216,10 @@ pub(crate) enum Lookup {
     Ready(Arc<RenderImage>),
     /// Start decoding it; the entry now counts as in flight.
     Decode,
-    /// Decoding, failed, or no room to start yet.
+    /// Decoding, or no room to start yet.
     Wait,
+    /// Decoding failed; a previous frame must not hide the failure.
+    Failed,
 }
 
 type Finished = Arc<Mutex<Vec<(u64, Result<RgbaImage>)>>>;
@@ -228,6 +230,18 @@ type Finished = Arc<Mutex<Vec<(u64, Result<RgbaImage>)>>>;
 #[derive(Default)]
 pub(crate) struct ImageCache {
     entries: HashMap<u64, Entry>,
+    /// Newest ready texture for each continuous replacement lineage: shown by
+    /// a paint, or finished decoding since. Decodes that finish for a frame the
+    /// scene has already moved past must still advance it, or a stream that
+    /// outruns the decoder would freeze on its first frame.
+    shown: HashMap<u64, u64>,
+    /// Lineage of each decode in flight, at most `MAX_DECODES` of them.
+    pending: HashMap<u64, u64>,
+    /// Frames a newer one of their lineage replaced: nothing places them
+    /// again, so the next paint releases them instead of leaving them to idle
+    /// for a minute, which a stream of frames would turn into a full cache
+    /// that never decodes again.
+    superseded: Vec<u64>,
     bytes: usize,
     decoding: usize,
     tick: u64,
@@ -253,7 +267,8 @@ impl ImageCache {
             entry.tick = self.tick;
             return match &entry.state {
                 State::Ready(texture) => Lookup::Ready(texture.clone()),
-                State::Decoding | State::Failed => Lookup::Wait,
+                State::Decoding => Lookup::Wait,
+                State::Failed => Lookup::Failed,
             };
         }
         if self.decoding >= MAX_DECODES || self.entries.len() >= MAX_ENTRIES {
@@ -281,6 +296,7 @@ impl ImageCache {
             return;
         };
         self.decoding -= 1;
+        let decoded = result.is_ok();
         match result {
             Ok(texture) => {
                 let dimensions = texture.size(0);
@@ -294,6 +310,13 @@ impl ImageCache {
                 tracing::debug!(category = "pane_images", %error, "image not shown");
                 entry.state = State::Failed;
             }
+        }
+        // Serials only grow, so a newer ready texture replaces an older one
+        // and a slow older decode never moves the lineage back.
+        if let Some(lineage) = self.pending.remove(&serial)
+            && decoded
+        {
+            self.advance(lineage, serial);
         }
     }
 
@@ -309,6 +332,16 @@ impl ImageCache {
                 }
             }
         };
+        for serial in std::mem::take(&mut self.superseded) {
+            let held = self.shown.values().any(|shown| *shown == serial);
+            let decoding = self
+                .entries
+                .get(&serial)
+                .is_some_and(|entry| matches!(entry.state, State::Decoding));
+            if !held && !decoding {
+                remove(&mut self.entries, &mut self.bytes, serial);
+            }
+        }
         let idle: Vec<u64> = self
             .entries
             .iter()
@@ -334,7 +367,64 @@ impl ImageCache {
             };
             remove(&mut self.entries, &mut self.bytes, serial);
         }
+        self.shown
+            .retain(|_, serial| self.entries.contains_key(serial));
         released
+    }
+
+    /// Makes `serial` the newest ready frame of `lineage`. The frame it
+    /// replaces, or `serial` itself when it is older and not used since the
+    /// shown frame was, will not be placed again.
+    fn advance(&mut self, lineage: u64, serial: u64) {
+        match self.shown.get(&lineage).copied() {
+            Some(shown) if shown >= serial => {
+                // An older frame placed as itself at least as recently as the
+                // newer one is still wanted, as when a scene places it again.
+                // Comparing the two frames' last use, not the paint count,
+                // holds however many paints one frame takes (a popup adds one).
+                let used = |serial| self.entries.get(&serial).map(|entry| entry.tick);
+                if shown > serial && used(serial) < used(shown) {
+                    self.superseded.push(serial);
+                }
+            }
+            previous => {
+                self.shown.insert(lineage, serial);
+                self.superseded.extend(previous);
+            }
+        }
+    }
+
+    /// A ready image used by a paint advances the fallback. So does a finished
+    /// decode of the same lineage, but a lineage no scene places is never read.
+    fn for_paint(
+        &mut self,
+        image: &SurfaceImage,
+        lookup: Lookup,
+        now: Instant,
+    ) -> Option<Arc<RenderImage>> {
+        match lookup {
+            Lookup::Ready(texture) => {
+                self.advance(image.lineage(), image.serial());
+                Some(texture)
+            }
+            Lookup::Decode | Lookup::Wait => {
+                if matches!(lookup, Lookup::Decode) {
+                    self.pending.insert(image.serial(), image.lineage());
+                }
+                let serial = self.shown.get(&image.lineage())?;
+                let entry = self.entries.get_mut(serial)?;
+                let State::Ready(texture) = &entry.state else {
+                    return None;
+                };
+                entry.used = now;
+                entry.tick = self.tick;
+                Some(texture.clone())
+            }
+            Lookup::Failed => {
+                self.shown.remove(&image.lineage());
+                None
+            }
+        }
     }
 
     /// Starts a paint and drops the textures it evicts from the atlas. A
@@ -348,8 +438,8 @@ impl ImageCache {
 
     /// Resolves the textures and geometry for one frame's placements,
     /// starting background decodes for images not yet decoded. Placements
-    /// whose texture is not ready are skipped this paint; a finished decode
-    /// refreshes the window.
+    /// being replaced keep their last shown texture until ready; other pending
+    /// placements are skipped. A finished decode refreshes the window.
     pub(crate) fn prepare(
         &mut self,
         images: PlacedImages<'_>,
@@ -366,10 +456,12 @@ impl ImageCache {
             let Some(geometry) = geometry(placement, origin, cell, grid) else {
                 continue;
             };
-            match self.lookup(image.serial(), now) {
-                Lookup::Ready(texture) => placed.push((placement.z, geometry, texture)),
-                Lookup::Decode => self.spawn(image, &placement.asset, window, cx),
-                Lookup::Wait => {}
+            let lookup = self.lookup(image.serial(), now);
+            if matches!(lookup, Lookup::Decode) {
+                self.spawn(image, &placement.asset, window, cx);
+            }
+            if let Some(texture) = self.for_paint(image, lookup, now) {
+                placed.push((placement.z, geometry, texture));
             }
         }
         // Lower z paints first; equal z keeps the scene's order.
