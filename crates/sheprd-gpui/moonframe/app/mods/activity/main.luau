@@ -1,12 +1,14 @@
--- The activity bar: Sheprd's panels, with the counts it reports.
+-- The activity bar: Sheprd's panels, with the counts it reports. Moonframe
+-- draws only its bundled Lucide icons, so these are the nearest to Sheprd's
+-- own (`assets/icons`): a robot for automations, a bead for tasks.
 local ICONS = {
-	automations = "clock",
+	automations = "bot",
 	issues = "circle-dot",
 	overview = "activity",
 	ports = "plug",
 	pull_requests = "git-pull-request",
 	security = "shield",
-	tasks = "list-checks",
+	tasks = "git-commit-horizontal",
 	usage = "chart-line",
 	workspaces = "square-terminal",
 }
@@ -61,7 +63,8 @@ local function button(id: string, icon: string, label: string?, count: any, unse
 			height = 32,
 			shrink = false,
 			style = { background = if selected and theme.accent then `{theme.accent}30` else nil, radius = 8, margin = { left = 2 } },
-			ui.icon { icon, class = "activity-icon", style = { color = if selected then theme.foreground else theme.muted } },
+			-- "title" over Sheprd's 12px UI text is its bar's 17px icons.
+			ui.icon { name = icon, size = "title", class = "activity-icon", style = { color = if selected then theme.foreground else theme.muted } },
 			if count then bubble(count, unseen, theme) else false,
 		},
 	}

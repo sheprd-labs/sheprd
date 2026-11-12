@@ -13,12 +13,19 @@ local function item(icon: string, text: string, color: string, msg: any, to: str
 		msg = msg,
 		to = to,
 		style = { gap = 5 },
-		ui.icon { icon, size = "small", style = { color = color } },
-		ui.text { text, size = "small", style = { color = color } },
+		-- As Sheprd's own bar: text at the UI size, icons a size up.
+		ui.icon { name = icon, size = "large", style = { color = color } },
+		ui.text { text, style = { color = color } },
 	}
 end
 
 return mod {
+	-- The meters' text at the UI size too, over the component's small one.
+	styles = {
+		[".meter-label"] = { size = "normal" },
+		[".meter-percent"] = { size = "normal" },
+	},
+
 	init = function(previous)
 		return previous or {}
 	end,
