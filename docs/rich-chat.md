@@ -143,6 +143,38 @@ Limitations:
 - If `sheprd-acp` cannot continue the session, the pane keeps its error, and
   the agent's own command (such as `claude --resume ID`) still can.
 
+### Opening new agents as chats
+
+Turn on **Open new agents as chats** in Settings > Chat, or run
+`sheprd config set chat.auto_convert true`, and each agent that starts in a
+terminal afterwards moves into a chat on its own, as `chat convert` would.
+It does not matter what started it: typing `claude` at a prompt, `herdr agent
+start`, or another agent or tool driving Herdr. The calling tool needs no
+change. It is off by default.
+
+- Only agents that start after the window connected to their daemon move.
+  Turning it on, restarting Sheprd, or reconnecting leaves what already runs
+  in its terminal.
+- An agent moves once it has been idle for 10 seconds with no change Herdr
+  reports. A tool that prompts the agent as soon as it is ready makes it work,
+  which starts the wait again, so the move comes after that turn rather than
+  in the middle of the tool's handshake. An agent that turns busy just as it
+  was to move is watched again, up to twice.
+- Each pane is tried once. A refusal, such as a missing Herdr integration, is
+  logged and leaves the terminal; a chat moved back to its terminal stays
+  there.
+- Typing into the agent's pane from this window keeps its terminal, since a
+  move would clear what is typed. Text typed from another client, such as the
+  Herdr TUI, is not seen: that is what the wait is for.
+- A tool that must keep an agent in its terminal can mark the pane:
+  `herdr pane report-metadata PANE --source ID --token sheprd_terminal=keep`.
+- Agents move one at a time, so ten started together move one after another.
+- The moved agent runs as a chat, which Herdr reports as an `acp` agent with
+  the original agent's display name. A tool that later finds the pane's agent
+  by its kind, such as `claude`, no longer finds it there.
+- Herdr 1 panes only, with the limitations above; Herdr 2 panes stay as they
+  are.
+
 ## Chats after a reboot
 
 When Herdr restores its panes after a reboot or a server restart, a pane that

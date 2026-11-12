@@ -141,6 +141,9 @@ fn run(request: &Request, cancelled: &AtomicBool) -> Result<String, Error> {
 /// further, as a window that closes or a pane that moves on must.
 #[derive(Debug)]
 pub(crate) struct Job {
+    /// Started by `[chat] auto_convert` rather than asked for, so its
+    /// outcome is logged and handed back rather than flashed.
+    pub(super) automatic: bool,
     cancelled: Arc<AtomicBool>,
     pane: String,
     result: mpsc::Receiver<Result<String, Error>>,
@@ -161,6 +164,7 @@ impl Job {
         let (sender, result) = mpsc::sync_channel(1);
         let cancelled = Arc::new(AtomicBool::new(false));
         let job = Self {
+            automatic: false,
             cancelled: cancelled.clone(),
             pane: pane.to_owned(),
             result,
@@ -189,6 +193,7 @@ fn spawn(request: Request) -> Result<Job, Error> {
         })
         .map_err(Error::Worker)?;
     Ok(Job {
+        automatic: false,
         cancelled,
         pane,
         result,
@@ -356,8 +361,10 @@ impl SheprdWindow {
             self.type_script_line(&job.scope.boot, &job.pane, &line)
                 .map_err(|error| Error::Type(Arc::new(error)))
         });
-        if let Err(error) = typed {
-            self.flash_convert_error(&error, cx);
+        match typed {
+            Err(error) if job.automatic => self.auto_convert_failed(&job.pane, &error),
+            Err(error) => self.flash_convert_error(&error, cx),
+            Ok(()) => {}
         }
         cx.notify();
     }
