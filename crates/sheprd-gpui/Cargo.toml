@@ -67,7 +67,7 @@ serde.workspace                = true
 serde_ignored.workspace        = true
 serde_json.workspace           = true
 # The `moonframe` feature: Sheprd in a window Moonframe lays out in Luau.
-# Its developer tools come with `moonframe-studio` below. Not `syntax`: its
+# Its developer tools ship with it. Not `syntax`: its
 # SQL grammar pins `cc` to a range the workspace can't share.
 async-channel = { optional = true, workspace = true }
 futures-lite  = { optional = true, workspace = true }
@@ -143,13 +143,14 @@ mockup = ["gpui_platform/test-support"]
 # A plain launch opens Sheprd in a window Moonframe lays out from the Luau in
 # `moonframe/app`, compiled into the binary; `sheprd` commands, `--classic`,
 # `--socket` and `--session` launches, and `moonframe_window = false` under
-# `[features]` open the classic window. Release builds ship it.
-moonframe = ["dep:async-channel", "dep:futures-lite", "dep:moonframe"]
-# Development only, never in release builds: with `moonframe`, the layout is
-# read from `moonframe/app` in this checkout so saving a file reloads it, with
+# `[features]` open the classic window. Release builds ship it, with
 # Moonframe's Developer Mode (Inspect Element, the Developer tools) and the
-# sparkles agent that edits the layout. `just run-moonframe` builds it.
-moonframe-studio = ["moonframe", "moonframe/acp", "moonframe/studio"]
+# sparkles agent (`acp`), which edits the user's copy of the layout.
+moonframe = ["dep:async-channel", "dep:futures-lite", "dep:moonframe", "moonframe/acp", "moonframe/studio"]
+# Development only, never in release builds: with `moonframe`, the layout is
+# read from `moonframe/app` in this checkout so saving a file reloads it, and
+# the sparkles' agent edits it there. `just run-moonframe` builds it.
+moonframe-studio = ["moonframe"]
 # With `moonframe`: writes the window's rendered frame to `MOONFRAME_CAPTURE`,
 # for checks where the session has no screen recording permission.
 moonframe-capture = ["moonframe", "moonframe/capture"]

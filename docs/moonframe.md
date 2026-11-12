@@ -26,10 +26,13 @@ file and talk to the same daemon.
 
 ## Builds
 
-| Build | Layout | Developer tools |
+| Build | Layout | The sparkles agent edits |
 | --- | --- | --- |
-| Default (`just run`, releases) | Compiled in, written to `~/.cache/sheprd/app/<hash>` to run | None |
-| `moonframe-studio` (`just run-moonframe`) | Read from `crates/sheprd-gpui/moonframe/app`, reloaded on save | Developer Mode, Inspect Element, the sparkles agent |
+| Default (`just run`, releases) | Compiled in, written to `~/.cache/sheprd/app/<hash>` to run | Your copies in `~/.config/sheprd` |
+| `moonframe-studio` (`just run-moonframe`) | Read from `crates/sheprd-gpui/moonframe/app`, reloaded on save | The checkout's files |
+
+Every build has Moonframe's developer tools: Developer Mode, Inspect Element,
+and the sparkles agent.
 
 `just run-moonframe` uses your settings and daemon, so quit Sheprd first.
 
@@ -54,9 +57,10 @@ The terminals, tabs, and pages stay one Rust view, placed with
 
 In `just run-moonframe`, saving a file reloads the window. To keep a change of
 your own in any build, copy the file to the same path under `~/.config/sheprd`
-and edit the copy; deleting it brings the original back. In
-`just run-moonframe`, the sparkles at the bottom right ask an agent to make a
-change, and it asks before each edit, and View > Inspect Element (⌥⌘I, or ⇧⌘X
+and edit the copy; deleting it brings the original back. The sparkles at the
+bottom right ask an agent to make a change, and it asks before each edit:
+in a release it writes those copies, in `just run-moonframe` the checkout's
+files. View > Inspect Element (⌥⌘I, or ⇧⌘X
 to go straight to picking) shows what built any part, and its file and line.
 
 Run `just run-moonframe --check` after a change (`sheprd --check` checks the
@@ -93,7 +97,7 @@ Moonframe's own widgets follow Sheprd's theme and UI font without reading these.
 ## Menus
 
 The menu bar is Sheprd's own, as its window has it (Sheprd, File, Edit, View,
-Terminal, Window). `just run-moonframe` adds Moonframe's Developer menu before
+Terminal, Window), with Moonframe's Developer menu before
 Window: Developer Mode and, while it is on, Components, Reload Modules, Undo
 and Redo, Inspect Element, Developer Tools and Slow Animations. A menu item reaches Sheprd
 wherever the focus is, in the Luau layout or a terminal.

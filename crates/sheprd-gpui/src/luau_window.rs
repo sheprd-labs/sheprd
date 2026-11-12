@@ -31,13 +31,11 @@ mod theme;
 /// neither reads or writes the other's. Moonframe finds these through `HOME`
 /// or the XDG variables, which Windows does not set for apps it starts.
 const NAME: &str = "sheprd";
-/// The layout, compiled in: a release has no checkout to read it from. The
-/// sparkles' agent provider is left out with the tools that start it.
+/// The layout, compiled in: a release has no checkout to read it from.
 #[cfg(not(feature = "moonframe-studio"))]
 #[derive(moonframe::rust_embed::RustEmbed)]
 #[crate_path = "moonframe::rust_embed"]
 #[folder = "moonframe/app"]
-#[exclude = "providers/acp/*"]
 #[exclude = ".DS_Store"]
 #[exclude = "*/.DS_Store"]
 struct Layout;
@@ -303,13 +301,14 @@ pub(crate) fn run() -> ExitCode {
     let moonframe = Moonframe::new(NAME)
         .title(crate::constants::WINDOW_TITLE)
         .app_id(crate::constants::LINUX_APP_ID)
-        .version(crate::constants::APP_VERSION);
-    // The sources, so saving reloads, and the sparkles: ask an agent to
-    // change the layout or add something.
-    #[cfg(feature = "moonframe-studio")]
-    let moonframe = moonframe
-        .app_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/moonframe/app"))
+        .version(crate::constants::APP_VERSION)
+        // The sparkles: ask an agent to change the layout or add something.
+        // Over the compiled-in layout it writes to `~/.config/sheprd`, the
+        // user's copies, never the release's own files.
         .keep(["feedback"]);
+    // The sources, so saving reloads and the agent edits them in place.
+    #[cfg(feature = "moonframe-studio")]
+    let moonframe = moonframe.app_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/moonframe/app"));
     #[cfg(not(feature = "moonframe-studio"))]
     let moonframe = moonframe
         .project_dir(env!("CARGO_MANIFEST_DIR"))
@@ -317,8 +316,8 @@ pub(crate) fn run() -> ExitCode {
     moonframe
         .icon(ICON_PNG)
         .assets(crate::embed::assets())
-        // Sheprd's own menu bar, as its window has it; `moonframe-studio`
-        // adds Moonframe's Developer menu.
+        // Sheprd's own menu bar, as its window has it, with Moonframe's
+        // Developer menu.
         .menus(crate::embed::menus)
         // Sheprd's log file, which its Logs window reads, beside stderr.
         .log_layer(crate::embed::log_layer())

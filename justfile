@@ -2,8 +2,8 @@ default:
     @just --list
 
 # Sheprd's Moonframe window for working on its Luau (`moonframe-studio`): the
-# layout read from `crates/sheprd-gpui/moonframe/app`, reloaded on save, with
-# Inspect Element and the sparkles agent. On your settings and daemon: quit
+# layout read from `crates/sheprd-gpui/moonframe/app`, reloaded on save, and
+# the sparkles agent editing it there. On your settings and daemon: quit
 # Sheprd first. `just run-moonframe --check` checks the Luau.
 # Built in its own target directory, so it never replaces `target/release/sheprd`;
 # the helpers the app finds beside itself (`sheprd-acp`, `sheprd-automate`) too.

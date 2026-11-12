@@ -97,8 +97,9 @@ return mod {
 			-- A worktree build's strip, across the window's foot.
 			ui.mount "build",
 			-- The sparkles (the built-in feedback mod): say what to change, and
-			-- an agent changes this layout, asking before each edit. Only
-			-- `just run-moonframe` has them, with the agent behind `app.acp`.
+			-- an agent changes this layout, asking before each edit. Over a
+			-- release's compiled-in layout the agent edits the user's copies
+			-- in `~/.config/sheprd`; with no `app.acp` there is no agent.
 			if app.acp then ui.row {
 				class = "feedback-corner",
 				float = { at = "bottom-right", inset = 40 },
