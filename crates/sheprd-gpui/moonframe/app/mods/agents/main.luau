@@ -157,6 +157,8 @@ return mod {
 				max_height = MOST,
 				shrink = false,
 				scroll = true,
+				-- As Sheprd's own agents list, with no scrollbar.
+				scrollbar = false,
 				gap = "none",
 				ui.column { shrink = false, gap = "none", table.unpack(rows) },
 			},

@@ -664,6 +664,8 @@ return mod {
 				class = "sheprd-worktrees",
 				grow = true,
 				scroll = true,
+				-- Sheprd's own sidebar scrolls with no scrollbar.
+				scrollbar = false,
 				padding = "small",
 				style = { background = theme.sidebar, gap = 4 },
 				table.unpack(tiles),
@@ -747,6 +749,8 @@ return mod {
 			ui.column {
 				grow = true,
 				scroll = true,
+				-- Sheprd's own sidebar scrolls with no scrollbar.
+				scrollbar = false,
 				gap = "none",
 				ui.column { shrink = false, gap = "none", table.unpack(rows) },
 			},
