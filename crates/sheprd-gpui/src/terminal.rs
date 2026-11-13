@@ -16,12 +16,12 @@ use gpui::{
     Bounds, KeyDownEvent, Keystroke, Modifiers, Pixels, Point, ScrollDelta, ScrollEvent,
     TouchPhase, point, px, size,
 };
+use rows::whole_rows;
 use sheprd_client::protocol::{
     CellData, ClientKeyCode, ClientKeyKind, ClientMouseGeometry, ClientMouseKind,
     ClientMousePosition, ClientPaneInputEvent, ClientSurfaceSize, CursorState, FrameData,
     PaneSurfaceFrame, PaneSurfacePane, SurfaceRect,
 };
-use rows::whole_rows;
 use std::num::NonZeroU16;
 
 #[cfg(test)]
