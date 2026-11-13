@@ -1,6 +1,7 @@
 //! Native chrome and GitHub account access.
 // i18n: migrated
 mod decorations;
+mod details;
 mod navigation;
 mod status;
 mod tabs;
@@ -502,6 +503,7 @@ impl SheprdWindow {
                             }),
                     ),
             )
+            .when(self.hosted, |end| end.child(self.details_toggle(cx)))
             // The in-window menu bar carries the window controls instead,
             // until it is hidden and they would leave with it.
             .when(!self.menu_bar_shown(), |end| {

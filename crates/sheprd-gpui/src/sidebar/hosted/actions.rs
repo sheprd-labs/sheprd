@@ -51,6 +51,11 @@ pub enum Action {
     SidebarWidth { phase: Drag, dx: f32 },
     /// Switches the agents list between grouped and by priority.
     ToggleAgentSort,
+    /// Opens the usage panel of the provider with this id, as a click on
+    /// its status bar segment does.
+    Usage(String),
+    /// Reads usage again, as the status bar's refresh button does.
+    UsageRefresh,
     /// Folds or unfolds a device's header.
     ToggleDevice(String),
     /// Folds or unfolds a repository's linked worktrees.
@@ -177,6 +182,8 @@ impl SheprdWindow {
                 cx.notify();
             }
             Action::ToggleDevice(id) => self.toggle_device(&id, cx),
+            Action::Usage(id) => self.open_hosted_usage(&id, pointer.x, window, cx),
+            Action::UsageRefresh => self.refresh_hosted_usage(cx),
             Action::ToggleRepository { endpoint, key } => {
                 if let Some(endpoint) = self.hosted_endpoint(endpoint) {
                     self.toggle_repository(&endpoint, &key, cx);

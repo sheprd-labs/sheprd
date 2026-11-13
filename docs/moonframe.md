@@ -1,11 +1,40 @@
 # Sheprd on Moonframe
 
-`just run-moonframe` starts Sheprd in a window [Moonframe](https://moonframe.dev)
-lays out. It is the `moonframe` feature of `sheprd-gpui`, off by default, so the
-app `just run` starts is unchanged. A build with it opens this window on a plain
-launch; `sheprd` commands and `--socket` or `--session` launches stay the app's
-own. Quit Sheprd first, as both use your settings and daemon. CI builds and
-tests the feature (the all-features legs) and loads its Luau with `--check`.
+Sheprd opens in a window [Moonframe](https://moonframe.dev) lays out: the
+`moonframe` feature of `sheprd-gpui`, on by default, so releases ship it. A
+plain launch opens this window; `sheprd` commands and `--socket` or `--session`
+launches stay the app's own, as without the feature. CI builds and tests it
+with every leg and loads its Luau with `--check`, both the copy compiled in
+and the sources.
+
+## The classic window
+
+Turn off **Settings > General > Moonframe window** (`moonframe_window = false`
+under `[features]`) and Sheprd opens its classic window from the next launch.
+`sheprd --classic` opens the classic window once, whatever the setting says.
+The setting is off by default on Windows: Moonframe finds its folders through
+`HOME` and the XDG variables, which Windows does not set for the apps it
+starts, so it would remember no window placement and write its files to a new
+temporary folder at each launch.
+
+The two windows keep their state apart. The classic window's settings, log,
+and saved tabs stay under `herdr` as before; Moonframe keeps its own under
+the name `sheprd`: `~/.config/sheprd` (your copies of the layout's files),
+`~/.cache/sheprd` (the layout written out to run), and `~/.local/state/sheprd`
+(where the window was, and each mod's state). Both read the same settings
+file and talk to the same daemon.
+
+## Builds
+
+| Build | Layout | The sparkles agent edits |
+| --- | --- | --- |
+| Default (`just run`, releases) | Compiled in, written to `~/.cache/sheprd/app/<hash>` to run | Your copies in `~/.config/sheprd` |
+| `moonframe-studio` (`just run-moonframe`) | Read from `crates/sheprd-gpui/moonframe/app`, reloaded on save | The checkout's files |
+
+Every build has Moonframe's developer tools: Developer Mode, Inspect Element,
+and the sparkles agent.
+
+`just run-moonframe` uses your settings and daemon, so quit Sheprd first.
 
 Everything around the terminals is Luau in `crates/sheprd-gpui/moonframe/app`:
 
@@ -16,7 +45,7 @@ Everything around the terminals is Luau in `crates/sheprd-gpui/moonframe/app`:
 | `mods/activity/main.luau` | The activity bar |
 | `mods/worktrees/main.luau` | The left pane's head and worktree rows, linked worktrees under their checkout, drawn in the sidebar layout Sheprd's config names (`layout = "orca"`, `compact`, `minimal`, ...) |
 | `mods/agents/main.luau` | The agents under the worktrees, in Sheprd's sort and the same layout |
-| `mods/details/main.luau` | The right pane; open it from Details in the status bar |
+| `mods/details/main.luau` | The right pane; the toggle at the end of the title bar opens it |
 | `mods/status/main.luau` | The status bar |
 | `components/sheprd-*.luau` | What the worktrees and agents share: a row highlighted as the layout marks the selected one, the status dot, and the section names |
 | `style.luau` | The hover looks, for every mod |
@@ -26,13 +55,16 @@ The terminals, tabs, and pages stay one Rust view, placed with
 
 ## Changing it
 
-Saving a file reloads the window. To keep a change of your own, copy the file
-to the same path under `~/.config/sheprd-moonframe` and edit the copy; deleting
-it brings the original back. The sparkles at the bottom right ask an agent to
-make a change, and it asks before each edit. View > Inspect Element (⌥⌘I, or
-⇧⌘X to go straight to picking) shows what built any part, and its file and line.
+In `just run-moonframe`, saving a file reloads the window. To keep a change of
+your own in any build, copy the file to the same path under `~/.config/sheprd`
+and edit the copy; deleting it brings the original back. The sparkles at the
+bottom right ask an agent to make a change, and it asks before each edit:
+in a release it writes those copies, in `just run-moonframe` the checkout's
+files. View > Inspect Element (⌥⌘I, or ⇧⌘X
+to go straight to picking) shows what built any part, and its file and line.
 
-Run `just run-moonframe --check` after a change. It loads what is
+Run `just run-moonframe --check` after a change (`sheprd --check` checks the
+copy a build carries). It loads what is
 drawn at that moment, so a mistake in a row that only appears with an agent
 shows in the log when one appears: `unknown key` names it.
 
@@ -46,28 +78,31 @@ shows in the log when one appears: `unknown key` names it.
 | `workspaces` | The selected device's, folded or not, in the sidebar's order: `id`, `number`, `label`, `branch`, `repo`, `repo_key`, `linked`, `child` (shown under its checkout), `focused`, `agent_status`, `ahead`, `behind`, `added`, `removed`, `dirty`, `pr`, `pr_color` (the number's color for its state) |
 | `agents` | In Sheprd's sort: `name`, `kind` (`claude`, `codex`, ...), `status`, `state` (the status's word, when the agent's integration shows one), `title`, `pane`, `pane_name`, `workspace`, `workspace_label`, `tab`, `focused` |
 | `agent_sort` | `grouped` or `priority` |
-| `layout` | The configured sidebar layout's `name` and spacing: `padding`, `gap`, `row_padding`, `style_padding`, `child_indent`, `inset`, `spacing`, `radius`, `outline` (rounded highlights), `tree_lines`, `title_case`, `workspace_details`, `child_details`, `pr_counts` |
+| `layout` | The configured sidebar layout's `name` and spacing: `padding`, `gap`, `row_padding`, `style_padding`, `child_indent`, `nest` (how far a device's rows step in under its header), `inset`, `spacing`, `radius`, `outline` (rounded highlights), `tree_lines`, `title_case`, `workspace_details`, `child_details`, `pr_counts` |
 | `panels`, `panel` | The activity panels (`id`, `label`, `count`, `unseen`) and the current one's `id` |
 | `connected`, `status` | Whether the daemon answers, and what to say about it |
-| `section`, `sidebar_visible`, `status_bar_visible` | What the window shows |
+| `section`, `sidebar_visible`, `status_bar_visible`, `details_visible` | What the window shows; `details_visible` follows the toggle at the end of the title bar, and the shell shows the details pane by it |
+| `usage` | The status bar's usage as Sheprd's own bar shows it, or `nil` while hidden or empty: `segments` (each provider's `id`, `name`, `locked`, `stale`, `meter` with `used` as a fraction and its `color`, `labels` with `text` and `color`, and `balance`), `busy`, `error`, and the words `unavailable` and `refresh_label` |
 
 Two parts change on their own, so they have their own providers and a change
 runs only the views that read them:
 
 | Provider | Holds |
 | --- | --- |
-| `app.sheprd_load` | `cpu` and `memory`, as percentages |
-| `app.sheprd_theme` | `accent`, `active`, `added` and `removed` (change counts), `background`, `danger`, `dirty` and `dirty_ink` (the uncommitted-work chip), `foreground`, `muted`, `on_accent` and `on_muted` (text over those), `sidebar`, `status` (each agent status's color), `subtext`, `success`, `surface`, `warning` |
+| `app.sheprd_load` | The selected host's load as Sheprd's own status bar shows it, or `nil` while hidden: `cpu` and `memory` as percentages with `cpu_color` and `memory_color`, the labels `cpu_label` and `memory_label` in `label_color`, and while the bar is detailed `history` (the CPU sparkline, oldest first: `value` as a fraction and `color`, or `false` before it is sampled), `meter` (memory: `used`, `color`) and `track`; `unavailable` when the host never answered |
+| `app.sheprd_theme` | `accent`, `active`, `added` and `removed` (change counts), `background`, `danger`, `dirty` and `dirty_ink` (the uncommitted-work chip), `foreground`, `muted`, `on_accent` and `on_muted` (text over those), `sidebar`, `sidebar_size` (the named size nearest the sidebar font's size over the UI size), `status` (each agent status's color), `subtext`, `success`, `surface`, `warning` |
 
 Moonframe's own widgets follow Sheprd's theme and UI font without reading these.
-`font = "mono"` is Sheprd's sidebar font.
+`font = "mono"` is Sheprd's sidebar font, though only its family: set
+`size = theme.sidebar_size` beside it for the sidebar's size, as the
+worktrees and agents do.
 
 ## Menus
 
 The menu bar is Sheprd's own, as its window has it (Sheprd, File, Edit, View,
-Terminal, Window), with Moonframe's Developer menu before Window: Developer
-Mode and, while it is on, Components, Reload Modules, Undo and Redo, Inspect
-Element, Developer Tools and Slow Animations. A menu item reaches Sheprd
+Terminal, Window), with Moonframe's Developer menu before
+Window: Developer Mode and, while it is on, Components, Reload Modules, Undo
+and Redo, Inspect Element, Developer Tools and Slow Animations. A menu item reaches Sheprd
 wherever the focus is, in the Luau layout or a terminal.
 
 ## Asking Sheprd for something
@@ -89,8 +124,9 @@ Send a message with `to = "provider:sheprd"`:
 | `{ toggle_device = id }`, `{ select_device = id }` | Folds a device's header, or selects the device |
 | `{ toggle_agent_sort = true }` | Switches the agents between grouped and by priority |
 | `{ move_workspace = id, target = id, after = bool }` | Moves a workspace of the selected device before (or after) another, as dropping its row there does; the worktrees mod sends it when a row with `carry` is dropped on one with `accept` |
-| `{ sidebar_width = true }` as a `pointer` | Resizes the sidebar from a drag of its edge (`phase`, `dx`); a double click puts back the default width. The shell draws the edge as a hairline lit on hover (`.sheprd-left-edge` in `style.luau`) |
+| `{ sidebar_width = true }` as a `pointer` | Resizes the sidebar from a drag of its edge (`phase`, `dx`); a double click puts back the default width. The shell draws the edge as a hairline beside the left column, its grip lit on hover and overhanging the main area so it never covers the lists' scrollbars (`.sheprd-left-edge` in `style.luau`) |
 | `{ open_build_pr = true }` | Opens the pull request a worktree build came from |
+| `{ usage = id }`, `{ usage_refresh = true }` | Opens a usage provider's panel above the status bar, or reads usage again |
 
 A row on another device adds `endpoint = id` to its message; without it the
 selected device is meant.
@@ -114,20 +150,21 @@ workspaces, and no menu that opens as the pointer rests on a row.
 ## Measuring
 
 Compare release builds: a debug window shows a yellow `dev build` strip, and
-runs several times slower. GPUI times every frame in either app, so the same
+runs several times slower. GPUI times every frame in either window, so the same
 line reads both:
 
 ```sh
-ZED_MEASUREMENTS=1 RUST_LOG=moonframe::perf=debug target/moonframe/release/sheprd
-ZED_MEASUREMENTS=1 target/release/sheprd
+ZED_MEASUREMENTS=1 RUST_LOG=moonframe::perf=debug target/release/sheprd
+ZED_MEASUREMENTS=1 target/release/sheprd --classic
 ```
 
 `frame duration` is one frame's draw and present. `moonframe::perf` adds what
 each publish and message ran. Machine load moves these a lot, so alternate the
-two apps and compare medians.
+two windows and compare medians.
 
-`just bench-moonframe /path/to/herdr` does that for you: it builds both apps,
-runs each in turn on a private daemon with 14 linked worktrees, through idle,
+`just bench-moonframe /path/to/herdr` does that for you: it builds the app,
+runs each window in turn on a private daemon with 14 linked worktrees, through idle,
 terminal output, agents changing state, and focusing each workspace, and
 prints the medians of three rounds. It opens windows, so it needs a desktop.
-`scripts/bench_frames.py` takes other binaries, round counts, and `--json`.
+`scripts/bench_frames.py` takes other commands (`NAME=BINARY ARGS...`), round
+counts, and `--json`.

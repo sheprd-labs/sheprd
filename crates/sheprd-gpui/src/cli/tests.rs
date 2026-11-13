@@ -5,6 +5,7 @@ mod automation;
 mod browser_zoom;
 mod chat;
 mod chat_shortcuts;
+mod classic;
 mod cloud_batch;
 mod cloud_exec;
 mod cloud_images;

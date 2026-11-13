@@ -4,7 +4,7 @@
 use serde::Deserialize;
 
 macro_rules! features {
-    ($($field:ident: $variant:ident = $default:literal, $message:literal, $description:literal;)+) => {
+    ($($field:ident: $variant:ident = $default:expr, $message:literal, $description:literal;)+) => {
         /// Optional behaviors the config file turns on or off. Each flag
         /// declares its own default, so a missing or empty `[features]` table
         /// is the shipped experience, and a table naming one flag leaves the
@@ -79,6 +79,10 @@ features! {
     // keep-sorted start
     acp_chats: AcpChats = true, "features-acp-chats",
         "features-acp-chats-description";
+    // Off on Windows until Moonframe finds its folders there without `HOME`;
+    // see `luau_window::NAME`.
+    moonframe_window: MoonframeWindow = cfg!(not(windows)), "features-moonframe-window",
+        "features-moonframe-window-description";
     qa_menu: QaMenu = false, "features-qa-menu",
         "features-qa-menu-description";
     sidebar_hover_menu: SidebarHoverMenu = false, "features-sidebar-hover-menu",

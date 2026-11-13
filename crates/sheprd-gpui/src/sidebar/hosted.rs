@@ -70,6 +70,7 @@ pub struct Stamp {
     agent_sort: AgentSort,
     agents_list: bool,
     connected: bool,
+    details_visible: bool,
     /// Every device's snapshot and folds; see `hosted_devices_stamp`.
     devices: u64,
     metrics: SidebarMetrics,
@@ -92,6 +93,7 @@ impl PartialEq for Stamp {
             && self.agent_sort == other.agent_sort
             && self.agents_list == other.agents_list
             && self.connected == other.connected
+            && self.details_visible == other.details_visible
             && self.devices == other.devices
             && self.metrics == other.metrics
             && self.panel == other.panel
@@ -158,6 +160,27 @@ fn agent_state(
     })
 }
 
+/// Moonframe's named text sizes and their scale of its base, the UI size.
+const TEXT_STEPS: [(&str, f32); 7] = [
+    ("small", 0.85),
+    ("normal", 1.0),
+    ("large", 1.2),
+    ("title", 1.5),
+    ("headline", 1.75),
+    ("display", 2.25),
+    ("hero", 3.0),
+];
+
+/// The named size nearest `size` over Moonframe's `base`: how the sidebar's
+/// own font size reaches Luau, which names sizes rather than pixels.
+fn text_step(size: f32, base: f32) -> &'static str {
+    let ratio = size / base;
+    TEXT_STEPS
+        .iter()
+        .min_by(|(_, a), (_, b)| (a - ratio).abs().total_cmp(&(b - ratio).abs()))
+        .map_or("normal", |(name, _)| name)
+}
+
 /// The configured layout's name and the spacing it and the config's
 /// overrides select, as the window's own rows read them.
 fn layout_state(name: &str, metrics: &SidebarMetrics) -> Value {
@@ -166,6 +189,9 @@ fn layout_state(name: &str, metrics: &SidebarMetrics) -> Value {
         "child_indent": metrics.child_indent,
         "gap": metrics.gap,
         "name": name,
+        // How far rows step in under a device's header, as several devices
+        // list them; the sidebar has no tag sections to add theirs.
+        "nest": metrics.nest,
         "outline": metrics.highlight == Highlight::Outline,
         "padding": metrics.padding,
         "pr_counts": metrics.pr_counts,
@@ -193,7 +219,7 @@ fn status_colors(theme: &Theme) -> Value {
 }
 
 /// `color` as `#rrggbb`, how a mod's style names one.
-fn hex(color: u32) -> String {
+pub(crate) fn hex(color: u32) -> String {
     format!("#{:06x}", color & 0xff_ffff)
 }
 
@@ -226,6 +252,7 @@ impl SheprdWindow {
             agent_sort: self.agent_sort,
             agents_list: self.hosted_agents_list(),
             connected: self.live.status.is_connected(),
+            details_visible: self.details_visible,
             devices: self.hosted_devices_stamp(),
             panel: self.activity_panel(),
             section: self.activity_section().is_some(),
@@ -289,14 +316,9 @@ impl SheprdWindow {
                 })
             })
             .collect();
-        let reading = self.selected_host().and_then(|host| {
-            self.system_load
-                .get(&host)
-                .and_then(|load| load.latest().copied())
-        });
         let theme = &self.theme;
         HostedState {
-            load: load_state(reading.as_ref()),
+            load: self.hosted_load(),
             palette: Palette {
                 accent: theme.primary(),
                 active: theme.active,
@@ -327,12 +349,14 @@ impl SheprdWindow {
                 },
                 "layout": layout_state(self.config.layout.mode.name(), &self.hosted_metrics()),
                 "connected": self.live.status.is_connected(),
+                "details_visible": self.details_visible,
                 "panel": panel_id(self.activity_panel()),
                 "panels": panels,
                 "section": self.activity_section().is_some(),
                 "sidebar_visible": self.sidebar_visible,
                 "status": self.live.status_text(self.local_error.as_deref()),
                 "status_bar_visible": self.status_bar_visible,
+                "usage": self.hosted_usage(),
             "workspaces": self.hosted_workspaces(cx),
                 "devices": self.hosted_devices(cx),
                 "multi": self.endpoints.len() > 1,
@@ -353,6 +377,9 @@ impl SheprdWindow {
                 "on_muted": hex(self.theme.text_on(self.theme.muted)),
                 "removed": hex(self.theme.ink(self.theme.palette[1])),
                 "sidebar": hex(self.theme.sidebar_background()),
+                // The sidebar's font size, as Moonframe names sizes over the
+                // UI size its text starts from.
+                "sidebar_size": text_step(self.config.sidebar.size, self.config.ui.size),
                 "subtext": hex(self.theme.subtext()),
                 "success": hex(self.theme.palette[2]),
                 "surface": hex(self.theme.surface),

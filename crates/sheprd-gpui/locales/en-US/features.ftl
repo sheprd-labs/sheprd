@@ -2,6 +2,8 @@
 
 features-acp-chats = ACP chats
 features-acp-chats-description = Show sheprd-acp chats as native chat views and offer new chats with the agents installed on the host. Off, chat panes keep their terminal and nothing looks for sheprd-acp or agents.
+features-moonframe-window = Moonframe window
+features-moonframe-window-description = Open Sheprd in the window Moonframe lays out in Luau. Off, Sheprd opens its classic window. Takes effect the next time Sheprd starts.
 features-qa-menu = QA menu
 features-qa-menu-description = Add a QA menu for checking the app by hand: sample toasts and dialogs, update progress, sounds, a test notification, the badge, and slowed animations.
 features-sidebar-hover-menu = Open space menus on hover
