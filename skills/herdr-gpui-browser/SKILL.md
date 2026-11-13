@@ -278,7 +278,7 @@ what Sheprd shows or keeps.
 | Show a file at a line, read-only | `sheprd code open src/main.rs:42` |
 | Open the review of your uncommitted changes | `sheprd review` |
 | Ask the user to restart an owned orchestrator run, or adopt a legacy run's current process | `sheprd orchestrator restart RUN` / `sheprd orchestrator adopt RUN` (loaded project; confirmation required) |
-| Open px0 to browse, edit, or review your local checkout (macOS/Windows) | `sheprd px0 open` |
+| Open px0 to browse, edit, or review your checkout, local (macOS/Windows) or on an SSH host (macOS) | `sheprd px0 open` |
 | Get notes the user sent this pane (pages, reviews, terminals) | `sheprd feedback --wait 600` |
 | Keep a note on this worktree (repository and branch) | `sheprd notes set waiting on CI` |
 | Silence this worktree's notifications | `sheprd worktree mute` |
