@@ -30,6 +30,8 @@ impl SheprdWindow {
         } else {
             target
         };
+        // Found by what looks for main windows, whatever the window's root.
+        super::main_window::MainWindow::register(window, cx);
         let focus = cx.focus_handle();
         window.focus(&focus, cx);
         // Created by the first window; each later one shares its PR answers.
@@ -209,6 +211,7 @@ impl SheprdWindow {
             git_anchor: Default::default(),
             gui_config_diagnostic,
             held_keys: Default::default(),
+            hosted: false,
             hover: None,
             hover_menu: None,
             hovered_terminal_link: false,
@@ -267,6 +270,7 @@ impl SheprdWindow {
             regions: Vec::new(),
             remote_browser: Vec::new(),
             remote_updates: Default::default(),
+            remote_work: Default::default(),
             removal: None,
             resize_mode: false,
             review_files_width: crate::panel_resize::REVIEW_FILES,
@@ -341,9 +345,12 @@ impl SheprdWindow {
         cx.on_app_quit(|this, _| {
             this.port_forwards.stop_all();
             this.tunnels.close_all();
+            this.flush_undo_close();
             async {}
         })
         .detach();
+        // Closing the window, the tabs it hid for undo still close.
+        cx.on_release(|this, _| this.flush_undo_close()).detach();
         #[cfg(feature = "integration-test")]
         if sidebar_test {
             this._poll = Task::ready(());

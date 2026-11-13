@@ -149,6 +149,12 @@ impl Heard {
         self.posts.retain(|(_, terminal, _)| !muted(terminal));
     }
 
+    /// Drops the system notifications waiting out their delay; their
+    /// sounds still play.
+    fn forget_posts(&mut self) {
+        self.posts.clear();
+    }
+
     /// Records the terminals `window` shows in front: none unless it is
     /// active. Windows no longer `open` are forgotten.
     pub(super) fn show(
@@ -219,6 +225,14 @@ impl Heard {
             }
         }
         taken
+    }
+}
+
+/// Drops the Herdr 2 notifications not yet posted, as Clear All
+/// Notifications does, so none arrives after it.
+pub(crate) fn forget_pending_posts(cx: &mut App) {
+    if cx.has_global::<Heard>() {
+        cx.global_mut::<Heard>().forget_posts();
     }
 }
 
@@ -310,7 +324,7 @@ impl SheprdWindow {
             self.core_terminals
                 .tabs
                 .get(tab)
-                .filter(|shown| shown.holds_chats())
+                .filter(|shown| shown.holds_chats() && shown.host == super::Host::Local)
                 .map(|shown| shown.panes.terminals().into_iter().cloned().collect())
                 .unwrap_or_default()
         });
@@ -364,11 +378,11 @@ impl SheprdWindow {
         // may differ from the sound's.
         let delay = Duration::from_secs(self.config.notifications.delay_seconds);
         let posts = cx.default_global::<Heard>().take_posts(now, delay);
-        let Some(handle) = window.window_handle().downcast::<SheprdWindow>() else {
+        let Some(handle) = crate::window::main_window::MainWindow::of(window, cx) else {
             return;
         };
         for (terminal, news, _) in posts {
-            self.post_core_notification(handle, &terminal, news.kind(), cx);
+            self.post_core_notification(handle.clone(), &terminal, news.kind(), cx);
         }
     }
 }

@@ -92,6 +92,10 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: python3 scripts/test_close_low_confidence_prs.py
+      - name: Test the relay list editor
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 scripts/test_relays.py
       - name: Detect build and test inputs
         id: changes
         env:
@@ -164,6 +168,12 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_*manifest.py' -v
       - name: Install pinned Rust toolchain
         run: rustup show
+      # Remote shims run on POSIX hosts, including WSL, independently of the desktop.
+      - name: Test remote work entrypoint
+        if: matrix.features == 'default'
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 scripts/tests/test_remote_work.py
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           key: checks-${{ matrix.features }}
@@ -201,6 +211,11 @@ jobs:
       - name: Test integration-feature build and executable CLI
         if: matrix.features == 'all'
         run: cargo test --locked --workspace --all-features
+      # The `moonframe` feature's Luau layout loads only at run time: load every
+      # module and report what fails, without a window.
+      - name: Check the Moonframe layout
+        if: matrix.features == 'all'
+        run: cargo run --locked -p sheprd-gpui --all-features -- --check
 
   # Match the other platforms' Rust checks without an extra optimized build.
   # Native GUI tests run in windows-native; the Windows release builds run in
@@ -250,6 +265,11 @@ jobs:
       - name: Test integration-feature build and executable CLI
         if: matrix.features == 'all'
         run: cargo test --locked --workspace --all-features
+      # The `moonframe` feature's Luau layout loads only at run time: load every
+      # module and report what fails, without a window.
+      - name: Check the Moonframe layout
+        if: matrix.features == 'all'
+        run: cargo run --locked -p sheprd-gpui --all-features -- --check
 
   # The native GUI tests (`just test-gui`, `just test-sidebar`) on a real
   # Windows desktop session against a pinned, checksummed Herdr daemon in the

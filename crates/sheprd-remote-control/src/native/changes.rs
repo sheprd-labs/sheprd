@@ -5,6 +5,7 @@
 //! ([`local`]), so a Herdr 2 workspace, or one on a host, still answers.
 
 mod error;
+pub(crate) mod github;
 mod local;
 mod mailbox;
 
@@ -46,14 +47,24 @@ pub(crate) struct DiffQuery {
 /// Answers `wanted` about `workspace`: Sheprd's answer while it is open
 /// and lists the workspace, else Git's. A workspace this daemon does not
 /// list is refused here, so only ones the phone could see are read.
-async fn ask(state: &Shared, workspace: String, wanted: Wanted) -> Result<Answer, ApiError> {
-    let (boot, cwd) = {
+pub(crate) async fn ask(
+    state: &Shared,
+    workspace: String,
+    wanted: Wanted,
+) -> Result<Answer, ApiError> {
+    let (boot, cwd, branch) = {
         let layout = state.hub.layout();
         let listed = layout.workspace(&workspace).ok_or(ApiError::NotFound)?;
-        (layout.boot.clone(), listed.cwd.clone())
+        (
+            layout.boot.clone(),
+            listed.cwd.clone(),
+            listed.branch.clone(),
+        )
     };
-    if state.changes.open() {
-        match ask_sheprd(state, boot, workspace, wanted.clone()).await {
+    if state.changes.open()
+        && !(state.github.enabled() && matches!(wanted, Wanted::Checks | Wanted::CheckLog { .. }))
+    {
+        match ask_sheprd(state, boot.clone(), workspace.clone(), wanted.clone()).await {
             // Closed meanwhile, or a workspace it does not keep.
             Err(Error::NoDesktop | Error::Failed(Failure::Gone)) => {}
             // It quit while the question waited.
@@ -63,6 +74,22 @@ async fn ask(state: &Shared, workspace: String, wanted: Wanted) -> Result<Answer
     }
     if cwd.is_empty() {
         return Err(Error::Failed(Failure::NoRepository).into());
+    }
+    if matches!(wanted, Wanted::Checks | Wanted::CheckLog { .. }) {
+        let worker = state.clone();
+        let folder = cwd.clone();
+        let answer = tokio::task::spawn_blocking(move || worker.github.answer(&folder, &wanted))
+            .await
+            .map_err(|_| Error::Failed(Failure::Unreadable))?;
+        let current = state.hub.layout();
+        if current.boot != boot
+            || current
+                .workspace(&workspace)
+                .is_none_or(|now| now.cwd != cwd || now.branch != branch)
+        {
+            return Err(Error::Failed(Failure::Gone).into());
+        }
+        return answer.map_err(|failure| Error::Failed(failure).into());
     }
     let answer =
         tokio::task::spawn_blocking(move || local::answer(std::path::Path::new(&cwd), &wanted))
@@ -103,16 +130,36 @@ pub(crate) async fn change_layout(
 ) -> Result<Option<String>, ApiError> {
     let mut pending = state
         .changes
-        .ask_layout(tab, terminal, op, Instant::now())
+        .ask_layout(tab, terminal.clone(), op.clone(), Instant::now())
         .map_err(ApiError::from)?;
-    match tokio::time::timeout(LAYOUT_WAIT, pending.answer()).await {
-        Ok(Some(layout::Answer::Done)) => Ok(None),
-        Ok(Some(layout::Answer::Split(created))) if created.len() <= layout::MAX_TERMINAL => {
+    let answer = async {
+        loop {
+            tokio::select! {
+                answer = pending.answer() => return Ok(answer),
+                () = tokio::time::sleep(Duration::from_millis(100)) => {
+                    if state.hub.desktop_layout_owner().await? == Some(false) {
+                        if pending.withdraw_layout() {
+                            let keeper = Keeper::Saved { tab, terminal };
+                            let created = state.hub.arrange(keeper, op).await?;
+                            return Ok(Some(created.map_or(layout::Answer::Done, layout::Answer::Split)));
+                        }
+                        // Taken by a desktop that exited: the operation may
+                        // already be on disk. Do not toggle or split twice.
+                        return Err(ApiError::from(Error::TimedOut));
+                    }
+                }
+            }
+        }
+    };
+    match tokio::time::timeout(LAYOUT_WAIT, answer).await {
+        Ok(Err(error)) => Err(error),
+        Ok(Ok(Some(layout::Answer::Done))) => Ok(None),
+        Ok(Ok(Some(layout::Answer::Split(created)))) if created.len() <= layout::MAX_TERMINAL => {
             Ok(Some(created))
         }
-        Ok(Some(layout::Answer::Split(_))) => Err(mismatch()),
-        Ok(Some(layout::Answer::Failed(failure))) => Err(Error::Layout(failure).into()),
-        Ok(None) | Err(_) => Err(Error::TimedOut.into()),
+        Ok(Ok(Some(layout::Answer::Split(_)))) => Err(mismatch()),
+        Ok(Ok(Some(layout::Answer::Failed(failure)))) => Err(Error::Layout(failure).into()),
+        Ok(Ok(None)) | Err(_) => Err(Error::TimedOut.into()),
     }
 }
 
@@ -123,11 +170,15 @@ pub(crate) async fn arrange(
     keeper: Keeper,
     op: layout::Op,
 ) -> Result<Option<String>, ApiError> {
-    match keeper {
-        Keeper::Saved { tab, terminal } if state.changes.open() => {
-            change_layout(state, tab, terminal, op).await
-        }
-        keeper => Ok(state.hub.arrange(keeper, op).await?),
+    // The saved-tabs lock, not a recent heartbeat, is the authority. A
+    // desktop that just quit can still look open for twelve seconds.
+    match state.hub.arrange(keeper.clone(), op.clone()).await {
+        Ok(answer) => Ok(answer),
+        Err(error) if error.desktop_owns_layout() => match keeper {
+            Keeper::Saved { tab, terminal } => change_layout(state, tab, terminal, op).await,
+            Keeper::Own(_) => Err(error.into()),
+        },
+        Err(error) => Err(error.into()),
     }
 }
 

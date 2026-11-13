@@ -20,8 +20,9 @@ mod freedesktop;
 mod toast;
 
 use super::SheprdWindow;
+use crate::window::main_window::MainWindow;
 use crate::{notifications::SystemPost, state::LiveState};
-use gpui::{App, Context, Global, SharedString, SystemNotification, Window, WindowHandle};
+use gpui::{App, Context, Global, SharedString, SystemNotification, Window};
 use sheprd_backend::TerminalId;
 use std::{
     collections::VecDeque,
@@ -31,6 +32,10 @@ use std::{
 
 /// Clicks are routed for this many recent posts; older ones only focus nothing.
 const REGISTRY_LIMIT: usize = 64;
+/// Clear All Notifications withdraws this many of the latest notifications
+/// the app posted, more than it routes clicks for: an older banner that no
+/// longer opens anything still leaves the notification center.
+const WITHDRAW_LIMIT: usize = 256;
 /// Two windows attached to the same host receive the same event. The second
 /// window's copy within this interval is a duplicate, not a new event.
 const DUPLICATE_WINDOW: Duration = Duration::from_secs(2);
@@ -39,7 +44,7 @@ const PREVIEW_DELAY: Duration = Duration::from_secs(3);
 
 struct Posted {
     tag: SharedString,
-    window: WindowHandle<SheprdWindow>,
+    window: MainWindow,
     target: Target,
     at: Instant,
     /// The notification daemon's id, once its reply arrives.
@@ -65,11 +70,20 @@ enum Target {
 #[derive(Default)]
 pub(crate) struct Registry {
     posted: VecDeque<Posted>,
+    /// The tags of the latest notifications posted, for [`withdraw_all`].
+    delivered: VecDeque<SharedString>,
+    /// The ids the Linux notification server gave the latest of them.
+    #[cfg(target_os = "linux")]
+    bus_ids: VecDeque<u32>,
     identity: bool,
     #[cfg(target_os = "linux")]
     bus: freedesktop::Bus,
     #[cfg(target_os = "linux")]
     outbox: freedesktop::Outbox,
+    /// Counts [`withdraw_all`] calls, so a Notify sent before one and
+    /// answered after it is closed, and its id never reaches a newer post.
+    #[cfg(target_os = "linux")]
+    withdrawals: u64,
     /// What the shell offers, once known; until then GPUI posts.
     #[cfg(windows)]
     shell: Option<toast::Shell>,
@@ -81,10 +95,10 @@ impl Global for Registry {}
 
 impl Registry {
     /// Whether another window already posted this tag just now.
-    fn duplicate(&self, tag: &str, window: WindowHandle<SheprdWindow>, now: Instant) -> bool {
+    fn duplicate(&self, tag: &str, window: &MainWindow, now: Instant) -> bool {
         self.posted.iter().any(|posted| {
             posted.tag == tag
-                && posted.window != window
+                && posted.window != *window
                 && now.saturating_duration_since(posted.at) < DUPLICATE_WINDOW
         })
     }
@@ -96,6 +110,7 @@ impl Registry {
             bus_id: self.find(&posted.tag).and_then(|old| old.bus_id),
             ..posted
         };
+        remember(&mut self.delivered, posted.tag.clone());
         self.posted.retain(|old| old.tag != posted.tag);
         if self.posted.len() == REGISTRY_LIMIT {
             self.posted.pop_front();
@@ -111,6 +126,7 @@ impl Registry {
     /// overwrite the id of a newer request.
     #[cfg(target_os = "linux")]
     fn set_bus_id(&mut self, tag: &str, bus_id: u32) {
+        remember(&mut self.bus_ids, bus_id);
         if let Some(posted) = self.posted.iter_mut().rev().find(|p| p.tag == tag) {
             posted.bus_id = Some(bus_id);
         }
@@ -123,6 +139,15 @@ impl Registry {
             .rev()
             .find(|posted| posted.bus_id == Some(bus_id))
     }
+}
+
+/// Adds `item` to the bounded `list` as its newest entry.
+fn remember<T: PartialEq>(list: &mut VecDeque<T>, item: T) {
+    list.retain(|old| *old != item);
+    if list.len() == WITHDRAW_LIMIT {
+        list.pop_front();
+    }
+    list.push_back(item);
 }
 
 /// Only the user's own app posts. Fixtures and tests leave this uninstalled,
@@ -158,7 +183,7 @@ pub(crate) fn install_registry(cx: &mut App) {
 pub(crate) fn open(tag: &str, cx: &mut App) -> bool {
     let Some((window, target)) = cx.try_global::<Registry>().and_then(|registry| {
         let posted = registry.find(tag)?;
-        Some((posted.window, posted.target.clone()))
+        Some((posted.window.clone(), posted.target.clone()))
     }) else {
         return false;
     };
@@ -175,6 +200,45 @@ pub(crate) fn open(tag: &str, cx: &mut App) -> bool {
             })
             .is_ok(),
         Target::Core(terminal) => core::open(window, &terminal, cx),
+    }
+}
+
+/// Takes back the latest notifications this app posted (up to
+/// [`WITHDRAW_LIMIT`]), Herdr 1 and Herdr 2 alike, and forgets their click
+/// routes and what still waits to post. Best effort, as the platforms
+/// allow: GPUI removes its own on macOS and Windows, the Linux session bus
+/// closes them by the server's id, and Windows' Action Center drops the
+/// app's own toasts. Notifications left from an earlier run of the app are
+/// unknown here and stay, except on Windows.
+pub(crate) fn withdraw_all(cx: &mut App) {
+    if !cx.has_global::<Registry>() {
+        return;
+    }
+    let registry = cx.global_mut::<Registry>();
+    registry.posted.clear();
+    let delivered = std::mem::take(&mut registry.delivered);
+    #[cfg(target_os = "linux")]
+    {
+        // Pending posts lost their routes, so the outbox drops them, and a
+        // Notify in flight is closed once its id arrives.
+        registry.withdrawals += 1;
+        let ids = std::mem::take(&mut registry.bus_ids);
+        freedesktop::withdraw(ids, cx);
+    }
+    #[cfg(windows)]
+    if cx
+        .global::<Registry>()
+        .shell
+        .is_some_and(|shell| shell.links)
+        && let Err(error) = toast::clear()
+    {
+        tracing::warn!(error = ?error, "Could not clear the app's toasts");
+    }
+    // GPUI's own posts: macOS, Windows before the shell links toasts, and
+    // tests. GPUI cannot close a notification on Linux; those went over the
+    // app's own bus above.
+    for tag in &delivered {
+        cx.dismiss_system_notification(tag);
     }
 }
 
@@ -234,18 +298,18 @@ impl SheprdWindow {
         if posts.is_empty() {
             return;
         }
-        let Some(handle) = window.window_handle().downcast::<SheprdWindow>() else {
+        let Some(handle) = MainWindow::of(window, cx) else {
             return;
         };
         let now = Instant::now();
         for post in posts {
             if cx
                 .try_global::<Registry>()
-                .is_some_and(|registry| registry.duplicate(&post.tag, handle, now))
+                .is_some_and(|registry| registry.duplicate(&post.tag, &handle, now))
             {
                 continue;
             }
-            self.show_system_notification(handle, post, now, cx);
+            self.show_system_notification(handle.clone(), post, now, cx);
         }
     }
 
@@ -253,7 +317,7 @@ impl SheprdWindow {
     /// without the registry, which only normal launches install.
     fn show_system_notification(
         &self,
-        handle: WindowHandle<SheprdWindow>,
+        handle: MainWindow,
         post: SystemPost,
         now: Instant,
         cx: &mut Context<Self>,
@@ -304,7 +368,7 @@ impl SheprdWindow {
         window: &Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(handle) = window.window_handle().downcast::<SheprdWindow>() else {
+        let Some(handle) = MainWindow::of(window, cx) else {
             return;
         };
         let timer = cx.background_executor().timer(PREVIEW_DELAY);
@@ -317,11 +381,7 @@ impl SheprdWindow {
         .detach();
     }
 
-    fn post_system_notification_preview(
-        &mut self,
-        handle: WindowHandle<SheprdWindow>,
-        cx: &mut Context<Self>,
-    ) {
+    fn post_system_notification_preview(&mut self, handle: MainWindow, cx: &mut Context<Self>) {
         let index = self.selected_endpoint;
         let snapshot = self.endpoints[index].live.snapshot.clone();
         let title = crate::i18n::fl!("notifications-preview-attention");

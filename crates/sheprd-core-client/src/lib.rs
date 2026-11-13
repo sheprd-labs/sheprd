@@ -4,6 +4,7 @@
 
 pub mod agent;
 mod backend;
+pub mod chat_recovery;
 mod connection;
 pub mod convert;
 mod endpoint;
@@ -14,6 +15,7 @@ pub mod hello;
 mod identity;
 mod method;
 pub mod reply;
+pub mod sessions;
 mod start;
 mod stream;
 pub mod wire;

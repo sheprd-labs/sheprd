@@ -1,6 +1,14 @@
 default:
     @just --list
 
+# Sheprd in a Moonframe window (the `moonframe` feature), on your settings and
+# daemon: quit Sheprd first. `just run-moonframe --check` checks the Luau.
+# Built in its own target directory, so it never replaces `target/release/sheprd`;
+# the helpers the app finds beside itself (`sheprd-acp`, `sheprd-automate`) too.
+run-moonframe *args:
+    cargo build --locked --release -p sheprd-acp -p sheprd-automate --target-dir target/moonframe
+    cargo run --locked --release -p sheprd-gpui --features moonframe --target-dir target/moonframe -- {{args}}
+
 # Launch the bundle so macOS reads Sheprd's identity and privacy declarations.
 run *args:
     #!/usr/bin/env bash
@@ -101,6 +109,15 @@ test-sidebar:
 test-perf budget="30":
     cargo build --locked --release -p sheprd-gpui --features integration-test
     HERDR_PERF_P95_MS="{{budget}}" target/release/sheprd --performance-test
+
+# Frame times and CPU of `sheprd` with and without the `moonframe` feature on
+# one workload, each on a private daemon started from `herdr`, as the median of
+# `rounds`; opens windows, so it needs a desktop. `scripts/bench_frames.py
+# --help` for more.
+bench-moonframe herdr rounds="3":
+    cargo build --locked --release -p sheprd-gpui
+    cargo build --locked --release -p sheprd-gpui --features moonframe --target-dir target/moonframe
+    scripts/bench_frames.py --herdr "{{herdr}}" --rounds "{{rounds}}" main=target/release/sheprd moonframe=target/moonframe/release/sheprd
 
 # Compare UI variants written as GPUI code in `file` (the built-in demo when
 # empty) in a native window. "Send to agent" types the notes into the calling
@@ -304,7 +321,39 @@ test-mockup-wait:
 test-pr-closure:
     PYTHONDONTWRITEBYTECODE=1 python3 scripts/test_close_low_confidence_prs.py
 
-ci: format-check check-file-size check-sorted check-i18n check-artwork lint test test-mockup-wait test-pr-closure
+# Sheprd's public relay list, website/site/relays.json, which clients take
+# only when signed (docs/relay-plan.md). Each recipe stamps a new serial and
+# expiry, signs with your OpenPGP key (a hardware key tap), and checks the
+# result as clients will. Commit relays.json and relays.json.asc together;
+# the site workflow adds its own Ed25519 signature when it deploys.
+relays_list := "website/site/relays.json"
+relays_key := "310320A8CC1C5BA86AD09040C0451BADF7649BBF"
+
+# List a new public relay; its QUIC pin comes from its /v1/info.
+relays-add endpoint region name:
+    python3 scripts/relays.py add {{relays_list}} "{{endpoint}}" --region "{{region}}" --name "{{name}}"
+    just relays-sign
+
+# Take a public relay off the list.
+relays-remove endpoint:
+    python3 scripts/relays.py remove {{relays_list}} "{{endpoint}}"
+    just relays-sign
+
+# Re-stamp and re-sign the list as it is, before it expires.
+relays-sign:
+    python3 scripts/relays.py stamp {{relays_list}}
+    gpg --local-user {{relays_key}} --armor --detach-sign --yes --output {{relays_list}}.asc {{relays_list}}
+    cargo run --quiet --locked -p sheprd-relay --no-default-features --features signed-directory --example relays -- {{relays_list}} --asc {{relays_list}}.asc
+
+# The relay's DigitalOcean user data picks the right domain.
+test-relay-deploy:
+    PYTHONDONTWRITEBYTECODE=1 python3 scripts/test_relay_deploy.py
+
+# The relay list editor behind `just relays-*`.
+test-relays:
+    PYTHONDONTWRITEBYTECODE=1 python3 scripts/test_relays.py
+
+ci: format-check check-file-size check-sorted check-i18n check-artwork lint test test-mockup-wait test-pr-closure test-relay-deploy test-relays
 
 # Tools are listed in scripts/setup-ci.sh; Docker for lint-linux is only checked.
 # Install the tools local CI-equivalent runs need, on macOS or Ubuntu.

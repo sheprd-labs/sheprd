@@ -16,9 +16,12 @@ use std::{
 };
 
 mod activity;
+mod agent_row_rescroll;
 mod attachments;
 mod chats;
 mod code;
+mod code_options;
+mod code_scroll_axis;
 mod composer;
 mod controls;
 mod convert;

@@ -23,6 +23,8 @@ mod agent_groups;
 #[cfg(test)]
 mod agent_menu;
 #[cfg(test)]
+mod agent_row_rescroll;
+#[cfg(test)]
 mod agent_rows;
 #[cfg(test)]
 mod agents_header;
@@ -602,6 +604,7 @@ pub(crate) fn fixture_window(window: &mut Window, cx: &mut Context<SheprdWindow>
     SheprdWindow {
         _terminal_focus: terminal_focus,
         chrome_region: None,
+        hosted: false,
         chats: Default::default(),
         sound: Default::default(),
         bell: Default::default(),
@@ -688,6 +691,7 @@ pub(crate) fn fixture_window(window: &mut Window, cx: &mut Context<SheprdWindow>
         port_forwards: Default::default(),
         remote_browser: Vec::new(),
         remote_updates: Default::default(),
+        remote_work: Default::default(),
         #[cfg(feature = "cloud")]
         cloud_jobs: Default::default(),
         #[cfg(feature = "cloud")]
