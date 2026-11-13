@@ -1160,11 +1160,15 @@ a browser tab is focused, the same commands zoom its page instead (see
 
 A tab asks before closing only while one of its agents is working or blocked
 on a prompt; tabs whose agents are idle or done, or that have none, close at
-once. Set top-level `confirm_close_tab = false` to never ask for tabs
+once. Set top-level `confirm_close_idle_tab = true` to ask for those tabs
+too, and for Herdr 2 terminal tabs, which otherwise never ask, so no terminal
+tab closes on a single click of its close button; a mirror, which only
+watches, and a browser page still close at once. It defaults to `false`. Set
+`confirm_close_tab = false` to never ask for tabs
 (including their running processes), `confirm_close_pane = false` to close
 panes without asking, `confirm_close_workspace = false` to close a workspace
 from its menu without the dialog, and `show_agents = false` to hide the Agents
-section and give Spaces the full sidebar height. All four default to `true`.
+section and give Spaces the full sidebar height. These four default to `true`.
 A workspace close still asks when its Git check finds uncommitted files or
 unpushed commits, whatever `confirm_close_workspace` says.
 
@@ -3240,7 +3244,8 @@ tabs. Splitting opens nothing new and moves no tab.
   is what is saved.
 - Closing a tab closes it for good, split or not: a tab's close button and
   its right-click **Close Tab** close a page at once and a Herdr tab in
-  Herdr, through its confirmation. Split, **…** offers **Close Tab**, which
+  Herdr, through its confirmation. A Herdr 2 terminal tab closes at once
+  too, unless `confirm_close_idle_tab = true` has it ask first. Split, **…** offers **Close Tab**, which
   does the same for the tab the group shows; **Close Others**, which closes
   the group's other tabs one after another, each as its own close button
   would, and stops at the first close you decline; and **Close Group**,
@@ -4533,7 +4538,7 @@ Ctrl+Shift+U is left unbound for
   Actions retain the clicked tab/workspace and reject stale connections or targets.
   Rename selects the current label in a native IME-aware field, with inline errors;
   Close uses the existing cancel-by-default confirmation when an agent in the
-  tab is working or blocked, unless `confirm_close_tab = false`. Escape or an outside left/right click dismisses
+  tab is working or blocked (or for any tab with `confirm_close_idle_tab = true`), unless `confirm_close_tab = false`. Escape or an outside left/right click dismisses
   the menu without sending terminal input.
 - Click workspace, tab, agent, or a visible split pane to focus through the API.
 - Right-click a visible pane, including an inactive split, for Rename, Split
@@ -4652,7 +4657,8 @@ Ctrl+Shift+U is left unbound for
   daemons that advertise the method.
 - Cmd-W closes the focused pane and Cmd-Shift-W closes the focused tab only after
   a confirmation dialog (a tab asks only while an agent in it is working or
-  blocked, and never with `confirm_close_tab = false`; a pane never asks with
+  blocked, always with `confirm_close_idle_tab = true`, and never with
+  `confirm_close_tab = false`; a pane never asks with
   `confirm_close_pane = false`). **Cancel is selected by default**: Enter alone cancels;
   Tab then Enter selects and confirms Close. In the pane dialog, Space toggles
   **Do not ask again**. Closing can terminate running

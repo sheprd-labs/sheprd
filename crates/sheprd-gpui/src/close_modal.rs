@@ -13,6 +13,7 @@ use sheprd_client::{
     protocol::{AgentStatus, ClientShellSnapshot},
 };
 
+mod core_tab;
 mod sequence;
 
 pub(crate) use sequence::CloseRun;
@@ -23,6 +24,9 @@ pub(super) struct CloseConfirmation {
     workspace: String,
     tab: String,
     pane: Option<String>,
+    /// A herdr-core tab, which the app closes itself: the daemon's boot,
+    /// tab, and pane above are then unused.
+    core: Option<crate::browser::TabId>,
     label: String,
     /// The agents closing it would interrupt, as the dialog names them.
     interrupts: Option<String>,
@@ -30,6 +34,8 @@ pub(super) struct CloseConfirmation {
     /// Pane closes only: confirming also saves `confirm_close_pane = false`.
     do_not_ask_again: bool,
     error: Option<String>,
+    /// A herdr-core tab's dialog only: what held the keyboard as it opened.
+    return_focus: Option<core_tab::ReturnFocus>,
 }
 
 impl CloseConfirmation {
@@ -53,11 +59,13 @@ impl CloseConfirmation {
             workspace: tab.workspace_id.clone(),
             tab: tab.tab_id.clone(),
             pane: None,
+            core: None,
             label: tab.label.clone(),
             interrupts: None,
             confirm_selected: false,
             do_not_ask_again: false,
             error: None,
+            return_focus: None,
         };
         close.interrupts = close.interrupted(snapshot);
         Some(close)
@@ -87,6 +95,7 @@ impl CloseConfirmation {
             workspace: tab.workspace_id.clone(),
             tab: tab.tab_id.clone(),
             pane: pane.map(|pane| pane.pane_id.clone()),
+            core: None,
             label: pane
                 .map(|pane| pane.label.clone().unwrap_or_else(|| pane.pane_id.clone()))
                 .unwrap_or_else(|| tab.label.clone()),
@@ -94,6 +103,7 @@ impl CloseConfirmation {
             confirm_selected: false,
             do_not_ask_again: false,
             error: None,
+            return_focus: None,
         };
         close.interrupts = close.interrupted(snapshot);
         Some(close)
@@ -215,7 +225,8 @@ impl SheprdWindow {
 
     /// Shows the confirmation in a menu the caller has already opened and
     /// fenced, or closes straight away when confirmation is turned off for the
-    /// target kind or a tab has no agent mid-task. The immediate close still
+    /// target kind or a tab has no agent mid-task and `confirm_close_idle_tab`
+    /// does not ask for it anyway. The immediate close still
     /// goes through `confirm_close`, so its connection and target checks hold
     /// and a refusal stays visible in the dialog.
     pub(super) fn present_close(
@@ -228,11 +239,12 @@ impl SheprdWindow {
             !self.config.confirm_close_pane
         } else {
             !self.config.confirm_close_tab
-                || !self
-                    .live
-                    .snapshot
-                    .as_ref()
-                    .is_some_and(|snapshot| close.interrupts_agent(snapshot))
+                || !(self.config.confirm_close_idle_tab
+                    || self
+                        .live
+                        .snapshot
+                        .as_ref()
+                        .is_some_and(|snapshot| close.interrupts_agent(snapshot)))
         };
         self.menu.close = Some(close);
         self.menu.page = Some(Page::ConfirmClose);
@@ -269,6 +281,12 @@ impl SheprdWindow {
         cx: &mut Context<Self>,
     ) -> Option<Preference> {
         let close = self.menu.close.as_ref()?;
+        if let Some(id) = close.core {
+            // No daemon request to refuse: the app removes the tab itself.
+            self.dismiss_menu(window, cx);
+            self.close_browser_tab(id, window, cx);
+            return None;
+        }
         let result = (|| {
             if !self.menu_target_current() || !self.input_ready() {
                 return Err(Error::StaleConnection);

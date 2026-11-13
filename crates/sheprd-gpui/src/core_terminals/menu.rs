@@ -271,7 +271,8 @@ impl SheprdWindow {
                     );
                 }
             }
-            (Action::Close, Target::Tab(_)) => self.close_browser_tab(tab, window, cx),
+            // As the tab's own close button: the close confirmation decides.
+            (Action::Close, Target::Tab(_)) => self.close_page_tab(tab, window, cx),
             (Action::Close, Target::Pane { terminal, .. }) => {
                 self.close_core_pane(tab, terminal, window, cx)
             }
@@ -337,7 +338,7 @@ impl SheprdWindow {
     }
 
     /// Whether `focus` is a herdr-core pane's the window still shows.
-    fn is_core_pane_focus(&self, focus: &FocusHandle, cx: &App) -> bool {
+    pub(crate) fn is_core_pane_focus(&self, focus: &FocusHandle, cx: &App) -> bool {
         self.core_terminals
             .views
             .values()
@@ -384,7 +385,8 @@ impl SheprdWindow {
             return;
         };
         if shown.panes.count() <= 1 {
-            self.close_browser_tab(tab, window, cx);
+            // As the tab's own close button: the close confirmation decides.
+            self.close_page_tab(tab, window, cx);
             return;
         }
         // A mirror's pane stops watching; the terminal runs on.

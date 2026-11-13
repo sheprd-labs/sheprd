@@ -4,6 +4,8 @@ mod agent_row_rescroll;
 mod chats;
 mod clear;
 mod close;
+mod close_confirmation;
+mod close_focus;
 mod commands;
 mod context;
 mod control_holder;
