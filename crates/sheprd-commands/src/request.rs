@@ -198,6 +198,8 @@ pub fn request(command: Command, snapshot: &ClientShellSnapshot) -> Option<(Meth
         | Command::RenameTab
         | Command::ReopenClosedTab
         | Command::LastPane
+        | Command::RecentPane
+        | Command::RecentPaneReverse
         | Command::Back
         | Command::Forward
         | Command::ResizeMode

@@ -44,6 +44,7 @@ mod mouse;
 mod pending_input;
 mod plugin_selection;
 pub(crate) mod prefix;
+mod recent_panes;
 mod reconnecting;
 mod regions;
 mod render;
@@ -332,6 +333,8 @@ pub(crate) struct SheprdWindow {
     /// The frame on screen, kept across the gap between two projections.
     pub(crate) presentation: Presentation,
     pub(crate) pressed_terminal_link: Option<PressedLink>,
+    /// Ctrl-Tab's order: the panes focused on any endpoint, most recent first.
+    pub(crate) recent_panes: recent_panes::RecentPanes,
     /// The terminal grid's cached regions; see `host_regions`.
     pub(crate) regions: Vec<regions::RegionLayers>,
     /// Pages remote agents asked for, waiting for their port's forward.

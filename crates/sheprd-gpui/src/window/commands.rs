@@ -353,6 +353,10 @@ impl SheprdWindow {
         cx: &mut Context<Self>,
     ) {
         if self.menu.page.is_some() {
+            // The palette and the devices rail read Ctrl-Tab themselves.
+            if command.is_recent_pane() {
+                cx.propagate();
+            }
             return;
         }
         #[cfg(feature = "integration-test")]
@@ -759,6 +763,14 @@ impl SheprdWindow {
                     self.navigate(NavigationTarget::Pane(&pane), cx);
                 }
                 window.focus(&self.focus, cx);
+                return;
+            }
+            Command::RecentPane | Command::RecentPaneReverse => {
+                let step = match command {
+                    Command::RecentPane => Step::Back,
+                    _ => Step::Forward,
+                };
+                self.switch_recent_pane(step, window, cx);
                 return;
             }
             Command::Back | Command::Forward => {
