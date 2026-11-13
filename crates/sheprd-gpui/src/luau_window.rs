@@ -263,6 +263,11 @@ pub(crate) fn wanted(args: &[std::ffi::OsString], chosen: impl FnOnce() -> bool)
 /// `[features]`. Read as the first frame's settings are, writing nothing; a
 /// file that does not parse leaves the default, and the app reports it.
 pub(crate) fn chosen() -> bool {
+    // A launch from Finder or a desktop launcher may lack the login shell's
+    // `XDG_CONFIG_HOME`; without adopting it first, this would read another
+    // folder's settings and miss `moonframe_window = false`. Both startups
+    // adopt it again, which then finds it already set.
+    crate::login_env::adopt_config_home();
     crate::config::Config::load_startup().map_or_else(
         |_| crate::config::Features::default().moonframe_window,
         |config| config.features.moonframe_window,
