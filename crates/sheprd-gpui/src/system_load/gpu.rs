@@ -52,8 +52,10 @@ pub(crate) struct Card {
 }
 
 /// What `nvidia-smi` is asked for, one card per line, in MiB.
-const NVIDIA_QUERY: &str =
-    "--query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits";
+const NVIDIA_ARGS: &[&str] = &[
+    "--query-gpu=utilization.gpu,memory.used,memory.total",
+    "--format=csv,noheader,nounits",
+];
 
 /// Prints a `gpu-amd` line per AMD card and a `gpu-nvidia` line per NVIDIA
 /// card. `timeout` keeps a wedged driver from stalling the whole sample.
@@ -131,22 +133,26 @@ const TOOL_TIMEOUT: Duration = Duration::from_secs(3);
 /// Apple GPU; a longer answer closes the pipe and the tool is given up on.
 pub(super) const TOOL_LIMIT: usize = 1024 * 1024;
 
-/// This machine's cards. A tool that is not installed is not run again for
-/// this worker, so a machine without a GPU spends nothing on it. Any other
-/// failure, such as a slow answer while the machine is busy, only loses that
-/// sample: the tool runs again on the next, as a remote host's command does.
+/// This machine's cards, read with the same tools a remote host runs.
 pub(super) struct Local {
-    nvidia: bool,
+    nvidia: Probe<'static>,
     #[cfg(target_os = "macos")]
-    ioreg: bool,
+    ioreg: Probe<'static>,
 }
 
 impl Local {
     pub fn open() -> Self {
         Self {
-            nvidia: !cfg!(target_os = "macos"),
+            // A Mac has no NVIDIA driver to ask.
+            nvidia: Probe {
+                installed: !cfg!(target_os = "macos"),
+                ..Probe::new("nvidia-smi", NVIDIA_ARGS)
+            },
             #[cfg(target_os = "macos")]
-            ioreg: true,
+            ioreg: Probe::new(
+                "ioreg",
+                &["-r", "-d", "1", "-w", "0", "-c", "IOAccelerator"],
+            ),
         }
     }
 
@@ -155,26 +161,50 @@ impl Local {
         let mut cards = Vec::new();
         #[cfg(target_os = "linux")]
         cards.extend(amd_cards());
-        if self.nvidia {
-            match tool("nvidia-smi", NVIDIA_QUERY.split(' '), TOOL_TIMEOUT) {
-                Ok(text) => cards.extend(text.lines().filter_map(nvidia)),
-                Err(Unanswered::Missing) => self.nvidia = false,
-                Err(Unanswered::Failed) => {}
-            }
+        if let Some(text) = self.nvidia.read(TOOL_TIMEOUT) {
+            cards.extend(text.lines().filter_map(nvidia));
         }
         #[cfg(target_os = "macos")]
-        if self.ioreg {
-            match tool(
-                "ioreg",
-                ["-r", "-d", "1", "-w", "0", "-c", "IOAccelerator"],
-                TOOL_TIMEOUT,
-            ) {
-                Ok(text) => cards.extend(apple_cards(&text)),
-                Err(Unanswered::Missing) => self.ioreg = false,
-                Err(Unanswered::Failed) => {}
-            }
+        if let Some(text) = self.ioreg.read(TOOL_TIMEOUT) {
+            cards.extend(apple_cards(&text));
         }
         Gpu::combine(cards)
+    }
+}
+
+/// One local tool, and whether it is still worth running. A tool that is not
+/// installed is not run again for this worker, so a machine without a GPU
+/// spends nothing on it. Any other failure, such as a slow answer while the
+/// machine is busy, only loses that sample: the tool runs again on the next,
+/// as a remote host's command does.
+pub(super) struct Probe<'a> {
+    program: &'a str,
+    args: &'a [&'a str],
+    installed: bool,
+}
+
+impl<'a> Probe<'a> {
+    pub(super) const fn new(program: &'a str, args: &'a [&'a str]) -> Self {
+        Self {
+            program,
+            args,
+            installed: true,
+        }
+    }
+
+    /// The tool's answer for this sample, or None.
+    pub(super) fn read(&mut self, timeout: Duration) -> Option<String> {
+        if !self.installed {
+            return None;
+        }
+        match tool(self.program, self.args.iter().copied(), timeout) {
+            Ok(text) => Some(text),
+            Err(Unanswered::Missing) => {
+                self.installed = false;
+                None
+            }
+            Err(Unanswered::Failed) => None,
+        }
     }
 }
 
