@@ -1799,6 +1799,24 @@ a strip squeezed by the sidebar, a panel, or a split gives up its tabs' room
 first, then drops the pair whole before the trailing controls would be
 pushed out.
 
+Ctrl-Tab (`recent_pane`) switches to the pane this window focused most
+recently before the current one across all connected machines. A quick tap
+goes back and forth between two panes. Holding Ctrl while pressing Tab again
+walks the history without reordering intermediate panes. Releasing Ctrl makes
+the selected pane most recent.
+Ctrl-Shift-Tab (`recent_pane_reverse`) goes the other way, starting from the
+least recently used pane. If another pane gains focus during the hold, that
+pane becomes most recent on release. Each window remembers at most 100 panes.
+Closed panes and unavailable machines are skipped. Reconnecting to the same
+daemon boot preserves its history. A restarted or removed machine loses only
+its own remembered panes.
+A press during a live activation or focus change is ignored. An unavailable
+selected machine can still switch to a reachable pane on another machine.
+The palette and the devices rail keep Ctrl-Tab for their own filters while
+they are open. A terminal program no longer receives Ctrl-Tab or
+Ctrl-Shift-Tab; unbind or rebind the two commands in `[keybindings]` to give
+the keys back.
+
 macOS keeps `Some(TitlebarOptions)` and the native Herdr window title/traffic lights,
 with transparent chrome and lights positioned at (9, 9) logical pixels. A full-width
 34px header blends `theme.surface` roughly 10% toward white, subtly lifting dark
@@ -4787,6 +4805,9 @@ Ctrl+Shift+U is left unbound for
   through the sidebar's rows on every listed host and wrap around,
   `switch_workspace` counts the selected host's rows, `focus_agent` counts the
   agent panel's, `last_pane` returns to the pane focused before this one,
+  `recent_pane`/`recent_pane_reverse` (Ctrl-Tab and Ctrl-Shift-Tab) step
+  through this window's recently used panes on every connected machine while
+  their modifier stays held,
   `move_tab_previous`/`_next` wrap a tab at either end to the other, and
   `[keys.indexed]` combos bind the digits 1-9. On macOS, the prefix, its
   chords, and custom command shortcuts recognize a shifted key such as
