@@ -553,6 +553,8 @@ pub(crate) struct Chats {
     pub(crate) active_visual_jobs: usize,
     /// The agents installed on each host new chats may start on.
     pub(crate) agents: super::harnesses::Harnesses,
+    /// New terminal agents `[chat] auto_convert` moves into chats.
+    pub(crate) auto_convert: super::auto_convert::Tracker,
     /// The terminal agent moving into a chat, one at a time.
     pub(crate) converting: Option<super::convert::Job>,
     /// The herdr-core agent moving into a chat, one at a time with the above.

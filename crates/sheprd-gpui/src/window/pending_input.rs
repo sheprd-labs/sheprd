@@ -47,6 +47,12 @@ fn stopped() -> String {
     fl!("window-input-stopped")
 }
 
+/// Whether `event` types into the pane, as keys, text, and pastes do and the
+/// pointer does not: what can leave a draft in the pane.
+pub(super) fn typing(event: &ClientPaneInputEvent) -> bool {
+    !matches!(event, ClientPaneInputEvent::Mouse { .. })
+}
+
 /// What delivering one held input did.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Delivery {
@@ -128,6 +134,15 @@ impl PendingInput {
 }
 
 impl SheprdWindow {
+    /// Records `event` as use of the window, and as typing when it types.
+    fn note_event(&mut self, event: &ClientPaneInputEvent) {
+        if typing(event) {
+            self.note_typing();
+        } else {
+            self.note_input();
+        }
+    }
+
     /// Send `event` to the focused pane or popup, or hold it across a
     /// projection gap. False when it was neither sent nor held and the window
     /// said why; input ignored while a menu or a focus click owns the window,
@@ -145,7 +160,7 @@ impl SheprdWindow {
                 return false;
             }
             // Typing across a projection gap is use of the window too.
-            self.note_input();
+            self.note_event(&event);
             // Outside a gap the input is ignored as before, with nothing shown.
             return self.hold(Held::Event(event), cx) || !self.in_projection_gap();
         }
@@ -158,8 +173,12 @@ impl SheprdWindow {
         let Some(target) = &self.pending_input.target else {
             return true;
         };
-        // `target` borrows the window, so the field is set directly.
-        self.last_input = Some(std::time::Instant::now());
+        // `target` borrows the window, so the fields are set directly.
+        let now = std::time::Instant::now();
+        self.last_input = Some(now);
+        if typing(&event) {
+            self.last_typed = Some(now);
+        }
         let handle = &self.endpoints[self.selected_endpoint].connection.handle;
         if let Some(handle) = handle
             && let Err(error) =
@@ -186,7 +205,7 @@ impl SheprdWindow {
         }
         // A paste is use even before the frame is ready, so the window takes
         // back a frame another client sized.
-        self.note_input();
+        self.note_typing();
         if self.mouse_focus_pending() {
             return;
         }

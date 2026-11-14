@@ -15,6 +15,7 @@
 //! be reached shows its terminal cells as before.
 // i18n: migrated
 
+mod auto_convert;
 mod chats;
 pub(crate) mod code_block;
 mod code_choices;

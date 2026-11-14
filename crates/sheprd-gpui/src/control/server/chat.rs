@@ -173,9 +173,9 @@ fn convert_code(error: &crate::chat::ConvertError) -> ErrorCode {
             | convert::Error::NoAgent
             | convert::Error::NotRunning(_),
         ) => ErrorCode::NotFound,
-        ConvertError::AlreadyConverting | ConvertError::Convert(convert::Error::Busy(_)) => {
-            ErrorCode::Busy
-        }
+        ConvertError::AlreadyConverting
+        | ConvertError::Claimed
+        | ConvertError::Convert(convert::Error::Busy(_)) => ErrorCode::Busy,
         ConvertError::Convert(
             convert::Error::Moved | convert::Error::StillRunning(_) | convert::Error::Stopped,
         )

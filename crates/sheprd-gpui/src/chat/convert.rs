@@ -9,6 +9,7 @@
 //! host through `herdr_cli`, on this machine or over SSH, and types the line
 //! once the window still shows that host.
 
+pub(in crate::chat) mod claim;
 mod core;
 mod error;
 mod remote;
@@ -141,7 +142,13 @@ fn run(request: &Request, cancelled: &AtomicBool) -> Result<String, Error> {
 /// further, as a window that closes or a pane that moves on must.
 #[derive(Debug)]
 pub(crate) struct Job {
+    /// Started by `[chat] auto_convert` rather than asked for, so its
+    /// outcome is logged and handed back rather than flashed.
+    pub(super) automatic: bool,
     cancelled: Arc<AtomicBool>,
+    /// Keeps every other window of this app off the pane until the move
+    /// has typed its line or given up.
+    _claim: Option<claim::Claim<'static>>,
     pane: String,
     result: mpsc::Receiver<Result<String, Error>>,
     scope: existing::Scope,
@@ -161,7 +168,9 @@ impl Job {
         let (sender, result) = mpsc::sync_channel(1);
         let cancelled = Arc::new(AtomicBool::new(false));
         let job = Self {
+            automatic: false,
             cancelled: cancelled.clone(),
+            _claim: None,
             pane: pane.to_owned(),
             result,
             scope,
@@ -176,7 +185,7 @@ impl Drop for Job {
     }
 }
 
-fn spawn(request: Request) -> Result<Job, Error> {
+fn spawn(request: Request, claim: claim::Claim<'static>) -> Result<Job, Error> {
     let cancelled = Arc::new(AtomicBool::new(false));
     let flag = cancelled.clone();
     let (sender, result) = mpsc::sync_channel(1);
@@ -189,7 +198,9 @@ fn spawn(request: Request) -> Result<Job, Error> {
         })
         .map_err(Error::Worker)?;
     Ok(Job {
+        automatic: false,
         cancelled,
+        _claim: Some(claim),
         pane,
         result,
         scope,
@@ -258,12 +269,19 @@ impl SheprdWindow {
             selection: self.selection_epoch,
             connection: endpoint.generation,
         };
-        self.chats.converting = Some(spawn(Request {
-            agent,
-            pane: pane.clone(),
-            program,
-            scope,
-        })?);
+        // Another window of this app may be moving the same agent.
+        let claim = claim::CLAIMS
+            .claim(&scope.boot, &pane)
+            .ok_or(Error::Claimed)?;
+        self.chats.converting = Some(spawn(
+            Request {
+                agent,
+                pane: pane.clone(),
+                program,
+                scope,
+            },
+            claim,
+        )?);
         Ok((pane, agent))
     }
 
@@ -356,8 +374,10 @@ impl SheprdWindow {
             self.type_script_line(&job.scope.boot, &job.pane, &line)
                 .map_err(|error| Error::Type(Arc::new(error)))
         });
-        if let Err(error) = typed {
-            self.flash_convert_error(&error, cx);
+        match typed {
+            Err(error) if job.automatic => self.auto_convert_failed(&job.pane, &error),
+            Err(error) => self.flash_convert_error(&error, cx),
+            Ok(()) => {}
         }
         cx.notify();
     }

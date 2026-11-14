@@ -85,6 +85,8 @@ mod shortcut_tests;
 mod status_bar_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod typing_tests;
 
 #[cfg(feature = "integration-test")]
 use crate::smoke;
@@ -266,6 +268,9 @@ pub(crate) struct SheprdWindow {
     /// The last pointer position over the panes, so a move event that did not move is not use.
     pub(crate) last_pointer: Option<Point<Pixels>>,
     pub(crate) last_queued_options: Option<ConnectOptions>,
+    /// When this window last typed, composed, or pasted into Herdr's focused
+    /// pane. Pointer motion, wheels, clicks, and focus changes are not typing.
+    pub(crate) last_typed: Option<std::time::Instant>,
     /// The status line text the last link this window failed to follow
     /// left, so following the next one can clear it without touching an
     /// unrelated error.

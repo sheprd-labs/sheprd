@@ -43,6 +43,7 @@ error-chat-start-timeout = Herdr did not open the chat's tab in time
 error-chat-convert-already-chat = the pane already runs a chat
 error-chat-convert-already-converting = another agent is still moving into a chat
 error-chat-convert-answer = could not read the pane's processes
+error-chat-convert-claimed = another window is moving this agent into a chat
 error-chat-convert-busy = { $agent } is busy; wait until it is idle
 error-chat-convert-folder-gone = the session's folder { $folder } is gone, as when its worktree was removed
 error-chat-convert-host-program = sheprd-acp was not found on this host

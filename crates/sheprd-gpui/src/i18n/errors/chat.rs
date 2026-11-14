@@ -55,6 +55,7 @@ impl Localize for ConvertError {
             // keep-sorted start
             Self::AlreadyConverting => fl!("error-chat-convert-already-converting"),
             Self::Answer(_) => fl!("error-chat-convert-answer"),
+            Self::Claimed => fl!("error-chat-convert-claimed"),
             Self::Convert(error) => error.localize(),
             Self::Core(error) => fl!("error-chat-convert-core", error = error.to_string()),
             Self::Disabled => fl!("error-chat-start-disabled"),
