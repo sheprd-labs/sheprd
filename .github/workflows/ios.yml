@@ -30,9 +30,11 @@ on:
 
 permissions: {}
 
+# A newer push supersedes any run still going, on main too: only the latest
+# commit's TestFlight build matters, and a macOS runner is scarce.
 concurrency:
   group: ios-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 jobs:
   check:
