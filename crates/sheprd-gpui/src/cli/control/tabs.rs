@@ -43,6 +43,10 @@ pub enum MachineCommand {
     Open {
         name: String,
     },
+    /// Open it with its setup guide beside it.
+    Setup {
+        name: String,
+    },
     List,
     Set {
         name: String,
@@ -181,6 +185,11 @@ pub(super) fn machine(args: &mut Args) -> Result<MachineCommand, CliError> {
     };
     Ok(match verb.to_str() {
         Some("open") => MachineCommand::Open {
+            name: args
+                .optional_text()?
+                .unwrap_or_else(|| "default".to_owned()),
+        },
+        Some("setup") => MachineCommand::Setup {
             name: args
                 .optional_text()?
                 .unwrap_or_else(|| "default".to_owned()),

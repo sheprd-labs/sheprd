@@ -1,0 +1,29 @@
+# The setup guide beside a virtual Mac's tab: what makes it ready for agents.
+
+machine-guide-title = Set up for agents
+machine-guide-ready = Ready for agents
+machine-guide-ready-detail = Agents can run commands here and test its UI with screenshots, clicks, and keys. Machines made from { $image } start the same way.
+machine-guide-done = Done
+machine-guide-sign-in = Sign in
+machine-guide-sign-in-detail = Finish Setup Assistant in the machine and sign in. Turn on automatic login in System Settings > Users & Groups, so agents find a desktop after each start.
+machine-guide-sign-in-confirm = I’m signed in
+machine-guide-sign-in-done = Signed in
+machine-guide-install = Install Sheprd Agent
+machine-guide-install-detail = On the machine’s desktop, open the Sheprd Agent disk and double-click Install Sheprd Agent.pkg. It asks for the machine’s password.
+machine-guide-install-waiting = Waiting for Sheprd Agent to answer…
+machine-guide-install-done = Sheprd Agent answers
+machine-guide-accessibility = Allow Accessibility
+machine-guide-accessibility-detail = macOS asks whether Sheprd Agent may control the computer. Press Open System Settings and switch Sheprd Agent on.
+machine-guide-accessibility-waiting = Waiting for Accessibility…
+machine-guide-accessibility-done = Clicks, keys, and typing allowed
+machine-guide-screen-recording = Allow Screen Recording
+machine-guide-screen-recording-detail = System Settings is open at Screen & System Audio Recording: switch Sheprd Agent on. If macOS later asks to bypass the window picker, press Allow.
+machine-guide-screen-recording-waiting = Waiting for Screen Recording…
+machine-guide-screen-recording-done = Screenshots allowed
+machine-guide-save = Save as an image
+machine-guide-save-detail = Optional. Keep the machine as an image, and every machine made from it starts signed in, with the agent and its permissions.
+machine-guide-save-shut-down = Shut the machine down from its  menu to save it.
+machine-guide-save-button = Save as Image
+machine-guide-saving = Saving as an image…
+machine-guide-skip = Skip
+machine-guide-not-running = Start the machine to go on.

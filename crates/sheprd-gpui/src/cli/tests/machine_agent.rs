@@ -118,3 +118,19 @@ fn machine_type_and_screenshot_and_agent_take_their_words() {
         }
     );
 }
+
+#[test]
+fn machine_setup_opens_the_guide_for_a_name_or_the_default() {
+    assert_eq!(
+        machine(&["machine", "setup", "review-bot"]),
+        MachineCommand::Setup {
+            name: "review-bot".into()
+        }
+    );
+    assert_eq!(
+        machine(&["machine", "setup"]),
+        MachineCommand::Setup {
+            name: "default".into()
+        }
+    );
+}

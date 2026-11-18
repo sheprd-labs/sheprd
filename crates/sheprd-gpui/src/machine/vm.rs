@@ -306,6 +306,9 @@ pub(crate) fn start(name: &Name, cx: &mut App) {
             if !startable(&name) {
                 return set_phase(&name, Phase::Stopped, cx);
             }
+            if bundle.as_ref().is_ok_and(|bundle| bundle.guide) {
+                super::guide::begin(&name, cx);
+            }
             if let Err(error) = bundle.and_then(|bundle| build(&name, &bundle, cx)) {
                 fail(&name, &error, cx);
             }

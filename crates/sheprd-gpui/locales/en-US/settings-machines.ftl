@@ -16,6 +16,7 @@ settings-machines-display-description = Fit follows the tab's size. A fixed size
 settings-machines-display-fit = Fit tab
 settings-machines-forget = Forget saved state
 settings-machines-gb = { $size } GB
+settings-machines-guide = Set up for agents
 settings-machines-memory = Memory
 settings-machines-none = No virtual Macs are installed.
 settings-machines-open = Open

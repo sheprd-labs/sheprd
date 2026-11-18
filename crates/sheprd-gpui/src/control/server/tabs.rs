@@ -44,7 +44,8 @@ pub(super) fn serve(
         TabOp::Code { path, line } => arrive::code(&caller, &path, line, incoming, watches, cx),
         TabOp::Edit { path, line } => arrive::edit(&caller, &path, line, incoming, watches, cx),
         TabOp::Devices => arrive::devices(&caller, incoming, watches, cx),
-        TabOp::Machine { name } => arrive::machine(&caller, name, incoming, watches, cx),
+        TabOp::Machine { name } => arrive::machine(&caller, name, false, incoming, watches, cx),
+        TabOp::MachineSetup { name } => arrive::machine(&caller, name, true, incoming, watches, cx),
         op @ (TabOp::MachineAgent { .. }
         | TabOp::MachineClick { .. }
         | TabOp::MachineExec { .. }

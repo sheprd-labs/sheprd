@@ -155,6 +155,7 @@ Sheprd** entry, which both Windows installers add, runs this command through
 | `machine image [list]` | The images machines can start from. Exits 4 when there are none |
 | `machine image save MACHINE IMAGE` | Keep a shut down machine as an image. Exits 6 while it runs or is suspended |
 | `machine image delete IMAGE` | Ask in Settings to delete it; the user confirms there. Machines made from it stay |
+| `machine setup [NAME]` | Shows the machine with its setup guide docked beside it: sign in, install Sheprd Agent, allow its two permissions, and save an image, each checked by Sheprd before the next. A machine made from an image opens with it already |
 | `machine agent NAME` | Whether Sheprd Agent answers inside the running machine: its screen size in pixels and whether macOS lets it post input and take screenshots (see [Working inside a virtual Mac](#working-inside-a-virtual-mac)). Exits 1 when it does not answer |
 | `machine exec NAME [--timeout S] [--cwd DIR] -- COMMAND...` | Run a command as the machine's logged-in user and print its output, as `cloud exec` does |
 | `machine screenshot NAME PATH` | Write a PNG of the machine's screen to PATH |
@@ -384,7 +385,10 @@ run `sheprd config set tab_labels.agent_title true`.
 `machine agent`, `exec`, `screenshot`, `click`, `type`, and `key` work
 inside a running virtual Mac through Sheprd Agent, a small app in the guest
 that answers the app over the machine's vsock device: no network, and
-nothing outside the machine can reach it. Every machine boots with a
+nothing outside the machine can reach it. A new machine's tab shows a
+setup guide beside it that walks through what follows and checks each
+step through the agent; `machine setup NAME` or Settings > Virtual Macs >
+Set up for agents shows it again. Every machine boots with a
 read-only disk from the app, Sheprd Agent, which shows on its desktop.
 Install the agent once by double-clicking Install Sheprd Agent.pkg there:
 it puts `Sheprd Agent.app` in `/Applications` and starts it at each login.

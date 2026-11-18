@@ -15,7 +15,7 @@
 use super::{
     Error, Name, Result,
     configuration::new_identity,
-    store::{self, AUXILIARY, DISK, HARDWARE, IDENTITY, SETTINGS, STATE},
+    store::{self, AUXILIARY, DISK, GUIDE, HARDWARE, IDENTITY, SETTINGS, STATE},
 };
 use std::{
     fs,
@@ -102,7 +102,9 @@ fn create_in(source: &Path, image: &Name, root: &Path, name: &Name, identity: &[
     }
     clone_as(source, root, name, |staging| {
         let path = staging.join(IDENTITY);
-        fs::write(&path, identity).map_err(|source| store::write_error(&path, source))
+        fs::write(&path, identity).map_err(|source| store::write_error(&path, source))?;
+        let guide = staging.join(GUIDE);
+        fs::write(&guide, b"").map_err(|source| store::write_error(&guide, source))
     })
 }
 

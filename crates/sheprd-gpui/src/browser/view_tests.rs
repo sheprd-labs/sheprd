@@ -57,6 +57,10 @@ mod notes;
 #[cfg(any(target_os = "macos", windows))]
 mod page_results;
 
+/// A machine's setup guide; machines run on macOS only.
+#[cfg(target_os = "macos")]
+mod machine_guide;
+
 /// Middle-clicking a strip's tab closes it.
 mod middle_click;
 

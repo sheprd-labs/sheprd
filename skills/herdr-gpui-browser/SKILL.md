@@ -370,6 +370,7 @@ what Sheprd shows or keeps.
 | Run a command on a saved cloud machine (clone, build, commit, push) | `sheprd cloud exec ID --cwd ~/code/app -- git status` |
 | Delete saved cloud machines you are done with, then follow it | `sheprd cloud destroy ID... --json`, `sheprd cloud wait BATCH --timeout 600 --json` |
 | List the virtual Macs on this computer, open one, or make one from an image | `sheprd machine list`, `sheprd machine open NAME`, `sheprd machine new NAME --from IMAGE` |
+| Get a virtual Mac ready for agents when `machine agent` does not answer: show the user the setup guide, then ask them to follow it | `sheprd machine setup NAME` |
 | Run a command inside a running virtual Mac (build, test, install an app) | `sheprd machine exec NAME --cwd ~/app -- xcodebuild test` |
 | Test a Mac app's UI in a virtual Mac: look at its screen, then click, type, or press keys | `sheprd machine screenshot NAME /tmp/s.png`, `sheprd machine click NAME X Y`, `sheprd machine type NAME TEXT`, `sheprd machine key NAME cmd+s` |
 | Check remote control and its daemon-host network interfaces, or pair a phone (Tailscale preferred; optionally choose an origin from status) | `sheprd remote status`, `sheprd remote pair [--address HTTPS_ORIGIN]` |

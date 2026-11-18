@@ -125,6 +125,11 @@ pub enum TabOp {
         name: String,
         image: String,
     },
+    /// Show the virtual Mac called `name` with its setup guide beside it:
+    /// the steps that make it ready for agents, which Sheprd checks.
+    MachineSetup {
+        name: String,
+    },
     /// What the virtual Mac called `name` boots with next. Fields left out
     /// keep their value; `display` is `fit` or a size such as `1920x1200`.
     MachineSet {
@@ -193,6 +198,7 @@ impl TabOp {
             | Self::MachineList
             | Self::MachineNew { .. }
             | Self::MachineSet { .. }
+            | Self::MachineSetup { .. }
             | Self::Orchestrator { .. }
             | Self::Review
             | Self::Px0 => ARRIVE_WAIT_SECONDS,

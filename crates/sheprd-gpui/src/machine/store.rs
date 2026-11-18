@@ -14,6 +14,9 @@ use std::{
 
 pub(super) const AUXILIARY: &str = "auxiliary.bin";
 pub(super) const DISK: &str = "disk.img";
+/// Present from a machine's making until its setup guide is closed: the
+/// guide shows beside its tab from its first start ([`super::guide`]).
+pub(super) const GUIDE: &str = "setup-guide";
 pub(super) const HARDWARE: &str = "hardware.bin";
 pub(super) const IDENTITY: &str = "identity.bin";
 /// What the user chose, for the next boot.

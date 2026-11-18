@@ -35,6 +35,8 @@ mod hidden;
 mod kit;
 mod layouts;
 mod location;
+#[cfg(target_os = "macos")]
+mod machine_guide;
 mod machine_tab;
 #[cfg(target_os = "macos")]
 pub(crate) use machine_tab::open_in as open_machine_in;

@@ -269,9 +269,11 @@ pub(super) fn devices(
 }
 
 /// The virtual Mac called `name`, in a tab of the caller's workspace.
+/// Shows machine `name`, with its setup guide beside it when `setup`.
 pub(super) fn machine(
     caller: &Caller,
     name: String,
+    setup: bool,
     incoming: socket::Incoming,
     watches: &mut Watches,
     cx: &mut App,
@@ -289,6 +291,12 @@ pub(super) fn machine(
         cx,
         |_| true,
         move |view, workspace, window, cx| {
+            #[cfg(target_os = "macos")]
+            if setup {
+                crate::machine::guide::begin(&name, cx);
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = setup;
             view.open_machine(name.clone(), window, cx);
             opened(
                 view,

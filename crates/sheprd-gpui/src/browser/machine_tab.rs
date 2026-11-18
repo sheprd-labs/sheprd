@@ -45,10 +45,24 @@ impl SheprdWindow {
 
     /// The machine's display, or what it is doing instead.
     pub(crate) fn render_machine_tab(&self, tab: &Tab, cx: &mut Context<Self>) -> AnyElement {
-        match self.machine_display(tab, cx) {
+        let display = match self.machine_display(tab, cx) {
             Ok(display) => display,
             Err(notice) => notice,
+        };
+        #[cfg(target_os = "macos")]
+        if let Some(Location::Machine { name }) = &tab.location
+            && let Some(guide) = self.render_machine_guide(name, cx)
+        {
+            // The display shrinks to make room, and Apple's view follows it.
+            return div()
+                .size_full()
+                .flex()
+                .flex_row()
+                .child(div().flex_1().min_w_0().h_full().child(display))
+                .child(guide)
+                .into_any_element();
         }
+        display
     }
 
     fn machine_notice(&self, message: String) -> Div {

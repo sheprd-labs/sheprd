@@ -6,7 +6,7 @@
 
 use super::{
     Display, Error, Name, Result, Settings,
-    store::{self, AUXILIARY, DISK, HARDWARE, IDENTITY},
+    store::{self, AUXILIARY, DISK, GUIDE, HARDWARE, IDENTITY},
     vm::description,
 };
 use objc2::{AnyThread as _, rc::Retained};
@@ -99,6 +99,8 @@ pub(super) struct Bundle {
     pub(super) settings: Settings,
     /// The saved state to resume from, if it is suspended.
     pub(super) saved: Option<PathBuf>,
+    /// Whether its setup guide is still open, as when it was just made.
+    pub(super) guide: bool,
     /// The installer disk of Sheprd Agent, attached read-only.
     installer: Option<PathBuf>,
 }
@@ -121,6 +123,7 @@ impl Bundle {
             auxiliary,
             disk,
             settings: store::boot_settings(&folder)?,
+            guide: folder.join(GUIDE).is_file(),
             installer,
             saved,
         })

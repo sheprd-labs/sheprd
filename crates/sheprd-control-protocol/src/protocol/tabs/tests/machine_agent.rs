@@ -113,3 +113,10 @@ fn agent_replies_round_trip() {
         assert_eq!(serde_json::from_str::<Response>(&text).unwrap(), response);
     }
 }
+
+#[test]
+fn machine_setup_round_trips_and_waits_to_arrive() {
+    let op = TabOp::MachineSetup { name: "a".into() };
+    assert_eq!(op.wait_seconds(), ARRIVE_WAIT_SECONDS);
+    round_trip(op);
+}

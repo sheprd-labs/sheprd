@@ -154,6 +154,10 @@ pub(super) fn machine(command: MachineCommand, context: &Context) -> crate::Resu
             let response = context.call(Request::Tab, TabOp::Machine { name })?;
             opened("the machine", response)
         }
+        MachineCommand::Setup { name } => {
+            let response = context.call(Request::Tab, TabOp::MachineSetup { name })?;
+            opened("the machine and its setup guide", response)
+        }
         MachineCommand::List => machines(context.call(Request::Tab, TabOp::MachineList)?),
         MachineCommand::Set {
             name,

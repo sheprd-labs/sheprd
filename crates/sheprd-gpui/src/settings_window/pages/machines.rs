@@ -365,6 +365,10 @@ impl SettingsWindow {
                 this.forget_machine_state(name, cx);
             },
         );
+        let guide = button("guide", fl!("settings-machines-guide"), |this, name, cx| {
+            machine::guide::begin(name, cx);
+            crate::browser::open_machine_in(&this.source, name.clone(), cx);
+        });
         let save_image = button(
             "save-image",
             fl!("settings-machines-save-image"),
@@ -372,9 +376,9 @@ impl SettingsWindow {
         );
         let row = div().flex().flex_row().gap(px(6.));
         match (status, listing.saved) {
-            (Status::Running, _) => row.child(open).child(suspend).child(shut_down),
+            (Status::Running, _) => row.child(open).child(guide).child(suspend).child(shut_down),
             (Status::Stopped, true) => row.child(open).child(forget),
-            (Status::Stopped, false) => row.child(open).child(save_image),
+            (Status::Stopped, false) => row.child(open).child(guide).child(save_image),
             (Status::Failed(_), _) => row.child(open),
             (Status::Starting | Status::Saving, _) => row,
         }

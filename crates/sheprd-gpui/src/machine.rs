@@ -15,6 +15,8 @@ pub(crate) mod agent;
 mod configuration;
 mod error;
 #[cfg(target_os = "macos")]
+pub(crate) mod guide;
+#[cfg(target_os = "macos")]
 pub(crate) mod image;
 #[cfg(target_os = "macos")]
 mod quit;
