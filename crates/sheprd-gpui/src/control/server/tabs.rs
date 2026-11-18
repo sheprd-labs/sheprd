@@ -2,6 +2,7 @@
 //! of `browser`: the app's own tabs, which the `browser::Store` keeps for
 //! every window.
 mod arrive;
+mod machine_agent;
 mod machines;
 mod page;
 
@@ -44,6 +45,12 @@ pub(super) fn serve(
         TabOp::Edit { path, line } => arrive::edit(&caller, &path, line, incoming, watches, cx),
         TabOp::Devices => arrive::devices(&caller, incoming, watches, cx),
         TabOp::Machine { name } => arrive::machine(&caller, name, incoming, watches, cx),
+        op @ (TabOp::MachineAgent { .. }
+        | TabOp::MachineClick { .. }
+        | TabOp::MachineExec { .. }
+        | TabOp::MachineKey { .. }
+        | TabOp::MachineScreenshot { .. }
+        | TabOp::MachineType { .. }) => machine_agent::serve(op, incoming, cx),
         TabOp::MachineDelete { name } => machines::delete(&caller, name, incoming, cx),
         TabOp::MachineImageDelete { name } => {
             machines::image_delete(&caller, name, incoming, cx);

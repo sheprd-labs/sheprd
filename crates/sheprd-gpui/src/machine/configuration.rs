@@ -15,10 +15,10 @@ use objc2_virtualization::{
     VZDiskImageStorageDeviceAttachment, VZMACAddress, VZMacAuxiliaryStorage,
     VZMacGraphicsDeviceConfiguration, VZMacGraphicsDisplayConfiguration, VZMacHardwareModel,
     VZMacMachineIdentifier, VZMacOSBootLoader, VZMacPlatformConfiguration,
-    VZNATNetworkDeviceAttachment, VZUSBKeyboardConfiguration,
+    VZNATNetworkDeviceAttachment, VZUSBKeyboardConfiguration, VZUSBMassStorageDeviceConfiguration,
     VZUSBScreenCoordinatePointingDeviceConfiguration, VZVirtioBlockDeviceConfiguration,
     VZVirtioEntropyDeviceConfiguration, VZVirtioNetworkDeviceConfiguration,
-    VZVirtualMachineConfiguration,
+    VZVirtioSocketDeviceConfiguration, VZVirtualMachineConfiguration,
 };
 use sha2::{Digest as _, Sha256};
 use std::{
@@ -45,6 +45,45 @@ fn mac_address(identity: &[u8]) -> String {
     ) // i18n: data
 }
 
+/// The machine's copy of the installer disk: a resumed guest may have it
+/// mounted, so its blocks must not change under it while it is saved.
+const INSTALLER: &str = "agent-installer.img";
+
+/// The installer disk of Sheprd Agent in the app's bundle, beside its
+/// executable. A build run outside a bundle has none.
+fn bundled_installer() -> Option<PathBuf> {
+    let executable = std::env::current_exe().ok()?;
+    let disk = executable
+        .parent()?
+        .parent()?
+        .join("Resources")
+        .join("MachineAgent.img");
+    disk.is_file().then_some(disk)
+}
+
+/// The installer disk machine `folder` boots with. A fresh boot takes the
+/// app's current one, `bundled`; a resume keeps the copy it was saved with,
+/// as the guest saw it. A machine boots without one rather than not at all.
+fn installer(folder: &Path, bundled: Option<&Path>, resuming: bool) -> Option<PathBuf> {
+    let copy = folder.join(INSTALLER);
+    if !resuming {
+        let bundled = bundled?;
+        // `fs::copy` clones on APFS; the old copy goes first, as a clone
+        // cannot replace a file.
+        let copied = fs::remove_file(&copy)
+            .or_else(|error| match error.kind() {
+                std::io::ErrorKind::NotFound => Ok(()),
+                _ => Err(error),
+            })
+            .and_then(|()| fs::copy(bundled, &copy));
+        if let Err(error) = copied {
+            tracing::warn!(path = %copy.display(), %error, "Cannot copy the agent installer");
+            return None;
+        }
+    }
+    copy.is_file().then_some(copy)
+}
+
 /// A machine identifier no other machine has, as its file holds it.
 pub(super) fn new_identity() -> Vec<u8> {
     // SAFETY: a plain value object, made and read on this thread.
@@ -60,6 +99,8 @@ pub(super) struct Bundle {
     pub(super) settings: Settings,
     /// The saved state to resume from, if it is suspended.
     pub(super) saved: Option<PathBuf>,
+    /// The installer disk of Sheprd Agent, attached read-only.
+    installer: Option<PathBuf>,
 }
 
 impl Bundle {
@@ -73,12 +114,14 @@ impl Bundle {
             return Err(Error::NotInstalled(folder));
         }
         let saved = Some(store::state_file(name)?).filter(|state| state.is_file());
+        let installer = installer(&folder, bundled_installer().as_deref(), saved.is_some());
         Ok(Self {
             hardware: read(&folder.join(HARDWARE))?,
             identity: read(&folder.join(IDENTITY))?,
             auxiliary,
             disk,
             settings: store::boot_settings(&folder)?,
+            installer,
             saved,
         })
     }
@@ -144,9 +187,24 @@ impl Bundle {
             configuration.setCPUCount(self.settings.cpus.into());
             configuration.setMemorySize(u64::from(self.settings.memory_gib) << 30);
             configuration.setPlatform(&platform);
-            configuration.setStorageDevices(&NSArray::from_retained_slice(&[
-                Retained::into_super(block),
-            ]));
+            let mut storage = vec![Retained::into_super(block)];
+            if let Some(installer) = &self.installer {
+                // A USB disk, so the guest shows it on the desktop as one
+                // plugged in. Read-only: nothing in the guest changes it.
+                let attachment = VZDiskImageStorageDeviceAttachment::initWithURL_readOnly_error(
+                    VZDiskImageStorageDeviceAttachment::alloc(),
+                    &file_url(installer),
+                    true,
+                )
+                .map_err(|error| Error::Framework(description(&error)))?;
+                storage.push(Retained::into_super(
+                    VZUSBMassStorageDeviceConfiguration::initWithAttachment(
+                        VZUSBMassStorageDeviceConfiguration::alloc(),
+                        &attachment,
+                    ),
+                ));
+            }
+            configuration.setStorageDevices(&NSArray::from_retained_slice(&storage));
             configuration.setGraphicsDevices(&NSArray::from_retained_slice(&[
                 Retained::into_super(graphics),
             ]));
@@ -162,6 +220,10 @@ impl Bundle {
             configuration.setNetworkDevices(&NSArray::from_retained_slice(&[
                 Retained::into_super(network),
             ]));
+            // Sheprd Agent answers on this, with no network between.
+            configuration.setSocketDevices(&NSArray::from_retained_slice(&[Retained::into_super(
+                VZVirtioSocketDeviceConfiguration::new(),
+            )]));
             configuration
                 .validateWithError()
                 .map_err(|error| Error::Framework(description(&error)))?;

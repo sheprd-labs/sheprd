@@ -10,6 +10,8 @@
 //! status bar shows. Quitting the app saves it, and it resumes when next shown.
 
 #[cfg(target_os = "macos")]
+pub(crate) mod agent;
+#[cfg(target_os = "macos")]
 mod configuration;
 mod error;
 #[cfg(target_os = "macos")]

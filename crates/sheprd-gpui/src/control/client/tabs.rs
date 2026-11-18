@@ -1,5 +1,6 @@
 //! `tab`, `code`, `devices`, `orchestrator`, and `review`.
 mod items;
+mod machine_agent;
 
 use super::{Context, Output, unexpected};
 use crate::{
@@ -184,6 +185,42 @@ pub(super) fn machine(command: MachineCommand, context: &Context) -> crate::Resu
         MachineCommand::ImageDelete { name } => {
             context.act(Request::Tab, TabOp::MachineImageDelete { name })
         }
+        MachineCommand::Agent { name } => machine_agent::agent(name, context),
+        MachineCommand::Exec(command) => machine_agent::exec(command, context),
+        MachineCommand::Screenshot { name, path } => {
+            machine_agent::screenshot(name, &path, context)
+        }
+        MachineCommand::Click {
+            name,
+            x,
+            y,
+            button,
+            count,
+        } => context.act(
+            Request::Tab,
+            TabOp::MachineClick {
+                name,
+                x,
+                y,
+                button,
+                count,
+            },
+        ),
+        MachineCommand::Type { name, text } => {
+            context.act(Request::Tab, TabOp::MachineType { name, text })
+        }
+        MachineCommand::Key {
+            name,
+            key,
+            modifiers,
+        } => context.act(
+            Request::Tab,
+            TabOp::MachineKey {
+                name,
+                key,
+                modifiers,
+            },
+        ),
     }
 }
 

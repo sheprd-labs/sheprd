@@ -32,7 +32,8 @@ pub enum Placement {
 /// 8: `host` `automation_approve`. 9: `remote`. 10: `settings` `language`.
 /// 11: `mod`. 12: `window` `alerts`. 13: `chat` `shortcuts`. 14: the `tab`
 /// family's `machine` requests, and the `machine` kind in `tab list`.
-pub const PROTOCOL_VERSION: u32 = 14;
+/// 15: `machine` `agent`, `exec`, `screenshot`, `click`, `type`, and `key`.
+pub const PROTOCOL_VERSION: u32 = 15;
 
 /// Older apps and clients know only tabs, so a tab is left off the wire.
 fn is_tab(placement: &Placement) -> bool {

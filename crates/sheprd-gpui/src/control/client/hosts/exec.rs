@@ -25,7 +25,7 @@ pub(super) fn run(command: ExecCommand, context: &Context) -> crate::Result<Outp
     }
 }
 
-fn output(info: &ExecInfo) -> crate::Result<Output> {
+pub(in crate::control::client) fn output(info: &ExecInfo) -> crate::Result<Output> {
     let mut stderr = info.stderr.clone();
     if info.truncated {
         stderr.push_str("[sheprd: only the end of the output was kept]\n");

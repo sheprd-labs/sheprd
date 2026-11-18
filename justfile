@@ -211,6 +211,9 @@ bundle profile="release" features="":
     # it the app pairs over the network only.
     xcrun swiftc -O -swift-version 6 macos/sheprd-nearby/main.swift macos/sheprd-nearby/Framing.swift \
         macos/sheprd-nearby/Bonjour.swift macos/sheprd-nearby/Central.swift -o "$app/Contents/MacOS/sheprd-nearby"
+    # Every virtual Mac mounts this disk: the installer of Sheprd Agent,
+    # which lets agents work inside it.
+    bash scripts/build-machine-agent.sh "$app/Contents/Resources/MachineAgent.img"
     # Herdr 2 terminals run in the pinned herdr-core beside it, as releases
     # bundle it. Fetched once per profile; an offline build goes on without.
     core=target/{{profile}}/herdr-core

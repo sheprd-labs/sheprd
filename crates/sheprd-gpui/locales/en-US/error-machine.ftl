@@ -1,5 +1,14 @@
 # Why a machine could not start or change, shown in its tab and settings.
 
+error-machine-agent-accessibility = Sheprd Agent cannot post input yet. In the machine, allow it in System Settings > Privacy & Security > Accessibility.
+error-machine-agent-io = Lost the connection to Sheprd Agent: { $error }
+error-machine-agent-not-running = { $name } is not running. Open it first.
+error-machine-agent-picture = Sheprd Agent sent a screenshot this app cannot read.
+error-machine-agent-reply = Sheprd Agent sent a reply this app cannot read. It may be older or newer than this app: install it again from the Sheprd Agent disk on its desktop.
+error-machine-agent-refused = Sheprd Agent refused: { $message }
+error-machine-agent-screen-recording = Sheprd Agent cannot see the screen yet. In the machine, allow it in System Settings > Privacy & Security > Screen & System Audio Recording.
+error-machine-agent-too-large = A message of { $bytes } bytes is past the limit.
+error-machine-agent-unreachable = Sheprd Agent does not answer in { $name } ({ $reason }). To install it, double-click Install Sheprd Agent.pkg on the Sheprd Agent disk on its desktop.
 error-machine-busy = { $name } is in use. Shut it down first.
 error-machine-cpus = A machine takes { $min } to { $max } CPUs on this Mac.
 error-machine-delete = Cannot delete { $path }: { $error }

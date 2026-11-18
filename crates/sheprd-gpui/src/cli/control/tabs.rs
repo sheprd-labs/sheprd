@@ -68,6 +68,32 @@ pub enum MachineCommand {
     ImageDelete {
         name: String,
     },
+    /// What Sheprd Agent inside it reports.
+    Agent {
+        name: String,
+    },
+    /// A command inside it; `device` is its name.
+    Exec(super::ExecCommand),
+    Screenshot {
+        name: String,
+        path: PathBuf,
+    },
+    Click {
+        name: String,
+        x: u32,
+        y: u32,
+        button: super::MachineButton,
+        count: u8,
+    },
+    Type {
+        name: String,
+        text: String,
+    },
+    Key {
+        name: String,
+        key: String,
+        modifiers: Vec<super::MachineModifier>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -180,6 +206,9 @@ pub(super) fn machine(args: &mut Args) -> Result<MachineCommand, CliError> {
             }
         }
         Some("image") => machine_image(args)?,
+        Some(verb @ ("agent" | "exec" | "screenshot" | "click" | "type" | "key")) => {
+            super::machine_agent::parse(verb, args)?
+        }
         _ => return Err(unknown("machine", verb)),
     })
 }

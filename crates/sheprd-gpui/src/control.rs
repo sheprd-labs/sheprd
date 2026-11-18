@@ -27,7 +27,7 @@ pub use protocol::{
     app::{FontSize, Size, Switch},
     events::{Cursor, EventKind},
     settings::Sound,
-    tabs::ZoomChange,
+    tabs::{MachineButton, MachineModifier, ZoomChange},
     work::Script,
 };
 pub(crate) use sheprd_control_protocol::Error;

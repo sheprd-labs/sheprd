@@ -1,5 +1,6 @@
 //! The app's own tabs: pages, code, reviews, the orchestrator, and the
 //! Devices overview, which Herdr does not know about.
+use super::cloud::ExecInfo;
 use serde::{Deserialize, Serialize};
 
 /// How long a page may take to hand back its text or picture.
@@ -7,6 +8,11 @@ pub const PAGE_WAIT_SECONDS: u64 = 15;
 /// How long the window may take to switch to the caller's workspace before
 /// opening a tab there.
 pub const ARRIVE_WAIT_SECONDS: u64 = 5;
+/// How long Sheprd Agent inside a virtual Mac may take to take a picture or
+/// post input.
+pub const MACHINE_AGENT_WAIT_SECONDS: u64 = 30;
+/// The most text `machine type` posts at once.
+pub const MAX_MACHINE_TYPE_CHARS: usize = 4096;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
@@ -69,6 +75,32 @@ pub enum TabOp {
     MachineDelete {
         name: String,
     },
+    /// What Sheprd Agent inside the virtual Mac called `name` reports: its
+    /// screen, and the permissions macOS gave it.
+    MachineAgent {
+        name: String,
+    },
+    /// Click at a point of the screen of the virtual Mac called `name`, in
+    /// its screenshot's pixels.
+    MachineClick {
+        name: String,
+        x: u32,
+        y: u32,
+        #[serde(default)]
+        button: MachineButton,
+        /// 2 for a double click.
+        count: u8,
+    },
+    /// Run `command` (a program and its arguments) as the logged-in user of
+    /// the virtual Mac called `name`, in `cwd` when given, for at most
+    /// `wait_seconds`.
+    MachineExec {
+        name: String,
+        command: Vec<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        cwd: Option<String>,
+        wait_seconds: u64,
+    },
     /// Ask in Settings to delete the image called `name`. The user confirms
     /// there.
     MachineImageDelete {
@@ -79,6 +111,13 @@ pub enum TabOp {
     MachineImageSave {
         machine: String,
         image: String,
+    },
+    /// Press `key` in the virtual Mac called `name`, with `modifiers` held.
+    MachineKey {
+        name: String,
+        key: String,
+        #[serde(default)]
+        modifiers: Vec<MachineModifier>,
     },
     MachineList,
     /// Make the virtual Mac called `name` from image `image`.
@@ -97,10 +136,21 @@ pub enum TabOp {
         #[serde(default)]
         display: Option<String>,
     },
+    /// A PNG of the screen of the virtual Mac called `name`, written to
+    /// `path`.
+    MachineScreenshot {
+        name: String,
+        path: String,
+    },
     /// Save the virtual Mac called `name` and stop it. It resumes when next
     /// shown.
     MachineSuspend {
         name: String,
+    },
+    /// Type `text` in the virtual Mac called `name`, as from a keyboard.
+    MachineType {
+        name: String,
+        text: String,
     },
     /// The orchestrator of the caller's workspace, or of the checkout at
     /// `repo`.
@@ -126,6 +176,12 @@ impl TabOp {
     pub fn wait_seconds(&self) -> u64 {
         match self {
             Self::Text { .. } | Self::Screenshot { .. } => PAGE_WAIT_SECONDS,
+            Self::MachineExec { wait_seconds, .. } => wait_seconds.saturating_add(5),
+            Self::MachineAgent { .. }
+            | Self::MachineClick { .. }
+            | Self::MachineKey { .. }
+            | Self::MachineScreenshot { .. }
+            | Self::MachineType { .. } => MACHINE_AGENT_WAIT_SECONDS,
             Self::Code { .. }
             | Self::Edit { .. }
             | Self::Devices
@@ -149,6 +205,42 @@ impl TabOp {
             | Self::MachineSuspend { .. }
             | Self::Zoom { .. } => 0,
         }
+    }
+}
+
+/// Which mouse button a click in a virtual Mac presses.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MachineButton {
+    #[default]
+    Left,
+    Right,
+}
+
+/// A key held while `machine key` presses another.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MachineModifier {
+    // keep-sorted start
+    Cmd,
+    Control,
+    Fn,
+    Option,
+    Shift,
+    // keep-sorted end
+}
+
+impl MachineModifier {
+    /// The modifier as a key combination spells it: `cmd` in `cmd+q`.
+    pub fn parse(name: &str) -> Option<Self> {
+        Some(match name {
+            "cmd" | "command" => Self::Cmd,
+            "control" | "ctrl" => Self::Control,
+            "fn" => Self::Fn,
+            "option" | "alt" | "opt" => Self::Option,
+            "shift" => Self::Shift,
+            _ => return None,
+        })
     }
 }
 
@@ -241,6 +333,29 @@ pub enum Reply {
     MachineImages {
         images: Vec<MachineImageInfo>,
     },
+    MachineAgent(MachineAgentInfo),
+    /// How a command in a virtual Mac ended; `device` is the machine's name.
+    MachineExec(Box<ExecInfo>),
+    /// A screenshot written to `path`, `width` by `height` pixels.
+    MachineScreenshot {
+        path: String,
+        width: u32,
+        height: u32,
+    },
+}
+
+/// What Sheprd Agent inside a virtual Mac reports.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MachineAgentInfo {
+    pub version: u32,
+    /// The screen in pixels, the unit `machine click` takes.
+    pub width: u32,
+    pub height: u32,
+    /// Pixels per point.
+    pub scale: u8,
+    /// Whether macOS lets it post input, and take screenshots.
+    pub accessibility: bool,
+    pub screen_recording: bool,
 }
 
 /// What a virtual Mac is doing.

@@ -8,6 +8,7 @@ mod browser;
 mod chat;
 mod exec;
 mod hosts;
+mod machine_agent;
 mod memory;
 mod mods;
 mod remote;
@@ -17,7 +18,10 @@ mod work;
 
 use super::CliError;
 pub(crate) use super::args::Args;
-pub use crate::control::{Cursor, EventKind, FontSize, Script, Size, Sound, Switch, ZoomChange};
+pub use crate::control::{
+    Cursor, EventKind, FontSize, MachineButton, MachineModifier, Script, Size, Sound, Switch,
+    ZoomChange,
+};
 pub use app::{AppCommand, UiCommand, WindowCommand};
 pub use batch::BatchCommand;
 pub use browser::{BrowserCommand, Placement};

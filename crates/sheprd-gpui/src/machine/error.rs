@@ -4,6 +4,9 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
+    #[cfg(target_os = "macos")]
+    #[error(transparent)]
+    Agent(#[from] super::agent::Error),
     #[error("{0} is in use: shut it down first")]
     Busy(Name),
     #[error("A machine takes {min} to {max} CPUs on this Mac")]

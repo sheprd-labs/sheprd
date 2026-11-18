@@ -2,7 +2,7 @@
 //! `automation`.
 mod batch;
 mod cloud;
-mod exec;
+pub(super) mod exec;
 mod text;
 
 pub(super) use text::bytes;

@@ -21,3 +21,5 @@ fn an_address_is_locally_administered_and_unicast() {
         assert_eq!(first & 0b11, 0b10, "{address}");
     }
 }
+
+mod installer;

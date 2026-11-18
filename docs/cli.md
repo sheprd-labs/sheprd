@@ -155,6 +155,12 @@ Sheprd** entry, which both Windows installers add, runs this command through
 | `machine image [list]` | The images machines can start from. Exits 4 when there are none |
 | `machine image save MACHINE IMAGE` | Keep a shut down machine as an image. Exits 6 while it runs or is suspended |
 | `machine image delete IMAGE` | Ask in Settings to delete it; the user confirms there. Machines made from it stay |
+| `machine agent NAME` | Whether Sheprd Agent answers inside the running machine: its screen size in pixels and whether macOS lets it post input and take screenshots (see [Working inside a virtual Mac](#working-inside-a-virtual-mac)). Exits 1 when it does not answer |
+| `machine exec NAME [--timeout S] [--cwd DIR] -- COMMAND...` | Run a command as the machine's logged-in user and print its output, as `cloud exec` does |
+| `machine screenshot NAME PATH` | Write a PNG of the machine's screen to PATH |
+| `machine click NAME X Y [--right] [--double]` | Click at a point of the machine's screen, in the screenshot's pixels |
+| `machine type NAME TEXT` | Type text in the machine as from a keyboard, at most 4096 characters at once |
+| `machine key NAME KEY` | Press a key in the machine, with modifiers: `return`, `escape`, `tab`, `cmd+q`, `cmd+shift+4` |
 | `orchestrator [--repo PATH]` | Show the Issues section narrowed to your checkout's project, or PATH's |
 | `orchestrator restart RUN [--repo PATH]` | Open the user's confirmation to restart a loaded, owned Herdr 2 run in this project with its saved prompt/model and existing checkout; requires the running app |
 | `orchestrator adopt RUN [--repo PATH]` | Read the current process of a loaded legacy run and prepare the user's adoption confirmation; grants no authority until confirmed and revalidated |
@@ -372,6 +378,41 @@ The change applies live; `config get focus_follows_mouse` reads it back.
 
 An unnamed tab shows its number. To show its agent's terminal title instead,
 run `sheprd config set tab_labels.agent_title true`.
+
+### Working inside a virtual Mac
+
+`machine agent`, `exec`, `screenshot`, `click`, `type`, and `key` work
+inside a running virtual Mac through Sheprd Agent, a small app in the guest
+that answers the app over the machine's vsock device: no network, and
+nothing outside the machine can reach it. Every machine boots with a
+read-only disk from the app, Sheprd Agent, which shows on its desktop.
+Install the agent once by double-clicking Install Sheprd Agent.pkg there:
+it puts `Sheprd Agent.app` in `/Applications` and starts it at each login.
+Allow it when macOS asks about Accessibility (for input), and switch it on
+in the Screen & System Audio Recording pane the installer opens (for
+screenshots: macOS shows no prompt for it), then shut the machine down and
+keep it as an image, so every machine made from it has the agent and its
+permissions. It needs the user logged in, so turn on automatic login before
+saving the image. The disk comes with builds made by `just bundle`; release
+builds do not carry it yet.
+
+`machine exec` runs a command as that user, with a Terminal's `PATH`, in
+`--cwd` when given (`~/` being their home). Its output comes back as
+`cloud exec`'s does, and it exits 0 when the command did. Points for
+`machine click` are in the screenshot's pixels, top-left first, so an agent
+reads `machine screenshot` and clicks what it sees. Like `cloud exec`, none
+of these asks first: they act only inside a machine the user made, as the
+agent's own shell does on this one. macOS ignores synthetic input in
+password fields and some of its own prompts, and signing in to an Apple
+Account still needs the user.
+
+```sh
+sheprd machine exec test-1 -- xcodebuild -scheme App test
+sheprd machine screenshot test-1 /tmp/screen.png
+sheprd machine click test-1 1280 812
+sheprd machine type test-1 "hello"
+sheprd machine key test-1 cmd+s
+```
 
 ### Remote control
 

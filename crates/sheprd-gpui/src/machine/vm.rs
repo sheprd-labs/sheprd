@@ -173,6 +173,16 @@ pub(crate) fn status(name: &Name) -> Status {
     )
 }
 
+/// Machine `name` itself, while it runs.
+pub(super) fn running_machine(name: &Name) -> Option<Retained<VZVirtualMachine>> {
+    MACHINES.with(
+        |machines| match machines.borrow().get(name).map(|m| &m.phase) {
+            Some(Phase::Running(live)) => Some(live.machine.clone()),
+            _ => None,
+        },
+    )
+}
+
 /// The machines taking this Mac's memory and CPU, whether a tab shows them
 /// or not, by name.
 pub(crate) fn running() -> Vec<Name> {
