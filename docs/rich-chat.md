@@ -15,6 +15,8 @@ layout = "bubbles"
 render_existing = true
 ```
 
+`[chat] auto_accept = true` opts into auto-accepting permission requests once per session when writable chats attach in this window (default off); later manual toggles win, and read-only observers are skipped.
+
 `render_existing` opts into discovery of running Codex and Claude sessions.
 It is disabled by default. The chat header cycles
 through **Timeline**, **Bubbles**, **Terminal**, **Document**, **Cards**,

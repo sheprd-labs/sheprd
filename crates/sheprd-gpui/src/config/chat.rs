@@ -2,6 +2,7 @@
 //!
 //! ```toml
 //! [chat]
+//! auto_accept = false # opt in to allow permission requests in attached chats
 //! glide = true
 //! launcher = "plus"
 //! layout = "cards"
@@ -55,6 +56,7 @@ const RESERVED: [&str; 1] = [crate::chat::PROGRAM_ENV];
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(default, deny_unknown_fields)]
 pub struct ChatConfig {
+    pub auto_accept: bool,
     /// Code blocks number their lines unless a block's own button says otherwise.
     pub code_line_numbers: bool,
     /// Code blocks alternate their lines' background.
@@ -80,6 +82,7 @@ pub struct ChatConfig {
 impl Default for ChatConfig {
     fn default() -> Self {
         Self {
+            auto_accept: false,
             code_line_numbers: false,
             code_stripes: false,
             env: BTreeMap::new(),

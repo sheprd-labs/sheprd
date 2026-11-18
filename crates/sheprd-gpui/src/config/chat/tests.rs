@@ -243,5 +243,6 @@ fn chats_jump_to_new_output_unless_glide_is_on() {
     }
 }
 
+mod auto_accept;
 mod code;
 mod launcher;
