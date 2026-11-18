@@ -125,6 +125,18 @@ pub(super) fn parse<T: DeserializeOwned>(body: &[u8]) -> Result<T> {
     serde_json::from_slice(body).map_err(Error::Reply)
 }
 
+/// A PNG's size in pixels, from its header, or `None` if `bytes` do not
+/// start as a PNG does: the signature, then the IHDR chunk.
+pub(super) fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    const SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
+    let header = bytes.get(..24)?;
+    if &header[..8] != SIGNATURE || &header[12..16] != b"IHDR" {
+        return None;
+    }
+    let number = |at: usize| Some(u32::from_be_bytes(header.get(at..at + 4)?.try_into().ok()?));
+    Some((number(16)?, number(20)?))
+}
+
 /// The last `limit` bytes of `text`, cut at a character, and whether any
 /// were cut.
 pub(super) fn tail(mut text: String, limit: usize) -> (String, bool) {

@@ -21,8 +21,18 @@ func listen(port: UInt32) -> Never {
     guard bound == 0, Darwin.listen(server, 8) == 0 else { fatal("bind") }
     print("listening on vsock port \(port)")
     while true {
-        let connection = accept(server, nil, nil)
+        var peer = sockaddr_vm()
+        var length = socklen_t(MemoryLayout<sockaddr_vm>.size)
+        let connection = withUnsafeMutablePointer(to: &peer) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { accept(server, $0, &length) }
+        }
         guard connection >= 0 else { continue }
+        // Only the host: a process in this guest that reached the agent
+        // would borrow its Accessibility and Screen Recording permissions.
+        guard peer.svm_cid == UInt32(VMADDR_CID_HOST) else {
+            close(connection)
+            continue
+        }
         Thread.detachNewThread { serve(connection) }
     }
 }

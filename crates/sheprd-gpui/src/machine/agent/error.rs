@@ -7,6 +7,10 @@ use thiserror::Error;
 pub enum Error {
     #[error("Lost the connection to Sheprd Agent: {0}")]
     Io(#[source] io::Error),
+    /// The bytes the guest sent are not the PNG it said they were. The
+    /// guest is not trusted with what lands at the caller's path.
+    #[error("Sheprd Agent sent a screenshot that is not a PNG")]
+    NotPng,
     #[error("{0} is not running")]
     NotRunning(Name),
     #[error("Sheprd Agent sent a screenshot this app cannot read")]

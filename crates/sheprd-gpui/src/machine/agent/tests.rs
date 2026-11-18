@@ -142,3 +142,22 @@ fn output_keeps_its_end_and_whole_characters() {
     // "é" is two bytes: a cut through it moves past it.
     assert_eq!(tail("aéb".into(), 2), ("b".into(), true));
 }
+
+#[test]
+fn a_png_header_gives_its_size() {
+    let mut png = b"\x89PNG\r\n\x1a\n\0\0\0\x0dIHDR".to_vec();
+    png.extend_from_slice(&2528_u32.to_be_bytes());
+    png.extend_from_slice(&1706_u32.to_be_bytes());
+    png.extend_from_slice(b"rest of the image");
+    assert_eq!(png_size(&png), Some((2528, 1706)));
+}
+
+#[test]
+fn bytes_that_are_not_a_png_have_no_size() {
+    // The guest is not trusted with what lands at the caller's path.
+    assert_eq!(png_size(b"#!/bin/sh\nrm -rf ~\n and some more bytes"), None);
+    assert_eq!(png_size(b"\x89PNG\r\n\x1a\n"), None);
+    let mut wrong_chunk = b"\x89PNG\r\n\x1a\n\0\0\0\x0dIDAT".to_vec();
+    wrong_chunk.extend_from_slice(&[0; 8]);
+    assert_eq!(png_size(&wrong_chunk), None);
+}

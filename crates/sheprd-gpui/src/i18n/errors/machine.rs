@@ -56,7 +56,7 @@ impl Localize for crate::machine::agent::Error {
             Error::NotRunning(name) => {
                 fl!("error-machine-agent-not-running", name = name.as_str())
             }
-            Error::Picture(_) => fl!("error-machine-agent-picture"),
+            Error::NotPng | Error::Picture(_) => fl!("error-machine-agent-picture"),
             Error::Refused { refusal, message } => match refusal {
                 Refusal::Accessibility => fl!("error-machine-agent-accessibility"),
                 Refusal::ScreenRecording => fl!("error-machine-agent-screen-recording"),

@@ -86,6 +86,9 @@ pub(crate) fn screenshot(name: &Name, path: PathBuf, cx: &mut App) -> Task<Resul
         let png = base64::engine::general_purpose::STANDARD
             .decode(picture.png)
             .map_err(Error::Picture)?;
+        if wire::png_size(&png) != Some((picture.width, picture.height)) {
+            return Err(Error::NotPng);
+        }
         std::fs::write(&path, png).map_err(|source| Error::Write { path, source })?;
         Ok((picture.width, picture.height))
     })
