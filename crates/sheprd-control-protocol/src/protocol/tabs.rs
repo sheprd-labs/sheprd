@@ -8,11 +8,18 @@ pub const PAGE_WAIT_SECONDS: u64 = 15;
 /// How long the window may take to switch to the caller's workspace before
 /// opening a tab there.
 pub const ARRIVE_WAIT_SECONDS: u64 = 5;
-/// How long Sheprd Agent inside a virtual Mac may take to take a picture or
-/// post input.
-pub const MACHINE_AGENT_WAIT_SECONDS: u64 = 30;
 /// The most text `machine type` posts at once.
 pub const MAX_MACHINE_TYPE_CHARS: usize = 4096;
+/// The pause Sheprd Agent takes after each character it types, so apps see
+/// them in order.
+pub const MACHINE_TYPE_GAP_MS: u64 = 8;
+/// How long the longest `machine type` takes in the guest.
+pub const MACHINE_TYPE_SECONDS: u64 =
+    (MAX_MACHINE_TYPE_CHARS as u64 * MACHINE_TYPE_GAP_MS).div_ceil(1000);
+/// How long Sheprd Agent inside a virtual Mac may take to take a picture or
+/// post input. Input waits for any typing already under way, as the agent
+/// posts one request's input at a time.
+pub const MACHINE_AGENT_WAIT_SECONDS: u64 = 30 + MACHINE_TYPE_SECONDS;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
@@ -181,12 +188,14 @@ impl TabOp {
     pub fn wait_seconds(&self) -> u64 {
         match self {
             Self::Text { .. } | Self::Screenshot { .. } => PAGE_WAIT_SECONDS,
-            Self::MachineExec { wait_seconds, .. } => wait_seconds.saturating_add(5),
+            Self::MachineExec { wait_seconds, .. } => {
+                wait_seconds.saturating_add(MACHINE_AGENT_WAIT_SECONDS)
+            }
             Self::MachineAgent { .. }
             | Self::MachineClick { .. }
             | Self::MachineKey { .. }
-            | Self::MachineScreenshot { .. }
-            | Self::MachineType { .. } => MACHINE_AGENT_WAIT_SECONDS,
+            | Self::MachineScreenshot { .. } => MACHINE_AGENT_WAIT_SECONDS,
+            Self::MachineType { .. } => MACHINE_AGENT_WAIT_SECONDS + MACHINE_TYPE_SECONDS,
             Self::Code { .. }
             | Self::Edit { .. }
             | Self::Devices

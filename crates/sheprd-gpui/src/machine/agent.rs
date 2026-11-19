@@ -24,6 +24,7 @@ use block2::RcBlock;
 use gpui::{App, AsyncApp, Task};
 use objc2_foundation::NSError;
 use objc2_virtualization::{VZVirtioSocketConnection, VZVirtioSocketDevice};
+use sheprd_control_protocol::protocol::tabs::{MACHINE_TYPE_GAP_MS, MACHINE_TYPE_SECONDS};
 use std::{
     cell::Cell,
     os::{fd::OwnedFd, unix::net::UnixStream},
@@ -96,11 +97,24 @@ pub(crate) fn screenshot(name: &Name, path: PathBuf, cx: &mut App) -> Task<Resul
 
 /// Posts a click, text, or a key: whatever has nothing to hand back.
 pub(crate) fn post(name: &Name, request: Request, cx: &mut App) -> Task<Result<()>> {
-    let call = call(name, request, Duration::ZERO, cx);
+    let wait = posting(&request);
+    let call = call(name, request, wait, cx);
     cx.background_executor().spawn(async move {
         let wire::Done {} = wire::parse(&call.await?)?;
         Ok(())
     })
+}
+
+/// How long the agent may take to post `request`: its own typing, after
+/// any typing already under way, as it posts one request's input at a time.
+fn posting(request: &Request) -> Duration {
+    let characters = match request {
+        Request::Type { text } => text.chars().count(),
+        _ => 0,
+    };
+    let gap = Duration::from_millis(MACHINE_TYPE_GAP_MS);
+    gap.saturating_mul(u32::try_from(characters).unwrap_or(u32::MAX))
+        + Duration::from_secs(MACHINE_TYPE_SECONDS)
 }
 
 /// Sends `request` to the agent in machine `name`, and hands back the reply

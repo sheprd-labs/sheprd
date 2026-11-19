@@ -161,3 +161,5 @@ fn bytes_that_are_not_a_png_have_no_size() {
     wrong_chunk.extend_from_slice(&[0; 8]);
     assert_eq!(png_size(&wrong_chunk), None);
 }
+
+mod waits;

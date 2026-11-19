@@ -17,7 +17,7 @@ trap 'rm -rf "$work"' EXIT
 payload=$work/payload
 app="$payload/Applications/Sheprd Agent.app"
 mkdir -p "$app/Contents/MacOS" "$payload/Library/LaunchAgents" "$work/scripts" "$work/volume"
-xcrun swiftc -O -swift-version 6 "$source/main.swift" "$source/Listener.swift" \
+xcrun swiftc -O -swift-version 6 -target arm64-apple-macos14.0 "$source/main.swift" "$source/Listener.swift" \
     "$source/Exec.swift" "$source/Screen.swift" "$source/Input.swift" "$source/Permissions.swift" \
     -o "$app/Contents/MacOS/sheprd-machine-agent"
 cp "$source/Info.plist" "$app/Contents/Info.plist"

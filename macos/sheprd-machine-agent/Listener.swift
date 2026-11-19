@@ -44,9 +44,19 @@ func fatal(_ what: String) -> Never {
 
 /// Answers the one request on `connection`, then closes it.
 func serve(_ connection: Int32) {
-    defer { close(connection) }
     guard let length = readLength(connection), length <= maxRequest,
-          let body = readExactly(connection, length) else { return }
+          let body = readExactly(connection, length) else {
+        close(connection)
+        return
+    }
+    guard Activity.begin() else {
+        send(connection, Refusal.failed("Sheprd Agent is restarting to use a permission just allowed; try again in a few seconds").reply)
+        close(connection)
+        return
+    }
+    // The reply goes, and the connection closes, before a restart may exit.
+    defer { Activity.end() }
+    defer { close(connection) }
     var reply: [String: Any]
     do {
         guard let request = try JSONSerialization.jsonObject(with: body) as? [String: Any] else {
@@ -59,6 +69,11 @@ func serve(_ connection: Int32) {
     } catch {
         reply = Refusal.invalid("\(error)").reply
     }
+    send(connection, reply)
+}
+
+/// Writes `reply`, framed, to `connection`.
+private func send(_ connection: Int32, _ reply: [String: Any]) {
     guard var data = try? JSONSerialization.data(withJSONObject: reply) else { return }
     if data.count > maxReply {
         data = (try? JSONSerialization.data(withJSONObject: Refusal.failed("reply too large").reply)) ?? Data()
@@ -72,10 +87,54 @@ func handle(_ request: [String: Any]) throws -> [String: Any] {
     case "hello": return hello()
     case "exec": return try run(request)
     case "screenshot": return try screenshot()
-    case "click": return try click(request)
-    case "type": return try type(request)
-    case "key": return try key(request)
+    case "click": return try posting { try click(request) }
+    case "type": return try posting { try type(request) }
+    case "key": return try posting { try key(request) }
     default: throw Refusal.invalid("unknown op")
+    }
+}
+
+/// Posts one request's input at a time, so two requests' characters never
+/// mix and a click never moves focus halfway through typing. Commands and
+/// screenshots run alongside.
+private let input = NSLock()
+
+private func posting(_ body: () throws -> [String: Any]) rethrows -> [String: Any] {
+    input.lock()
+    defer { input.unlock() }
+    return try body()
+}
+
+/// The requests under way, so a restart waits for them: it stops taking
+/// new ones and exits once the last has replied.
+enum Activity {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var active = 0
+    nonisolated(unsafe) private static var restarting = false
+
+    /// Counts a request in, unless the agent is restarting.
+    static func begin() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !restarting else { return false }
+        active += 1
+        return true
+    }
+
+    static func end() {
+        lock.lock()
+        active -= 1
+        let leave = restarting && active == 0
+        lock.unlock()
+        if leave { exit(0) }
+    }
+
+    static func restart() {
+        lock.lock()
+        restarting = true
+        let leave = active == 0
+        lock.unlock()
+        if leave { exit(0) }
     }
 }
 

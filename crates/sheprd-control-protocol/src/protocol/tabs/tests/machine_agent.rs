@@ -68,7 +68,11 @@ fn a_command_waits_for_its_own_timeout_and_input_for_the_agent() {
         name: "a".into(),
         text: "x".into(),
     };
-    assert_eq!(wait(typed), MACHINE_AGENT_WAIT_SECONDS);
+    assert_eq!(
+        wait(typed),
+        MACHINE_AGENT_WAIT_SECONDS + MACHINE_TYPE_SECONDS
+    );
+    assert!(MACHINE_TYPE_SECONDS * 1000 >= MAX_MACHINE_TYPE_CHARS as u64 * MACHINE_TYPE_GAP_MS);
 }
 
 #[test]

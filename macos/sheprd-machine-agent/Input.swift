@@ -5,7 +5,8 @@ import Foundation
 /// Where synthetic input goes: the session's event stream, as a person's
 /// mouse and keyboard would.
 private let tap = CGEventTapLocation.cghidEventTap
-/// A pause between events, so apps see them in order.
+/// A pause between events, so apps see them in order. The host waits for
+/// it: `MACHINE_TYPE_GAP_MS` in sheprd-control-protocol.
 private let gap: useconds_t = 8_000
 
 private func trusted() throws {

@@ -44,17 +44,10 @@ struct Permissions {
     }
 }
 
-private let restarting = NSLock()
-nonisolated(unsafe) private var restartScheduled = false
-
-/// Exits once the reply in flight has gone, so launchd starts a process
-/// that holds the new permission.
+/// Exits once no request is under way, so launchd starts a process that
+/// holds the new permission.
 private func restartSoon() {
-    restarting.lock()
-    defer { restarting.unlock() }
-    guard !restartScheduled else { return }
-    restartScheduled = true
-    DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) { exit(0) }
+    Activity.restart()
 }
 
 /// Refuses an operation this process may not do yet: macOS's prompt when
