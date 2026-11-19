@@ -190,6 +190,10 @@ share at least two of its keywords and were not shown yet in that chat.
 | `checkpoint create [LABEL]` | Take one now (no app needed) |
 | `checkpoint diff A [B]` | What changed between two, or since one (no app needed) |
 | `checkpoint restore [ID]` | Open the checkpoints dialog; you confirm there |
+| `change [log] [COMMIT]` | Each commit of the current branch's own (since it left the default branch), newest first, with every earlier version of it: amended, rebased, or reworded, recognized by `Change-Id`, patch, or subject in place, with whose turn it was and when. Only COMMIT's with a hex prefix. Versions are recorded at each agent turn and kept until the branch is merged or deleted; diff two with `change diff` (no app needed) |
+| `change id` | A new `Change-Id` value (`I` and 40 hex digits). Commit with `git commit --trailer "Change-Id: $(sheprd change id)"`; amends and rebases keep it, so `change log` follows the commit even when both its patch and subject change (no app needed) |
+| `change stale` | Other local branches built on an earlier version of this branch's commits (a stacked branch whose base was amended or rebased), each with the `git rebase --onto` that carries it to the current version; nothing is rebased for you (no app needed) |
+| `change diff COMMIT [COMMIT]` | How one version's patch differs from another's, or from what it became on the branch: `git range-diff` of the two commits, so a rebase shows only what the rewrite changed. Prefixes name any current or earlier version (no app needed) |
 | `scripts [list]` | The repository's `.herdr/worktree.toml` scripts (no app needed) |
 | `scripts setup\|run` | Run one in a new tab; an unseen script still asks first. Setup first copies the ignored files `.worktreeinclude` names from the main checkout. Archive removes the worktree, so it stays behind the app's delete dialog |
 | `teleport --to HOST` | Open the teleport dialog for your linked worktree, reviewing HOST; you confirm there |

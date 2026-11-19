@@ -1,7 +1,7 @@
 //! Git on the checkouts Sheprd shows: working-tree status and the explicit
 //! writes (commit, push, pull request creation), checkpoints of a checkout
-//! kept as Git refs on its own host, and the file and symbol index the code
-//! search reads. Every operation runs a child process, so callers queue work
+//! and the change history of its branch, kept as Git refs on its own host,
+//! and the file and symbol index the code search reads. Every operation runs a child process, so callers queue work
 //! on these workers and never run it on the UI thread; no GPUI.
 
 #![cfg_attr(test, allow(clippy::disallowed_methods))]
@@ -9,6 +9,7 @@
 pub mod checkpoint;
 pub mod code_index;
 mod error;
+pub mod evolution;
 pub mod git;
 
 pub use error::{Error, Result};

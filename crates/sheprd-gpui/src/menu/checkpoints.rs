@@ -165,6 +165,11 @@ impl SheprdWindow {
                     body = body.child(self.render_checkpoint_timeline(list, now, cx));
                 }
             }
+            if let Some(changes) =
+                self.render_change_history(&view.changes, &view.checkout.branch, now)
+            {
+                body = body.child(changes);
+            }
         }
         if let Some(error) = &view.error {
             body = body.child(
@@ -293,6 +298,7 @@ pub(super) fn agent_working(sessions: &crate::session_model::Sessions, workspace
     })
 }
 
+mod changes;
 #[cfg(test)]
 mod tests;
 mod timeline;

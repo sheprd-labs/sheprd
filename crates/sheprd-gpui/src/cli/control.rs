@@ -35,7 +35,7 @@ pub use settings::{
 };
 use std::ffi::OsString;
 pub use tabs::{CodeCommand, FileAt, Items, OrchestratorCommand, TabCommand};
-pub use work::{CheckpointCommand, FanOut, NotesCommand, WaitFor, WorktreeCommand};
+pub use work::{ChangeCommand, CheckpointCommand, FanOut, NotesCommand, WaitFor, WorktreeCommand};
 
 /// What to do, and how the answer is printed.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -78,6 +78,7 @@ pub enum ControlCommand {
         wait: u64,
     },
     Checkpoint(CheckpointCommand),
+    Change(ChangeCommand),
     /// List the scripts, or run one.
     Scripts {
         kind: Option<Script>,
@@ -198,6 +199,10 @@ pub const FAMILIES: &[(&str, &str)] = &[
     (
         "checkpoint",
         "Agent checkpoints of a checkout: list, take, diff, restore",
+    ),
+    (
+        "change",
+        "Every version of each commit on the branch, and whose turn made it",
     ),
     (
         "scripts",
@@ -374,6 +379,7 @@ fn command(family: &'static str, args: &mut Args) -> Result<ControlCommand, CliE
             wait: wait_option(args, "--wait")?,
         },
         "checkpoint" => ControlCommand::Checkpoint(work::checkpoint(args)?),
+        "change" => ControlCommand::Change(work::change(args)?),
         "scripts" => ControlCommand::Scripts {
             kind: work::script_kind(args)?,
         },

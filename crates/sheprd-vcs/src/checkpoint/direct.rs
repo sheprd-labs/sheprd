@@ -24,7 +24,17 @@ pub fn here(checkout: &Checkout, body: &str, limits: ScriptLimits) -> Result<Str
 
 /// [`here`], keeping the output's bytes as they are.
 pub fn here_bytes(checkout: &Checkout, body: &str, limits: ScriptLimits) -> Result<Vec<u8>> {
-    super::run_bytes(checkout, body, limits)
+    super::run_bytes(checkout, body, &[], limits)
+}
+
+/// [`here`], with `input` as the script's stdin, as change history writes.
+pub fn here_with_input(
+    checkout: &Checkout,
+    body: &str,
+    input: &[u8],
+    limits: ScriptLimits,
+) -> Result<String> {
+    super::run_input(checkout, body, input, limits)
 }
 
 /// The checkout's checkpoints, newest first.

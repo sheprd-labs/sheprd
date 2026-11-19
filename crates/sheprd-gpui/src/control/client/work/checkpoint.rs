@@ -40,7 +40,7 @@ impl From<Checkpoint> for CheckpointInfo {
     }
 }
 
-fn now() -> i64 {
+pub(super) fn now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |elapsed| {
@@ -71,11 +71,11 @@ pub(super) fn describe(checkpoints: &[CheckpointInfo], branch: &str, now: i64) -
 }
 
 /// The checkout of the current directory.
-fn here() -> crate::Result<Checkout> {
+pub(super) fn here() -> crate::Result<Checkout> {
     if !cfg!(any(target_os = "linux", target_os = "macos")) {
         return Err(crate::control::Error::Rejected {
             code: ErrorCode::Unsupported,
-            message: "Checkpoints run POSIX shell scripts, which this platform does not have"
+            message: "Checkpoints and change history run POSIX shell scripts, which this platform does not have"
                 .into(),
         }
         .into());

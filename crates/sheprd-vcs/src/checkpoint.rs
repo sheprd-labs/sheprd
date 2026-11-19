@@ -17,8 +17,9 @@ mod tests;
 
 pub use error::Error;
 pub use script::valid_id;
+pub(crate) use script::{EXIT_MISSING, prelude};
 
-use crate::Result;
+use crate::{Result, evolution};
 use sheprd_client::{
     ConnectTarget, ScriptHost, ScriptLimits, SshLane, protocol::AgentStatus, run_script,
 };
@@ -40,7 +41,7 @@ const QUEUE_LIMIT: usize = 32;
 const HOST_LIMIT: usize = 16;
 /// Snapshotting a large checkout hashes every changed file, which can be
 /// quiet for a while; output is a few lines per checkpoint.
-const LIMITS: ScriptLimits = ScriptLimits {
+pub(crate) const LIMITS: ScriptLimits = ScriptLimits {
     output: 1024 * 1024,
     idle: Duration::from_secs(120),
 };
@@ -112,9 +113,15 @@ pub struct Checkpoint {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Request {
-    Capture { label: String },
+    Capture {
+        label: String,
+    },
+    /// The branch's change history, for the dialog.
+    History,
     List,
-    Restore { id: String },
+    Restore {
+        id: String,
+    },
 }
 
 impl Request {
@@ -122,6 +129,7 @@ impl Request {
     fn failed(&self, error: crate::Error) -> Answer {
         match self {
             Self::Capture { .. } => Answer::Captured(Err(error)),
+            Self::History => Answer::History(Err(error)),
             Self::List => Answer::Listed(Err(error)),
             Self::Restore { .. } => Answer::Restored(Err(error)),
         }
@@ -132,10 +140,14 @@ impl Request {
 struct Job {
     checkout: Checkout,
     request: Request,
+    /// After a turn's capture, also record the branch's change history,
+    /// crediting this.
+    credit: Option<evolution::Credit>,
 }
 
 enum Answer {
     Captured(Result<Option<String>>),
+    History(Result<Option<evolution::History>>),
     Listed(Result<Vec<Checkpoint>>),
     Restored(Result<()>),
 }
@@ -143,10 +155,17 @@ enum Answer {
 fn execute(job: &Job, stamp: &str) -> Answer {
     let checkout = &job.checkout;
     match &job.request {
-        Request::Capture { label } => Answer::Captured(
-            run(checkout, &script::capture(checkout, label, stamp, KEEP))
-                .and_then(|output| script::parse_capture(&output)),
-        ),
+        Request::Capture { label } => {
+            let captured = run(checkout, &script::capture(checkout, label, stamp, KEEP))
+                .and_then(|output| script::parse_capture(&output));
+            if let Some(credit) = &job.credit
+                && let Err(error) = evolution::observe(checkout, credit, now(), run_input)
+            {
+                tracing::warn!(category = "evolution", %error, "change history not recorded");
+            }
+            Answer::Captured(captured)
+        }
+        Request::History => Answer::History(evolution::history(checkout, now(), run_input)),
         Request::List => Answer::Listed(
             run(checkout, &script::list(checkout)).and_then(|output| script::parse_list(&output)),
         ),
@@ -160,6 +179,15 @@ fn execute(job: &Job, stamp: &str) -> Answer {
     }
 }
 
+/// Unix seconds on this machine's clock.
+fn now() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |elapsed| {
+            i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX)
+        })
+}
+
 /// Never cancelled: killing Git halfway through a snapshot or a restore could
 /// leave a lock or a half-moved working tree behind; the idle limit ends it.
 fn run(checkout: &Checkout, body: &str) -> Result<String> {
@@ -167,12 +195,27 @@ fn run(checkout: &Checkout, body: &str) -> Result<String> {
 }
 
 fn run_limited(checkout: &Checkout, body: &str, limits: ScriptLimits) -> Result<String> {
-    Ok(String::from_utf8_lossy(&run_bytes(checkout, body, limits)?).into_owned())
+    run_input(checkout, body, &[], limits)
+}
+
+/// [`run_limited`], with `input` as the script's stdin.
+pub(crate) fn run_input(
+    checkout: &Checkout,
+    body: &str,
+    input: &[u8],
+    limits: ScriptLimits,
+) -> Result<String> {
+    Ok(String::from_utf8_lossy(&run_bytes(checkout, body, input, limits)?).into_owned())
 }
 
 /// The script's output as it printed it, for a patch that must apply byte
 /// for byte.
-fn run_bytes(checkout: &Checkout, body: &str, limits: ScriptLimits) -> Result<Vec<u8>> {
+fn run_bytes(
+    checkout: &Checkout,
+    body: &str,
+    input: &[u8],
+    limits: ScriptLimits,
+) -> Result<Vec<u8>> {
     let host = match &checkout.host {
         Host::Local => ScriptHost::Local,
         Host::Ssh(target) => ScriptHost::Ssh(target, SshLane::Quick),
@@ -184,7 +227,7 @@ fn run_bytes(checkout: &Checkout, body: &str, limits: ScriptLimits) -> Result<Ve
     run_script(
         host,
         body,
-        std::io::empty(),
+        input,
         &mut output,
         limits,
         &AtomicBool::new(false),
@@ -238,6 +281,15 @@ pub enum Listing {
     Failed(String),
 }
 
+/// What the dialog's change history shows while it loads or after it failed.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Changes {
+    Loading,
+    /// `None`: the branch has no commits of its own to track.
+    Ready(Option<evolution::History>),
+    Failed(String),
+}
+
 /// The open checkpoints dialog: one checkout's list, and the restore the user
 /// is confirming or running.
 pub struct View {
@@ -246,6 +298,8 @@ pub struct View {
     /// The workspace it was opened from, whose agents a restore would race.
     pub workspace_id: String,
     pub listing: Listing,
+    /// Every version of the branch's own commits.
+    pub changes: Changes,
     pub selected: Option<usize>,
     /// The checkpoint the user asked to restore, awaiting confirmation.
     pub confirming: Option<String>,
@@ -321,10 +375,15 @@ impl Checkpoints {
             let name = Some(agent.name.trim())
                 .filter(|name| !name.is_empty())
                 .unwrap_or("Agent");
-            let label = match (before, agent.status) {
+            let (label, credit) = match (before, agent.status) {
                 // A turn resuming after a permission prompt is the same turn.
-                (Idle | Done, Working) => format!("Before {name}'s turn"),
-                (Working | Blocked, Idle | Done) => format!("{name} finished a turn"),
+                (Idle | Done, Working) => {
+                    (format!("Before {name}'s turn"), evolution::Credit::Outside)
+                }
+                (Working | Blocked, Idle | Done) => (
+                    format!("{name} finished a turn"),
+                    evolution::Credit::Agents(name.to_owned()),
+                ),
                 _ => continue,
             };
             let checkout = session.workspace(&agent.workspace).and_then(|workspace| {
@@ -335,11 +394,11 @@ impl Checkpoints {
                 )
             });
             if let Some(checkout) = checkout {
-                captures.push((checkout, label));
+                captures.push((checkout, label, credit));
             }
         }
-        for (checkout, label) in captures {
-            self.capture(checkout, label);
+        for (checkout, label, credit) in captures {
+            self.capture(checkout, label, Some(credit));
         }
     }
 
@@ -369,9 +428,10 @@ impl Checkpoints {
             .collect()
     }
 
-    /// Queue a checkpoint of `checkout`. One still waiting for the same
-    /// checkout takes the newer label instead: it will snapshot the same files.
-    fn capture(&mut self, checkout: Checkout, label: String) {
+    /// Queue a checkpoint of `checkout`, then a look at its change history
+    /// crediting `credit`. One still waiting for the same checkout takes the
+    /// newer label instead, and both credits: it will see the same files.
+    fn capture(&mut self, checkout: Checkout, label: String, credit: Option<evolution::Credit>) {
         let Some(lane) = self.lane(&checkout.host) else {
             return;
         };
@@ -381,6 +441,10 @@ impl Checkpoints {
             .find(|job| job.checkout == checkout && matches!(job.request, Request::Capture { .. }))
         {
             job.request = Request::Capture { label };
+            job.credit = match (job.credit.take(), credit) {
+                (Some(older), Some(newer)) => Some(older.merge(newer)),
+                (older, newer) => newer.or(older),
+            };
             return;
         }
         if lane.queue.len() >= QUEUE_LIMIT {
@@ -390,18 +454,29 @@ impl Checkpoints {
         lane.queue.push_back(Job {
             checkout,
             request: Request::Capture { label },
+            credit,
         });
     }
 
     /// Ask for `checkout`'s list ahead of any waiting checkpoints: the user
     /// is looking at it.
     fn list(&mut self, checkout: Checkout) {
+        self.ask(checkout, Request::List);
+    }
+
+    /// Ask for `checkout`'s change history as [`Checkpoints::list`] does.
+    fn history(&mut self, checkout: Checkout) {
+        self.ask(checkout, Request::History);
+    }
+
+    fn ask(&mut self, checkout: Checkout, request: Request) {
         let Some(lane) = self.lane(&checkout.host) else {
             return;
         };
         let job = Job {
             checkout,
-            request: Request::List,
+            request,
+            credit: None,
         };
         if !lane.queue.contains(&job) {
             lane.queue.push_front(job);
@@ -415,12 +490,14 @@ impl Checkpoints {
             title,
             workspace_id,
             listing: Listing::Loading,
+            changes: Changes::Loading,
             selected: None,
             confirming: None,
             restoring: false,
             error: None,
             wanted: None,
         });
+        self.history(checkout.clone());
         self.list(checkout);
     }
 
@@ -457,6 +534,7 @@ impl Checkpoints {
         let job = Job {
             checkout: view.checkout.clone(),
             request: Request::Restore { id },
+            credit: None,
         };
         match self.lane(&job.checkout.host) {
             Some(lane) => lane.queue.push_front(job),
@@ -555,9 +633,16 @@ impl Checkpoints {
             .as_ref()
             .is_some_and(|view| view.checkout == job.checkout);
         match answer {
+            // A turn's capture also recorded its history, which may have
+            // changed even when the files had not.
             Answer::Captured(result) => match result {
-                Ok(Some(_)) if viewed => {
-                    self.list(job.checkout);
+                Ok(captured) if viewed => {
+                    if job.credit.is_some() {
+                        self.history(job.checkout.clone());
+                    }
+                    if captured.is_some() {
+                        self.list(job.checkout);
+                    }
                     false
                 }
                 Ok(_) => false,
@@ -566,6 +651,16 @@ impl Checkpoints {
                     false
                 }
             },
+            Answer::History(result) => {
+                let Some(view) = self.view.as_mut().filter(|_| viewed) else {
+                    return false;
+                };
+                view.changes = match result {
+                    Ok(history) => Changes::Ready(history),
+                    Err(error) => Changes::Failed(describe(&error)),
+                };
+                true
+            }
             Answer::Listed(result) => {
                 let Some(view) = self.view.as_mut().filter(|_| viewed) else {
                     return false;

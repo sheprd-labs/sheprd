@@ -471,6 +471,7 @@ pub(crate) fn run(invocation: Invocation) -> ExitCode {
         ControlCommand::Worktree(command) => work::worktree(command, &context),
         ControlCommand::Feedback { wait } => browser::feedback(wait, &context),
         ControlCommand::Checkpoint(command) => work::checkpoint(command, &context),
+        ControlCommand::Change(command) => work::change(command),
         ControlCommand::Scripts { kind } => work::scripts(kind, &context),
         ControlCommand::Teleport { worktree, host } => {
             work::teleport(worktree.as_deref(), host, &context)

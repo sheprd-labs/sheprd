@@ -270,6 +270,7 @@ fn the_orchestrator_repository_may_come_before_the_verb() {
     );
 }
 
+mod change_log;
 mod orchestrator_restart;
 
 #[test]

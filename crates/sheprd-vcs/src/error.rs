@@ -14,6 +14,8 @@ pub enum Error {
     #[error(transparent)]
     CodeIndex(#[from] crate::code_index::Error),
     #[error(transparent)]
+    Evolution(#[from] crate::evolution::Error),
+    #[error(transparent)]
     Git(#[from] crate::git::Error),
     #[error(transparent)]
     GitHub(#[from] sheprd_github::Error),

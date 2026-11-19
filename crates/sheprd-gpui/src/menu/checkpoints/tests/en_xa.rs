@@ -63,3 +63,30 @@ fn the_checkpoints_dialog_shows_only_messages_under_en_xa() {
         assert_translated("Checkpoints > Restore", &recorder.take(), &data);
     });
 }
+
+#[test]
+fn commit_versions_show_only_messages_under_en_xa() {
+    under_en_xa("commit versions en-XA leak", |cx, recorder| {
+        let (view, cx) = cx.add_window_view(crate::sidebar::layout_tests::fixture_window);
+        cx.simulate_resize(size(px(1200.), px(900.)));
+        draw(cx);
+        recorder.take();
+        cx.update(|window, cx| {
+            view.update(cx, |view, cx| {
+                local(view);
+                view.open_workspace_menu("w4", Default::default(), window, cx);
+                view.activate_workspace_menu(WorkspaceMenuAction::Checkpoints, window, cx);
+                let checkpoints = view.checkpoints.view.as_mut().unwrap();
+                checkpoints.listing = Listing::Ready(Vec::new());
+                checkpoints.changes = super::changes::history_changes();
+                cx.notify();
+            })
+        });
+        draw(cx);
+        // Commit names, subjects, and agent names are data.
+        let data: Vec<String> = ["bbbbbbb", "two", "ccccccc", "aaaaaaa", "Codex", "ddddddd"]
+            .map(str::to_owned)
+            .into();
+        assert_translated("Checkpoints > Commit versions", &recorder.take(), &data);
+    });
+}

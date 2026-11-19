@@ -22,3 +22,22 @@ checkpoints-restoring = Restoring...
 checkpoints-files = { $count }f
 # The day heading over yesterday's checkpoints; $date is the month and day.
 checkpoints-yesterday = Yesterday, { $date }
+
+## The dialog's commit versions: every earlier version of the branch's own
+## commits, recorded at each agent turn. $sha is a short commit name, $how one
+## of the checkpoints-changes-how-* messages, $agents the agents' names, and
+## $age how long ago, such as "3 min ago".
+
+checkpoints-changes-title = Commit versions
+checkpoints-changes-none = No commit of { $branch }'s own has been rewritten yet.
+checkpoints-changes-versions = { $count } versions
+checkpoints-changes-dropped = Dropped
+checkpoints-changes-how-change-id = rewritten (same Change-Id)
+checkpoints-changes-how-patch = rebased or reworded
+checkpoints-changes-how-subject = amended
+checkpoints-changes-how-dropped = dropped
+checkpoints-changes-by = was { $sha }, { $how } in { $agents }'s turn, { $age }
+checkpoints-changes-outside = was { $sha }, { $how } outside an agent's turn, { $age }
+checkpoints-changes-pending = was { $sha }, { $how }, not recorded yet
+# Names the command line's comparison; keep the command as it is.
+checkpoints-changes-hint = Compare two versions with: sheprd change diff OLD [NEW]

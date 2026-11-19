@@ -1,5 +1,6 @@
-//! `notes`, `memory`, `worktree`, `checkpoint`, `scripts`, `teleport`, and
-//! `fan-out`.
+//! `notes`, `memory`, `worktree`, `checkpoint`, `change`, `scripts`,
+//! `teleport`, and `fan-out`.
+mod change;
 mod checkpoint;
 mod here;
 mod memory;
@@ -18,6 +19,7 @@ use crate::{
         },
     },
 };
+pub(super) use change::change;
 pub(super) use checkpoint::checkpoint;
 pub(super) use memory::memory;
 use std::fmt::Write as _;
@@ -27,9 +29,13 @@ use std::fmt::Write as _;
 fn rejected(error: impl Into<crate::Error>) -> crate::Error {
     let error = error.into();
     let code = match &error {
-        crate::Error::Vcs(sheprd_vcs::Error::Checkpoint(crate::checkpoint::Error::Missing)) => {
-            ErrorCode::NotFound
-        }
+        crate::Error::Vcs(
+            sheprd_vcs::Error::Checkpoint(crate::checkpoint::Error::Missing)
+            | sheprd_vcs::Error::Evolution(sheprd_vcs::evolution::Error::Unknown),
+        ) => ErrorCode::NotFound,
+        crate::Error::Vcs(sheprd_vcs::Error::Evolution(
+            sheprd_vcs::evolution::Error::Ambiguous,
+        )) => ErrorCode::InvalidRequest,
         crate::Error::NotInCheckout
         | crate::Error::DetachedHead
         | crate::Error::Vcs(sheprd_vcs::Error::Checkpoint(

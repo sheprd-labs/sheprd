@@ -1,5 +1,5 @@
-# Git on the checkouts the app shows: commits, pushes, checkpoints, and the
-# code search index. Git's own output stays as it is in $details.
+# Git on the checkouts the app shows: commits, pushes, checkpoints, change
+# history, and the code search index. Git's own output stays as it is in $details.
 
 error-vcs-cloud-host-unsupported = This is not available for cloud machines yet.
 
@@ -14,6 +14,14 @@ error-vcs-checkpoint-script = Checkpoint Git commands failed
 error-vcs-checkpoint-thread = Could not start the checkpoint worker
 error-vcs-checkpoint-unborn = This checkout has no commit yet, so it has no checkpoints.
 error-vcs-checkpoint-worker = The checkpoint worker stopped.
+
+## Change history: every version of a branch's own commits.
+
+error-vcs-evolution-ambiguous = More than one version starts with that; give more of its name.
+error-vcs-evolution-log = The branch's change history was not understood.
+error-vcs-evolution-output = Change history output was not understood.
+error-vcs-evolution-raced = The change history kept changing while it was written.
+error-vcs-evolution-unknown = No version of this branch's commits starts with that.
 
 ## Searching a checkout for files and symbols.
 

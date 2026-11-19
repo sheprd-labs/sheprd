@@ -4,6 +4,7 @@ use super::*;
 use sheprd_client::protocol::ClientShellSnapshot;
 use sheprd_client::protocol::ClientShellWorktree;
 
+mod changes;
 mod wanted;
 mod wsl_hosts;
 
@@ -245,13 +246,13 @@ fn queues_are_bounded() {
     let mut checkpoints = Checkpoints::default();
     for index in 0..QUEUE_LIMIT + 5 {
         let checkout = Checkout::new(Host::Local, &format!("/r{index}/.git"), Some("main"));
-        checkpoints.capture(checkout.unwrap(), "turn".into());
+        checkpoints.capture(checkout.unwrap(), "turn".into(), None);
     }
     assert_eq!(queued(&checkpoints).len(), QUEUE_LIMIT);
     for index in 0..HOST_LIMIT + 5 {
         let host = Host::Ssh(format!("box{index}"));
         let checkout = Checkout::new(host, "/r/.git", Some("main")).unwrap();
-        checkpoints.capture(checkout, "turn".into());
+        checkpoints.capture(checkout, "turn".into(), None);
     }
     assert_eq!(checkpoints.lanes.len(), HOST_LIMIT);
 }
@@ -272,6 +273,7 @@ fn answer(checkpoints: &mut Checkpoints, request: Request, answer: Answer) -> Ve
     let job = Job {
         checkout: feature(),
         request,
+        credit: None,
     };
     checkpoints.apply(job, answer, &mut restored);
     restored
@@ -280,7 +282,7 @@ fn answer(checkpoints: &mut Checkpoints, request: Request, answer: Answer) -> Ve
 #[test]
 fn the_dialog_lists_first_and_restores_only_after_confirming() {
     let mut checkpoints = Checkpoints::default();
-    checkpoints.capture(feature(), "turn".into());
+    checkpoints.capture(feature(), "turn".into(), None);
     checkpoints.open(feature(), "repo".into(), "w4".into());
     assert_eq!(
         queued(&checkpoints)[0],
@@ -300,7 +302,11 @@ fn the_dialog_lists_first_and_restores_only_after_confirming() {
     );
     // Nothing is confirmed yet, and another branch's checkpoint never is.
     checkpoints.restore();
-    assert_eq!(queued(&checkpoints).len(), 2);
+    assert!(
+        !queued(&checkpoints)
+            .iter()
+            .any(|(_, request)| matches!(request, Request::Restore { .. }))
+    );
     let view = checkpoints.view.as_mut().unwrap();
     view.confirming = Some("1".into());
     checkpoints.restore();
