@@ -134,16 +134,8 @@ impl Work {
             }
             Self::Exec(command, cwd, wait) => {
                 let task = agent::exec(&name, command, cwd, Duration::from_secs(wait), cx);
-                cx.background_executor().spawn(async move {
-                    let exec = task.await?;
-                    Ok(tab(Reply::MachineExec(Box::new(ExecInfo {
-                        device,
-                        status: exec.status.filter(|_| !exec.timed_out),
-                        stdout: exec.stdout,
-                        stderr: exec.stderr,
-                        truncated: exec.truncated,
-                    }))))
-                })
+                cx.background_executor()
+                    .spawn(async move { Ok(executed(device, task.await?, wait)) })
             }
             Self::Screenshot(path) => {
                 let task = agent::screenshot(&name, path.clone(), cx);
@@ -170,6 +162,25 @@ impl Work {
             })
             .detach();
     }
+}
+
+/// What a command run in machine `device` says to the caller: its output,
+/// or, as `cloud exec` answers, a timeout once `wait` seconds stopped it.
+#[cfg(target_os = "macos")]
+fn executed(device: String, exec: agent::Exec, wait: u64) -> Response {
+    if exec.timed_out {
+        return Response::error(
+            ErrorCode::Timeout,
+            format!("The command did not finish in {wait} seconds, so Sheprd Agent stopped it"), // i18n: data
+        );
+    }
+    tab(Reply::MachineExec(Box::new(ExecInfo {
+        device,
+        status: exec.status,
+        stdout: exec.stdout,
+        stderr: exec.stderr,
+        truncated: exec.truncated,
+    })))
 }
 
 #[cfg(target_os = "macos")]
@@ -200,3 +211,6 @@ fn refused(error: &agent::Error) -> Response {
     };
     Response::error(code, error.localize())
 }
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests;

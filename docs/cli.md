@@ -402,7 +402,7 @@ builds do not carry it yet.
 
 `machine exec` runs a command as that user, with a Terminal's `PATH`, in
 `--cwd` when given (`~/` being their home). Its output comes back as
-`cloud exec`'s does, and it exits 0 when the command did. Points for
+`cloud exec`'s does, and it exits 0 when the command did. At its `--timeout`, the agent stops the command and everything it started, and the command exits 7. Points for
 `machine click` are in the screenshot's pixels, top-left first, so an agent
 reads `machine screenshot` and clicks what it sees. Like `cloud exec`, none
 of these asks first: they act only inside a machine the user made, as the
