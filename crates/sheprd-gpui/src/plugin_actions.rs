@@ -17,6 +17,8 @@ pub(crate) mod catalog;
 mod context;
 mod error;
 mod render;
+#[cfg(test)]
+pub(crate) mod tests;
 
 pub(crate) use catalog::{Row, Scope};
 pub(crate) use context::Target;

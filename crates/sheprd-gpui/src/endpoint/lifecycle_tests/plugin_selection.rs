@@ -2,6 +2,10 @@ use super::*;
 use crate::terminal::Selection;
 use serde_json::{Value, json};
 
+// Plugin actions run through POSIX host scripts.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod menus;
+
 const PLUGIN: &str = "plugin-annotate";
 const SHELL: &str = "shell-build";
 
