@@ -119,7 +119,6 @@ impl Catalog {
     ) -> Self {
         let mut actions: Vec<Action> = listed
             .into_iter()
-            .filter(|action| !action.contexts.is_empty())
             .filter(|action| {
                 platform.is_none_or(|platform| {
                     action

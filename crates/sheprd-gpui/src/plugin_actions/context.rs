@@ -140,10 +140,7 @@ impl HostView {
             "workspace_cwd",
             text(pane.and_then(|pane| pane.cwd.as_ref())),
         );
-        set(
-            "worktree",
-            workspace.worktree.clone().filter(|value| !value.is_null()),
-        );
+        set("worktree", workspace.worktree.clone());
         set("tab_id", tab.map(|tab| json!(tab.tab_id)));
         set("tab_label", text(tab.and_then(|tab| tab.label.as_ref())));
         set("focused_pane_id", pane.map(|pane| json!(pane.pane_id)));
@@ -157,8 +154,7 @@ impl HostView {
         );
         set(
             "focused_pane_status",
-            pane.and_then(|pane| pane.agent_status.clone())
-                .filter(|value| !value.is_null()),
+            pane.and_then(|pane| pane.agent_status.clone()),
         );
         set("selected_text", selected_text.map(Value::String));
         set("invocation_source", Some(json!(SOURCE)));
