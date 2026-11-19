@@ -32,3 +32,12 @@ fn a_click_waits_out_typing_under_way() {
     assert!(wait >= Duration::from_secs(MACHINE_TYPE_SECONDS));
     assert!(Duration::from_secs(MACHINE_AGENT_WAIT_SECONDS) > CONNECT + wait + SLACK);
 }
+
+/// The agent gives up on input queued behind another request's after 30
+/// seconds (`queued` in Listener.swift), sooner than the host stops waiting
+/// for it, so nothing the host gave up on is posted later.
+#[test]
+fn the_agent_gives_up_on_queued_input_before_the_host_does() {
+    const AGENT_QUEUED: Duration = Duration::from_secs(30);
+    assert!(Duration::from_secs(MACHINE_TYPE_SECONDS) > AGENT_QUEUED);
+}

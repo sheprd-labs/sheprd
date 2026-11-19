@@ -98,9 +98,15 @@ func handle(_ request: [String: Any]) throws -> [String: Any] {
 /// mix and a click never moves focus halfway through typing. Commands and
 /// screenshots run alongside.
 private let input = NSLock()
+/// How long input waits for another request's: within what the host allows
+/// for it (`MACHINE_TYPE_SECONDS` in sheprd-control-protocol, the longest
+/// typing), so a request the host gave up on is never posted later.
+private let queued: TimeInterval = 30
 
-private func posting(_ body: () throws -> [String: Any]) rethrows -> [String: Any] {
-    input.lock()
+private func posting(_ body: () throws -> [String: Any]) throws -> [String: Any] {
+    guard input.lock(before: Date(timeIntervalSinceNow: queued)) else {
+        throw Refusal.failed("other input is still being posted; try again when it is done")
+    }
     defer { input.unlock() }
     return try body()
 }

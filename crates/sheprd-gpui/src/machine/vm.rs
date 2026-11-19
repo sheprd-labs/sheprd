@@ -529,6 +529,8 @@ pub(crate) fn delete(name: &Name, cx: &mut App, done: impl FnOnce(Result<()>, &m
         cx.update(|cx| {
             if removed.is_ok() {
                 MACHINES.with(|machines| machines.borrow_mut().remove(&name));
+                // A machine made later under this name starts its setup over.
+                super::guide::forget(&name);
             } else {
                 with(&name, |machine| machine.held = false);
             }

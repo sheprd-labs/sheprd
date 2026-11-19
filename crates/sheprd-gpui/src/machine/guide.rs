@@ -11,7 +11,11 @@
 use super::{Name, Status, agent, image, status, store};
 use crate::i18n::Localize as _;
 use gpui::{App, AsyncApp};
-use std::{cell::RefCell, collections::HashMap, time::Duration};
+use std::{
+    cell::{Cell, RefCell},
+    collections::HashMap,
+    time::Duration,
+};
 
 /// How often a waiting step asks the agent again.
 const EVERY: Duration = Duration::from_secs(2);
@@ -53,6 +57,9 @@ impl Step {
 
 #[derive(Default)]
 struct Guide {
+    /// Which opening of the guide this is: its watcher stops once another
+    /// replaced it.
+    generation: u64,
     /// The user said they signed in; the agent answering says it too.
     signed_in: bool,
     /// The agent's last answer: Accessibility, then Screen Recording. A
@@ -76,6 +83,7 @@ pub(crate) struct Shown {
 
 thread_local! {
     static GUIDES: RefCell<HashMap<Name, Guide>> = RefCell::new(HashMap::new());
+    static OPENED: Cell<u64> = const { Cell::new(0) };
 }
 
 fn with<T>(name: &Name, change: impl FnOnce(&mut Guide) -> T) -> Option<T> {
@@ -98,14 +106,30 @@ pub(crate) fn shown(name: &Name) -> Option<Shown> {
 pub(crate) fn begin(name: &Name, cx: &mut App) {
     let fresh = GUIDES.with(|guides| {
         let mut guides = guides.borrow_mut();
-        let fresh = !guides.contains_key(name);
-        guides.entry(name.clone()).or_default();
-        fresh
+        if guides.contains_key(name) {
+            return None;
+        }
+        let generation = OPENED.get() + 1;
+        OPENED.set(generation);
+        guides.insert(
+            name.clone(),
+            Guide {
+                generation,
+                ..Guide::default()
+            },
+        );
+        Some(generation)
     });
-    if fresh {
-        watch(name.clone(), cx);
+    if let Some(generation) = fresh {
+        watch(name.clone(), generation, cx);
     }
     cx.refresh_windows();
+}
+
+/// Drops machine `name`'s guide, as the machine was deleted: one made later
+/// under its name starts over.
+pub(crate) fn forget(name: &Name) {
+    GUIDES.with(|guides| guides.borrow_mut().remove(name));
 }
 
 /// The user signed in; the agent cannot say so before it is installed.
@@ -181,15 +205,18 @@ fn finish(name: &Name, saved: Result<Name, String>, cx: &mut App) {
 }
 
 /// Asks machine `name`'s agent where setup stands, every [`EVERY`] while
-/// it runs, until its guide closes or needs the agent no more.
-fn watch(name: Name, cx: &mut App) {
+/// it runs, until its guide closes, opens again anew, or needs the agent no
+/// more.
+fn watch(name: Name, generation: u64, cx: &mut App) {
     cx.spawn(async move |cx: &mut AsyncApp| {
         loop {
             let ask = cx.update(|_| {
                 let waiting = with(&name, |guide| {
-                    !guide.asking
-                        && Step::of(guide.signed_in, guide.permissions, false) < Step::Save
-                })?;
+                    (guide.generation == generation).then(|| {
+                        !guide.asking
+                            && Step::of(guide.signed_in, guide.permissions, false) < Step::Save
+                    })
+                })??;
                 Some(waiting && status(&name) == Status::Running)
             });
             match ask {
@@ -202,6 +229,9 @@ fn watch(name: Name, cx: &mut App) {
                     let answer = asked.await;
                     cx.update(|cx| {
                         let changed = with(&name, |guide| {
+                            if guide.generation != generation {
+                                return false;
+                            }
                             guide.asking = false;
                             let before = guide.permissions;
                             if let Ok(hello) = &answer {
