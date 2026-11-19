@@ -405,40 +405,44 @@ impl SettingsWindow {
                     size = size
                 )
             };
-            return row(format!("machine-{name}-delete-ask"), question)
-                .control(
-                    div()
-                        .flex()
-                        .flex_row()
-                        .gap(px(6.))
-                        .child(
-                            ui::button(
-                                &self.theme,
-                                format!("machine-{name}-delete-confirm"),
-                                fl!("settings-machines-delete-confirm"),
-                                true,
-                            )
-                            .text_color(rgb(self.theme.palette[1]))
-                            .on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    this.delete_machine(&target, cx);
-                                },
-                            )),
+            // The question wraps under the title, as the description it
+            // replaces did, so the buttons keep their place at the right.
+            return row(
+                format!("machine-{name}-delete-ask"),
+                fl!("settings-machines-delete"),
+            )
+            .description(question)
+            .control(
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap(px(6.))
+                    .child(
+                        ui::button(
+                            &self.theme,
+                            format!("machine-{name}-delete-confirm"),
+                            fl!("settings-machines-delete-confirm"),
+                            true,
                         )
-                        .child(
-                            ui::button(
-                                &self.theme,
-                                format!("machine-{name}-delete-cancel"),
-                                fl!("settings-machines-delete-cancel"),
-                                true,
-                            )
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.machines.confirming = None;
-                                cx.notify();
-                            })),
-                        ),
-                )
-                .into_div();
+                        .text_color(rgb(self.theme.palette[1]))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.delete_machine(&target, cx);
+                        })),
+                    )
+                    .child(
+                        ui::button(
+                            &self.theme,
+                            format!("machine-{name}-delete-cancel"),
+                            fl!("settings-machines-delete-cancel"),
+                            true,
+                        )
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.machines.confirming = None;
+                            cx.notify();
+                        })),
+                    ),
+            )
+            .into_div();
         }
         let target = name.clone();
         let enabled = self.machines.deleting.is_none() && *status != Status::Saving;

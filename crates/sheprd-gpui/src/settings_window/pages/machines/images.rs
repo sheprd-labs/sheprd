@@ -94,13 +94,15 @@ impl SettingsWindow {
                     cx.notify();
                 },
             );
-            return ui::row(
-                &self.theme,
-                id("delete-ask"),
-                fl!("settings-machines-image-delete-ask", name = name.as_str()),
-            )
-            .control(controls.child(confirm).child(cancel))
-            .into_div();
+            // The question wraps under the image's name, so the buttons keep
+            // their place at the right.
+            return ui::row(&self.theme, id("delete-ask"), name.to_string())
+                .description(fl!(
+                    "settings-machines-image-delete-ask",
+                    name = name.as_str()
+                ))
+                .control(controls.child(confirm).child(cancel))
+                .into_div();
         }
         let new = button("new", fl!("settings-machines-image-new"), Self::new_machine);
         let delete = button(

@@ -133,3 +133,5 @@ fn deleting_an_image_asks_a_second_time(cx: &mut TestAppContext) {
     assert!(cx.debug_bounds("machine-image-base-delete").is_none());
     assert!(cx.debug_bounds("machine-one-delete").is_some());
 }
+
+mod delete_layout;
