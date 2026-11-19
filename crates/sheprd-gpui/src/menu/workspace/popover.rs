@@ -34,6 +34,11 @@ impl Label {
     pub(crate) const OPEN_WORKTREE: Self = Self::new("worktree-popover-open-worktree");
     pub(crate) const ORCHESTRATOR: Self = Self::new("worktree-popover-orchestrator");
     pub(crate) const RENAME: Self = Self::new("worktree-popover-rename");
+    #[cfg(target_os = "linux")]
+    pub(crate) const REVEAL_IN_FILE_MANAGER: Self =
+        Self::new("worktree-popover-reveal-in-file-manager");
+    #[cfg(target_os = "macos")]
+    pub(crate) const REVEAL_IN_FINDER: Self = Self::new("worktree-popover-reveal-in-finder");
     pub(crate) const RUN_SCRIPT: Self = Self::new("worktree-popover-run-script");
     pub(crate) const RUN_SETUP_SCRIPT: Self = Self::new("worktree-popover-run-setup-script");
     pub(crate) const TELEPORT: Self = Self::new("worktree-popover-teleport");
@@ -208,6 +213,14 @@ impl SheprdWindow {
     /// short and few, and GPUI caches each shaped line, so measuring them as
     /// the popover draws costs no more than drawing them.
     pub(in crate::menu) fn workspace_popover_width(&self, window: &Window, room: Pixels) -> Pixels {
+        if self
+            .menu
+            .target
+            .as_ref()
+            .is_some_and(|target| target.retained)
+        {
+            return px(WIDTH).min(room);
+        }
         let size = px((self.config.ui.size - 1.).max(8.));
         let font = self.config.ui.font();
         let (tiles, _) = layout(&self.workspace_items());
@@ -238,6 +251,11 @@ impl SheprdWindow {
         let theme = &self.theme;
         let font = &self.config.ui;
         let items = self.workspace_items();
+        let retained = self
+            .menu
+            .target
+            .as_ref()
+            .is_some_and(|target| target.retained);
         let mut panel = div().flex().flex_col();
         if let Some(target) = &self.menu.target {
             let names = div()
@@ -283,10 +301,18 @@ impl SheprdWindow {
                     .children(
                         items
                             .iter()
-                            .find(|(action, _)| action.in_header())
-                            .map(|&(action, label)| self.render_workspace_mute(action, label, cx)),
+                            .filter(|(action, _)| action.in_header() && !retained)
+                            .map(|&(action, label)| {
+                                self.render_workspace_header_action(action, label, cx)
+                            }),
                     ),
             );
+        }
+        if retained {
+            for (action, label) in items {
+                panel = panel.child(self.render_workspace_row(action, label, cx));
+            }
+            return panel;
         }
         let (tiles, rest) = layout(&items);
         let mut grid = div()
@@ -386,6 +412,74 @@ impl SheprdWindow {
                 cx.stop_propagation();
                 this.activate_workspace_menu(action, window, cx);
             }))
+    }
+
+    /// A header control, beside the name: the mute toggle with its word, or a
+    /// square icon for an action whose own row would push the pull request
+    /// card out of a short window. Both stay in the arrow keys' walk.
+    fn render_workspace_header_action(
+        &self,
+        action: WorkspaceMenuAction,
+        label: Label,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        if matches!(
+            action,
+            WorkspaceMenuAction::Mute | WorkspaceMenuAction::Unmute
+        ) {
+            return self
+                .render_workspace_mute(action, label, cx)
+                .into_any_element();
+        }
+        let theme = &self.theme;
+        let selected = Some(action) == self.menu.workspace_selected;
+        let ink = rgb(if selected {
+            theme.foreground
+        } else {
+            theme.muted
+        });
+        let hint = SharedString::from(label.text());
+        let (foreground, surface) = (theme.foreground, theme.surface);
+        // One line of the header tall, so it never makes the header taller.
+        let line = self.config.ui.line_height();
+        div()
+            .id(label.id())
+            .debug_selector(move || format!("workspace-menu-{}", label.english()))
+            .role(Role::Button)
+            .aria_label(label.text())
+            .when(selected, |button| button.aria_active_descendant())
+            .flex_none()
+            .size(px(line))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded(px(crate::config::corners::CONTROL))
+            .border_1()
+            .border_color(Rgba { a: 0.5, ..ink })
+            .when(selected, |button| button.bg(rgb(theme.active)))
+            .cursor_pointer()
+            .tooltip(move |_, cx| {
+                cx.new(|_| crate::usage::Hint {
+                    text: hint.clone(),
+                    foreground,
+                    surface,
+                })
+                .into()
+            })
+            .on_hover(Self::workspace_hover(action, cx))
+            .child(
+                svg()
+                    .path(action.icon().unwrap_or("icons/file.svg"))
+                    .size(px((line - 10.).clamp(8., ICON_SIZE - 4.)))
+                    .flex_none()
+                    .text_color(ink)
+                    .debug_selector(move || format!("workspace-menu-icon-{}", label.english())),
+            )
+            .on_click(cx.listener(move |this, _, window, cx| {
+                cx.stop_propagation();
+                this.activate_workspace_menu(action, window, cx);
+            }))
+            .into_any_element()
     }
 
     /// Hover selects, as the arrow keys do, so both highlight the same item.

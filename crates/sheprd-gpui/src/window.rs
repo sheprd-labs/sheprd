@@ -763,6 +763,9 @@ impl SheprdWindow {
         if self.update_git() {
             cx.notify();
         }
+        if self.follow_changes_panel(cx) {
+            cx.notify();
+        }
         if self.update_usage(cx) {
             cx.notify();
         }

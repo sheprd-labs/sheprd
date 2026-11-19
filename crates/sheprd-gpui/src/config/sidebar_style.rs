@@ -140,6 +140,9 @@ pub struct SidebarStyle {
     pub device_footer: DeviceFooter,
     /// A colour per host, keyed by the host's display name, as `0xRRGGBB`.
     pub hosts: BTreeMap<String, u32>,
+    /// Directories whose open workspace heads a fold containing the
+    /// workspaces opened directly beneath them on disk.
+    pub workspace_groups: Vec<String>,
     pub overrides: SidebarOverrides,
     /// `ports_count`: the number of the user's servers on the bar's Ports
     /// icon, which keeps a light scan of this computer's ports running.
@@ -158,6 +161,7 @@ impl Default for SidebarStyle {
             coordinator_suffix: None,
             device_footer: DeviceFooter::default(),
             hosts: BTreeMap::new(),
+            workspace_groups: Vec::new(),
             overrides: SidebarOverrides::default(),
             select: SelectMode::default(),
         }
@@ -190,6 +194,7 @@ pub(super) struct SidebarSettings {
     pub(super) change_counts: ChangeCounts,
     pub(super) coordinator_suffix: Option<String>,
     pub(super) hosts: BTreeMap<String, String>,
+    pub(super) workspace_groups: Vec<String>,
     pub(super) activity_bar: Option<bool>,
     pub(super) automations: Option<bool>,
     pub(super) ports_count: Option<bool>,
@@ -224,6 +229,12 @@ impl SidebarSettings {
                 .map(str::to_owned),
             device_footer: self.device_footer,
             hosts,
+            workspace_groups: self
+                .workspace_groups
+                .iter()
+                .map(|root| root.trim().trim_end_matches(['/', '\\']).to_owned())
+                .filter(|root| !root.is_empty())
+                .collect(),
             overrides: self.overrides,
             select: self.select,
         })
@@ -268,6 +279,7 @@ impl<'de> Deserialize<'de> for SidebarSettings {
                         "automations" => settings.automations = Some(map.next_value()?),
                         "ports_count" => settings.ports_count = Some(map.next_value()?),
                         "hosts" => settings.hosts = map.next_value()?,
+                        "workspace_groups" => settings.workspace_groups = map.next_value()?,
                         _ => {
                             map.next_value::<serde::de::IgnoredAny>()?;
                         }

@@ -68,7 +68,7 @@ local drag = { device = nil, drop = nil }
 
 -- What a row carries when dragged onto another: its workspace.
 local function carry(workspace: any)
-	if drag.device ~= workspace.endpoint then
+	if drag.device ~= workspace.endpoint or workspace.retained then
 		return nil
 	end
 	return { workspace = workspace.id }

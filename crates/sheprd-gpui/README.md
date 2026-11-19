@@ -1209,11 +1209,27 @@ order then follows Herdr's `ui.agent_panel_sort` (`priority` or `grouped`)
 unless it was toggled earlier or a plugin sets the agent view, which keeps the
 header shown while that view is active.
 
+Turn on **Show Changed panel** in **Settings > Sidebar** to keep the
+**Changed** file list beside the terminals. It follows the focused local Git
+checkout and shows its uncommitted files with added and removed line counts.
+The panel can also hold sections from Sheprd mods, and **Toggle Mod Panel**
+hides or shows the whole panel. The same setting is available as top-level
+`show_changes_panel`.
+
 Agents list in their own section below Spaces by default. Set top-level
 `agents_placement = "nested"`, or pick **Under workspaces** for **Agents
 placement** in **Settings > Sidebar**, to list each agent under the workspace
 it runs in instead; Spaces then takes the full sidebar height. The collapsed
 rail keeps its own agents section either way.
+
+The sidebar detects a project hub when a workspace's folder has its own open
+workspace and at least two direct child workspaces that are Git repositories.
+It also detects the naming form `Chrome` with `Chrome_one` and `Chrome_two`,
+whether or not each child is a repository. The folder workspace becomes one
+foldable row with those project workspaces indented below it; its arrow hides
+or shows exactly those direct children, while linked worktrees keep their
+existing grouping. `[sidebar] workspace_groups` adds folders to this hierarchy
+when neither automatic rule fits.
 
 A search field at the top of the sidebar finds devices, worktrees, and
 branches by name; while it holds text, results grouped by kind replace the
@@ -4224,6 +4240,9 @@ Ctrl+Shift+U is left unbound for
   end on one-line rows, Compact included. Minimal rows leave them off. They
   appear only while the daemon's `[ui.sidebar.spaces]` rows name `git_status`,
   as its defaults do, because the daemon computes them only then.
+  Compact shows a selected local count on the project's first line, beside its
+  name; it remains visible even though Compact otherwise omits the second,
+  pull-request count line.
 - With several hosts listed, the Spaces list groups workspaces under a row per
   host, and the row of the host whose workspaces are at the top of the
   scrolled list stays pinned there, so you can always see which machine they

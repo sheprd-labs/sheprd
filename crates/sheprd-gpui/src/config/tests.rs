@@ -12,6 +12,7 @@ mod backdrop;
 mod bitmap_fonts;
 mod bold_color;
 mod change_counts;
+mod changes_panel;
 mod cjk_fonts;
 mod cloud_setup;
 mod code;

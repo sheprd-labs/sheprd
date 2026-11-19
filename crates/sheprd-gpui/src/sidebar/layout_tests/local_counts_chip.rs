@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    config::{ChangeCounts, LayoutMode},
+    config::{ChangeCounts, Density, LayoutMode, Style},
     git::{Counted, Status},
 };
 
@@ -124,4 +124,26 @@ fn local_counts_sit_in_the_dirty_chip_under_the_number(cx: &mut gpui::TestAppCon
     assert!(row.left() <= chip.left() && chip.right() <= row.right());
     assert!(chip.left() < counts.left() && counts.right() <= chip.right());
     assert!(cx.debug_bounds("name-sidebar-child").unwrap().right() <= chip.left());
+
+    // Compact keeps one line: a local count shares the name's line instead of
+    // disappearing with the hidden detail line.
+    cx.update(|_, cx| {
+        view.update(cx, |view, cx| {
+            view.config.sidebar_layout = Default::default();
+            view.config.layout.mode = LayoutMode::new(Density::Compact, Style::Rounded);
+            cx.notify();
+        })
+    });
+    cx.update(|window, cx| {
+        window.refresh();
+        full_draw(window, cx).clear(cx);
+    });
+    let row = cx.debug_bounds("row-sidebar-child").unwrap();
+    let name = cx.debug_bounds("name-sidebar-child").unwrap();
+    let chip = cx.debug_bounds("dirty-sidebar-child").unwrap();
+    let counts = cx.debug_bounds("counts-sidebar-child").unwrap();
+    assert!(chip.top() <= name.bottom() && name.top() <= chip.bottom());
+    assert!(row.left() <= chip.left() && chip.right() <= row.right());
+    assert!(chip.left() < counts.left() && counts.right() <= chip.right());
+    assert!(cx.debug_bounds("detail-sidebar-child").is_none());
 }

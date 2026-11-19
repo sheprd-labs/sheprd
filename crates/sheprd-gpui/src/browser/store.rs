@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use sheprd_session::SavedWorkspace;
 use std::path::PathBuf;
 
+mod closed_projects;
 mod kept;
 
 pub(crate) use kept::is_kept_id;
@@ -211,11 +212,88 @@ struct Saved {
     workspaces: Vec<SavedWorkspace>,
 }
 
+/// A project path retained in Spaces after Herdr 1 closes its last tab.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct ClosedProject {
+    pub(crate) id: String,
+    pub(crate) scope: String,
+    pub(crate) cwd: String,
+    pub(crate) label: String,
+    #[serde(default)]
+    pub(crate) custom_label: bool,
+    pub(crate) branch: Option<String>,
+    #[serde(default)]
+    pub(crate) worktree: Option<ClosedProjectWorktree>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct ClosedProjectWorktree {
+    pub(crate) key: String,
+    pub(crate) label: String,
+    pub(crate) linked: bool,
+}
+
+impl ClosedProject {
+    fn valid(&self) -> bool {
+        !self.id.is_empty()
+            && self.id.len() <= 256
+            && self
+                .id
+                .strip_prefix("closed-project-")
+                .is_some_and(|suffix| suffix.parse::<u64>().is_ok())
+            && !self.scope.is_empty()
+            && self.scope.len() <= 1024
+            && !self.scope.chars().any(char::is_control)
+            && !self.cwd.is_empty()
+            && self.cwd.len() <= sheprd_session::saved::MAX_CWD_BYTES
+            && std::path::Path::new(&self.cwd).is_absolute()
+            && !self.cwd.chars().any(char::is_control)
+            && !self.label.is_empty()
+            && self.label.chars().count() <= sheprd_session::saved::MAX_LABEL_CHARS
+            && !self.label.chars().any(char::is_control)
+            && self.branch.as_ref().is_none_or(|branch| {
+                !branch.is_empty() && branch.len() <= 1024 && !branch.chars().any(char::is_control)
+            })
+            && self.worktree.as_ref().is_none_or(|tree| {
+                !tree.key.is_empty()
+                    && tree.key.len() <= 8192
+                    && !tree.key.chars().any(char::is_control)
+                    && !tree.label.is_empty()
+                    && tree.label.chars().count() <= sheprd_session::saved::MAX_LABEL_CHARS
+                    && !tree.label.chars().any(char::is_control)
+            })
+    }
+
+    pub(crate) fn workspace(&self) -> sheprd_session::Workspace {
+        sheprd_session::Workspace {
+            ahead_behind: None,
+            branch: self.branch.clone(),
+            cwd: self.cwd.clone(),
+            custom_label: self.custom_label,
+            id: self.id.clone(),
+            keeper: sheprd_session::Keeper::Herdr1,
+            label: self.label.clone(),
+            status: sheprd_client::protocol::AgentStatus::Idle,
+            tabs: Vec::new(),
+            tokens: Vec::new(),
+            worktree: self.worktree.as_ref().map(|tree| sheprd_session::Worktree {
+                key: tree.key.clone(),
+                label: tree.label.clone(),
+                linked: tree.linked,
+            }),
+        }
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct Store {
     tabs: Vec<Tab>,
     /// Herdr 2 workspaces, in the user's order (`kept.rs`).
     pub(super) workspaces: Vec<SavedWorkspace>,
+    /// Herdr 1 projects preserved after their final tab closes.
+    pub(super) closed_projects: Vec<ClosedProject>,
+    closed_project_writer: Option<state_file::Writer<closed_projects::Saved>>,
+    _closed_project_owner: Option<std::fs::File>,
     /// The last kept workspace number handed out this run.
     last_kept: u64,
     next: u64,
@@ -324,8 +402,12 @@ impl Store {
                 tracing::warn!(%error, "Cannot restore browser tabs");
                 None
             });
-        let (tabs, workspaces) =
-            saved.map_or_else(Default::default, |saved| (saved.tabs, saved.workspaces));
+        let (tabs, workspaces) = saved.map_or_else(
+            || (Vec::new(), Vec::new()),
+            |saved| (saved.tabs, saved.workspaces),
+        );
+        let (projects, project_writer, project_owner) =
+            closed_projects::load(path.as_deref(), OWN_WAIT);
         let writer = path.and_then(
             |path| match state_file::Writer::start("browser-tabs", path) {
                 Ok(writer) => Some(writer),
@@ -337,6 +419,9 @@ impl Store {
         );
         let mut store = Self::with_tabs(tabs, writer);
         store.workspaces = workspaces;
+        store.closed_projects = projects;
+        store.closed_project_writer = project_writer;
+        store._closed_project_owner = project_owner;
         store._owner = owner;
         Ok(store)
     }
@@ -350,6 +435,9 @@ impl Store {
             _owner: None,
             tabs,
             workspaces: Vec::new(),
+            closed_projects: Vec::new(),
+            closed_project_writer: None,
+            _closed_project_owner: None,
             last_kept: 0,
             next,
             closed: Default::default(),
@@ -365,8 +453,12 @@ impl Store {
             let store = cx.global_mut::<Self>();
             store.quitting = true;
             let writer = store.writer.take();
+            let project_writer = store.closed_project_writer.take();
             cx.background_executor().spawn(async move {
                 if let Some(writer) = writer {
+                    writer.finish();
+                }
+                if let Some(writer) = project_writer {
                     writer.finish();
                 }
             })

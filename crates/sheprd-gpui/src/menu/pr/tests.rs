@@ -215,7 +215,8 @@ fn compact_pr_is_the_only_metadata_action(cx: &mut gpui::TestAppContext) {
         let view = view.read(cx);
         let actions = view.workspace_menu_actions();
         assert!(actions[0].in_header());
-        actions.len() - 1
+        // Header controls draw no row; the count is of the rows beneath them.
+        actions.iter().filter(|action| !action.in_header()).count()
     });
     assert_eq!(rows, 7);
     let panel = cx.debug_bounds("menu-panel").unwrap().size.height;

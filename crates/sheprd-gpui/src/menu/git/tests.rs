@@ -86,6 +86,26 @@ fn only_a_local_daemon_checkout_is_tracked(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn listed_git_work_includes_spaces_opened_in_repositories(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(crate::sidebar::layout_tests::fixture_window);
+    cx.update(|_, cx| {
+        view.update(cx, |view, _| {
+            view.live.status = crate::state::ConnectionStatus::Connected;
+            view.live.local_daemon_peer = true;
+            let mut snapshot = crate::sidebar::layout_tests::snapshot(1);
+            snapshot.workspaces[0].worktree = None;
+            snapshot.workspaces[0].branch = Some("main".into());
+            snapshot.workspaces[0].new_workspace_cwd = "/tmp/plain-project".into();
+            view.live.snapshot = Some(Arc::new(snapshot));
+            let inputs = view.listed_git_inputs();
+            assert!(inputs.iter().any(|input| {
+                input.checkout.as_deref() == Some("/tmp/plain-project") && input.branch == "main"
+            }));
+        });
+    });
+}
+
+#[gpui::test]
 fn a_cached_pull_request_is_named_and_only_an_open_one_can_be_opened(cx: &mut TestAppContext) {
     let (view, cx) = cx.add_window_view(crate::sidebar::layout_tests::fixture_window);
     let input = crate::pull_request::Input {

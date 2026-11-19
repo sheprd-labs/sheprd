@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 use super::*;
 
+mod closed_projects;
 mod core_terminals;
 mod editors;
 mod kept;

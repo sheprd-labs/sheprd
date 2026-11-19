@@ -52,6 +52,8 @@ pub(crate) struct Mods {
     pace: Pace,
     /// The right-hand panel's sections and motion; see `panel`.
     panel: panel::PanelState,
+    /// The built-in changed-files section in that panel.
+    pub(crate) changes: crate::changes_panel::ChangesPanel,
 }
 
 impl Default for Mods {
@@ -67,6 +69,7 @@ impl Default for Mods {
             offered: None,
             pace: Pace::new(STATE_GAP),
             panel: panel::PanelState::default(),
+            changes: crate::changes_panel::ChangesPanel::default(),
         }
     }
 }

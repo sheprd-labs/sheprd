@@ -31,6 +31,9 @@ struct Place<'a> {
     collapsed: &'a HashSet<String>,
     muted: bool,
     focused: bool,
+    /// This workspace is the Herdr daemon's focused checkout, whose status
+    /// the live Git panel tracks directly.
+    git_focused: bool,
     number: usize,
     /// The status its dot shows: a folded group's most urgent, when the
     /// config shows statuses inline, as the window's own row does.
@@ -104,7 +107,7 @@ impl SheprdWindow {
                     .and_then(|host| self.system_load.get(host))
                     .and_then(|load| load.latest().copied());
                 let folded = multi && endpoint.collapsed;
-                let sessions = self.sessions(index);
+                let sessions = self.sidebar_sessions(index, cx);
                 let rows = if folded {
                     Vec::new()
                 } else {
@@ -133,7 +136,7 @@ impl SheprdWindow {
             return Vec::new();
         };
         let none = HashSet::new();
-        let sessions = self.sessions(self.selected_endpoint);
+        let sessions = self.sidebar_sessions(self.selected_endpoint, cx);
         let silenced = self.silenced(endpoint, cx);
         let kept_front = self.kept_in_front();
         let mut number = 0;
@@ -142,6 +145,7 @@ impl SheprdWindow {
             let front = Sessions::front_of(keeper, session, kept_front);
             for (row, child) in workspace_entries(&session.workspaces) {
                 let workspace = &session.workspaces[row];
+                let git_focused = session.focused.as_deref() == Some(workspace.id.as_str());
                 number += 1;
                 let place = Place {
                     index: self.selected_endpoint,
@@ -150,6 +154,7 @@ impl SheprdWindow {
                     collapsed: &none,
                     muted: silenced.contains(&workspace.id),
                     focused: front == Some(workspace.id.as_str()),
+                    git_focused,
                     number,
                     status: workspace.status,
                 };
@@ -203,8 +208,13 @@ impl SheprdWindow {
             let front = selected
                 .then(|| Sessions::front_of(keeper, session, kept_front))
                 .flatten();
-            for (row, child, group) in visible_workspace_entries(&session.workspaces, collapsed) {
+            for (row, child, group) in visible_workspace_entries(
+                &session.workspaces,
+                collapsed,
+                &self.config.sidebar_style.workspace_groups,
+            ) {
                 let workspace = &session.workspaces[row];
+                let git_focused = session.focused.as_deref() == Some(workspace.id.as_str());
                 number += 1;
                 let place = Place {
                     index,
@@ -213,9 +223,15 @@ impl SheprdWindow {
                     collapsed,
                     muted: silenced.contains(&workspace.id),
                     focused: front == Some(workspace.id.as_str()),
+                    git_focused,
                     number,
                     status: if self.config.usage.inline {
-                        displayed_workspace_status(&session.workspaces, workspace, collapsed)
+                        displayed_workspace_status(
+                            &session.workspaces,
+                            workspace,
+                            collapsed,
+                            &self.config.sidebar_style.workspace_groups,
+                        )
                     } else {
                         workspace.status
                     },
@@ -228,6 +244,7 @@ impl SheprdWindow {
 
     /// One row: what the window's row shows, its device, and its fold.
     fn hosted_row(&self, workspace: &Workspace, child: bool, place: &Place<'_>, cx: &App) -> Value {
+        let retained = self.is_closed_project_row(&place.endpoint.id, &workspace.id, cx);
         let note = workspace_note(
             workspace,
             crate::worktree_notes::Notes::of(cx),
@@ -236,6 +253,7 @@ impl SheprdWindow {
         let pr_view = self.endpoint_pr_view(place.index);
         let badge = workspace_badge(
             workspace,
+            place.index == 0 && place.git_focused,
             pr_view.as_ref().map(|view| (&self.menu.pr_cache, view)),
             // Only this computer's checkouts are probed; a remote one with
             // the same repository and branch is another checkout.
@@ -275,6 +293,7 @@ impl SheprdWindow {
             // The number's color says the pull request's state, as the row's
             // own badge does.
             "pr_color": pr.map(|pr| hex(pr.color)),
+            "retained": retained,
             "removed": counts.map(|counts| counts.deletions.clone()),
             "repo": tree.map(|tree| tree.label.clone()),
             "repo_key": tree.map(|tree| tree.key.clone()),

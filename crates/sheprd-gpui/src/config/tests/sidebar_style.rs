@@ -106,6 +106,19 @@ fn unknown_sidebar_keys_are_still_reported() -> anyhow::Result<()> {
 }
 
 #[test]
+fn workspace_groups_keep_configured_roots_and_drop_blanks() -> anyhow::Result<()> {
+    let config = Config::parse(
+        "[sidebar]\nworkspace_groups = [\"~/Projects/Chrome/\", \"  \", \"/work/Web\"]",
+    )?;
+    assert_eq!(
+        config.sidebar_style.workspace_groups,
+        ["~/Projects/Chrome", "/work/Web"]
+    );
+    assert!(Config::default().sidebar_style.workspace_groups.is_empty());
+    Ok(())
+}
+
+#[test]
 fn saving_a_layout_keeps_sidebar_style_keys() -> anyhow::Result<()> {
     let directory = TempDirectory::new()?;
     let path = directory.0.join("config-gpui.toml");

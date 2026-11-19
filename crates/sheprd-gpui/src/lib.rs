@@ -23,6 +23,7 @@ mod bundled;
 mod caffeine;
 mod caption;
 mod caret;
+mod changes_panel;
 mod chat;
 mod cli;
 mod close_modal;

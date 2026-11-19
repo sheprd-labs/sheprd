@@ -506,11 +506,18 @@ pub(super) fn row(
     // under it take their room from the second line. A fold chevron is a
     // click target as tall as the row, so beside one the label still yields
     // the whole column.
-    let hanging = badge.as_ref().filter(|_| arrow.is_none());
+    let inline_counts = layout.inline_counts()
+        && badge
+            .as_ref()
+            .and_then(|badge| badge.shown_counts(&layout))
+            .is_some();
+    let hanging = badge.as_ref().filter(|_| arrow.is_none() && !inline_counts);
     let badge_first = hanging.map_or(badge_width, |badge| {
         badge.first_width(font, &layout).min(badge_width)
     });
-    let counts_reserve = hanging
+    let counts_reserve = (!inline_counts)
+        .then_some(hanging)
+        .flatten()
         .map(|badge| badge.counts_width(font, &layout).min(badge_width))
         .filter(|width| *width > 0.)
         .map_or(0., |width| width + gap);

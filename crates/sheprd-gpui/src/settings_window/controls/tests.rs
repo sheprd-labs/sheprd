@@ -8,6 +8,7 @@ mod agents_placement;
 mod automations;
 mod backdrop;
 mod change_counts;
+mod changed_panel;
 mod chat_code;
 mod chat_width;
 mod device_icons;
@@ -139,6 +140,7 @@ fn sidebar_rows_stack_inside_the_body_and_layout_picks_are_drafts(cx: &mut TestA
         for title_id in [
             "sidebar-layout-title",
             "sidebar-select-title",
+            "sidebar-show-changes-panel-title",
             "sidebar-show-agents-title",
             "sidebar-show-search-title",
             "sidebar-repository-icons-title",

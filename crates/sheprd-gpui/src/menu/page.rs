@@ -188,6 +188,9 @@ pub(crate) enum WorkspaceMenuAction {
     /// applied at once: the mute belongs to this client, never the daemon.
     Mute,
     Unmute,
+    /// Show a local workspace folder in Finder or the system file manager.
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    RevealInFileManager,
 }
 
 impl Page {
@@ -278,7 +281,7 @@ impl WorkspaceMenuAction {
     /// Whether the popover draws the action in its header, not with the
     /// tiles and rows.
     pub(crate) fn in_header(self) -> bool {
-        matches!(self, Self::Mute | Self::Unmute)
+        matches!(self, Self::Mute | Self::Unmute | Self::RevealInFileManager)
     }
 
     /// Embedded icon for the row, so each action is recognizable before reading.
@@ -308,6 +311,8 @@ impl WorkspaceMenuAction {
             Self::Script(_) => "icons/play.svg",
             Self::Mute => crate::icons::MUTED,
             Self::Unmute => "icons/bell.svg",
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            Self::RevealInFileManager => "icons/file.svg",
             Self::PullRequest => return None,
         })
     }

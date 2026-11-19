@@ -229,6 +229,13 @@ impl SidebarMetrics {
     pub(super) fn pr_counts(&self) -> bool {
         self.pr_counts
     }
+
+    /// Whether trailing line counts share the row's first line. Compact rows
+    /// have no detail line to carry them, so their local count replaces the
+    /// dirty mark rather than making a sparse row two lines tall.
+    pub(super) fn inline_counts(&self) -> bool {
+        !self.workspace_details
+    }
     pub(super) fn header_padding(&self) -> f32 {
         self.header_padding
     }

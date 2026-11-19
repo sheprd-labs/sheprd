@@ -18,6 +18,7 @@ fn targeted_preferences_round_trip_and_reset_without_erasing_unknown_toml() -> a
         Preference::ShowNetworkQuality(true),
         Preference::AgentCheckpoints(false),
         Preference::ShowListeningPorts(false),
+        Preference::ShowChangesPanel(true),
         Preference::ShowSidebarSearch(false),
         Preference::ShowRepositoryIcons(false),
         Preference::ShowDeviceIcons(false),
@@ -49,6 +50,7 @@ fn targeted_preferences_round_trip_and_reset_without_erasing_unknown_toml() -> a
     assert_eq!(table["show_network_quality"].as_bool(), Some(true));
     assert_eq!(table["agent_checkpoints"].as_bool(), Some(false));
     assert_eq!(table["show_listening_ports"].as_bool(), Some(false));
+    assert_eq!(table["show_changes_panel"].as_bool(), Some(true));
     assert_eq!(table["show_sidebar_search"].as_bool(), Some(false));
     assert_eq!(table["show_repository_icons"].as_bool(), Some(false));
     assert_eq!(table["show_device_icons"].as_bool(), Some(false));

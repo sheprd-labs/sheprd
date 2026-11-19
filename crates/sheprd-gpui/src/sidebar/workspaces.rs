@@ -17,6 +17,152 @@ use crate::config::{ChangeCounts, Theme};
 use sheprd_client::protocol::AgentStatus;
 use sheprd_session::Workspace;
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
+
+#[derive(Debug)]
+struct FolderGroup {
+    head: usize,
+    children: Vec<usize>,
+    key: String,
+}
+
+#[derive(Clone)]
+enum FolderRule {
+    All,
+    Git,
+    Prefix(String),
+}
+
+fn expand_group_root(root: &str) -> Option<String> {
+    let root = root.trim().trim_end_matches(['/', '\\']);
+    let expanded = if root == "~" || root.starts_with("~/") {
+        let home = sheprd_client::local_path::home_dir()?;
+        if root == "~" {
+            home
+        } else {
+            home.join(&root[2..])
+        }
+    } else {
+        Path::new(root).to_path_buf()
+    };
+    Some(
+        expanded
+            .to_string_lossy()
+            .trim_end_matches(['/', '\\'])
+            .to_owned(),
+    )
+}
+
+fn folder_group_key(root: &str) -> String {
+    format!("folder:{root}")
+}
+
+fn trim_group_path(path: &str) -> &str {
+    let trimmed = path.trim().trim_end_matches(['/', '\\']);
+    if trimmed.is_empty() && path.starts_with('/') {
+        "/"
+    } else {
+        trimmed
+    }
+}
+
+/// Open workspaces directly beneath configured folders, grouped beneath the
+/// workspace opened on each folder itself. The folder workspace is the
+/// selectable, foldable head; the children are ordinary workspaces and keep
+/// their own daemon ids.
+fn folder_groups(workspaces: &[Workspace], roots: &[String]) -> Vec<FolderGroup> {
+    let mut candidates = HashMap::<String, (usize, FolderRule)>::new();
+    for root in roots.iter().filter_map(|root| expand_group_root(root)) {
+        if let Some(head) = workspaces
+            .iter()
+            .position(|workspace| trim_group_path(&workspace.cwd) == root)
+        {
+            candidates.insert(root, (head, FolderRule::All));
+        }
+    }
+    for (head, parent) in workspaces.iter().enumerate() {
+        let root = trim_group_path(&parent.cwd);
+        let children: Vec<_> = workspaces
+            .iter()
+            .filter(|workspace| {
+                Path::new(&workspace.cwd)
+                    .parent()
+                    .is_some_and(|path| trim_group_path(&path.to_string_lossy()) == root)
+            })
+            .collect();
+        let git_children = children
+            .iter()
+            .filter(|workspace| workspace.worktree.is_some())
+            .count();
+        let prefix = Path::new(root)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .map(|name| format!("{name}_"));
+        let prefixed_children = prefix.as_deref().is_some_and(|prefix| {
+            children
+                .iter()
+                .filter(|workspace| {
+                    Path::new(&workspace.cwd)
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .is_some_and(|name| name.starts_with(prefix))
+                })
+                .count()
+                >= 2
+        });
+        if git_children >= 2 || prefixed_children {
+            let rule = prefix
+                .filter(|_| prefixed_children)
+                .map_or(FolderRule::Git, FolderRule::Prefix);
+            candidates.entry(root.to_owned()).or_insert((head, rule));
+        }
+    }
+    let mut ordered_roots: Vec<(String, usize, FolderRule)> = candidates
+        .into_iter()
+        .map(|(root, (head, rule))| (root, head, rule))
+        .collect();
+    ordered_roots.sort_by_key(|(root, _, _)| std::cmp::Reverse(root.len()));
+    let mut claimed = HashSet::new();
+    let mut groups = Vec::new();
+    for (root, head, rule) in ordered_roots {
+        if claimed.contains(&root) {
+            continue;
+        }
+        let children: Vec<_> = workspaces
+            .iter()
+            .enumerate()
+            .filter(|(index, workspace)| {
+                *index != head
+                    && !claimed.contains(trim_group_path(&workspace.cwd))
+                    && Path::new(&workspace.cwd)
+                        .parent()
+                        .is_some_and(|parent| trim_group_path(&parent.to_string_lossy()) == root)
+                    && match &rule {
+                        FolderRule::All => true,
+                        FolderRule::Git => workspace.worktree.is_some(),
+                        FolderRule::Prefix(prefix) => Path::new(&workspace.cwd)
+                            .file_name()
+                            .and_then(|name| name.to_str())
+                            .is_some_and(|name| name.starts_with(prefix)),
+                    }
+            })
+            .map(|(index, _)| index)
+            .collect();
+        if children.is_empty() {
+            continue;
+        }
+        claimed.insert(root.clone());
+        for &child in &children {
+            claimed.insert(trim_group_path(&workspaces[child].cwd).to_owned());
+        }
+        groups.push(FolderGroup {
+            head,
+            children,
+            key: folder_group_key(&root),
+        });
+    }
+    groups
+}
 
 /// The repositories that form a group: those with at least one parent and at
 /// least one linked worktree among `workspaces`.
@@ -77,23 +223,74 @@ pub(crate) fn workspace_entries(workspaces: &[Workspace]) -> Vec<(usize, bool)> 
 pub(super) fn visible_workspace_entries(
     workspaces: &[Workspace],
     collapsed: &HashSet<String>,
+    workspace_groups: &[String],
 ) -> Vec<(usize, bool, Option<String>)> {
     let grouped = grouped_keys(workspaces);
-    workspace_entries(workspaces)
-        .into_iter()
-        .filter_map(|(index, child)| {
-            let key = workspaces[index]
-                .worktree
-                .as_ref()
-                .map(|tree| tree.key.as_str())
-                .filter(|key| grouped.contains(key));
-            if child && key.is_some_and(|key| collapsed.contains(key)) {
-                return None;
-            }
-            let group = key.filter(|_| !child).map(str::to_owned);
-            Some((index, child, group))
+    let folders = folder_groups(workspaces, workspace_groups);
+    let folder_head = folders
+        .iter()
+        .enumerate()
+        .map(|(group, folder)| (folder.head, group))
+        .collect::<HashMap<_, _>>();
+    let folder_child = folders
+        .iter()
+        .enumerate()
+        .flat_map(|(group, folder)| {
+            folder
+                .children
+                .iter()
+                .copied()
+                .map(move |child| (child, group))
         })
-        .collect()
+        .collect::<HashMap<_, _>>();
+    let mut entries = Vec::new();
+    for (index, child) in workspace_entries(workspaces) {
+        if folder_child.contains_key(&index) {
+            continue;
+        }
+        if let Some(&group) = folder_head.get(&index) {
+            let folder = &folders[group];
+            entries.push((folder.head, false, Some(folder.key.clone())));
+            if !collapsed.contains(&folder.key) {
+                entries.extend(folder.children.iter().map(|&child| (child, true, None)));
+            }
+            continue;
+        }
+        let key = workspaces[index]
+            .worktree
+            .as_ref()
+            .map(|tree| tree.key.as_str())
+            .filter(|key| grouped.contains(key));
+        if child && key.is_some_and(|key| collapsed.contains(key)) {
+            continue;
+        }
+        let group = key.filter(|_| !child).map(str::to_owned);
+        entries.push((index, child, group));
+    }
+    entries
+}
+
+fn workspace_git_input(workspace: &Workspace) -> Option<crate::pull_request::Input> {
+    let branch = workspace.branch.as_deref().filter(|branch| {
+        !branch.is_empty() && branch.len() <= 1024 && !branch.chars().any(char::is_control)
+    })?;
+    let worktree = workspace.worktree.as_ref().filter(|tree| {
+        tree.linked || !sheprd_github::checkout::left_checkout(&tree.key, &workspace.cwd)
+    });
+    if let Some(tree) = worktree {
+        return Some(crate::pull_request::Input {
+            checkout: None,
+            repo_key: Some(tree.key.clone()),
+            branch: branch.to_owned(),
+        });
+    }
+    Path::new(&workspace.cwd)
+        .is_absolute()
+        .then(|| crate::pull_request::Input {
+            checkout: Some(workspace.cwd.clone()),
+            repo_key: None,
+            branch: branch.to_owned(),
+        })
 }
 
 /// Cached pull request, change counts, dirty, note, and teleported marks for a worktree row, if
@@ -106,19 +303,54 @@ pub(super) fn visible_workspace_entries(
 /// not looked up. Any workspace, Git checkout or not, carries its muted mark.
 pub(super) fn workspace_badge(
     workspace: &Workspace,
+    focused: bool,
     pr: Option<(&crate::pull_request::Cache, &crate::pull_request::View)>,
     git: (Option<&crate::git::Git>, ChangeCounts),
     marks: (&crate::teleport::Marks, &str),
     (note, muted): (Option<&str>, bool),
     theme: &Theme,
 ) -> Option<RowBadge> {
+    let input = workspace_git_input(workspace);
+    let tracked = git.0.and_then(|git| git.tracked());
+    let tracks_this_workspace = focused || input.as_ref() == tracked;
+    let focused_counts = tracks_this_workspace
+        .then(|| {
+            if git.1 == ChangeCounts::Local {
+                git.0
+                    .and_then(|git| git.status())
+                    .filter(|status| status.additions > 0 || status.deletions > 0)
+            } else {
+                None
+            }
+        })
+        .flatten();
+    let focused_dirty = tracks_this_workspace
+        .then(|| git.0.and_then(|git| git.uncommitted()))
+        .flatten();
+    let cached_counts = git
+        .0
+        .and_then(|git| input.as_ref().and_then(|input| git.counts_for_input(input)));
+    let cached_dirty = git
+        .0
+        .and_then(|git| input.as_ref().and_then(|input| git.dirty_for_input(input)));
     let checkout = workspace
         .worktree
         .as_ref()
         .map(|tree| tree.key.as_str())
         .zip(workspace.branch.as_deref());
     let Some((key, branch)) = checkout else {
-        return RowBadge::new(None, None, false, false, false, muted);
+        return RowBadge::new(
+            None,
+            (git.1 == ChangeCounts::Local)
+                .then(|| focused_counts.or(cached_counts))
+                .flatten()
+                .filter(|status| status.additions > 0 || status.deletions > 0)
+                .map(|status| Counts::local(status.additions, status.deletions)),
+            focused_dirty.or(cached_dirty).unwrap_or(false),
+            false,
+            false,
+            muted,
+        );
     };
     let ((marks, endpoint), (git, counts)) = (marks, git);
     // Kept SSH lookups include the checkout directory, unlike H1's
@@ -152,8 +384,8 @@ pub(super) fn workspace_badge(
             .as_ref()
             .map(|pr| Counts::new(pr.additions, pr.deletions)),
         // Untracked files have no line counts; the dirty mark still shows them.
-        ChangeCounts::Local => git
-            .and_then(|git| git.counts(key, branch))
+        ChangeCounts::Local => focused_counts
+            .or(cached_counts)
             .filter(|status| status.additions > 0 || status.deletions > 0)
             .map(|status| Counts::local(status.additions, status.deletions)),
     };
@@ -161,7 +393,7 @@ pub(super) fn workspace_badge(
         pr.map(|pr| PrBadge::new(&pr, theme))
             .or_else(|| unopened.then(|| PrBadge::unopened(theme))),
         counts,
-        git.and_then(|git| git.dirty(key, branch)).unwrap_or(false),
+        focused_dirty.or(cached_dirty).unwrap_or(false),
         marks.find(endpoint, key, branch).is_some(),
         note.is_some(),
         muted,
@@ -213,26 +445,44 @@ pub(super) fn displayed_workspace_status(
     workspaces: &[Workspace],
     workspace: &Workspace,
     collapsed: &HashSet<String>,
+    workspace_groups: &[String],
 ) -> AgentStatus {
-    let Some(worktree) = workspace
+    let worktree_status = workspace
         .worktree
         .as_ref()
-        .filter(|worktree| !worktree.linked)
-    else {
-        return workspace.status;
-    };
-    if !collapsed.contains(&worktree.key) {
-        return workspace.status;
-    }
-    workspaces
-        .iter()
-        .filter(|candidate| {
-            candidate
-                .worktree
-                .as_ref()
-                .is_some_and(|candidate| candidate.key == worktree.key)
+        .filter(|worktree| !worktree.linked && collapsed.contains(&worktree.key))
+        .map(|worktree| {
+            workspaces
+                .iter()
+                .filter(|candidate| {
+                    candidate
+                        .worktree
+                        .as_ref()
+                        .is_some_and(|candidate| candidate.key == worktree.key)
+                })
+                .map(|candidate| candidate.status)
+                .max_by_key(|status| status_priority(*status))
+                .unwrap_or(workspace.status)
         })
-        .map(|candidate| candidate.status)
-        .max_by_key(|status| status_priority(*status))
-        .unwrap_or(workspace.status)
+        .unwrap_or(workspace.status);
+    folder_groups(workspaces, workspace_groups)
+        .into_iter()
+        .find(|group| {
+            group.head
+                == workspaces
+                    .iter()
+                    .position(|item| item.id == workspace.id)
+                    .unwrap_or(usize::MAX)
+        })
+        .filter(|group| collapsed.contains(&group.key))
+        .map(|group| {
+            group
+                .children
+                .into_iter()
+                .map(|index| workspaces[index].status)
+                .chain(std::iter::once(workspace.status))
+                .max_by_key(|status| status_priority(*status))
+                .unwrap_or(workspace.status)
+        })
+        .unwrap_or(worktree_status)
 }

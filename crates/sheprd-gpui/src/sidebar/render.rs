@@ -3,13 +3,13 @@
 //! caches only.
 
 use super::{
-    DEVICE_FOOTER_HEIGHT, HOST_ARROW_WIDTH, STATUS_WIDTH, SidebarDrag,
+    HOST_ARROW_WIDTH, STATUS_WIDTH,
     agents::Indicators,
     agents::groups::agents_group,
     agents_sort,
     cell::{Cell, Fold, RowContext, RowData, WorkspaceRow, layout_for},
     label_text, layout, line_height,
-    reorder::{self, Plan},
+    reorder::Plan,
     row::{RowIcon, RowLift, RowTree},
     scaled, sidebar_width, sticky,
     tokens::{self, SpaceContext},
@@ -26,6 +26,7 @@ use gpui::{prelude::*, *};
 
 mod agent_rows;
 mod device_tree;
+mod drag_handle;
 mod edges;
 mod fold_hosts;
 mod header;
@@ -51,7 +52,6 @@ impl SheprdWindow {
         let menu_target = self.workspace_menu_target();
         let layout = look.density;
         let content_x = look.content_x();
-        let view = cx.entity().downgrade();
         let font = &self.config.sidebar;
         let spaces_custom = self.config.usage.inline
             && self.config.sidebar_layout.spaces != crate::config::SpaceLayout::default();
@@ -214,7 +214,7 @@ impl SheprdWindow {
             };
             let live = if selected { &self.live } else { &endpoint.live };
             // Herdr 1's workspaces, then those the app keeps for Herdr 2.
-            let sessions = self.sessions(endpoint_index);
+            let sessions = self.sidebar_sessions(endpoint_index, cx);
             if sessions.is_empty() {
                 continue;
             }
@@ -236,7 +236,11 @@ impl SheprdWindow {
                     .then(|| crate::session_model::Sessions::front_of(keeper, session, kept_front))
                     .flatten();
                 let workspaces = &session.workspaces;
-                let entries = visible_workspace_entries(workspaces, collapsed_repos);
+                let entries = visible_workspace_entries(
+                    workspaces,
+                    collapsed_repos,
+                    &self.config.sidebar_style.workspace_groups,
+                );
                 let drag = self.workspace_drag.as_ref().filter(|drag| {
                     selected && drag.keeper == keeper && drag.previewing(workspaces)
                 });
@@ -285,6 +289,9 @@ impl SheprdWindow {
                     let workspace = &workspaces[index];
                     let linked = crate::worktree_identity::is_linked(workspace);
                     let focused = front == Some(workspace.id.as_str());
+                    // The focused Git checkout follows the Herdr focus even
+                    // when a kept Herdr 2 tab owns the visible focus above it.
+                    let git_focused = session.focused.as_deref() == Some(workspace.id.as_str());
                     if focused {
                         highlighted[0] = Some(space_rows);
                     }
@@ -309,6 +316,7 @@ impl SheprdWindow {
                     }
                     space_rows += 1;
                     let id = workspace.id.clone();
+                    let closed_project = self.is_closed_project_row(&endpoint_id, &id, cx);
                     let press_id = id.clone();
                     let context_id = id.clone();
                     let hover_id = id.clone();
@@ -333,7 +341,12 @@ impl SheprdWindow {
                     let folds = fold.as_ref().map(|fold| fold.collapsed).zip(fold_toggle);
                     let label = workspace_label(workspace, indented);
                     let shown_status = if self.config.usage.inline {
-                        displayed_workspace_status(workspaces, workspace, collapsed_repos)
+                        displayed_workspace_status(
+                            workspaces,
+                            workspace,
+                            collapsed_repos,
+                            &self.config.sidebar_style.workspace_groups,
+                        )
                     } else {
                         workspace.status
                     };
@@ -471,6 +484,7 @@ impl SheprdWindow {
                             grouped,
                             badge: workspace_badge(
                                 workspace,
+                                git_focused,
                                 pr_view.as_ref().map(|view| (&self.menu.pr_cache, view)),
                                 (
                                     (endpoint_index == 0).then_some(&self.git),
@@ -498,6 +512,16 @@ impl SheprdWindow {
                         MouseButton::Right,
                         cx.listener(move |this, event: &MouseDownEvent, window, cx| {
                             cx.stop_propagation();
+                            if closed_project {
+                                this.open_closed_project_menu(
+                                    &context_endpoint,
+                                    &context_id,
+                                    event.position,
+                                    window,
+                                    cx,
+                                );
+                                return;
+                            }
                             if this.navigate_endpoint(
                                 &context_endpoint,
                                 NavigationTarget::Workspace(&context_id),
@@ -534,17 +558,14 @@ impl SheprdWindow {
                         row.debug_selector(|| format!("workspace-{endpoint_id}-{id}"))
                     })
                     .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
-                        let selected = this.navigate_endpoint(
-                            &navigate_endpoint,
-                            NavigationTarget::Workspace(&id),
-                            cx,
-                        );
+                        let selected =
+                            this.activate_sidebar_workspace(&navigate_endpoint, &id, window, cx);
                         window.focus(&this.focus, cx);
                         // The first click of a double-click has already selected
                         // the row, so the second only opens the rename dialog its
                         // menu's Rename opens, which takes focus. The fold chevron
                         // stops its clicks, so folding fast never renames.
-                        if selected && event.click_count() == 2 {
+                        if selected && !closed_project && event.click_count() == 2 {
                             this.open_workspace_dialog_for(
                                 &id,
                                 crate::menu::WorkspaceAction::Rename,
@@ -558,14 +579,17 @@ impl SheprdWindow {
                     // another endpoint's menu would have to select it first, and
                     // resting the pointer must not switch which daemon is shown.
                     // The feature is opt-in, so rows stay unarmed without it.
-                    .when(selected && self.config.features.sidebar_hover_menu, |row| {
-                        row.on_hover(cx.listener(move |this, hovered: &bool, window, _| {
-                            this.hover_workspace(&hover_id, *hovered, window);
-                        }))
-                    })
+                    .when(
+                        selected && !closed_project && self.config.features.sidebar_hover_menu,
+                        |row| {
+                            row.on_hover(cx.listener(move |this, hovered: &bool, window, _| {
+                                this.hover_workspace(&hover_id, *hovered, window);
+                            }))
+                        },
+                    )
                     // Holding a press lifts the row for reordering. Another
                     // endpoint's rows would have to select it first.
-                    .when(selected, |row| {
+                    .when(selected && !closed_project, |row| {
                         row.on_mouse_down(
                             MouseButton::Left,
                             cx.listener(move |this, event: &MouseDownEvent, _, cx| {
@@ -880,98 +904,12 @@ impl SheprdWindow {
                 }
             })
             .child(self.sidebar_width_edge(width, cx))
-            .child(
-                canvas(
-                    |_, _, _| (),
-                    move |bounds, _, window, _| {
-                        // Capture globally so dragging continues outside the narrow divider,
-                        // and terminal handlers never receive the resize gesture's release.
-                        let moving = view.clone();
-                        let device_drop = device_plan.map(|plan| plan.drop);
-                        window.on_mouse_event(move |event: &MouseMoveEvent, phase, window, cx| {
-                            if phase == DispatchPhase::Capture {
-                                let _ = moving.update(cx, |this, cx| {
-                                    let scroll = this.sidebar_scroll[0].clone();
-                                    if this.move_workspace_drag(
-                                        event.position,
-                                        event.pressed_button == Some(MouseButton::Left),
-                                        |lift| {
-                                            reorder::resolve(
-                                                &drop_rows,
-                                                &drop_requests,
-                                                drop_dragged,
-                                                &scroll,
-                                                lift,
-                                            )
-                                        },
-                                        cx,
-                                    ) || this.move_device_drag(
-                                        event.position,
-                                        event.pressed_button == Some(MouseButton::Left),
-                                        device_drop.as_ref(),
-                                        cx,
-                                    ) {
-                                        cx.stop_propagation();
-                                    } else if let Some(drag) = this.sidebar_drag {
-                                        match drag {
-                                            SidebarDrag::Width { start, width } => {
-                                                this.sidebar_width = Some(sidebar_width(
-                                                    // The edge is on the sidebar's end.
-                                                    Some(
-                                                        width
-                                                            + crate::direction::toward_end(
-                                                                f32::from(event.position.x) - start,
-                                                            ),
-                                                    ),
-                                                    f32::from(window.viewport_size().width),
-                                                ));
-                                            }
-                                            SidebarDrag::Split => {
-                                                let footer = if this.device_footer_shown() {
-                                                    DEVICE_FOOTER_HEIGHT
-                                                } else {
-                                                    0.
-                                                };
-                                                let height =
-                                                    (f32::from(bounds.size.height) - 6. - footer)
-                                                        .max(1.);
-                                                this.sidebar_split = Some(
-                                                    ((f32::from(
-                                                        event.position.y - bounds.origin.y,
-                                                    ) - 3.)
-                                                        / height)
-                                                        .clamp(0.1, 0.9),
-                                                );
-                                            }
-                                        }
-                                        cx.stop_propagation();
-                                        cx.notify();
-                                    }
-                                });
-                            }
-                        });
-                        let released = view.clone();
-                        window.on_mouse_event(move |event: &MouseUpEvent, phase, _, cx| {
-                            if phase == DispatchPhase::Capture && event.button == MouseButton::Left
-                            {
-                                let _ = released.update(cx, |this, cx| {
-                                    // A lifted row's release is its drop, not a click.
-                                    if this.release_workspace_drag(cx)
-                                        || this.release_device_drag(cx)
-                                    {
-                                        cx.stop_propagation();
-                                    } else if this.sidebar_drag.take().is_some() {
-                                        this.save_chrome();
-                                        cx.stop_propagation();
-                                        cx.notify();
-                                    }
-                                });
-                            }
-                        });
-                    },
-                )
-                .absolute()
-                .size_full(),
-            )
+            .child(drag_handle::drag_handle(
+                cx.entity().downgrade(),
+                drop_rows,
+                drop_requests,
+                drop_dragged,
+                device_plan.map(|plan| plan.drop),
+            ))
     }
 }

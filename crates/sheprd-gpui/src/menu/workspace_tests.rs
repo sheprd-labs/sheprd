@@ -24,6 +24,8 @@ mod naming;
 mod pull_requests;
 mod remote_branches;
 mod rename_double_click;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod reveal;
 #[cfg(all(feature = "container", any(target_os = "linux", target_os = "macos")))]
 mod sandbox_dispatch;
 #[cfg(all(
@@ -348,6 +350,15 @@ pub(crate) fn check_menu_interactions(
         let view = view.read(cx);
         (page == super::Page::Workspace).then(|| view.workspace_items()[1].0)
     });
+    // A header control such as reveal dismisses the menu without leaving a
+    // target behind, so remember what reopening it takes before pressing.
+    let reopen = cx.update(|_, cx| {
+        let view = view.read(cx);
+        view.menu
+            .target
+            .as_ref()
+            .map(|target| (target.id.clone(), view.menu.anchor))
+    });
     cx.simulate_keystrokes("enter");
     cx.update(|_, cx| {
         let opened = view.read(cx).menu.page;
@@ -362,10 +373,8 @@ pub(crate) fn check_menu_interactions(
     cx.simulate_mouse_move(outside, None, Modifiers::default());
     cx.update(|window, cx| {
         view.update(cx, |view, cx| {
-            let anchor = view.menu.anchor;
-            let target = view.menu.target.as_ref().map(|target| target.id.clone());
             view.dismiss_menu(window, cx);
-            if let Some(target) = target {
+            if let Some((target, anchor)) = reopen {
                 view.open_workspace_menu(&target, anchor, window, cx);
             } else {
                 view.open_menu(window, cx);

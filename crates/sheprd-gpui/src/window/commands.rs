@@ -844,7 +844,7 @@ impl SheprdWindow {
         if agents {
             return self.step_agents(command, window, cx);
         }
-        let workspaces = self.sidebar_workspaces();
+        let workspaces = self.sidebar_workspaces(cx);
         let rows: Vec<(usize, &str)> = workspaces
             .iter()
             .map(|(host, id)| (*host, id.as_str()))
@@ -861,13 +861,8 @@ impl SheprdWindow {
             return false;
         };
         let id = id.to_owned();
-        let target = NavigationTarget::Workspace(id.as_str());
-        if host == selected {
-            self.navigate(target, cx);
-        } else {
-            let endpoint = self.endpoints[host].id.clone();
-            self.navigate_endpoint(&endpoint, target, cx);
-        }
+        let endpoint = self.endpoints[host].id.clone();
+        self.activate_sidebar_workspace(&endpoint, &id, window, cx);
         false
     }
 

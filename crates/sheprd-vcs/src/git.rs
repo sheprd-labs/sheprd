@@ -9,6 +9,7 @@
 //! Commit, push, and pull request creation are explicit user actions and are
 //! never retried or replayed automatically.
 mod ahead;
+mod cache;
 mod error;
 mod identity;
 
@@ -269,6 +270,7 @@ impl Git {
     pub fn track(&mut self, input: Option<Input>, refresh: bool, now: Instant) -> bool {
         let mut changed = false;
         if self.input != input {
+            self.keep_focused_status(now);
             // A running action keeps running: its result still belongs to the
             // checkout it was started for and is reported against that input.
             self.input = input;

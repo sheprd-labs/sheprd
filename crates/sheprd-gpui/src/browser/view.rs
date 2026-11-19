@@ -80,9 +80,9 @@ pub(crate) struct Browser {
     /// once its workspace is focused, which is when that folder is known.
     pub(super) code_folderless: HashSet<TabId>,
     pub(super) px0: super::px0::Pages,
-    /// The workspaces of the last snapshot and the boot they came from: one
-    /// missing from the next snapshot of the same boot was closed.
-    workspaces: Option<(Scope, String, HashSet<String>)>,
+    /// Workspaces from each endpoint's last snapshot, so closing a project's
+    /// final tab is noticed even while another endpoint is selected.
+    workspaces: HashMap<Scope, (String, HashMap<String, sheprd_session::Workspace>)>,
     /// The Herdr tabs of the last snapshot, with its boot and revision: one
     /// missing from the next snapshot of the same boot, in a workspace still
     /// open, was closed and can be reopened.
@@ -138,7 +138,7 @@ impl Browser {
             host_code_servers: HashMap::new(),
             code_folderless: HashSet::new(),
             px0: Default::default(),
-            workspaces: None,
+            workspaces: HashMap::new(),
             herdr_tabs: None,
             #[cfg(any(target_os = "macos", windows))]
             annotations: Annotations::default(),
@@ -393,56 +393,98 @@ impl SheprdWindow {
     }
 
     fn forget_closed_workspaces(&mut self, cx: &mut Context<Self>) {
-        let Some(snapshot) = self.live.snapshot.as_ref() else {
-            return;
-        };
-        let scope = scope(&self.endpoints[self.selected_endpoint]);
-        let unchanged = self
-            .browser
-            .workspaces
-            .as_ref()
-            .is_some_and(|(seen_scope, boot, seen)| {
-                seen_scope == &scope
-                    && boot == &snapshot.boot_id
-                    && seen.len() == snapshot.workspaces.len()
-                    && snapshot
+        let mut closed_workspaces = Vec::new();
+        for (index, endpoint) in self.endpoints.iter().enumerate() {
+            let live = if index == self.selected_endpoint {
+                &self.live
+            } else {
+                &endpoint.live
+            };
+            let Some(snapshot) = live.snapshot.as_ref() else {
+                continue;
+            };
+            let scope = scope(endpoint);
+            let current: HashMap<String, sheprd_session::Workspace> = live
+                .session()
+                .map(|session| {
+                    session
                         .workspaces
                         .iter()
-                        .all(|workspace| seen.contains(&workspace.workspace_id))
-            });
-        if unchanged {
-            return;
+                        .cloned()
+                        .map(|workspace| (workspace.id.clone(), workspace))
+                        .collect()
+                })
+                .unwrap_or_default();
+            // The same boot showing the same workspaces proves nothing new. A
+            // revision alone does not: a snapshot may drop a workspace without
+            // bumping it, and a missing id of the same boot is a close.
+            let unchanged = self
+                .browser
+                .workspaces
+                .get(&scope)
+                .is_some_and(|(boot, seen)| {
+                    boot == &snapshot.boot_id
+                        && seen.len() == current.len()
+                        && current.keys().all(|id| seen.contains_key(id))
+                });
+            if unchanged {
+                // Same workspaces, but their tabs or labels may have moved.
+                if let Some((_, seen)) = self.browser.workspaces.get_mut(&scope) {
+                    *seen = current;
+                }
+                continue;
+            }
+            let previous = self
+                .browser
+                .workspaces
+                .insert(scope.clone(), (snapshot.boot_id.clone(), current.clone()));
+            // A restarted daemon or another session proves nothing was closed.
+            let Some((_, seen)) = previous.filter(|(boot, _)| boot == &snapshot.boot_id) else {
+                continue;
+            };
+            let closed: Vec<sheprd_session::Workspace> = seen
+                .into_iter()
+                .filter_map(|(id, workspace)| (!current.contains_key(&id)).then_some(workspace))
+                .collect();
+            if !closed.is_empty() {
+                let retain_projects = endpoint.id == crate::endpoint::LOCAL
+                    && !endpoint.connection.target.is_remote()
+                    && closed.iter().any(|workspace| !workspace.tabs.is_empty());
+                closed_workspaces.push((scope, closed, retain_projects));
+            }
         }
-        let current: HashSet<String> = snapshot
-            .workspaces
-            .iter()
-            .map(|workspace| workspace.workspace_id.clone())
-            .collect();
-        let previous = self.browser.workspaces.replace((
-            scope.clone(),
-            snapshot.boot_id.clone(),
-            current.clone(),
-        ));
-        // A restarted daemon or another session proves nothing was closed.
-        let Some((_, _, seen)) = previous
-            .filter(|(seen_scope, boot, _)| seen_scope == &scope && boot == &snapshot.boot_id)
-        else {
-            return;
-        };
-        let closed: Vec<String> = seen.difference(&current).cloned().collect();
-        if closed.is_empty() {
-            return;
-        }
+        let scopes: HashSet<Scope> = self.endpoints.iter().map(scope).collect();
         self.browser
-            .layouts
-            .retain(|(saved, workspace), _| saved != &scope || !closed.contains(workspace));
-        self.browser.hidden.forget_workspaces(&scope, &closed);
-        super::Layouts::forget_workspaces(cx, &scope, &closed);
-        if !store(cx).is_some_and(|store| store.has_workspaces(&scope, &closed)) {
-            return;
+            .workspaces
+            .retain(|scope, _| scopes.contains(scope));
+
+        let mut changed = false;
+        for (scope, closed, retain_projects) in closed_workspaces {
+            let closed_ids: Vec<String> = closed
+                .iter()
+                .map(|workspace| workspace.id.clone())
+                .collect();
+            self.browser
+                .layouts
+                .retain(|(saved, workspace), _| saved != &scope || !closed_ids.contains(workspace));
+            self.browser.hidden.forget_workspaces(&scope, &closed_ids);
+            super::Layouts::forget_workspaces(cx, &scope, &closed_ids);
+            if retain_projects {
+                Store::update(cx, |store| {
+                    for workspace in closed.iter().filter(|workspace| !workspace.tabs.is_empty()) {
+                        store.remember_closed_project(&scope, workspace);
+                    }
+                });
+                changed = true;
+            }
+            if store(cx).is_some_and(|store| store.has_workspaces(&scope, &closed_ids)) {
+                Store::update(cx, |store| store.forget_workspaces(&scope, &closed_ids));
+                changed = true;
+            }
         }
-        Store::update(cx, |store| store.forget_workspaces(&scope, &closed));
-        cx.notify();
+        if changed {
+            cx.notify();
+        }
     }
 
     #[cfg(any(target_os = "macos", windows))]

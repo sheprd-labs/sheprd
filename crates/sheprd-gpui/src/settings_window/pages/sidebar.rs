@@ -307,6 +307,20 @@ impl SettingsWindow {
             .child(
                 ui::row(
                     theme,
+                    "sidebar-show-changes-panel",
+                    fl!("settings-sidebar-show-changes-panel"),
+                )
+                .description(fl!("settings-sidebar-show-changes-panel-description"))
+                .switch(self.preference_toggle(
+                    "sidebar-show-changes-panel-toggle",
+                    self.config.show_changes_panel,
+                    Preference::ShowChangesPanel(!self.config.show_changes_panel),
+                    cx,
+                )),
+            )
+            .child(
+                ui::row(
+                    theme,
                     "sidebar-show-agents",
                     fl!("settings-sidebar-show-agents"),
                 )

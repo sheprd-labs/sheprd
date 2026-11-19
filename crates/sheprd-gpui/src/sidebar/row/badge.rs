@@ -35,7 +35,7 @@ impl RowBadge {
     }
 
     pub(in crate::sidebar) fn lines(&self, layout: &SidebarMetrics) -> usize {
-        1 + usize::from(self.counts.is_some() && layout.pr_counts())
+        1 + usize::from(self.shown_counts(layout).is_some() && !layout.inline_counts())
     }
 
     /// Nothing to draw is nothing to reserve, so a row with none keeps its
@@ -63,8 +63,13 @@ impl RowBadge {
     /// The whole column's width: its first line or the counts line under
     /// it, whichever is wider.
     pub(in crate::sidebar) fn width(&self, font: &FontConfig, layout: &SidebarMetrics) -> f32 {
-        self.first_width(font, layout)
-            .max(self.counts_width(font, layout))
+        let first = self.first_width(font, layout);
+        let counts = self.counts_width(font, layout);
+        if layout.inline_counts() && counts > 0. {
+            first + glyph_width(font) + counts
+        } else {
+            first.max(counts)
+        }
     }
 
     /// The counts line's width, or nothing when it is not drawn.
@@ -74,7 +79,7 @@ impl RowBadge {
         layout: &SidebarMetrics,
     ) -> f32 {
         let glyph = glyph_width(font);
-        let counts = self.counts.as_ref().filter(|_| layout.pr_counts());
+        let counts = self.shown_counts(layout);
         counts.map_or(0., |counts| match counts.local {
             true => counts.chip_width(glyph, chip_icon(font)),
             false => (glyph * counts.glyphs() as f32).ceil(),
@@ -108,7 +113,19 @@ impl RowBadge {
     /// Local counts take the dirty mark's place, in a chip of its hue under
     /// the number, wherever the counts line shows.
     fn chipped(&self, layout: &SidebarMetrics) -> bool {
-        layout.pr_counts() && self.counts.as_ref().is_some_and(|counts| counts.local)
+        self.shown_counts(layout).is_some_and(|counts| counts.local)
+    }
+
+    /// Local counts always replace the dirty mark, even in a preset whose
+    /// regular change-count column is hidden. Pull-request counts remain a
+    /// detail column where the preset asks for one.
+    pub(in crate::sidebar) fn shown_counts<'a>(
+        &'a self,
+        layout: &SidebarMetrics,
+    ) -> Option<&'a Counts> {
+        self.counts
+            .as_ref()
+            .filter(|counts| counts.local || layout.pr_counts())
     }
 
     /// The badge column at a row's trailing edge, `width` wide: the marks and
@@ -122,6 +139,8 @@ impl RowBadge {
         layout: &SidebarMetrics,
     ) -> Div {
         let chipped = self.chipped(layout);
+        let shown_counts = self.shown_counts(layout).is_some();
+        let inline_counts = layout.inline_counts() && shown_counts;
         let Self {
             pr,
             counts,
@@ -183,40 +202,56 @@ impl RowBadge {
                                 .text_color(rgb(badge.color))
                                 .child(label_text(&badge.number)),
                         )
+                    })
+                    .when_some(counts.as_ref().filter(|_| inline_counts), |line, badge| {
+                        line.child(counts_element(
+                            key,
+                            badge,
+                            glyph_width(font),
+                            chip_icon(font),
+                            theme,
+                        ))
                     }),
             )
-            .when_some(counts.filter(|_| layout.pr_counts()), |column, badge| {
-                if badge.local {
-                    let colors = (theme.ink(theme.palette[2]), theme.ink(theme.palette[1]));
-                    let chip = badge.chip(key, glyph_width(font), chip_icon(font), colors, theme);
-                    return column.child(chip.h(px(line_height(font))));
-                }
-                column.child(
-                    div()
-                        .flex()
-                        .flex_none()
-                        .overflow_hidden()
-                        .child(
-                            div()
-                                .flex_none()
-                                .text_color(rgb(theme.ink(theme.palette[2])))
-                                .child(label_text(&badge.additions)),
-                        )
-                        .child(
-                            div()
-                                .flex_none()
-                                .text_color(rgb(theme.muted))
-                                .child(label_text("/")),
-                        )
-                        .child(
-                            div()
-                                .flex_none()
-                                .text_color(rgb(theme.ink(theme.palette[1])))
-                                .child(label_text(&badge.deletions)),
-                        ),
-                )
-            })
+            .when_some(
+                counts.filter(|_| shown_counts && !inline_counts),
+                |column, badge| {
+                    column.child(
+                        counts_element(key, &badge, glyph_width(font), chip_icon(font), theme)
+                            .h(px(line_height(font))),
+                    )
+                },
+            )
     }
+}
+
+fn counts_element(key: &str, badge: &Counts, glyph: f32, icon: f32, theme: &Theme) -> Div {
+    if badge.local {
+        let colors = (theme.ink(theme.palette[2]), theme.ink(theme.palette[1]));
+        return badge.chip(key, glyph, icon, colors, theme);
+    }
+    div()
+        .flex()
+        .flex_none()
+        .overflow_hidden()
+        .child(
+            div()
+                .flex_none()
+                .text_color(rgb(theme.ink(theme.palette[2])))
+                .child(label_text(&badge.additions)),
+        )
+        .child(
+            div()
+                .flex_none()
+                .text_color(rgb(theme.muted))
+                .child(label_text("/")),
+        )
+        .child(
+            div()
+                .flex_none()
+                .text_color(rgb(theme.ink(theme.palette[1])))
+                .child(label_text(&badge.deletions)),
+        )
 }
 
 /// Cached pull request state for a worktree row: the number carries the

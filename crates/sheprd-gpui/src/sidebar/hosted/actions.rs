@@ -141,7 +141,7 @@ impl SheprdWindow {
                 workspace,
             } => {
                 if let Some(endpoint) = self.hosted_endpoint(endpoint) {
-                    self.navigate_endpoint(&endpoint, NavigationTarget::Workspace(&workspace), cx);
+                    self.activate_sidebar_workspace(&endpoint, &workspace, window, cx);
                 }
             }
             Action::Menu(menu) => self.hosted_menu(menu, pointer, window, cx),
@@ -149,7 +149,13 @@ impl SheprdWindow {
                 workspace,
                 target,
                 after,
-            } => self.move_workspace_to(&workspace, &target, after, cx),
+            } => {
+                if !self.is_closed_project_row(crate::endpoint::LOCAL, &workspace, cx)
+                    && !self.is_closed_project_row(crate::endpoint::LOCAL, &target, cx)
+                {
+                    self.move_workspace_to(&workspace, &target, after, cx);
+                }
+            }
             Action::OpenBuildPullRequest => {
                 let pr = env!("HERDR_BUILD_PR");
                 if !pr.is_empty() {
@@ -237,6 +243,10 @@ impl SheprdWindow {
                 let Some(endpoint) = self.hosted_endpoint(endpoint) else {
                     return;
                 };
+                if self.is_closed_project_row(&endpoint, &workspace, cx) {
+                    self.open_closed_project_menu(&endpoint, &workspace, anchor, window, cx);
+                    return;
+                }
                 // The sheet opens over the row without selecting it; a row on
                 // another device only switches the device first, as the sheet
                 // acts on the selected one.

@@ -96,6 +96,11 @@ show_repository_icons = true
 # it; Herdr's `ui.status_indicators` stays the terminal client's. Working always
 # moves. Also under Settings > Appearance > Indicators.
 # status_icons = "dots"
+
+# The right-hand panel of changed files, always beside the terminals. It lists
+# the focused local checkout's uncommitted files and follows its Git status;
+# toggle it with `sheprd config set show_changes_panel true`.
+# show_changes_panel = false
 # Draw a bar on the leading edge of each working, done, or blocked row, with
 # any set. Also under Settings > Appearance > Indicators.
 # edge_rail = false
@@ -432,6 +437,17 @@ size = 12
 # agents list as it was. Agents nested under workspaces get the mark but no
 # filter.
 # coordinator_suffix = "-coord"
+
+# Extra folders to fold even when their children are not Git checkouts. A hub
+# is detected automatically when the folder's own workspace is open beside at
+# least two direct child workspaces that are Git repositories, or when at least
+# two child folders start with the parent's name and an underscore (`Chrome`
+# with `Chrome_one` and `Chrome_two`). The folder itself is the selectable,
+# foldable row. Folding it hides the direct children. Accepts absolute paths
+# and `~/` paths.
+# workspace_groups = [
+#   "~/Documents/GitHub/PROJECTS/Chrome",
+# ]
 
 # The activity bar: an icon column at the window's left edge. Workspaces is
 # the sidebar beside the terminals; Orchestrator, Pull requests, and Issues

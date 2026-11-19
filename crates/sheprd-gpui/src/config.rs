@@ -271,6 +271,8 @@ pub struct Config {
     /// header visible. Set in Settings > Sidebar or with
     /// `sheprd config set show_agents_header false`.
     pub show_agents_header: bool,
+    /// The right-hand panel of changed files, beside the terminals.
+    pub show_changes_panel: bool,
     /// The mark before a device's name in the sidebar, in the layouts that
     /// draw one: where the device runs and how it is reached.
     pub show_device_icons: bool,
@@ -473,6 +475,7 @@ impl Default for Config {
             remove_merged_worktrees: false,
             show_agents: true,
             show_agents_header: true,
+            show_changes_panel: false,
             show_device_icons: true,
             show_gpu_load: false,
             show_listening_ports: true,
@@ -566,6 +569,7 @@ struct Settings {
     remove_merged_worktrees: Option<bool>,
     show_agents: Option<bool>,
     show_agents_header: Option<bool>,
+    show_changes_panel: Option<bool>,
     show_device_icons: Option<bool>,
     show_gpu_load: Option<bool>,
     show_listening_ports: Option<bool>,
@@ -900,6 +904,7 @@ impl Config {
         config.remove_merged_worktrees = settings.remove_merged_worktrees.unwrap_or(false);
         config.show_agents = settings.show_agents.unwrap_or(true);
         config.show_agents_header = settings.show_agents_header.unwrap_or(true);
+        config.show_changes_panel = settings.show_changes_panel.unwrap_or(false);
         config.show_device_icons = settings.show_device_icons.unwrap_or(true);
         config.show_gpu_load = settings.show_gpu_load.unwrap_or(false);
         config.show_listening_ports = settings.show_listening_ports.unwrap_or(true);

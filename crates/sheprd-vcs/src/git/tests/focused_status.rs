@@ -153,6 +153,38 @@ fn a_focused_zero_line_status_keeps_the_dirty_bit_in_the_cache() {
     assert_eq!(peer.git.dirty("/repo/.git", "feature"), None);
 }
 
+#[test]
+fn changing_focus_keeps_the_previous_checkout_counts_available() {
+    let mut peer = Peer::new();
+    let now = Instant::now();
+    let checkout = Input {
+        checkout: Some("/projects/one".into()),
+        repo_key: None,
+        branch: "main".into(),
+    };
+    let other = Input {
+        checkout: Some("/projects/two".into()),
+        repo_key: None,
+        branch: "main".into(),
+    };
+    peer.git.set_counted(true);
+    peer.git.track(Some(checkout.clone()), true, now);
+    peer.git.poll(now);
+    let (requested, job) = peer.request();
+    assert_eq!(requested, checkout);
+    assert!(matches!(job, Job::Status));
+    peer.complete(
+        requested,
+        Completion::Status(Ok(focused(status(12, 3, 0)))),
+        now,
+    );
+
+    let changed_project = now + REFRESH;
+    peer.git.track(Some(other), true, changed_project);
+    assert_eq!(peer.git.counts_for_input(&checkout), Some(status(12, 3, 0)));
+    assert_eq!(peer.git.dirty_for_input(&checkout), Some(true));
+}
+
 fn mark_executable(path: &std::path::Path) {
     #[cfg(unix)]
     {

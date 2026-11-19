@@ -66,7 +66,8 @@ impl SheprdWindow {
     /// Sets the panel opening or closing to match its sections and the
     /// user's choice; whether it is moving, so the window draws again.
     pub(crate) fn update_mod_panel(&mut self) -> bool {
-        let open = !self.mods.panel.hidden && !self.mods.panel_sections().is_empty();
+        let open = !self.mods.panel.hidden
+            && (self.config.show_changes_panel || !self.mods.panel_sections().is_empty());
         let now = motion::now();
         let first = !std::mem::replace(&mut self.mods.panel.placed, true);
         let was = self.mods.panel.motion.is_open();
@@ -153,6 +154,10 @@ impl SheprdWindow {
     fn render_mod_panel(&self, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = &self.theme;
         let size = self.config.ui.size;
+        let changes = self
+            .config
+            .show_changes_panel
+            .then(|| self.render_changes_panel(cx).into_any_element());
         let sections: Vec<AnyElement> = self
             .mods
             .panel_sections()
@@ -231,7 +236,11 @@ impl SheprdWindow {
             .id("mod-panel")
             .debug_selector(|| "mod-panel".into())
             .role(Role::Complementary)
-            .aria_label("Mods")
+            .aria_label(if self.config.show_changes_panel {
+                "Changed files and mods"
+            } else {
+                "Mods"
+            })
             .flex()
             .flex_col()
             .h_full()
@@ -242,6 +251,7 @@ impl SheprdWindow {
             .border_color(rgb(theme.active))
             .text_size(px(size))
             .text_color(rgb(theme.foreground))
+            .children(changes)
             .children(sections)
     }
 }

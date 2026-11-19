@@ -110,6 +110,26 @@ fn toggle_mod_panel_hides_and_shows_it(cx: &mut gpui::TestAppContext) {
     assert!(view.read_with(cx, |view, _| !view.mods.panel_hidden()));
 }
 
+/// The built-in Changed section can keep the right panel open without any
+/// third-party mods installed.
+#[gpui::test]
+fn changed_files_panel_stays_beside_terminals_without_mods(cx: &mut gpui::TestAppContext) {
+    let (_view, cx) = cx.add_window_view(|window, cx| {
+        let mut view = fixture_window(window, cx);
+        view.config.show_changes_panel = true;
+        view.update_mod_panel();
+        view
+    });
+    cx.update(|window, cx| full_draw(window, cx).clear(cx));
+    let panel = cx.debug_bounds("mod-panel").unwrap();
+    let changed = cx.debug_bounds("changes-panel").unwrap();
+    assert!(
+        panel.left() <= changed.left() && panel.right() >= changed.right(),
+        "{changed:?} outside {panel:?}"
+    );
+    assert!(cx.debug_bounds("mod-panel-first").is_none());
+}
+
 /// Many tall sidebar mods share one area of at most 40% of the sidebar, so
 /// the workspace and agent lists keep the rest.
 #[gpui::test]

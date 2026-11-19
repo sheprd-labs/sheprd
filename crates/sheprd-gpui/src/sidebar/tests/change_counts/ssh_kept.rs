@@ -40,6 +40,7 @@ fn ssh_kept_badge_and_counts_read_the_prefetch_input_without_h1_lookup() {
         ($workspace:expr, $view:expr) => {
             workspace_badge(
                 $workspace,
+                false,
                 Some((&cache, $view)),
                 (None, ChangeCounts::PullRequest),
                 (&marks, "ssh:box"),

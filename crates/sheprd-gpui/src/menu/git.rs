@@ -61,10 +61,10 @@ impl SheprdWindow {
     /// window's poll task, never from a render or input path.
     pub(crate) fn update_git(&mut self) -> bool {
         let now = std::time::Instant::now();
-        let mut changed = self.git.track(self.git_input(), self.active, now);
         self.git.set_counted(
             self.config.sidebar_style.change_counts == crate::config::ChangeCounts::Local,
         );
+        let mut changed = self.git.track(self.git_input(), self.active, now);
         self.git.set_read_ahead(self.menu.github.connected());
         self.git
             .track_listed(self.listed_git_inputs(), self.active, now);
@@ -93,11 +93,8 @@ impl SheprdWindow {
             .iter()
             .flat_map(|snapshot| snapshot.workspaces.iter())
             .filter_map(|workspace| {
-                crate::pull_request::repository_input(
-                    workspace.worktree.as_ref(),
-                    workspace.branch.as_deref(),
-                )
-                .ok()
+                crate::pull_request::workspace_input(workspace, &crate::pull_request::Origin::Local)
+                    .ok()
             })
             .chain(kept)
             .collect()
