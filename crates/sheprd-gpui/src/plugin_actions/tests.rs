@@ -11,16 +11,23 @@ mod host_context;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod hosts;
 
+/// The catalog Herdr's `plugin.action.list` and `plugin.list` answers make
+/// on a macOS host.
+pub(crate) fn catalog(actions: serde_json::Value, plugins: serde_json::Value) -> catalog::Catalog {
+    let listed: Vec<catalog::Listed> = serde_json::from_value(actions).unwrap();
+    let installed: Vec<catalog::Installed> = serde_json::from_value(plugins).unwrap();
+    catalog::Catalog::new(Some(catalog::Platform::Macos), listed, &installed)
+}
+
 /// A host the menus' tests reach instead of a daemon: it answers each list
 /// with the catalog a test gave it, records each action it is asked to run,
 /// and answers with the refusal a test gave it, if any. GPUI runs background
-/// work on the test's own thread, so the state is per test thread.
+/// work on the test's own thread, so the state is per test thread. Only the
+/// menus' tests use it, and they run where host scripts do.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 pub(crate) mod fake {
-    use super::{
-        Bridge, Catalogs, Error, Result,
-        bridge::Invocation,
-        catalog::{Catalog, Installed, Listed},
-    };
+    pub(crate) use super::catalog;
+    use super::{Bridge, Catalogs, Error, Result, bridge::Invocation, catalog::Catalog};
     use crate::{SheprdWindow, teleport::Host};
     use std::{cell::RefCell, path::PathBuf, sync::atomic::AtomicBool};
 
@@ -74,14 +81,6 @@ pub(crate) mod fake {
         view.endpoints[view.selected_endpoint].connection.target =
             sheprd_client::ConnectTarget::Local;
         view.plugin_actions = Catalogs::with_bridge(Bridge { fetch, invoke });
-    }
-
-    /// The catalog Herdr's `plugin.action.list` and `plugin.list` answers
-    /// make on a macOS host.
-    pub(crate) fn catalog(actions: serde_json::Value, plugins: serde_json::Value) -> Catalog {
-        let listed: Vec<Listed> = serde_json::from_value(actions).unwrap();
-        let installed: Vec<Installed> = serde_json::from_value(plugins).unwrap();
-        Catalog::new(Some(super::catalog::Platform::Macos), listed, &installed)
     }
 
     /// Two plugins, each with an action for every menu: Hunk reviews a

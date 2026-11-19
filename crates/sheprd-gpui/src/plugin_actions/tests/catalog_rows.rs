@@ -1,7 +1,7 @@
 //! Which actions each menu lists, decoded from Herdr's answers as it sends
 //! them, and in which order.
 
-use super::fake::catalog;
+use super::catalog;
 use crate::plugin_actions::{
     Row, Scope,
     catalog::{Catalog, Installed, Listed, Platform},
