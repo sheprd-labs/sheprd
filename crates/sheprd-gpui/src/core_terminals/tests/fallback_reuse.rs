@@ -53,3 +53,13 @@ fn a_shell_that_ended_meanwhile_keeps_its_name() {
         assert_eq!(reused_id(&gone).unwrap().as_str(), SHELL);
     }
 }
+
+/// The stand-in shell opens in the user's home, as a Terminal window does,
+/// not in the core's folder, which is `/` for an app opened from the Finder.
+#[test]
+fn the_stand_in_shell_opens_in_the_users_home() {
+    let spawn = crate::core_terminals::fallback::shell_spawn();
+    assert_eq!(spawn.cwd, sheprd_client::local_path::home_dir());
+    assert!(spawn.cwd.is_some());
+    assert_eq!(spawn.name.as_deref(), Some(SHELL));
+}
