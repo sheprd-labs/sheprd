@@ -48,7 +48,7 @@ impl PaneMenu {
         if page == Some(Page::MovePane) {
             self.target.destinations().len() + self.target.devices.len()
         } else {
-            self.actions().len()
+            self.actions().len() + self.plugins.len()
         }
     }
 }

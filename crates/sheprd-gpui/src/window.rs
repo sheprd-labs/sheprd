@@ -333,6 +333,8 @@ pub(crate) struct SheprdWindow {
     pub(crate) pending_releases: Vec<endpoint::Release>,
     pub(crate) pending_resize: Option<(ConnectOptions, std::time::Instant)>,
     pub(crate) pending_toast: Option<u64>,
+    /// The plugin actions each endpoint's host last offered to the menus.
+    pub(crate) plugin_actions: crate::plugin_actions::Catalogs,
     /// Remote ports forwarded to this machine; they end with the window.
     pub(crate) port_forwards: crate::port_forward::PortForwards,
     /// Comment, merge, and review reads for the focused branch's open PR.

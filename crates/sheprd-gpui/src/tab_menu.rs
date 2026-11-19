@@ -30,6 +30,7 @@ struct Target {
     choices: Vec<Choice>,
 }
 
+mod plugins;
 #[cfg(test)]
 mod tests;
 
@@ -165,7 +166,7 @@ impl TabMenu {
         if page == Some(Page::MoveTab) {
             self.target.choices.len()
         } else {
-            self.actions().len()
+            self.actions().len() + self.plugins.len()
         }
     }
 }
@@ -192,6 +193,11 @@ pub(super) struct TabMenu {
     /// The mute row, as the tab and its workspace were muted when the menu
     /// opened.
     mute: Action,
+    /// The rows' own panel scroll, apart from the picker's, so a row the
+    /// keyboard selects below a window's height scrolls into view.
+    actions_scroll: ScrollHandle,
+    /// The plugin actions listed below this menu's own rows.
+    plugins: Vec<crate::plugin_actions::Row>,
 }
 
 impl SheprdWindow {
@@ -240,7 +246,11 @@ impl SheprdWindow {
             moving: None,
             scroll: ScrollHandle::new(),
             mute,
+            actions_scroll: ScrollHandle::new(),
+            plugins: Vec::new(),
         });
+        self.sync_tab_plugin_rows();
+        self.refresh_plugin_actions(window, cx);
     }
 
     /// Opens the focused tab's rename dialog, as its menu's "Rename" row
@@ -598,17 +608,22 @@ impl SheprdWindow {
                 {
                     tab.scroll.scroll_to_item(selected + 1);
                 }
+                if self.menu.page == Some(Page::Tab)
+                    && let Some(selected) = tab.selected
+                {
+                    tab.actions_scroll.scroll_to_item(tab.child_index(selected));
+                }
                 cx.notify();
             }
             "enter" if self.menu.page == Some(Page::MoveTab) => {
                 self.submit_tab_move_picker(window, cx)
             }
             "enter" => {
-                if let Some(action) = tab
-                    .selected
-                    .and_then(|index| tab.actions().get(index).copied())
-                {
-                    self.activate_tab_menu(action, window, cx);
+                let Some(index) = tab.selected else { return };
+                let actions = tab.actions();
+                match actions.get(index) {
+                    Some(&action) => self.activate_tab_menu(action, window, cx),
+                    None => self.activate_tab_plugin(index - actions.len(), window, cx),
                 }
             }
             _ => {}
@@ -710,37 +725,6 @@ impl SheprdWindow {
         let mut body = div().flex().flex_col();
         if tab.moving.is_some() {
             body = self.render_tab_move_pending();
-        } else if self.menu.page == Some(Page::Tab) {
-            for (index, action) in tab.actions().into_iter().enumerate() {
-                body = body.child(
-                    div()
-                        .id(("tab-menu-action", index))
-                        .debug_selector(move || format!("tab-menu-{index}"))
-                        .min_h(px(self.config.ui.line_height() + 12.))
-                        .px(px(8.))
-                        .flex()
-                        .items_center()
-                        .cursor_pointer()
-                        .when(tab.selected == Some(index), |row| row.bg(rgb(theme.active)))
-                        .hover(|row| row.bg(rgb(theme.active)))
-                        .child(
-                            div()
-                                .debug_selector(move || format!("tab-menu-label-{index}"))
-                                .min_w_0()
-                                .truncate()
-                                .child(action.label()),
-                        )
-                        .on_hover(cx.listener(move |this, hovered, _, cx| {
-                            if *hovered && let Some(tab) = &mut this.menu.tab {
-                                tab.selected = Some(index);
-                                cx.notify();
-                            }
-                        }))
-                        .on_click(cx.listener(move |this, _, window, cx| {
-                            this.activate_tab_menu(action, window, cx)
-                        })),
-                );
-            }
         } else {
             body =
                 body.p(px(8.))

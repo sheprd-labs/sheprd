@@ -737,15 +737,19 @@ impl SheprdWindow {
             panel = panel.child(self.render_host_menu(cx));
         } else if page == Page::MoveTab {
             panel = self.render_tab_move_picker(panel, cx);
+        } else if page == Page::Tab {
+            panel = self.render_tab_actions(panel, cx);
         } else if page.is_tab_menu() {
             panel = panel.child(self.render_tab_menu(cx));
         } else if page == Page::Group {
             panel = self.render_group_menu(panel, cx);
         } else if page == Page::MovePane {
             panel = self.render_move_picker(panel, cx);
+        } else if page == Page::Pane {
+            panel = self.render_pane_actions(panel, cx);
         } else if matches!(
             page,
-            Page::Pane | Page::RenamePane | Page::PaneProcesses | Page::KillProcesses
+            Page::RenamePane | Page::PaneProcesses | Page::KillProcesses
         ) {
             panel = panel.child(self.render_pane_menu(cx));
         } else if page == Page::Keybinds {

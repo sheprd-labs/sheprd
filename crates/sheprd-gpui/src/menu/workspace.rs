@@ -6,6 +6,7 @@
 mod dispatch;
 mod kept;
 mod kept_worktrees;
+mod plugins;
 pub(super) mod popover;
 mod render;
 mod requests;
@@ -50,6 +51,9 @@ pub(crate) struct WorkspaceTarget {
     /// Whether the user muted the workspace's notifications when the menu
     /// opened, which picks what the toggle in its header does.
     pub(super) muted: bool,
+    /// The plugin actions listed below the menu's own rows; none for a
+    /// workspace the app keeps, as Herdr 2 has no plugins.
+    pub(super) plugins: Vec<crate::plugin_actions::Row>,
 }
 
 /// How a worktree request tells the daemon which repository it is for.
@@ -95,6 +99,7 @@ impl WorkspaceTarget {
             source: Source::of(workspace),
             keeper: sheprd_session::Keeper::Herdr1,
             muted: false,
+            plugins: Vec::new(),
         }
     }
 
@@ -520,6 +525,8 @@ impl SheprdWindow {
         });
         self.menu.anchor = anchor;
         self.menu.page = Some(Page::Workspace);
+        self.sync_workspace_plugin_rows();
+        self.refresh_plugin_actions(window, cx);
         self.refresh_workspace_pr();
         self.discard_composition(cx);
         window.focus(&self.menu.focus, cx);
@@ -901,6 +908,10 @@ impl SheprdWindow {
             .into_iter()
             .map(|(action, _)| action)
             .collect();
+        // Plugin rows follow the popover's own, before its pull request.
+        if let Some(target) = &self.menu.target {
+            actions.extend((0..target.plugins.len()).map(WorkspaceMenuAction::Plugin));
+        }
         if self.pr_profile().is_some() && self.menu.pr.value.is_some() {
             actions.push(WorkspaceMenuAction::PullRequest);
         }
@@ -939,6 +950,7 @@ impl SheprdWindow {
             WorkspaceMenuAction::Checkpoints => self.open_checkpoints(window, cx),
             WorkspaceMenuAction::FanOut => self.open_fan_out(window, cx),
             WorkspaceMenuAction::Script(kind) => self.run_workspace_script(kind, window, cx),
+            WorkspaceMenuAction::Plugin(index) => self.activate_workspace_plugin(index, window, cx),
             #[cfg(feature = "cloud")]
             WorkspaceMenuAction::SandboxImages => self.build_workspace_sandbox_images(window, cx),
             WorkspaceMenuAction::Orchestrator => {

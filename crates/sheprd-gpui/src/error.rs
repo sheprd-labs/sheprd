@@ -247,6 +247,8 @@ pub enum Error {
         #[source]
         source: Box<Error>,
     },
+    #[error(transparent)]
+    PluginActions(#[from] crate::plugin_actions::Error),
     #[cfg(target_os = "macos")]
     #[error("The page that opened a popup is no longer in a window")]
     PopupOpener,

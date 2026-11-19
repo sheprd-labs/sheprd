@@ -188,6 +188,8 @@ pub(crate) enum WorkspaceMenuAction {
     /// applied at once: the mute belongs to this client, never the daemon.
     Mute,
     Unmute,
+    /// Run the plugin action at this index among the popover's plugin rows.
+    Plugin(usize),
 }
 
 impl Page {
@@ -308,7 +310,8 @@ impl WorkspaceMenuAction {
             Self::Script(_) => "icons/play.svg",
             Self::Mute => crate::icons::MUTED,
             Self::Unmute => "icons/bell.svg",
-            Self::PullRequest => return None,
+            // Its plugin's heading names it instead.
+            Self::PullRequest | Self::Plugin(_) => return None,
         })
     }
 }
