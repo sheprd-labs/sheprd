@@ -156,6 +156,7 @@ impl Localize for Error {
             Self::Path { path: file, source } => {
                 fl!("error-path", path = path(file), error = source.localize())
             }
+            Self::PluginActions(error) => error.localize(),
             #[cfg(target_os = "macos")]
             Self::PopupOpener => fl!("error-popup-opener"),
             Self::PortForward(error) => error.localize(),

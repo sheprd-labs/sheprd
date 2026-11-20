@@ -122,6 +122,7 @@ mod palette;
 mod pane_menu;
 mod pane_move;
 mod panel_resize;
+mod plugin_actions;
 mod plugin_values;
 mod port_forward;
 mod preferences;

@@ -265,6 +265,9 @@ impl SheprdWindow {
             pending_releases: Vec::new(),
             pending_resize: None,
             pending_toast: None,
+            plugin_actions: crate::plugin_actions::Catalogs::with_bridge(
+                crate::plugin_actions::Bridge::API,
+            ),
             port_forwards: Default::default(),
             pr_actions: Default::default(),
             prefix_armed: false,

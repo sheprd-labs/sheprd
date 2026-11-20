@@ -103,6 +103,7 @@ impl WorkspaceTarget {
             },
             keeper: Keeper::App,
             muted: false,
+            plugins: Vec::new(),
         }
     }
 }

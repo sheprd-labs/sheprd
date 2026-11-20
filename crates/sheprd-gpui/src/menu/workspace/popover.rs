@@ -8,6 +8,7 @@ use crate::i18n::fl;
 use crate::{
     SheprdWindow, i18n,
     menu::{WorkspaceAction, WorkspaceMenuAction, accent, danger},
+    plugin_actions::Layout,
 };
 use gpui::{prelude::*, *};
 
@@ -316,6 +317,7 @@ impl SheprdWindow {
         for (action, label) in destructive {
             panel = panel.child(self.render_workspace_danger(action, label, cx));
         }
+        panel = panel.children(self.render_workspace_plugins(cx));
         if self.pr_profile().is_some() {
             panel = panel.child(self.render_workspace_pr(pr_width, cx));
         }
@@ -391,7 +393,7 @@ impl SheprdWindow {
     /// Hover selects, as the arrow keys do, so both highlight the same item.
     fn workspace_hover(
         action: WorkspaceMenuAction,
-        cx: &mut Context<Self>,
+        cx: &Context<Self>,
     ) -> impl Fn(&bool, &mut Window, &mut App) + 'static {
         cx.listener(move |this, hovered: &bool, _, cx| {
             if *hovered {
@@ -520,6 +522,35 @@ impl SheprdWindow {
                 cx.stop_propagation();
                 this.activate_workspace_menu(action, window, cx);
             }))
+    }
+
+    /// The plugin actions for the workspace, under the popover's own rows,
+    /// their labels in the rows' label column.
+    fn render_workspace_plugins(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
+        let Some(target) = &self.menu.target else {
+            return Vec::new();
+        };
+        let selected = match self.menu.workspace_selected {
+            Some(WorkspaceMenuAction::Plugin(index)) => Some(index),
+            _ => None,
+        };
+        let listeners: &Context<Self> = cx;
+        self.render_plugin_rows(
+            &target.plugins,
+            selected,
+            Layout::Popover {
+                inset: ROW_INSET,
+                icon_slot: ICON_SLOT,
+                gap: ROW_GAP,
+            },
+            |index| Self::workspace_hover(WorkspaceMenuAction::Plugin(index), listeners),
+            |index| {
+                listeners.listener(move |this, _: &ClickEvent, window, cx| {
+                    cx.stop_propagation();
+                    this.activate_workspace_menu(WorkspaceMenuAction::Plugin(index), window, cx);
+                })
+            },
+        )
     }
 
     /// The destructive action, full width and red, apart from the tiles so it
