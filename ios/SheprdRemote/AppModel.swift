@@ -551,7 +551,8 @@ final class AppModel {
 
     /// Starts a local activity with sample content and plays it through a
     /// few steps to done, to check the layouts and updates on a device
-    /// without an APNs key.
+    /// without an APNs key. Its content is plain, so it shows the sealed
+    /// cover while the push relay is on.
     func startSample() {
         let facts = ChatActivityFacts(
             computer: computers.first?.name ?? "studio",
@@ -574,7 +575,7 @@ final class AppModel {
         do {
             id = try Activity.request(
                 attributes: ChatActivityAttributes(facts: facts),
-                content: .init(state: state, staleDate: nil)
+                content: .init(state: .plain(state), staleDate: nil)
             ).id
         } catch {
             sampleStatus = "Could not start: \(error.localizedDescription)"
@@ -598,14 +599,14 @@ final class AppModel {
             try? await Task.sleep(for: .seconds(5))
             state.step = step
             state.planDone = min(3 + index, 4)
-            await Activity<ChatActivityAttributes>.activities.first { $0.id == id }?.update(.init(state: state, staleDate: nil))
+            await Activity<ChatActivityAttributes>.activities.first { $0.id == id }?.update(.init(state: .plain(state), staleDate: nil))
         }
         try? await Task.sleep(for: .seconds(5))
         state.phase = .finished
         state.summary = "Split the tests into four files; just ci passes."
         state.working = 1
         await Activity<ChatActivityAttributes>.activities.first { $0.id == id }?
-            .end(.init(state: state, staleDate: nil), dismissalPolicy: .after(.now + 60))
+            .end(.init(state: .plain(state), staleDate: nil), dismissalPolicy: .after(.now + 60))
     }
     #endif
 }

@@ -134,6 +134,7 @@ struct SettingsView: View {
                     LabeledContent("Terminal Keys", value: "\(layout.top.count + layout.bottom.count)")
                 }
             }
+            PushRelaySection()
             if !model.computers.isEmpty {
                 Section {
                     ForEach(model.computers) { computer in

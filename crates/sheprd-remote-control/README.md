@@ -500,7 +500,8 @@ recipients: a key reaches hex tokens, the relay reaches handles, which the
 phone sealed to the relay so this daemon never sees the token inside. The
 app registers either with `POST /api/apns`, a handle in place of a token as
 `{"handle": "KEYID.BASE64URL", "environment": "production"}` (`sandbox` for
-Xcode builds). The environment picks one of the two relays compiled in,
+Xcode builds). The answer names the mode, `"delivery": "own_key"` or
+`"push_relay"`, which the app's Settings shows per computer. The environment picks one of the two relays compiled in,
 `push.sheprd.org` and `push-sandbox.sheprd.org`; no device can name another
 host.
 

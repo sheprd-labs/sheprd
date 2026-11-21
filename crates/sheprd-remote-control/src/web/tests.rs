@@ -13,6 +13,7 @@ use secrecy::ExposeSecret as _;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower::ServiceExt;
 
+mod apns_delivery;
 mod apps;
 mod attention;
 mod changes;

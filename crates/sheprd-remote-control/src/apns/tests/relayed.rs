@@ -6,11 +6,11 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use p256::SecretKey;
 use serde_json::Value;
 
-fn phone() -> SecretKey {
+pub(super) fn phone() -> SecretKey {
     SecretKey::from_slice(&[5; 32]).unwrap()
 }
 
-fn start(text: &str) -> Live {
+pub(super) fn start(text: &str) -> Live {
     Live {
         event: Event::Start {
             alert: Alert {
@@ -45,7 +45,7 @@ fn start(text: &str) -> Live {
     }
 }
 
-fn payload(live: &Live) -> Value {
+pub(super) fn payload(live: &Live) -> Value {
     let push = live
         .sealed_push(&phone().public_key(), 1_800_000_000)
         .unwrap();
@@ -54,7 +54,7 @@ fn payload(live: &Live) -> Value {
     serde_json::from_slice(&push.push().body).unwrap()
 }
 
-fn open(field: &Value) -> Value {
+pub(super) fn open(field: &Value) -> Value {
     let sealed = URL_SAFE_NO_PAD
         .decode(field["sealed"].as_str().unwrap())
         .unwrap();

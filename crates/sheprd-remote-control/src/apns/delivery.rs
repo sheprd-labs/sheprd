@@ -114,6 +114,16 @@ impl Delivery {
         }
     }
 
+    /// As `POST /api/apns` tells the phone, so its Settings can say how
+    /// this computer delivers: `None` when it sends nothing.
+    pub(crate) fn wire_name(&self) -> Option<&'static str> {
+        match self {
+            Self::Off => None,
+            Self::OwnKey(_) => Some("own_key"),
+            Self::Relay(_) => Some("push_relay"),
+        }
+    }
+
     /// Whether this mode can send to `recipient`.
     pub(crate) fn reaches(&self, recipient: &Recipient) -> bool {
         matches!(

@@ -111,6 +111,11 @@ targets:
         com.apple.security.application-groups: [group.so.pen.herdr.remote]
         # Questions interrupt Focus, as a waiting agent should.
         com.apple.developer.usernotifications.time-sensitive: true
+        # The push relay takes App Attest's word that this is the real app.
+        # Development builds attest in development and use the sandbox push
+        # relay; TestFlight and App Store builds always attest in
+        # production, whatever this says.
+        com.apple.developer.devicecheck.appattest-environment: development
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: so.pen.herdr.remote
@@ -192,6 +197,7 @@ targets:
       - SheprdRemoteNotifications
       - path: Shared/NotifyKey.swift
       - path: Shared/NotificationCategories.swift
+      - path: Shared/PushRelaySetting.swift
     dependencies:
       - package: SheprdRemoteCore
     info:

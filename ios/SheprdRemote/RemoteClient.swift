@@ -541,8 +541,8 @@ final class RemoteClient: Sendable {
         )
     }
 
-    func registerAPNs(_ registration: API.APNsRegistration, bearer: String) async throws {
-        let _: EmptyAnswer = try await send("POST", "/api/apns", body: registration, bearer: bearer)
+    func registerAPNs(_ registration: API.APNsRegistration, bearer: String) async throws -> API.APNsAnswer {
+        try await send("POST", "/api/apns", body: registration, bearer: bearer)
     }
 
     /// Asks the computer to send this phone a sealed test alert carrying `id`.

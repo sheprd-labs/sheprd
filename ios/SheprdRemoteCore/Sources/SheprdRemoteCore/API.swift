@@ -110,23 +110,79 @@ public enum API {
         public let reason: String?
     }
 
+    /// Where a computer sends one kind of push: a token as lowercase hex,
+    /// which only a computer with its own APNs key reaches, or a handle the
+    /// phone sealed to the push relay, written with the push relay it goes
+    /// through (`crates/sheprd-remote-control/src/apns/recipient.rs`).
+    public enum PushRecipient: Encodable, Equatable, Sendable, ExpressibleByStringLiteral {
+        case token(String)
+        case pushRelayHandle(String, environment: PushRelayEnvironment)
+
+        public init(stringLiteral token: String) {
+            self = .token(token)
+        }
+
+        private enum Keys: String, CodingKey {
+            case environment, handle
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            switch self {
+            case let .token(token):
+                var container = encoder.singleValueContainer()
+                try container.encode(token)
+            case let .pushRelayHandle(handle, environment):
+                var container = encoder.container(keyedBy: Keys.self)
+                try container.encode(environment, forKey: .environment)
+                try container.encode(handle, forKey: .handle)
+            }
+        }
+    }
+
+    /// How a computer said it delivers pushes, in its answer to
+    /// `POST /api/apns`. Older computers do not say.
+    public enum PushDelivery: String, Decodable, Equatable, Sendable {
+        case ownKey = "own_key"
+        case pushRelay = "push_relay"
+    }
+
+    /// The answer to `POST /api/apns`.
+    public struct APNsAnswer: Decodable, Equatable, Sendable {
+        public let delivery: PushDelivery?
+
+        public init(delivery: PushDelivery?) {
+            self.delivery = delivery
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case delivery
+        }
+
+        /// A delivery this phone does not know reads as none, so a newer
+        /// computer's answer is not an error.
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            delivery = try? container.decodeIfPresent(PushDelivery.self, forKey: .delivery)
+        }
+    }
+
     /// `POST /api/apns`: the app's push-to-start token and one token per
-    /// Live Activity it shows for that computer, all lowercase hex. The
-    /// daemon replaces its list of activities with this one.
+    /// Live Activity it shows for that computer, or push relay handles for
+    /// them. The daemon replaces its list of activities with this one.
     public struct APNsRegistration: Encodable, Equatable, Sendable {
         public struct Activity: Encodable, Equatable, Sendable {
             public let pane: String
-            public let token: String
-            public init(pane: String, token: String) {
+            public let token: PushRecipient
+            public init(pane: String, token: PushRecipient) {
                 self.pane = pane
                 self.token = token
             }
         }
 
-        public let pushToStart: String?
+        public let pushToStart: PushRecipient?
         public let activities: [Activity]
         /// The app's own APNs token, for sealed alerts.
-        public let alert: String?
+        public let alert: PushRecipient?
         /// The public key alerts are sealed to (`NotificationSeal`), as
         /// base64url X9.63 bytes.
         public let notifyKey: String?
@@ -136,9 +192,9 @@ public enum API {
         public let genericActivities: Bool
 
         public init(
-            pushToStart: String?,
+            pushToStart: PushRecipient?,
             activities: [Activity],
-            alert: String? = nil,
+            alert: PushRecipient? = nil,
             notifyKey: String? = nil,
             genericActivities: Bool = false
         ) {

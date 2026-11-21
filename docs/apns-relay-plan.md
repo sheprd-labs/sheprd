@@ -481,9 +481,15 @@ The daemon's side is built: `apns::Delivery` (off, own key, or relay),
 (`apns::relayed`, info `sheprd-live-activity-v1`), `SealedPush` as the only
 thing `RelayClient` takes, `[remote] push_relay` and `--push-relay`, `gone`
 forgetting a handle, and a one-minute outage window that leaves alerts to Web
-Push and drops activity updates. Still to do: revoking a phone's handles when
-it unpairs, the Sheprd setting, explanation, and status command, and the iOS
-side (attestation, handles, the widget opening sealed content).
+Push and drops activity updates. The iOS side is built too: the
+opt-in in Settings > Push Relay with this explanation, App Attest and the
+credential in the main app's keychain, renewed a week before it runs out,
+handles made on the phone per token and sent with the notify key, revoking
+them when the setting goes off, the widget opening sealed content from the
+notify keys in an App Group file, and each computer's delivery (`POST
+/api/apns` answers `own_key` or `push_relay`). Still to do: revoking a
+phone's handles when it unpairs, the Sheprd setting, explanation, and status
+command, and testing on a device.
 
 **5. Roll out.** Deploy production and offer it to TestFlight users. Watch
 delivery rates, 429s, and `gone` replies. Try the recovery runbook on the sandbox

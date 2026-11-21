@@ -11,6 +11,15 @@ import Security
 /// an alert whose actions reach another. They live in the App Group's
 /// keychain group, so the Notification Service Extension opens alerts
 /// with the keys the app registered.
+///
+/// While the push relay is on, they are also kept in a file in the App
+/// Group container, protected until first unlock: on a device the widget
+/// extension that draws a Live Activity gets `errSecNotAvailable` from the
+/// keychain (`docs/ios-spikes.md`), and it opens the activity content a
+/// computer sealed for the push relay. A Secure Enclave key's blob is a
+/// handle only this phone's Secure Enclave can use, so the file holds
+/// nothing a keychain item would protect better; the simulator's software
+/// keys are the exception, and are test keys.
 enum NotifyKey {
     static let group = "group.so.pen.herdr.remote"
 
@@ -82,6 +91,23 @@ enum NotifyKey {
         return key
     }
 
+    /// Every computer's key, as sealed Live Activity content is opened:
+    /// from the keychain, or from the App Group file where the keychain
+    /// refuses this process. None at all means the widget shows its cover.
+    static func activityKeys() -> [SealedChatActivity.Key] {
+        let keys: [Fingerprint: Stored]
+        do {
+            keys = try loadAll()
+        } catch Failure.keychain {
+            keys = (try? loadFile()) ?? [:]
+        } catch {
+            keys = [:]
+        }
+        return keys.map { computer, key in
+            SealedChatActivity.Key(computer: computer, device: key.publicKey, agree: key.agree)
+        }
+    }
+
     /// Forgets an unpaired computer's key, so its alerts no longer open.
     static func forget(_ computer: Fingerprint) throws {
         var keys = try loadAll()
@@ -105,6 +131,15 @@ enum NotifyKey {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         guard status != errSecItemNotFound else { return [:] }
         guard status == errSecSuccess, let data = result as? Data else { throw Failure.keychain(status) }
+        return try decode(data)
+    }
+
+    private static var file: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)?
+            .appending(path: "notify-keys.json")
+    }
+
+    private static func decode(_ data: Data) throws -> [Fingerprint: Stored] {
         let stored = try JSONDecoder().decode([String: Data].self, from: data)
         var keys: [Fingerprint: Stored] = [:]
         for (hex, blob) in stored {
@@ -113,8 +148,37 @@ enum NotifyKey {
         return keys
     }
 
+    private static func loadFile() throws -> [Fingerprint: Stored] {
+        guard let file, FileManager.default.fileExists(atPath: file.path) else { return [:] }
+        return try decode(Data(contentsOf: file))
+    }
+
+    /// Brings the App Group file in line with the keychain, which the app
+    /// can always read: written while the push relay is on, removed while
+    /// it is off. The app calls it at launch and when the setting changes.
+    static func mirror() throws {
+        guard let file else { return }
+        guard PushRelaySetting.isOn else {
+            if FileManager.default.fileExists(atPath: file.path) { try FileManager.default.removeItem(at: file) }
+            return
+        }
+        try writeFile(encoded(try loadAll()))
+    }
+
+    private static func writeFile(_ data: Data) throws {
+        guard let file, PushRelaySetting.isOn else { return }
+        guard (try? Data(contentsOf: file)) != data else { return }
+        try data.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+
+    private static func encoded(_ keys: [Fingerprint: Stored]) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        return try encoder.encode(Dictionary(uniqueKeysWithValues: keys.map { ($0.key.hex, $0.value.data) }))
+    }
+
     private static func save(_ keys: [Fingerprint: Stored]) throws {
-        let data = try JSONEncoder().encode(Dictionary(uniqueKeysWithValues: keys.map { ($0.key.hex, $0.value.data) }))
+        let data = try encoded(keys)
         let attributes: [String: Any] = [
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
@@ -123,8 +187,10 @@ enum NotifyKey {
         if status == errSecItemNotFound {
             let added = SecItemAdd(query().merging(attributes) { $1 } as CFDictionary, nil)
             guard added == errSecSuccess else { throw Failure.keychain(added) }
+            try writeFile(data)
             return
         }
         guard status == errSecSuccess else { throw Failure.keychain(status) }
+        try writeFile(data)
     }
 }

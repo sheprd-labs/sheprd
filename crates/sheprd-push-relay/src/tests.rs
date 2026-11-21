@@ -28,6 +28,7 @@ mod credential;
 mod dashboard;
 mod devices;
 mod handle;
+mod handle_fixture;
 mod limit;
 mod options;
 mod relay;
