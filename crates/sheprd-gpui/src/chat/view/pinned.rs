@@ -107,7 +107,7 @@ impl SheprdWindow {
         )
     }
 
-    pub(super) fn go_to_chat_prompt(
+    pub(in crate::chat) fn go_to_chat_prompt(
         &mut self,
         pane_id: &str,
         index: usize,

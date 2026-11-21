@@ -83,8 +83,8 @@ futures-lite         = "2"
 # Sends frames on sheprd-remote-control's WebSocket test client; axum already links it.
 futures-util         = { default-features = false, features = ["sink"], version = "0.3" }
 getrandom            = "0.4.3"
-gpui                 = { package = "gpui-pre", version = "=0.3.10" }
-gpui_platform        = { package = "gpui-pre-platform", version = "=0.3.10" }
+gpui                 = { package = "gpui-pre", version = "=0.3.12" }
+gpui_platform        = { package = "gpui-pre-platform", version = "=0.3.12" }
 # Reads local repositories for the orchestrator without starting `git`:
 # discovery, config with its includes and URL rewrites, refs, and rev-parse.
 gix                  = { default-features = false, features = ["sha1"], version = "0.90" }
@@ -130,8 +130,8 @@ image                = { default-features = false, features = ["gif", "jpeg", "p
 # The sandboxed Luau interpreter behind automation scripts, built from source.
 mlua                 = { features = ["error-send", "luau"], version = "0.12.2" }
 # The `moonframe` feature of `sheprd-gpui` lays out the window in Luau; pinned to
-# moonframehq/moonframe#154 (rusqlite 0.41, as this workspace) until it merges.
-moonframe            = { default-features = false, git = "https://github.com/moonframehq/moonframe", rev = "623678ccf7519aabc9d10a33abbc41d68e94212c" }
+# a commit on moonframehq/moonframe's main.
+moonframe            = { default-features = false, git = "https://github.com/moonframehq/moonframe", rev = "1d35d12b4e77533b701a1e642cce663ad1ac9d33" }
 # Mermaid fences in chat answers become diagrams: parse, lay out, and write
 # SVG in pure Rust; GPUI rasterizes the SVG. No CLI and no PNG writer.
 mermaid-rs-renderer  = { default-features = false, version = "0.3.1" }

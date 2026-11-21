@@ -207,6 +207,11 @@ impl Host {
         self.window.clone().into()
     }
 
+    /// What holds the keyboard for the terminals and pages.
+    pub fn focus_handle(&self, cx: &App) -> gpui::FocusHandle {
+        self.window.read(cx).focus.clone()
+    }
+
     pub fn region(&self, region: Region, cx: &mut App) -> AnyView {
         let window = self.window.clone();
         cx.new(|cx: &mut Context<RegionView>| {

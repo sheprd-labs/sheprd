@@ -252,10 +252,11 @@ jobs:
         if: matrix.features == 'all' && env.SCOPE != ''
         run: read -ra scope <<< "$SCOPE" && cargo test --locked "${scope[@]}" --all-features
       # The `moonframe` feature's Luau layout loads only at run time: load every
-      # module and report what fails, without a window.
+      # module and report what fails, without a window. The default build
+      # checks the copy compiled in; all features read the sources.
       - name: Check the Moonframe layout
-        if: matrix.features == 'all' && needs.commits.outputs.gpui == 'true'
-        run: cargo run --locked -p sheprd-gpui --all-features -- --check
+        if: needs.commits.outputs.gpui == 'true'
+        run: cargo run --locked -p sheprd-gpui ${{ matrix.features == 'all' && '--all-features' || '' }} -- --check
 
   # Match the other platforms' Rust checks without an extra optimized build,
   # in the merge queue, on main, and on pull requests that need every platform.
@@ -307,10 +308,10 @@ jobs:
         if: matrix.features == 'all'
         run: cargo test --locked --workspace --all-features
       # The `moonframe` feature's Luau layout loads only at run time: load every
-      # module and report what fails, without a window.
+      # module and report what fails, without a window. The default build
+      # checks the copy compiled in; all features read the sources.
       - name: Check the Moonframe layout
-        if: matrix.features == 'all'
-        run: cargo run --locked -p sheprd-gpui --all-features -- --check
+        run: cargo run --locked -p sheprd-gpui ${{ matrix.features == 'all' && '--all-features' || '' }} -- --check
 
   # The native GUI tests (`just test-gui`, `just test-sidebar`) on a real
   # Windows desktop session against a pinned, checksummed Herdr daemon in the

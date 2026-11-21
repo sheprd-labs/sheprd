@@ -452,6 +452,7 @@ impl SheprdWindow {
                                         view.track_focus(focus)
                                     })
                                     .child(entries)
+                                    .children(self.chat_turns_probe(chat, cx))
                                     .children(self.render_chat_pinned(chat, cx))
                                     .children(self.render_chat_jump(chat, cx)),
                             )

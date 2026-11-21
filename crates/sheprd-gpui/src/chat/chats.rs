@@ -510,6 +510,12 @@ impl ChatPane {
         }
     }
 
+    /// How many rows the list has, and the last one's version: what changes
+    /// as entries come and grow.
+    pub(crate) fn revision(&self) -> (usize, Option<(EntryId, u64)>) {
+        (self.list_keys.len(), self.list_keys.last().copied())
+    }
+
     /// Redraws one entry, such as a thought folding open.
     pub(crate) fn remeasure(&self, id: EntryId) {
         if let Some(index) = self.list_keys.iter().position(|(entry, _)| *entry == id) {

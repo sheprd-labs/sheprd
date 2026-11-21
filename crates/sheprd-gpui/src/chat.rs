@@ -49,6 +49,7 @@ mod start;
 mod summary;
 mod terminal;
 mod text;
+pub(crate) mod turns;
 mod upload;
 mod view;
 pub(crate) mod visual;
