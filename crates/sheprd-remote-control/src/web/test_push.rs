@@ -70,7 +70,9 @@ pub(super) async fn send(
         badge,
     );
     let tag = format!("test-{}", request.id);
-    let answer = match state.apns.alert(&token, &key, sealed, &tag, now_ms()).await {
+    let sent = state.apns.alert(&token, &key, sealed, &tag, now_ms()).await;
+    state.pushes.record(apns::Kind::Alert, &sent, now_ms());
+    let answer = match sent {
         Sent::Delivered => TestAnswer::Delivered,
         Sent::Gone => {
             let state = state.clone();

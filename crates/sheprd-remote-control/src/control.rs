@@ -20,6 +20,7 @@ pub mod host_relay;
 pub mod hosts;
 pub mod layout;
 pub mod pull_requests;
+pub mod push;
 pub mod relays;
 pub mod shortcuts;
 pub mod tags;
@@ -312,6 +313,10 @@ pub enum Request {
         id: changes::AskId,
         answer: github::LeaseAnswer,
     },
+    /// How iPhone pushes leave this computer and how the last of each kind
+    /// went (`push`). Read-only, and it names no token, handle, or device.
+    /// An older daemon closes without answering.
+    PushStatus,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -381,6 +386,7 @@ pub enum Response {
     GitHubLeaseAsks {
         asks: Vec<github::LeaseAsk>,
     },
+    PushStatus(push::PushStatus),
 }
 
 /// The daemon's answer to a nearby phone's first step, the same JSON over

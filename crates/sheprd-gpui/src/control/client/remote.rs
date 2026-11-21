@@ -11,11 +11,14 @@ use crate::{
 use sheprd_remote_control::control::{Device, Status};
 use std::io::IsTerminal as _;
 
+mod push_status;
+
 pub(super) fn remote(command: RemoteCommand, context: &Context) -> crate::Result<Output> {
     let op = match command {
         RemoteCommand::Status => RemoteOp::Status,
         RemoteCommand::Pair { address } => RemoteOp::Pair { address },
         RemoteCommand::Devices => RemoteOp::Devices,
+        RemoteCommand::PushStatus => RemoteOp::PushStatus,
         RemoteCommand::Revoke { device } => RemoteOp::Revoke { device },
         RemoteCommand::Restart => RemoteOp::Restart,
         RemoteCommand::RelayToken { relay, clear } => RemoteOp::RelayToken {
@@ -81,6 +84,24 @@ pub(super) fn output(reply: &Reply) -> crate::Result<Output> {
             let now = crate::remote::now_ms();
             let lines: Vec<String> = devices.iter().map(|device| line(device, now)).collect();
             Output::data(lines.join("\n"), &json)
+        }
+        Reply::PushStatus {
+            enabled,
+            push_relay,
+            status,
+            error,
+        } => {
+            let json = serde_json::json!({
+                "enabled": enabled,
+                "push_relay": push_relay,
+                "running": status.is_some(),
+                "status": status,
+                "error": error,
+            });
+            Output::data(
+                push_status::text(*enabled, *push_relay, status.as_ref(), error.as_deref()),
+                &json,
+            )
         }
         Reply::RelayToken { relay, token } => {
             let json = serde_json::json!({ "relay": relay, "token": token });

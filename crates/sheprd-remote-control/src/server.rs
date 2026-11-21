@@ -171,6 +171,7 @@ pub async fn run(options: Options) -> Result<()> {
         privacy: options.privacy,
         pull_requests,
         push,
+        pushes: Default::default(),
         relay,
         reports: Mutex::new(web::report_limit()),
         seen: Mutex::new(seen),

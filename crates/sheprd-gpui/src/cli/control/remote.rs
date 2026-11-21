@@ -10,6 +10,9 @@ pub enum RemoteCommand {
         address: Option<String>,
     },
     Devices,
+    /// How iPhone pushes leave the daemon: off, own APNs key, or push
+    /// relay, and whether the last of each kind worked. Read-only.
+    PushStatus,
     /// Open the confirmation for revoking a device, by ID or name.
     Revoke {
         device: String,
@@ -35,6 +38,7 @@ pub(super) fn remote(args: &mut Args) -> Result<RemoteCommand, CliError> {
             address: args.text_option("--address")?,
         },
         Some("devices" | "list") => RemoteCommand::Devices,
+        Some("push-status") => RemoteCommand::PushStatus,
         Some("restart") => RemoteCommand::Restart,
         // A name may be typed unquoted, as `remote revoke Fabien's iPhone`.
         Some("revoke") => RemoteCommand::Revoke {

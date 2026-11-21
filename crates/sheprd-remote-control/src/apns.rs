@@ -22,6 +22,7 @@
 //! - [`alert`]: chat notifications for the native app, sealed to the
 //!   device with [`seal`] so APNs relays only ciphertext.
 //! - `relayed`: Live Activity payloads sealed the same way, for the relay.
+//! - [`Ledger`]: how the last push of each kind went, for Sheprd.
 //!
 //! A device only ever supplies hex tokens, or relay handles with the name
 //! of an environment. The host is one of Apple's two, chosen by the user's
@@ -33,6 +34,7 @@
 pub(crate) mod alert;
 mod decide;
 mod delivery;
+mod ledger;
 mod pacer;
 mod payload;
 mod recipient;
@@ -45,6 +47,7 @@ pub(crate) use decide::{computer_id, decide};
 #[cfg(test)]
 pub(crate) use delivery::Relays;
 pub(crate) use delivery::{Delivery, Sent};
+pub(crate) use ledger::{Kind, Ledger};
 pub(crate) use pacer::Pacer;
 #[cfg(test)]
 pub(crate) use payload::ATTRIBUTES_TYPE;

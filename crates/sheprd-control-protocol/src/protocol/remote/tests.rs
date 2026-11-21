@@ -4,6 +4,7 @@ use crate::protocol::{Call, Caller, Request, Response};
 use sheprd_remote_control::control::DeviceId;
 
 mod addresses;
+mod push_status;
 mod relay_token;
 
 #[test]

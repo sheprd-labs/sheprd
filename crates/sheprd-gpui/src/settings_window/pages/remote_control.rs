@@ -25,8 +25,13 @@ use gpui::{prelude::*, *};
 use sheprd_remote_control::control::{Device, DeviceId};
 use std::path::PathBuf;
 
+mod push_relay;
 mod relays;
 
+#[cfg(test)]
+pub(in crate::settings_window) use push_relay::{
+    delivery_line, last_alert, last_live, last_worked,
+};
 pub(in crate::settings_window) use relays::Offered;
 #[cfg(test)]
 pub(in crate::settings_window) use relays::{Standing, public_title, relay_line};
@@ -52,6 +57,8 @@ pub(in crate::settings_window) struct RemoteSettings {
     pub(in crate::settings_window) offered: Offered,
     /// A private relay's listen token being asked for or linked.
     pub(in crate::settings_window) token: relays::TokenPrompt,
+    /// The push relay's explanation, asked before it turns on.
+    pub(in crate::settings_window) push_relay: push_relay::Ask,
 }
 
 /// Opens Settings at Remote control, as the status bar's phone does.
@@ -197,6 +204,7 @@ impl SettingsWindow {
         self.remote.lease = None;
         self.remote.revoking = None;
         self.remote.relay_invalid = false;
+        self.remote.push_relay = push_relay::Ask::default();
     }
 
     pub(in crate::settings_window) fn sync_remote_fields(&mut self, cx: &mut Context<Self>) {
@@ -508,6 +516,7 @@ impl SettingsWindow {
                     }),
                 )),
             )
+            .child(self.remote_push_relay(cx))
             .child(ui::section(
                 theme,
                 &fl!("settings-remote-section-devices"),

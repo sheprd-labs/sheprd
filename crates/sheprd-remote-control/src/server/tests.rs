@@ -14,6 +14,7 @@ mod fleet_joins;
 mod github;
 mod idle;
 mod push_relay;
+mod push_status;
 mod relay_enroll;
 mod relay_options;
 mod shutdown;

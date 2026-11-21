@@ -645,6 +645,12 @@ pub(super) const CATALOG: &[Entry] = &[
     ),
     entry(
         Section::RemoteControl,
+        "remote-push-relay",
+        "settings-push-relay-title",
+        "settings-push-relay-description",
+    ),
+    entry(
+        Section::RemoteControl,
         "remote-idle",
         "settings-remote-idle",
         "settings-remote-idle-description",

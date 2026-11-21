@@ -223,4 +223,5 @@ mod changes;
 mod firewall;
 mod github;
 mod indicators;
+mod push_status;
 mod restart;

@@ -431,6 +431,7 @@ async fn send_alert(state: &Arc<State>, device: &DeviceId, notification: &Notifi
         .apns
         .alert(&recipient, &key, sealed, &notification.tag, now_ms())
         .await;
+    state.pushes.record(apns::Kind::Alert, &sent, now_ms());
     if sent == Sent::Gone {
         let state = state.clone();
         let device = device.clone();

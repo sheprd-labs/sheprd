@@ -121,6 +121,8 @@ pub(crate) struct State {
     pub(crate) pull_requests:
         tokio::sync::watch::Sender<Arc<crate::control::pull_requests::PullRequests>>,
     pub(crate) push: Option<Sender>,
+    /// How the last APNs push of each kind went.
+    pub(crate) pushes: crate::apns::Ledger,
     /// The relays this computer listens on, when any are set.
     pub(crate) relay: Option<Arc<crate::relay::Relays>>,
     /// How often each address may write a phone's error to the log.

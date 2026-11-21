@@ -276,6 +276,9 @@ fn send(
     let state = state.clone();
     tokio::spawn(async move {
         let sent = state.apns.live(&token, key.as_ref(), &live, now_ms()).await;
+        state
+            .pushes
+            .record(crate::apns::Kind::LiveActivity, &sent, now_ms());
         let ended = matches!(live.event, Event::End { .. });
         let gone = sent == Sent::Gone;
         if !gone && !ended {

@@ -342,6 +342,9 @@ pub enum Edit {
     Notifications(Privacy),
     Port(u16),
     Presence(bool),
+    /// Whether iPhone pushes may go through the push relay
+    /// (`push.sheprd.org`) on a computer without an APNs key.
+    PushRelay(bool),
     /// The whole list, as Settings shows it after adding or removing one;
     /// each keeps its label.
     Relays(Vec<Relay>),
@@ -378,6 +381,7 @@ impl Edit {
             Self::Port(0) => return Err(Error::Port),
             Self::Port(port) => ("port", i64::from(port).into()),
             Self::Presence(on) => ("presence", on.into()),
+            Self::PushRelay(on) => ("push_relay", on.into()),
             Self::Relays(relays) => {
                 // Written as the daemon names them, each once, so the
                 // list matches the relays its status reports.

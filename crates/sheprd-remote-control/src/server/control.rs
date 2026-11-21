@@ -88,6 +88,7 @@ pub(crate) fn answer(state: &State, stop: &watch::Sender<bool>, request: Request
             state.changes.seen();
             return Response::Status(status(state));
         }
+        Request::PushStatus => return Response::PushStatus(state.pushes.status(&state.apns)),
         Request::ChangeAsks => {
             let (asks, layout) = state.changes.take(control::ASK_WAIT);
             return Response::ChangeAsks { asks, layout };

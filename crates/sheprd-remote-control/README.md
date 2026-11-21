@@ -525,6 +525,14 @@ for a minute
 subscribed, as any alert APNs did not take does, and activity updates are
 dropped rather than queued.
 
+The control socket's `push_status` request (`control::push`) answers with
+the mode (`off`, `own_key`, or `push_relay`) and how the last alert (a test
+push included) and the last Live Activity push went, each with its time
+(`apns::Ledger`). It is kept in memory, so a restart, as every change of
+mode is, starts it empty, and it names no token, handle, or device. Sheprd
+shows it in Settings > Remote control beside the push relay switch, and
+`sheprd remote push-status` prints it.
+
 ## Empty chats
 
 An empty chat opens at its header with the agent's icon and a prompt to start.
