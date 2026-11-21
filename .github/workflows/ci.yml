@@ -690,7 +690,8 @@ jobs:
       matrix:
         runner: [ubuntu-24.04, ubuntu-24.04-arm, macos-15]
         exclude: ${{ fromJSON(needs.commits.outputs.full != 'true' && '[{"runner":"macos-15"},{"runner":"ubuntu-24.04-arm"}]' || '[]') }}
-    runs-on: ${{ matrix.runner }}
+    # Our own machines for members' macOS and ARM64 legs, as in the checks job.
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))) && (matrix.runner == 'macos-15' && vars.CI_MACOS_RUNNER || matrix.runner == 'ubuntu-24.04-arm' && vars.CI_LINUX_ARM_RUNNER) || toJSON(matrix.runner)) }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -698,6 +699,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Shares the runner's checkout with the build jobs: keep target/.
+          clean: ${{ runner.environment != 'self-hosted' }}
+      - name: Clean the self-hosted checkout but its build
+        if: runner.environment == 'self-hosted'
+        run: bash scripts/ci-clean-self-hosted.sh
       - run: rustup show
       # Linux builds its own architecture's static agent; macOS builds
       # both thin ones, the x86_64 one cross-compiled.

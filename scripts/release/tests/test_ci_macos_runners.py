@@ -113,6 +113,14 @@ class MacosRunners(unittest.TestCase):
                 self.assertEqual(runs_on("checks", values), HOSTED)
                 self.assertEqual(runs_on("build-macos", values), HOSTED)
 
+    def test_the_relay_agent_builds_follow_the_checks(self):
+        values = context("pull_request")
+        self.assertEqual(runs_on("relay-agent", values), json.loads(LABELS))
+        self.assertEqual(runs_on("relay-agent", values, "ubuntu-24.04-arm"), json.loads(LINUX_LABELS))
+        self.assertEqual(runs_on("relay-agent", values, "ubuntu-24.04"), "ubuntu-24.04")
+        self.assertEqual(runs_on("relay-agent", context("pull_request", fork=True)), HOSTED)
+        self.assertIn("run: bash scripts/ci-clean-self-hosted.sh", JOBS["relay-agent"])
+
     def test_an_unset_variable_keeps_every_run_hosted(self):
         for event in ("pull_request", "push", "merge_group"):
             with self.subTest(event=event):

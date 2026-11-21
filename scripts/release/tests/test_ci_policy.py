@@ -334,7 +334,7 @@ class CiPolicy(unittest.TestCase):
         self.assertEqual(re.findall(r"^    runs-on: (.+)$", WORKFLOW, re.M), [
             LINUX_GATE.replace("ubuntu-24.04", "ubuntu-latest"), LINUX_GATE, MACOS_CHECKS,
             "${{ matrix.runner }}", "${{ matrix.runner }}", "windows-2025",
-            LINUX_GATE, LINUX_GATE, "${{ matrix.runner }}", "${{ matrix.runner }}", MACOS_RELEASE,
+            LINUX_GATE, LINUX_GATE, "${{ matrix.runner }}", MACOS_CHECKS, MACOS_RELEASE,
         ])
         for name in ("checks", "build-macos"):
             with self.subTest(job=name):
