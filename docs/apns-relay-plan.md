@@ -480,10 +480,13 @@ The daemon's side is built: `apns::Delivery` (off, own key, or relay),
 `{"handle", "environment"}`), sealed and shortened Live Activities
 (`apns::relayed`, info `sheprd-live-activity-v1`), `SealedPush` as the only
 thing `RelayClient` takes, `[remote] push_relay` and `--push-relay`, `gone`
-forgetting a handle, and a one-minute outage window that leaves alerts to Web
-Push and drops activity updates. Still to do: revoking a phone's handles when
-it unpairs, the Sheprd setting, explanation, and status command, and the iOS
-side (attestation, handles, the widget opening sealed content).
+forgetting a handle, a one-minute outage window that leaves alerts to Web
+Push and drops activity updates, and revoking a phone's handles at the push
+relay when it unpairs by any path (`apns::push_relay_revoke`; best effort,
+bounded, and only in push relay mode: with `push_relay` off the daemon makes
+no push relay connection and keeps the handles unused). Still to do: the
+Sheprd setting, explanation, and status command, and the iOS side
+(attestation, handles, the widget opening sealed content).
 
 **5. Roll out.** Deploy production and offer it to TestFlight users. Watch
 delivery rates, 429s, and `gone` replies. Try the recovery runbook on the sandbox

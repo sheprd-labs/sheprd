@@ -101,6 +101,14 @@ impl Delivery {
         Ok(Self::Off)
     }
 
+    /// The push relays, when pushes go through them.
+    pub(crate) fn push_relays(&self) -> Option<&Relays> {
+        match self {
+            Self::Relay(relays) => Some(relays),
+            Self::Off | Self::OwnKey(_) => None,
+        }
+    }
+
     pub(crate) fn is_off(&self) -> bool {
         matches!(self, Self::Off)
     }
@@ -239,6 +247,21 @@ impl Relays {
         self.relay(host)
             .down_until_ms
             .fetch_max(now_ms.saturating_add(OUTAGE_MS), Ordering::Relaxed);
+    }
+
+    /// Asks the push relay `handle` names to refuse it from now on, or
+    /// gives up at once while that push relay is out: revoking is best effort, and the
+    /// handle's credential runs out on its own.
+    pub(crate) async fn revoke(&self, handle: &Handle, now_ms: u64) -> RelayOutcome {
+        let host = handle.environment();
+        if self.is_down(host, now_ms) {
+            return RelayOutcome::Unavailable;
+        }
+        let outcome = self.relay(host).client.revoke(handle.secret()).await;
+        if outcome == RelayOutcome::Unavailable {
+            self.mark_down(host, now_ms);
+        }
+        outcome
     }
 
     /// Sends `push` to the relay `handle` names, or drops it while that

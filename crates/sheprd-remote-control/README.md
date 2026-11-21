@@ -525,6 +525,25 @@ for a minute
 subscribed, as any alert APNs did not take does, and activity updates are
 dropped rather than queued.
 
+Unpairing a phone revokes its push relay handles at the push relay
+(`apns::push_relay_revoke`), so the copies this computer held stop working
+before their credentials run out. Every way a device goes counts: Sheprd's
+Revoke and `sheprd-remote-control revoke` (both through the running
+daemon's control socket), a host replacing a phone it enrolled, the fleet
+taking devices away, and `--device-idle-days` expiry. The handles are read from the
+device's record just before it goes and queued without waiting, so the
+unpair never waits on or fails with the push relay. At most 64 unpaired
+devices wait and four revocations run at once, each with the client's own
+few tries and none after; while a push relay is out, its revocations are
+dropped, and a lost one still ends when its credential does. The log names
+no handle or device. Only push relay mode revokes: with the user's own key,
+or with `push_relay` turned off, the daemon makes no connection to the push
+relay, and stored handles are kept unused (turning `push_relay` back on
+reaches them again without the phone registering); turning off the phone's
+own setting is what revokes them then. Handles a phone replaces or drops in
+a later registration, such as an ended activity's, are not revoked: the push
+relay allows each phone only a few revocations a minute.
+
 ## Empty chats
 
 An empty chat opens at its header with the agent's icon and a prompt to start.

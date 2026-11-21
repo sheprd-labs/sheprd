@@ -380,9 +380,9 @@ impl Devices {
         })
     }
 
-    /// Forgets devices not seen (or, never seen, not paired) for `idle_ms`.
-    /// Blocking when any expire.
-    pub(crate) fn expire_idle(&mut self, now_ms: u64, idle_ms: u64) -> Result<Vec<DeviceId>> {
+    /// Forgets devices not seen (or, never seen, not paired) for `idle_ms`,
+    /// returning their records. Blocking when any expire.
+    pub(crate) fn expire_idle(&mut self, now_ms: u64, idle_ms: u64) -> Result<Vec<DeviceRecord>> {
         let idle = |record: &DeviceRecord| {
             let seen = record.last_seen_ms.unwrap_or(record.created_ms);
             now_ms.saturating_sub(seen) >= idle_ms
@@ -393,13 +393,10 @@ impl Devices {
         let previous = self.records.clone();
         self.records.retain(|record| !idle(record));
         self.save_or_undo(|devices| devices.records = previous.clone())?;
-        let expired: Vec<DeviceId> = previous
-            .into_iter()
-            .filter(|record| idle(record))
-            .map(|record| record.id)
-            .collect();
-        for id in &expired {
-            self.stored_seen.remove(id);
+        let expired: Vec<DeviceRecord> =
+            previous.into_iter().filter(|record| idle(record)).collect();
+        for record in &expired {
+            self.stored_seen.remove(&record.id);
         }
         Ok(expired)
     }

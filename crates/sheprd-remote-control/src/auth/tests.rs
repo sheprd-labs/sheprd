@@ -14,6 +14,7 @@ mod nearby_relay;
 mod nearby_vectors;
 mod pairing;
 mod presence;
+mod push_relay_revocations;
 mod session;
 mod share_github;
 

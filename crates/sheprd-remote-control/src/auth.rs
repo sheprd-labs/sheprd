@@ -302,6 +302,9 @@ pub(crate) struct Auth {
     pair_limit: RateLimiter<IpAddr>,
     pairings: Pairings,
     presence: Presences,
+    /// Where an unpaired device's push relay handles go to be revoked,
+    /// when pushes go through the push relay (`set_push_relay_revocations`).
+    push_relay_revocations: Option<crate::apns::push_relay_revoke::Revocations>,
     /// What a nearby offer says about this computer's relays, when it
     /// listens on any (`set_relay_offer`).
     relay_offer: Option<crate::relay::Info>,
@@ -341,6 +344,7 @@ impl Auth {
             ),
             pairings: Pairings::default(),
             presence: Presences::default(),
+            push_relay_revocations: None,
             relay_offer: None,
             relay_pairing: None,
             revoked: watch::Sender::new(0),
@@ -414,6 +418,30 @@ impl Auth {
         };
         if let Err(error) = access.keys.remove(device) {
             tracing::warn!(error = %error, "could not remove a desktop's SSH key");
+        }
+    }
+
+    /// Revokes the push relay handles of every device unpaired from now on
+    /// through `revocations` (`apns::push_relay_revoke`).
+    pub(crate) fn set_push_relay_revocations(
+        &mut self,
+        revocations: crate::apns::push_relay_revoke::Revocations,
+    ) {
+        self.push_relay_revocations = Some(revocations);
+    }
+
+    /// The push relay handles `record` holds, when they are to be revoked.
+    fn push_relay_handles(&self, record: &DeviceRecord) -> Vec<crate::apns::Handle> {
+        if self.push_relay_revocations.is_none() {
+            return Vec::new();
+        }
+        crate::apns::Registration::from_stored(record.apns.as_ref()).handles()
+    }
+
+    /// Queues `handles` of a device that is gone for revoking.
+    fn revoke_push_relay_handles(&self, handles: Vec<crate::apns::Handle>) {
+        if let Some(revocations) = &self.push_relay_revocations {
+            crate::apns::push_relay_revoke::queue(revocations, handles);
         }
     }
 
@@ -707,8 +735,10 @@ impl Auth {
     /// paired with from here are owed a revocation, which Sheprd carries
     /// out.
     pub(crate) fn revoke(&mut self, device: &DeviceId) -> Result<bool> {
+        let mut handles = Vec::new();
         if let Some(record) = self.devices.get(device) {
             self.links.forget(record)?;
+            handles = self.push_relay_handles(record);
         }
         self.host_relays.forget(device);
         // The device goes either way; a stale digest only names a device
@@ -718,6 +748,9 @@ impl Auth {
         self.revoked();
         self.forget_ssh(device);
         let revoked = self.devices.revoke(device);
+        if let Ok(true) = revoked {
+            self.revoke_push_relay_handles(handles);
+        }
         self.sync_apps();
         revoked
     }
@@ -859,6 +892,10 @@ impl Auth {
     /// Forgets devices unseen for `idle_ms` and ends their sessions.
     pub(crate) fn expire_idle(&mut self, now_ms: u64, idle_ms: u64) -> Result<Vec<DeviceId>> {
         let expired = self.devices.expire_idle(now_ms, idle_ms)?;
+        for record in &expired {
+            self.revoke_push_relay_handles(self.push_relay_handles(record));
+        }
+        let expired: Vec<DeviceId> = expired.into_iter().map(|record| record.id).collect();
         for device in &expired {
             self.sessions.end_device(device);
             self.forget_ssh(device);

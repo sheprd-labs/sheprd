@@ -22,6 +22,8 @@
 //! - [`alert`]: chat notifications for the native app, sealed to the
 //!   device with [`seal`] so APNs relays only ciphertext.
 //! - `relayed`: Live Activity payloads sealed the same way, for the relay.
+//! - [`push_relay_revoke`]: an unpaired device's push relay handles,
+//!   revoked at the push relay.
 //!
 //! A device only ever supplies hex tokens, or relay handles with the name
 //! of an environment. The host is one of Apple's two, chosen by the user's
@@ -35,6 +37,7 @@ mod decide;
 mod delivery;
 mod pacer;
 mod payload;
+pub(crate) mod push_relay_revoke;
 mod recipient;
 mod redact;
 mod relayed;
@@ -49,7 +52,6 @@ pub(crate) use pacer::Pacer;
 #[cfg(test)]
 pub(crate) use payload::ATTRIBUTES_TYPE;
 pub(crate) use payload::{Alert, Attributes, ContentState, Event, Live, Phase};
-#[cfg(test)]
 pub(crate) use recipient::Handle;
 pub(crate) use recipient::Recipient;
 pub(crate) use sheprd_apns::{DeviceToken, Outcome, Priority, Push, PushType, Sender, seal};

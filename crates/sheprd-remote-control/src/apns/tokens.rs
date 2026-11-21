@@ -18,7 +18,7 @@
 //! handle object instead (`recipient`), and `notify_key` is also what Live
 //! Activity content is sealed to.
 
-use super::{Error, Recipient, Result};
+use super::{Error, Recipient, Result, recipient::Handle};
 use crate::app::config::ActivityDetail;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use p256::PublicKey;
@@ -134,6 +134,26 @@ impl Registration {
     /// once the device registered both.
     pub(crate) fn alerts(&self) -> Option<(&Recipient, &PublicKey)> {
         Some((self.alert.as_ref()?, self.notify_key.as_ref()?.key()))
+    }
+
+    /// Every relay handle this registration holds, each once: what
+    /// unpairing the device revokes at the relay. Tokens are left out;
+    /// only the device's own key could reach them.
+    pub(crate) fn handles(&self) -> Vec<Handle> {
+        let mut handles: Vec<Handle> = Vec::new();
+        let recipients = self
+            .push_to_start
+            .iter()
+            .chain(&self.alert)
+            .chain(self.activities.iter().map(|activity| &activity.token));
+        for recipient in recipients {
+            if let Recipient::Handle(handle) = recipient
+                && !handles.contains(handle)
+            {
+                handles.push(handle.clone());
+            }
+        }
+        handles
     }
 
     fn check(&self) -> Result<()> {
