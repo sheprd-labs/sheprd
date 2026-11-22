@@ -25,6 +25,9 @@ mod naming;
 // Plugin actions run through POSIX host scripts.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod plugins;
+// The popover's keyboard scrolling over plugin rows, which POSIX hosts offer.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod plugins_scroll;
 mod pull_requests;
 mod remote_branches;
 mod rename_double_click;

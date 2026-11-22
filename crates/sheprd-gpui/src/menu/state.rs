@@ -126,6 +126,9 @@ pub(crate) struct MenuState {
     pub focus: FocusHandle,
     pub(super) selected: Option<usize>,
     pub(super) workspace_selected: Option<WorkspaceMenuAction>,
+    /// The menu panel's scroll on the workspace popover, whose sections are
+    /// its children, so the selected action scrolls into view.
+    pub(super) workspace_scroll: ScrollHandle,
     pub(super) git_selected: Option<git::Row>,
     pub(super) git_create_target: Option<git::CreateTarget>,
     /// The merge dialog's method, and the pull request (with its head) it
@@ -422,6 +425,7 @@ impl MenuState {
             focus: cx.focus_handle(),
             selected: None,
             workspace_selected: None,
+            workspace_scroll: ScrollHandle::new(),
             git_selected: None,
             git_create_target: None,
             merge_method: None,

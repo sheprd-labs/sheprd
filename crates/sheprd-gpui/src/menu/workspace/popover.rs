@@ -12,6 +12,18 @@ use crate::{
 };
 use gpui::{prelude::*, *};
 
+/// One part of the popover, top to bottom; each is one child of the menu
+/// panel, except the plugin section, which is one per heading and row.
+enum Section {
+    Header,
+    Tiles(Box<[Tile; 6]>),
+    Gap,
+    Row(WorkspaceMenuAction, Label),
+    Danger(WorkspaceMenuAction, Label),
+    Plugins,
+    PullRequest,
+}
+
 /// An action's menu label: a message ID, shown in the current language. Its
 /// English names the action's elements, so tests find them in any language.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -231,65 +243,166 @@ impl SheprdWindow {
         needed.max(px(WIDTH)).min(room)
     }
 
+    /// Fills the menu `panel` with the popover's sections, one panel child
+    /// each, so the panel's scroll handle reaches every action.
     pub(in crate::menu) fn render_workspace_popover(
         &self,
+        panel: Stateful<Div>,
         pr_width: Pixels,
         cx: &mut Context<Self>,
-    ) -> Div {
+    ) -> Stateful<Div> {
+        let mut panel = panel
+            .track_scroll(&self.menu.workspace_scroll)
+            .flex()
+            .flex_col();
+        for section in self.workspace_sections() {
+            panel = match section {
+                Section::Header => panel.children(self.render_workspace_header(cx)),
+                Section::Tiles(tiles) => panel.child(self.render_workspace_tiles(&tiles[..], cx)),
+                Section::Gap => panel.child(div().h(px(6.))),
+                Section::Row(action, label) => {
+                    panel.child(self.render_workspace_row(action, label, cx))
+                }
+                Section::Danger(action, label) => {
+                    panel.child(self.render_workspace_danger(action, label, cx))
+                }
+                Section::Plugins => panel.children(self.render_workspace_plugins(cx)),
+                Section::PullRequest => panel.child(self.render_workspace_pr(pr_width, cx)),
+            };
+        }
+        panel
+    }
+
+    /// The popover's sections, top to bottom: the header (with the mute
+    /// toggle), the tiles, the rarer actions, the destructive one, the plugin
+    /// actions, and the pull request.
+    fn workspace_sections(&self) -> Vec<Section> {
+        let items = self.workspace_items();
+        let mut sections = Vec::new();
+        if self.menu.target.is_some() {
+            sections.push(Section::Header);
+        }
+        let (tiles, rest) = layout(&items);
+        sections.push(Section::Tiles(Box::new(tiles)));
+        let delete = WorkspaceMenuAction::Dialog(WorkspaceAction::DeleteWorktree);
+        let (rows, destructive): (Vec<_>, Vec<_>) =
+            rest.into_iter().partition(|(action, _)| *action != delete);
+        if !rows.is_empty() {
+            sections.push(Section::Gap);
+        }
+        sections.extend(
+            rows.into_iter()
+                .map(|(action, label)| Section::Row(action, label)),
+        );
+        sections.extend(
+            destructive
+                .into_iter()
+                .map(|(action, label)| Section::Danger(action, label)),
+        );
+        sections.push(Section::Plugins);
+        if self.pr_signed_in() {
+            sections.push(Section::PullRequest);
+        }
+        sections
+    }
+
+    /// Scrolls the panel to the action the keyboard selected, which a
+    /// popover taller than the window can hold below its edge.
+    pub(in crate::menu) fn reveal_workspace_selection(&self) {
+        let Some(selected) = self.menu.workspace_selected else {
+            return;
+        };
+        let plugins = self
+            .menu
+            .target
+            .as_ref()
+            .map_or(&[][..], |target| &target.plugins[..]);
+        let mut child = 0;
+        for section in self.workspace_sections() {
+            let holds = match (&section, selected) {
+                (Section::Header, action) => action.in_header(),
+                (Section::Tiles(tiles), action) => tiles.iter().any(|tile| tile.action == action),
+                (Section::Row(action, _) | Section::Danger(action, _), selected) => {
+                    *action == selected
+                }
+                (Section::Plugins, WorkspaceMenuAction::Plugin(index)) => {
+                    child += crate::plugin_actions::child_index(plugins, index);
+                    true
+                }
+                (Section::PullRequest, WorkspaceMenuAction::PullRequest) => true,
+                _ => false,
+            };
+            if holds {
+                self.menu.workspace_scroll.scroll_to_item(child);
+                return;
+            }
+            // Each plugin row is a child, and so is each plugin's heading.
+            child += match section {
+                Section::Plugins => {
+                    plugins.len() + plugins.iter().filter(|row| row.heading.is_some()).count()
+                }
+                _ => 1,
+            };
+        }
+    }
+
+    /// The header naming the workspace, with the toggle that mutes it.
+    fn render_workspace_header(&self, cx: &mut Context<Self>) -> Option<Div> {
         let theme = &self.theme;
         let font = &self.config.ui;
         let items = self.workspace_items();
-        let mut panel = div().flex().flex_col();
-        if let Some(target) = &self.menu.target {
-            let names = div()
-                .flex_1()
-                .min_w_0()
-                .child(
-                    div()
-                        .debug_selector(|| "workspace-menu-name".into())
-                        // Long names wrap: the header is the one place the
-                        // full name shows when the sidebar row cuts it off.
-                        .whitespace_normal()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .child(crate::sidebar::label_text(&target.label)),
-                )
-                .when_some(
-                    target
-                        .branch
-                        .as_deref()
-                        .filter(|branch| !branch.trim().is_empty()),
-                    |names, branch| {
-                        names.child(
-                            div()
-                                .debug_selector(|| "workspace-menu-branch".into())
-                                .truncate()
-                                .text_color(rgb(theme.muted))
-                                .text_size(px(font.size * 0.9))
-                                .child(crate::sidebar::label_text(branch)),
-                        )
-                    },
-                );
-            panel = panel.child(
+        let target = self.menu.target.as_ref()?;
+        let names = div()
+            .flex_1()
+            .min_w_0()
+            .child(
                 div()
-                    .debug_selector(|| "workspace-menu-header".into())
-                    .px(px(8.))
-                    .py(px(6.))
-                    .mb(px(4.))
-                    .border_b_1()
-                    .border_color(rgb(theme.active))
-                    .flex()
-                    .items_start()
-                    .gap(px(8.))
-                    .child(names)
-                    .children(
-                        items
-                            .iter()
-                            .find(|(action, _)| action.in_header())
-                            .map(|&(action, label)| self.render_workspace_mute(action, label, cx)),
-                    ),
+                    .debug_selector(|| "workspace-menu-name".into())
+                    // Long names wrap: the header is the one place the
+                    // full name shows when the sidebar row cuts it off.
+                    .whitespace_normal()
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .child(crate::sidebar::label_text(&target.label)),
+            )
+            .when_some(
+                target
+                    .branch
+                    .as_deref()
+                    .filter(|branch| !branch.trim().is_empty()),
+                |names, branch| {
+                    names.child(
+                        div()
+                            .debug_selector(|| "workspace-menu-branch".into())
+                            .truncate()
+                            .text_color(rgb(theme.muted))
+                            .text_size(px(font.size * 0.9))
+                            .child(crate::sidebar::label_text(branch)),
+                    )
+                },
             );
-        }
-        let (tiles, rest) = layout(&items);
+        Some(
+            div()
+                .debug_selector(|| "workspace-menu-header".into())
+                .px(px(8.))
+                .py(px(6.))
+                .mb(px(4.))
+                .border_b_1()
+                .border_color(rgb(theme.active))
+                .flex()
+                .items_start()
+                .gap(px(8.))
+                .child(names)
+                .children(
+                    items
+                        .iter()
+                        .find(|(action, _)| action.in_header())
+                        .map(|&(action, label)| self.render_workspace_mute(action, label, cx)),
+                ),
+        )
+    }
+
+    /// The fixed grid of large action tiles.
+    fn render_workspace_tiles(&self, tiles: &[Tile], cx: &mut Context<Self>) -> Div {
         let mut grid = div()
             .debug_selector(|| "workspace-menu-tiles".into())
             .flex()
@@ -304,24 +417,7 @@ impl SheprdWindow {
                     .children(row.iter().map(|tile| self.render_workspace_tile(*tile, cx))),
             );
         }
-        panel = panel.child(grid);
-        let delete = WorkspaceMenuAction::Dialog(WorkspaceAction::DeleteWorktree);
-        let (rows, destructive): (Vec<_>, Vec<_>) =
-            rest.into_iter().partition(|(action, _)| *action != delete);
-        if !rows.is_empty() {
-            panel = panel.child(div().h(px(6.)));
-        }
-        for (action, label) in rows {
-            panel = panel.child(self.render_workspace_row(action, label, cx));
-        }
-        for (action, label) in destructive {
-            panel = panel.child(self.render_workspace_danger(action, label, cx));
-        }
-        panel = panel.children(self.render_workspace_plugins(cx));
-        if self.pr_signed_in() {
-            panel = panel.child(self.render_workspace_pr(pr_width, cx));
-        }
-        panel
+        grid
     }
 
     /// The header's toggle for the workspace's notifications, `action` with

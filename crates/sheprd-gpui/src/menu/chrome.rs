@@ -4,6 +4,7 @@
 
 // i18n: migrated
 mod keys;
+mod panel_pages;
 
 use super::{MENU_MARGIN, Page, WorkspaceAction, devices::rail};
 use crate::direction::Logical;
@@ -700,11 +701,8 @@ impl SheprdWindow {
         } else if page == Page::Workspace {
             // The PR card's text width: the panel's inset and border, and the
             // card's own margin, border, and padding.
-            panel =
-                panel.child(self.render_workspace_popover(
-                    (popover.unwrap_or_default() - px(36.)).max(px(0.)),
-                    cx,
-                ));
+            let pr_width = (popover.unwrap_or_default() - px(36.)).max(px(0.));
+            panel = self.render_workspace_popover(panel, pr_width, cx);
         } else if let Page::Dialog(action) = page {
             panel = panel.child(self.render_workspace_dialog(action, cx));
         } else if page == Page::CarryPane {
@@ -741,18 +739,10 @@ impl SheprdWindow {
                 | Page::RemoveDevice
         ) {
             panel = panel.child(self.render_host_menu(cx));
-        } else if page == Page::MoveTab {
-            panel = self.render_tab_move_picker(panel, cx);
-        } else if page == Page::Tab {
-            panel = self.render_tab_actions(panel, cx);
+        } else if let Some(render) = page.panel_renderer() {
+            panel = render(self, panel, cx);
         } else if page.is_tab_menu() {
             panel = panel.child(self.render_tab_menu(cx));
-        } else if page == Page::Group {
-            panel = self.render_group_menu(panel, cx);
-        } else if page == Page::MovePane {
-            panel = self.render_move_picker(panel, cx);
-        } else if page == Page::Pane {
-            panel = self.render_pane_actions(panel, cx);
         } else if matches!(
             page,
             Page::RenamePane | Page::PaneProcesses | Page::KillProcesses
