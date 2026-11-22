@@ -101,7 +101,7 @@ pub use sessions::{
 pub use ssh::mux::Lane as SshLane;
 pub use ssh::{
     Bridge, SshChannel, connect_command, remote_socket, script_command, serve_command,
-    shared_script_command,
+    shared_powershell_command, shared_script_command,
 };
 pub use ssh::{
     Destination, FORWARD_READY, HostKeyFingerprint, HostKeyScan, HostKeys, HostProbe,

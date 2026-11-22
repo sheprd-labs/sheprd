@@ -1285,7 +1285,11 @@ machine is read in process; each connected Linux or macOS remote host is read
 every two seconds over its own SSH shell, kept open while the host is connected
 (`/proc` on Linux; `vm_stat` and a one-second `iostat` on macOS; `df -Pk
 "$HOME"` on both, with `/proc/uptime` on Linux and `kern.boottime` on macOS).
-Other remote systems show it as unavailable. Set top-level `show_system_load = false`, or turn off **Show CPU
+A Windows host, whose shell refuses `/bin/sh`, is read the same way through
+one `powershell.exe` kept open instead (`GetSystemTimes`,
+`GlobalMemoryStatusEx` and `GetTickCount64`, and the volume holding the user's
+profile); it reports no load average or GPU. Other remote systems show it as
+unavailable. Set top-level `show_system_load = false`, or turn off **Show CPU
 and memory** in Settings, to hide it and stop sampling while no
 [Devices overview](#devices-overview) is open.
 

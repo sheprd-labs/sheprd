@@ -620,6 +620,25 @@ pub fn shared_script_command(
     Ok((command, channel.map(SshChannel)))
 }
 
+/// [`shared_script_command`] for a host whose shell is `cmd.exe` or
+/// PowerShell: `script` runs under `powershell.exe`, encoded so neither login
+/// shell reinterprets it. Keep the channel until the child is reaped.
+pub fn shared_powershell_command(
+    target: &str,
+    script: &str,
+    lane: mux::Lane,
+) -> Result<(Command, Option<SshChannel>)> {
+    validate_target(target)?;
+    let (command, channel) = mux::command(
+        target,
+        &powershell::encoded_command(script),
+        lane,
+        Instant::now() + SHARED_WAIT,
+        || false,
+    );
+    Ok((command, channel.map(SshChannel)))
+}
+
 /// How long [`shared_script_command`] waits for a host's shared connection
 /// before connecting directly.
 const SHARED_WAIT: Duration = Duration::from_secs(10);

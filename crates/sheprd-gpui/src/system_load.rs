@@ -1,10 +1,10 @@
 //! CPU, memory and GPU of each host the window lists, for the status bar and
 //! the sidebar's host rows. Every host has its own worker thread sampling it every
 //! couple of seconds: this machine through `sysinfo`, a remote host over one
-//! SSH shell, and a WSL distribution over one `wsl.exe` shell, kept open
-//! between samples. The UI thread only starts and stops
-//! workers and takes their samples on later ticks, so a slow or unreachable
-//! host never blocks rendering or delays another host.
+//! SSH shell (one `powershell.exe` on a Windows host), and a WSL distribution
+//! over one `wsl.exe` shell, kept open between samples. The UI thread only
+//! starts and stops workers and takes their samples on later ticks, so a slow
+//! or unreachable host never blocks rendering or delays another host.
 // i18n: migrated
 
 mod error;
@@ -12,6 +12,7 @@ mod gpu;
 mod hosted;
 mod render;
 mod sample;
+mod windows;
 
 #[cfg(test)]
 mod tests;
@@ -69,6 +70,12 @@ enum Source {
         os: Os,
         ticks: Option<Ticks>,
     },
+    /// An SSH host whose shell is `cmd.exe` or PowerShell. No GPU tool runs
+    /// there.
+    Windows {
+        sampler: windows::Sampler,
+        ticks: Option<Ticks>,
+    },
 }
 
 impl Source {
@@ -80,7 +87,10 @@ impl Source {
                 disk: HomeDisk::open(),
                 gpu: gpu::Local::open(),
             }),
-            Host::Ssh(target) => Self::remote(Shell::connect(target).map_err(crate::Error::from)),
+            Host::Ssh(target) => match Shell::connect(target) {
+                Ok(shell) => Self::remote(Ok(shell)),
+                Err(posix) => Self::powershell(target, posix),
+            },
             // A distribution is sampled as a Linux host, through `wsl.exe`.
             Host::Wsl(distro) => {
                 Self::remote(Shell::connect_wsl(distro).map_err(crate::Error::from))
@@ -103,6 +113,26 @@ impl Source {
             os,
             ticks: None,
         })
+    }
+
+    /// A host whose shell refuses `/bin/sh`, as `cmd.exe` and PowerShell do,
+    /// closes the POSIX shell before it is ready, and is read by
+    /// [`windows::Sampler`] instead. That costs an unreachable host a second
+    /// attempt; a host that answers neither keeps the POSIX shell's error.
+    fn powershell(target: &str, posix: sheprd_usage::Error) -> Result<Self> {
+        if !matches!(posix, sheprd_usage::Error::Unreachable) {
+            return Err(remote(posix));
+        }
+        match windows::Sampler::connect(target) {
+            Ok(sampler) => Ok(Self::Windows {
+                sampler,
+                ticks: None,
+            }),
+            Err(error) => {
+                tracing::debug!(category = "system-load", %error, "no PowerShell sampler either");
+                Err(remote(posix))
+            }
+        }
     }
 
     /// `gpu` probes the host's cards too; without it no GPU tool runs.
@@ -143,6 +173,12 @@ impl Source {
             Self::Remote { shell, os, ticks } => {
                 let output = shell.run(&os.command(gpu), STEP_TIMEOUT).map_err(remote)?;
                 let answer = sample::parse(&output.stdout, *ticks)?;
+                *ticks = answer.ticks;
+                Ok(answer.sample)
+            }
+            Self::Windows { sampler, ticks } => {
+                let output = sampler.sample(STEP_TIMEOUT).map_err(remote)?;
+                let answer = sample::parse(&output, *ticks)?;
                 *ticks = answer.ticks;
                 Ok(answer.sample)
             }
