@@ -215,11 +215,14 @@ fn primary_session_work_goes_to_the_primary_whichever_session_is_shown(cx: &mut 
 
 #[test]
 fn an_adopted_terminal_loses_what_adopts_it_and_keeps_its_chat() {
-    use sheprd_session::{NEW_WORKSPACE_LABEL, SESSION_LABEL, WORKSPACE_LABEL};
+    use sheprd_session::{
+        NEW_WORKSPACE_LABEL, NEW_WORKSPACE_TITLE_LABEL, SESSION_LABEL, WORKSPACE_LABEL,
+    };
     let mut labels: std::collections::BTreeMap<String, String> = [
         (WORKSPACE_LABEL, "w1"),
         (SESSION_LABEL, "dev"),
         (NEW_WORKSPACE_LABEL, FOLDER),
+        (NEW_WORKSPACE_TITLE_LABEL, "Review"),
         (sheprd_chat_protocol::TOKEN, "endpoint"),
     ]
     .into_iter()
@@ -232,6 +235,7 @@ fn an_adopted_terminal_loses_what_adopts_it_and_keeps_its_chat() {
     }
     assert_eq!(sheprd_session::labelled_workspace(&labels), None);
     assert_eq!(sheprd_session::new_workspace(&labels), None);
+    assert_eq!(sheprd_session::new_workspace_title(&labels), None);
     assert!(
         labels.contains_key(sheprd_chat_protocol::TOKEN),
         "still a chat"

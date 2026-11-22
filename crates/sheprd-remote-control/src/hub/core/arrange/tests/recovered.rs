@@ -12,9 +12,15 @@ fn a_phone_changes_a_recovered_pane_the_saved_file_still_names_by_its_old_id() {
         TerminalId::new("t9").unwrap(),
     )]);
     source
-        .arrange_saved(4, "t9", &Op::RenamePane(Some("server".into())))
+        .arrange_saved(
+            &TabRef::File(4),
+            "t9",
+            &Op::RenamePane(Some("server".into())),
+        )
         .unwrap();
-    source.arrange_saved(4, "t9", &Op::Zoom).unwrap();
+    source
+        .arrange_saved(&TabRef::File(4), "t9", &Op::Zoom)
+        .unwrap();
     let location = &read(&path)["tabs"][0]["location"];
     assert_eq!(location["panes"]["first"], "t9");
     assert_eq!(location["panes"]["second"], "t2");

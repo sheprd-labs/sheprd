@@ -52,14 +52,17 @@ public struct NewWorkspaceRequest: Codable, Hashable, Sendable {
     /// The Herdr session to open it in, as the computer's home names it;
     /// left out, it opens where the computer puts new workspaces.
     public var session: String?
+    /// The workspace's name; left out, it is named for its folder or branch.
+    public var title: String?
 
-    public init(cwd: String, branch: String = "", agent: String, prompt: String = "", start: ChatStart? = nil, session: String? = nil) {
+    public init(cwd: String, branch: String = "", agent: String, prompt: String = "", start: ChatStart? = nil, session: String? = nil, title: String? = nil) {
         self.cwd = cwd
         self.branch = branch
         self.agent = agent
         self.prompt = prompt
         self.start = start
         self.session = session
+        self.title = title
     }
 
     /// The branch proposed for `seed`, the same one the desktop's new

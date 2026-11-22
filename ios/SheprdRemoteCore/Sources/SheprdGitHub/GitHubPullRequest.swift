@@ -19,6 +19,8 @@ public struct GitHubPullRequest: Hashable, Sendable {
     public var checks: [PullRequestCheck]
     /// GitHub has more than the first 100 checks.
     public var moreChecks: Bool
+    /// Waiting in the repository's merge queue.
+    public var inMergeQueue = false
 
     public enum State: String, Hashable, Sendable, Codable {
         case open = "OPEN", closed = "CLOSED", merged = "MERGED", unknown
@@ -48,6 +50,7 @@ public struct GitHubPullRequest: Hashable, Sendable {
         case .closed: return .attention
         case .unknown: return .other
         case .open where isDraft: return .other
+        case .open where inMergeQueue: return .queued
         case .open: break
         }
         let failed = checks.contains { $0.state == .failed }
@@ -204,6 +207,7 @@ enum PullRequestAnswer {
         var reviewDecision: String?
         var mergeable: String?
         var mergeStateStatus: String?
+        var isInMergeQueue: Bool?
         var headRefName: String
         var headRefOid: String
         var author: Login?
@@ -249,7 +253,8 @@ enum PullRequestAnswer {
                 author: author?.login,
                 headRefOid: headRefOid.count == 40 && headRefOid.allSatisfy(\.isHexDigit) ? headRefOid : "",
                 checks: (contexts?.nodes ?? []).compactMap { $0?.check(host: host) },
-                moreChecks: contexts?.pageInfo?.hasNextPage ?? false
+                moreChecks: contexts?.pageInfo?.hasNextPage ?? false,
+                inMergeQueue: isInMergeQueue ?? false
             )
         }
     }

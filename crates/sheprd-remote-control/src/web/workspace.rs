@@ -3,15 +3,16 @@
 //! as Sheprd's workspace menu does. Herdr 1 does both through its API; a
 //! workspace Sheprd keeps for Herdr 2 is Sheprd's to change, while it runs.
 //!
-//! Deleting is never forced, so a checkout with uncommitted changes stays,
-//! and one whose `.herdr/worktree.toml` has an archive script is left for
+//! A checkout with uncommitted changes stays unless the phone asks with
+//! `?discard=true`, which it sends only once the person confirmed losing
+//! them. One whose `.herdr/worktree.toml` has an archive script is left for
 //! Sheprd, which runs that script first.
 
 use super::{ApiError, Device, Shared};
 use crate::{control::layout::Op, hub::ApiMethod};
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
 };
 use serde_json::{Value, json};
 use sheprd_client::{ConnectTarget, ScriptHost, ScriptLimits, run_script, shell_quote};
@@ -26,7 +27,10 @@ const MAX_SCRIPTS: u64 = 64 * 1024;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Action {
     Close,
-    RemoveWorktree,
+    /// `discard`: the person confirmed losing uncommitted changes.
+    RemoveWorktree {
+        discard: bool,
+    },
 }
 
 impl Action {
@@ -34,7 +38,7 @@ impl Action {
     fn op(self, workspace: String) -> Op {
         match self {
             Self::Close => Op::CloseWorkspace { workspace },
-            Self::RemoveWorktree => Op::RemoveWorktree { workspace },
+            Self::RemoveWorktree { discard } => Op::RemoveWorktree { workspace, discard },
         }
     }
 }
@@ -47,9 +51,9 @@ pub(crate) fn herdr_call(action: Action, workspace: &str) -> (ApiMethod, Value) 
             ApiMethod::WorkspaceClose,
             json!({ "workspace_id": workspace, "close_group": false }),
         ),
-        Action::RemoveWorktree => (
+        Action::RemoveWorktree { discard } => (
             ApiMethod::WorktreeRemove,
-            json!({ "workspace_id": workspace, "force": false, "trust_repository": false }),
+            json!({ "workspace_id": workspace, "force": discard, "trust_repository": false }),
         ),
     }
 }
@@ -149,12 +153,23 @@ pub(super) async fn close(
     act(&state, workspace, Action::Close).await
 }
 
+/// The query of a deletion; a phone that predates it sends none.
+#[derive(serde::Deserialize, Default)]
+pub(super) struct Removal {
+    #[serde(default)]
+    discard: bool,
+}
+
 pub(super) async fn remove_worktree(
     State(state): State<Shared>,
     _device: Device,
     Path(workspace): Path<String>,
+    Query(removal): Query<Removal>,
 ) -> Result<Json<Value>, ApiError> {
-    act(&state, workspace, Action::RemoveWorktree).await
+    let action = Action::RemoveWorktree {
+        discard: removal.discard,
+    };
+    act(&state, workspace, action).await
 }
 
 async fn act(state: &Shared, workspace: String, action: Action) -> Result<Json<Value>, ApiError> {
@@ -167,7 +182,7 @@ async fn act(state: &Shared, workspace: String, action: Action) -> Result<Json<V
             state.hub.workspace_target(listed.session.as_deref()),
         )
     };
-    if action == Action::RemoveWorktree {
+    if matches!(action, Action::RemoveWorktree { .. }) {
         if worktree.is_some_and(|tree| !tree.is_linked_worktree) {
             return Err(ApiError::Invalid("only a linked worktree can be deleted"));
         }
@@ -187,7 +202,7 @@ async fn act(state: &Shared, workspace: String, action: Action) -> Result<Json<V
     }
     if state.hub.kept_workspace(&workspace) {
         let keeper = crate::hub::Keeper::Saved {
-            tab: 0,
+            tab: crate::hub::TabRef::File(0),
             terminal: String::new(),
         };
         crate::native::changes::arrange(state, keeper, action.op(workspace)).await?;

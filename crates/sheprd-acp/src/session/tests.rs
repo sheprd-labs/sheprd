@@ -14,18 +14,24 @@ mod attach;
 mod attachments;
 mod auto_accept;
 mod bounds;
+mod briefs;
+mod carry;
 mod commands;
+mod continued;
 mod flow;
 mod harnesses;
 mod history;
+mod known;
 mod linked_pictures;
 mod media;
 mod opencode;
 mod origin;
 mod permissions;
 mod prompt_titles;
+mod pull_requests;
 mod questions;
 mod resume;
+mod sent_notes;
 mod settings;
 mod streaming;
 mod threads;
@@ -42,6 +48,8 @@ struct Harness {
     prompts: Prompts,
     reports: Reports,
     session: TestSession,
+    /// The settings the session reported a new session offered.
+    settings: Rc<RefCell<Vec<(Agent, crate::known::Settings)>>>,
     /// The processes the session reported a switch's agent started as.
     started: Rc<RefCell<Vec<u32>>>,
     /// The agents the session reported switching to.
@@ -56,11 +64,14 @@ fn config() -> Config {
         exit_with_agent: false,
         harness: Some(Agent::Claude),
         history: None,
+        known: Default::default(),
+        listens: false,
         load: None,
         login_hint: Some("run `claude` and use /login".to_owned()),
         pane: Some("p_1".to_owned()),
         prompts: Default::default(),
         require_load: false,
+        settings: None,
         sheprd: None,
     }
 }
@@ -76,6 +87,8 @@ fn harness_with(config: Config) -> Harness {
     let switched_sink = Rc::clone(&switched);
     let started: Rc<RefCell<Vec<u32>>> = Rc::default();
     let started_sink = Rc::clone(&started);
+    let settings: Rc<RefCell<Vec<(Agent, crate::known::Settings)>>> = Rc::default();
+    let settings_sink = Rc::clone(&settings);
     let session = Session::new(
         config,
         Outbox(sender),
@@ -84,6 +97,9 @@ fn harness_with(config: Config) -> Harness {
             Update::Harness(agent) => switched_sink.borrow_mut().push(agent),
             Update::Opened(id) => opened_sink.borrow_mut().push(id),
             Update::Prompt(prompt) => prompt_sink.borrow_mut().push(prompt),
+            Update::Settings(agent, settings) => {
+                settings_sink.borrow_mut().push((agent, settings));
+            }
             Update::Started(pid) => started_sink.borrow_mut().push(pid),
         }) as Box<dyn FnMut(Update)>,
     );
@@ -93,6 +109,7 @@ fn harness_with(config: Config) -> Harness {
         prompts,
         reports,
         session,
+        settings,
         started,
         switched,
     }

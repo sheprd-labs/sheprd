@@ -1,0 +1,1 @@
+language-name = 简体中文

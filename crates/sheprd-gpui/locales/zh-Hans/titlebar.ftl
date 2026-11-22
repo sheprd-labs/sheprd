@@ -1,0 +1,11 @@
+titlebar-back = 后退
+titlebar-forward = 前进
+titlebar-sidebar = 侧边栏
+titlebar-accounts = 账号
+titlebar-accounts-attention = 有账号需要处理
+titlebar-minimize = 最小化
+titlebar-maximize = 最大化
+titlebar-restore = 还原
+titlebar-close = 关闭
+titlebar-unopened = { $commits } 个提交，尚无拉取请求
+titlebar-pull-request = 拉取请求 #{ $number }

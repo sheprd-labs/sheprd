@@ -90,6 +90,9 @@ struct PullRequestMappingTests {
     @Test func toneFollowsTheComputersRules() {
         var pr = GitHubPullRequest(number: 1, title: "", url: "", state: .open, isDraft: false, reviewDecision: .none, mergeable: .unknown, mergeState: .clean, author: nil, headRefOid: "", checks: [], moreChecks: false)
         #expect(pr.tone == .ready)
+        pr.inMergeQueue = true
+        #expect(pr.tone == .queued)
+        pr.inMergeQueue = false
         pr.mergeState = .unstable
         pr.checks = [PullRequestCheck(name: "a", state: .pending)]
         #expect(pr.tone == .waiting)

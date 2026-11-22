@@ -10,10 +10,41 @@ fn parse(value: serde_json::Value) -> Option<ClientMessage> {
 }
 
 #[test]
+fn a_chat_followed_in_the_background_says_so_and_an_older_phone_does_not() {
+    let message =
+        parse(json!({"type": "subscribe", "view": "chat", "pane": "p1", "background": true}));
+    assert!(matches!(
+        message,
+        Some(ClientMessage::Subscribe {
+            background: true,
+            ..
+        })
+    ));
+    let older = parse(json!({"type": "subscribe", "view": "chat", "pane": "p1"}));
+    assert!(matches!(
+        older,
+        Some(ClientMessage::Subscribe {
+            background: false,
+            ..
+        })
+    ));
+    // Sent only when set, so the wire is unchanged for a screen's view.
+    let wire = serde_json::to_value(ClientMessage::Subscribe {
+        background: false,
+        view: View::Home,
+        since: None,
+        size: None,
+    })
+    .unwrap();
+    assert!(wire.get("background").is_none());
+}
+
+#[test]
 fn every_view_subscribes_and_unsubscribes() {
     assert_eq!(
         parse(json!({"type": "subscribe", "view": "home"})),
         Some(ClientMessage::Subscribe {
+            background: false,
             view: View::Home,
             since: None,
             size: None,
@@ -22,6 +53,7 @@ fn every_view_subscribes_and_unsubscribes() {
     assert_eq!(
         parse(json!({"type": "subscribe", "view": "term", "pane": "p2"})),
         Some(ClientMessage::Subscribe {
+            background: false,
             view: View::Term { pane: "p2".into() },
             since: None,
             size: None,

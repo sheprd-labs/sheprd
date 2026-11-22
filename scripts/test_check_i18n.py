@@ -261,5 +261,27 @@ class PlatformTests(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("no Comment[en_US] for en-US", errors[0])
 
+    def test_system_only_language_can_ship_without_installer_or_desktop_text(self) -> None:
+        installer = [Path("scripts/release/installer/en-US.isl")]
+        self.assertEqual(
+            check_i18n.platform(
+                self.FILES, self.PLIST, installer, "Comment=Client\n", frozenset({"he"})
+            ),
+            [],
+        )
+
+    def test_system_only_tags_must_name_non_default_catalogs(self) -> None:
+        installer = [Path("scripts/release/installer/en-US.isl")]
+        self.assertEqual(
+            check_i18n.platform(
+                self.FILES, self.PLIST, installer, "Comment=Client\n",
+                frozenset({"he", "en-US", "fr"}),
+            ),
+            [
+                f"{check_i18n.SYSTEM_ONLY}: en-US must name a non-default catalog",
+                f"{check_i18n.SYSTEM_ONLY}: fr must name a non-default catalog",
+            ],
+        )
+
 if __name__ == "__main__":
     unittest.main()

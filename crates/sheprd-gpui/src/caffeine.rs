@@ -87,8 +87,10 @@ struct Caffeine {
     changes: u64,
     /// Dropping it ends the worker, which releases any hold on its own thread.
     worker: Option<SyncSender<Request>>,
-    /// Windows whose agents were last seen working.
-    working: HashSet<WindowId>,
+    /// Each window's endpoints whose agents were last seen working. Kept per
+    /// endpoint so one that cannot be read holds only what it was doing: a
+    /// host that never connects keeps nothing awake for the others.
+    working: HashSet<(WindowId, String)>,
 }
 
 impl Global for Caffeine {}
@@ -130,7 +132,7 @@ pub(crate) fn install(cx: &mut App) {
         let open = cx.windows();
         cx.default_global::<Caffeine>()
             .working
-            .retain(|id| open.iter().any(|window| window.window_id() == *id));
+            .retain(|(id, _)| open.iter().any(|window| window.window_id() == *id));
         settle(cx, |error, _| {
             tracing::warn!(category = "caffeine", %error, "could not release the keep-awake hold");
         });
@@ -167,24 +169,34 @@ pub(crate) fn hold_indefinitely(cx: &mut App) -> bool {
     true
 }
 
-/// Records whether `window` has a working agent, and ends an
-/// `UntilAgentsFinish` hold once no window does.
-pub(crate) fn observe(
+/// Records what each of `window`'s enabled endpoints, by ID, is doing, and
+/// ends an `UntilAgentsFinish` hold once no endpoint of any window works.
+/// An endpoint that is no longer listed was disabled or removed, so it stops
+/// counting; one whose agents cannot be read keeps what it last showed.
+pub(crate) fn observe<'a>(
     window: WindowId,
-    work: Work,
+    endpoints: impl Iterator<Item = (&'a str, Work)> + Clone,
     cx: &mut App,
     report: impl FnOnce(crate::Error, &mut App) + 'static,
 ) {
     let working = &mut cx.default_global::<Caffeine>().working;
-    let finished = match work {
-        Work::Working => {
-            working.insert(window);
-            false
+    let before = working.len();
+    working.retain(|(id, endpoint)| {
+        *id != window
+            || endpoints
+                .clone()
+                .any(|(listed, work)| listed == endpoint && work != Work::Idle)
+    });
+    let finished = working.len() < before;
+    for (endpoint, work) in endpoints {
+        // Looked up before inserting, so a busy frame allocates nothing.
+        let known = working
+            .iter()
+            .any(|(id, known)| *id == window && known == endpoint);
+        if work == Work::Working && !known {
+            working.insert((window, endpoint.to_owned()));
         }
-        Work::Idle => working.remove(&window),
-        // A reconnecting endpoint's agents are likely still running.
-        Work::Unknown => false,
-    };
+    }
     if finished {
         settle(cx, report);
     }

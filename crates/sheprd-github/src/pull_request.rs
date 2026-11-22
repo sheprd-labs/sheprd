@@ -9,6 +9,7 @@ mod lookup;
 mod model;
 mod parse;
 mod remote;
+mod stack;
 mod store;
 
 #[cfg(test)]
@@ -24,13 +25,17 @@ pub use {
         State, Tone, clean, fork_branch_number, key_input, repository_input, workspace_input,
     },
     remote::{Base, Remote, base_repository, remote_repository},
+    stack::{Blocker, LAYER_LIMIT, Layer, QueueEntry, QueueState, Stack, Verdict},
     store::{Store, View},
 };
 
 pub use fetch::{by_number, local_repository, repository_key};
 pub use model::MergeState;
 #[cfg(any(test, feature = "test-support"))]
-pub use model::fixture;
+pub use {
+    model::fixture,
+    stack::{ready_stacked_fixture, restack_fixture, stacked_fixture},
+};
 
 use fetch::Origins;
 use parse::{parse_graphql, parse_numbered};

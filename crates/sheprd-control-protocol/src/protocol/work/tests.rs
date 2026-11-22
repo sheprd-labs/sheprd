@@ -13,6 +13,7 @@ fn work_requests_have_a_stable_wire_form() {
             daemon_socket: None,
             window: None,
             terminal_id: None,
+            via: None,
         },
         op: WorkOp::FanOut(FanOutRequest {
             prompt: "fix it".into(),

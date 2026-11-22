@@ -3,8 +3,10 @@
 use super::*;
 use base64::Engine as _;
 
+mod directives;
 mod encrypt;
 mod notices;
+mod per_host;
 mod presence;
 mod send;
 mod subscription;

@@ -89,6 +89,14 @@ pub(crate) enum Confirm {
         method: MergeMethod,
         target: crate::pr_actions::Target,
     },
+    /// Merging a stack, or adding to or taking out of the merge queue;
+    /// `lands` names the pull requests a merge or queueing lands, bottom
+    /// first.
+    Land {
+        change: super::stack::Change,
+        target: crate::pr_actions::Target,
+        lands: Vec<u64>,
+    },
 }
 
 /// What a finished action did, as the banner says it.
@@ -176,6 +184,11 @@ impl Confirm {
                 fl!("orchestrator-merge"),
                 "merge",
             ),
+            Self::Land {
+                change,
+                target,
+                lands,
+            } => super::stack::confirm_text(*change, target, lands),
             Self::DeleteBead { id, .. } => (
                 fl!("orchestrator-confirm-delete-bead-title", id = id.as_str()),
                 fl!("orchestrator-confirm-delete-bead-body"),
@@ -193,7 +206,7 @@ impl Confirm {
             Self::Stop { run, .. } => Some(Action::Stop { run }),
             Self::Remove { run, .. } => Some(Action::Remove { run }),
             Self::DeleteBead { source, id } => Some(Action::DeleteBead { source, id }),
-            Self::Merge { .. } => None,
+            Self::Merge { .. } | Self::Land { .. } => None,
         }
     }
 }
@@ -578,8 +591,13 @@ impl OrchestratorView {
                     .child(danger(look, key, verb).on_click(cx.listener(
                         move |this, _, window, cx| {
                             match confirm.clone() {
-                                Confirm::Merge { method, target } => {
-                                    this.merge(method, &target, cx)
+                                Confirm::Merge { method, target } => this.run_pr_action(
+                                    crate::pr_actions::Action::Merge(method),
+                                    &target,
+                                    cx,
+                                ),
+                                Confirm::Land { change, target, .. } => {
+                                    this.run_pr_action(change.into(), &target, cx)
                                 }
                                 confirm => {
                                     if let Confirm::Remove { run, .. } = &confirm {

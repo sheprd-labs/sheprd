@@ -120,3 +120,25 @@ fn a_fixed_chat_offers_no_picker(cx: &mut TestAppContext) {
     let _stream = attach_with(&view, &program, fixed, cx);
     assert!(cx.debug_bounds("chat-agent-picker").is_none());
 }
+
+#[gpui::test]
+fn typing_in_the_composer_closes_the_picker(cx: &mut TestAppContext) {
+    let (view, _peer, cx) = open(cx, ConnectTarget::Local);
+    let program = Program::new();
+    let both = [Agent::Claude, Agent::Codex];
+    let _stream = attach_with(&view, &program, choosing(1, Agent::Claude, &both), cx);
+    let picker = cx.debug_bounds("chat-agent-picker").unwrap();
+    cx.simulate_click(picker.center(), Modifiers::default());
+    poll(&view, &program, cx);
+    assert!(cx.debug_bounds("chat-menu").is_some());
+    cx.simulate_input("h");
+    poll(&view, &program, cx);
+    assert!(cx.debug_bounds("chat-menu").is_none());
+    let typed = view.read_with(cx, |view, cx| {
+        view.chats
+            .panes()
+            .find_map(|pane| pane.composer.as_ref())
+            .map(|input| input.read(cx).text().to_owned())
+    });
+    assert_eq!(typed.as_deref(), Some("h"));
+}

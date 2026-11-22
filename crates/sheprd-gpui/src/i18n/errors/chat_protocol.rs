@@ -4,7 +4,9 @@
 
 use super::Localize;
 use crate::i18n::fl;
-use sheprd_chat_protocol::{Error, MAX_ACTIVITIES, MAX_ACTIVITY_TEXT};
+use sheprd_chat_protocol::{
+    Error, MAX_ACTIVITIES, MAX_ACTIVITY_TEXT, MAX_BRIEFS, MAX_PULL_REQUESTS,
+};
 
 impl Localize for Error {
     fn localize(&self) -> String {
@@ -17,6 +19,15 @@ impl Localize for Error {
                 fl!(
                     "error-chat-protocol-activity-text",
                     bytes = MAX_ACTIVITY_TEXT
+                )
+            }
+            Self::Brief(sheprd_chat_protocol::brief::Error::Limit) => {
+                fl!("error-chat-protocol-brief-limit", count = MAX_BRIEFS)
+            }
+            Self::Brief(sheprd_chat_protocol::brief::Error::NotPrompt(id)) => {
+                fl!(
+                    "error-chat-protocol-brief-not-prompt",
+                    id = format!("{id:?}")
                 )
             }
             Self::DuplicatePermission(id) => {
@@ -37,6 +48,11 @@ impl Localize for Error {
             Self::Json(_) => fl!("error-chat-protocol-json"),
             Self::NoModes => fl!("error-chat-protocol-no-modes"),
             Self::NotText(id) => fl!("error-chat-protocol-not-text", id = format!("{id:?}")),
+            Self::PullRequest => fl!("error-chat-protocol-pull-request"),
+            Self::PullRequestLimit => fl!(
+                "error-chat-protocol-pull-request-limit",
+                count = MAX_PULL_REQUESTS
+            ),
             Self::QuestionAnswersLimit(id) => fl!(
                 "error-chat-protocol-question-answers-limit",
                 id = format!("{id:?}")
@@ -44,6 +60,7 @@ impl Localize for Error {
             // Records are read and written only off the UI thread and never
             // shown; one message covers their failures.
             Self::Restore(_) => fl!("error-chat-protocol-restore"),
+            Self::SettingsLimit { len } => fl!("error-chat-protocol-settings-limit", bytes = *len),
             Self::UnknownEntry(id) => {
                 fl!("error-chat-protocol-unknown-entry", id = format!("{id:?}"))
             }

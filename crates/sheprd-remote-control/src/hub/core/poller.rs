@@ -1,14 +1,23 @@
-//! What only the worker reads: the desktop's document and the saved tabs,
-//! kept between polls so an unchanged one is not parsed or read again.
+//! What only the worker reads: the desktop's document, the core's shared
+//! workspaces, and the saved tabs, kept between polls so an unchanged one
+//! is not parsed or read again.
 
-use super::{Result, projection, spaces};
+use super::{Result, kept::Kept, projection, spaces};
 use crate::hub::Layout;
 use sheprd_core_client::{
     Error,
     wire::{Doc, Terminal},
 };
-use sheprd_session::SavedTabs;
+use sheprd_session::{SavedTabs, spaces::Tab};
 use std::{path::Path, time::SystemTime};
+
+/// The core's shared workspaces and tabs (`sheprd_session::spaces`).
+pub(super) struct Shared {
+    pub(super) spaces: sheprd_session::spaces::Spaces,
+    /// Its tabs, with each recovered chat's terminal replaced by the one
+    /// that took its place, as the last poll saw them.
+    tabs: Vec<Tab>,
+}
 
 #[derive(Default)]
 pub(super) struct Poller {
@@ -25,6 +34,13 @@ pub(super) struct Poller {
     pub(super) replacements:
         std::collections::BTreeMap<sheprd_backend::TerminalId, sheprd_backend::TerminalId>,
     saved: Option<(SystemTime, Option<SavedTabs>)>,
+    /// The shared document's version and what it holds, `None` when it was
+    /// never written (version 0) or does not read: Sheprd's saved tabs then
+    /// stand in for it.
+    shared: Option<(u64, Option<Shared>)>,
+    /// When each terminal agent last changed status, which herdr-core does
+    /// not say: read marks know a reply by it (`control::read`).
+    pub(super) times: crate::hub::recency::AgentTimes,
 }
 
 impl Poller {
@@ -41,6 +57,7 @@ impl Poller {
         if self.boot != boot {
             boot.clone_into(&mut self.boot);
             self.doc = None;
+            self.shared = None;
         }
         match answer {
             Ok(doc) => {
@@ -53,6 +70,48 @@ impl Poller {
             Err(error) => tracing::debug!(%error, "kept the desktop's spaces"),
         }
         Ok(())
+    }
+
+    /// Takes the answer to reading the core's shared workspaces, after
+    /// [`Self::read_spaces`] for the same core. As there, only a refusal
+    /// forgets them, and a slow answer keeps what was read.
+    pub(super) fn read_shared(&mut self, answer: sheprd_core_client::Result<Doc>) -> Result<()> {
+        match answer {
+            Ok(doc) if doc.version == 0 => self.shared = None,
+            Ok(doc) => {
+                if self
+                    .shared
+                    .as_ref()
+                    .is_none_or(|(at, _)| *at != doc.version)
+                {
+                    let read = sheprd_session::spaces::Spaces::from_value(doc.value)
+                        .inspect_err(|error| {
+                            tracing::warn!(%error, "Read Sheprd's saved tabs for want of its shared workspaces");
+                        })
+                        .ok()
+                        .map(|spaces| Shared {
+                            tabs: spaces.tabs().to_vec(),
+                            spaces,
+                        });
+                    self.shared = Some((doc.version, read));
+                }
+            }
+            Err(Error::Refused { .. }) => self.shared = None,
+            Err(Error::Lost) => return Err(Error::Lost.into()),
+            Err(error) => tracing::debug!(%error, "kept the shared workspaces"),
+        }
+        Ok(())
+    }
+
+    /// The shared workspaces, while they stand in for Sheprd's saved tabs.
+    pub(super) fn shared(&self) -> Option<&Shared> {
+        self.shared.as_ref().and_then(|(_, shared)| shared.as_ref())
+    }
+
+    /// What Sheprd keeps for this core: the shared document once written,
+    /// else `scope`'s saved tabs.
+    pub(super) fn kept<'a>(&'a self, scope: Option<&'a str>) -> Option<Kept<'a>> {
+        kept(self.shared(), self.saved.as_ref(), scope)
     }
 
     pub(super) fn project(
@@ -78,6 +137,12 @@ impl Poller {
         if let Some((_, Some(spaces))) = &mut self.doc {
             spaces.remap(&replacements);
         }
+        if let Some((_, Some(shared))) = &mut self.shared {
+            shared.tabs = shared.spaces.tabs().to_vec();
+            for tab in &mut shared.tabs {
+                super::kept::remap(tab, &replacements);
+            }
+        }
         let terminals: Vec<_> = terminals
             .iter()
             .filter(|terminal| {
@@ -95,37 +160,40 @@ impl Poller {
             .collect();
         self.replacements = replacements;
         let terminals = terminals.as_slice();
-        let saved = self.saved.as_ref().and_then(|(_, saved)| saved.as_ref());
+        let shared = self.shared.as_ref().and_then(|(_, shared)| shared.as_ref());
+        let kept = kept(shared, self.saved.as_ref(), scope);
         let mut layout = match &self.doc {
             Some((_, Some(spaces))) => {
-                let mut layout = spaces.project(boot, terminals, saved, scope, &mut self.names);
-                projection::lead_kept(&mut layout, saved, scope);
+                let mut layout = spaces.project(boot, terminals, kept, &mut self.names);
+                projection::lead_kept(&mut layout, kept);
                 layout
             }
-            _ => projection::project(boot, terminals, saved, scope),
+            _ => projection::project_kept(boot, terminals, kept),
         };
         self.checkouts.fill(&mut layout, std::time::Instant::now());
         layout
     }
 
-    /// Whether Sheprd keeps workspace `id` for `scope` in its saved tabs.
-    pub(super) fn keeps(&self, scope: &str, id: &str) -> bool {
-        self.saved
-            .as_ref()
-            .and_then(|(_, saved)| saved.as_ref())
-            .is_some_and(|saved| saved.workspaces(scope).any(|workspace| workspace.id == id))
+    /// Whether Sheprd keeps workspace `id` for this core.
+    pub(super) fn keeps(&self, scope: Option<&str>, id: &str) -> bool {
+        self.kept(scope).is_some_and(|kept| kept.keeps(id))
     }
 
-    /// Every terminal `scope`'s saved tabs hold, watching ones included.
+    /// Every terminal a tab Sheprd keeps for this core holds.
     pub(super) fn held(&self, scope: Option<&str>) -> std::collections::HashSet<String> {
-        let saved = self.saved.as_ref().and_then(|(_, saved)| saved.as_ref());
-        saved
-            .zip(scope)
-            .into_iter()
-            .flat_map(|(saved, scope)| saved.core_tabs(scope))
-            .flat_map(|tab| tab.panes.terminals())
-            .map(|terminal| terminal.as_str().to_owned())
-            .collect()
+        self.kept(scope).map(Kept::held).unwrap_or_default()
+    }
+
+    /// `scope`'s saved tab holding the terminal at `address`, as Sheprd
+    /// knows a tab of the shared document it shows.
+    pub(super) fn saved_tab_holding(&self, scope: &str, address: &str) -> Option<u64> {
+        let terminal = sheprd_backend::TerminalId::new(address).ok()?;
+        self.saved
+            .as_ref()
+            .and_then(|(_, saved)| saved.as_ref())?
+            .core_tabs(scope)
+            .find(|tab| tab.panes.contains(&terminal))
+            .map(|tab| tab.id)
     }
 
     /// The workspace of `scope`'s saved tab `tab`.
@@ -146,4 +214,18 @@ impl Poller {
             (Err(_), _) => self.saved = None,
         }
     }
+}
+
+fn kept<'a>(
+    shared: Option<&'a Shared>,
+    saved: Option<&'a (SystemTime, Option<SavedTabs>)>,
+    scope: Option<&'a str>,
+) -> Option<Kept<'a>> {
+    if let Some(shared) = shared {
+        return Some(Kept::Doc {
+            spaces: &shared.spaces,
+            tabs: &shared.tabs,
+        });
+    }
+    Kept::file(saved.and_then(|(_, saved)| saved.as_ref()), scope)
 }

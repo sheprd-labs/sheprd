@@ -22,8 +22,9 @@ just above it.
 The platform files name the same languages as the app: the macOS bundle's
 `CFBundleLocalizations` lists every language directory, each of which
 names itself in `language-name`, and its development region is `en-US`;
-every language has an installer `scripts/release/installer/<tag>.isl` and a
-desktop entry `Comment[tag]` (the plain `Comment` is English); and each
+each language available for direct selection has an installer
+`scripts/release/installer/<tag>.isl` and a desktop entry `Comment[tag]`
+(the plain `Comment` is English); and each
 `assets/macos/<tag>.lproj`, which is optional, installer file, and
 `Comment[tag]` is for one of them.
 
@@ -52,6 +53,7 @@ ENDONYM = "language-name"
 INFO_PLIST = Path("assets/macos/Info.plist")
 INSTALLER = Path("scripts/release/installer")
 DESKTOP_ENTRY = Path("scripts/release/org.sheprd.Sheprd.desktop")
+SYSTEM_ONLY = Path("crates/sheprd-gpui/system-only-locales.txt")
 MIGRATED = "// i18n: migrated"
 DATA = "// i18n: data"
 # A capitalized word, or two lowercase words with a space between, outside
@@ -337,12 +339,21 @@ def check(files: list[Ftl], sources: dict[Path, str]) -> list[str]:
     return errors
 
 
-def platform(files: list[Ftl], plist: dict, translations: list[Path], desktop: str) -> list[str]:
+def platform(
+    files: list[Ftl],
+    plist: dict,
+    translations: list[Path],
+    desktop: str,
+    system_only: frozenset[str] = frozenset(),
+) -> list[str]:
     """Where one of the app's languages does not name itself, or the macOS
     bundle, the Windows installer, or the Linux desktop entry names other
     languages than the app has."""
     errors: list[str] = []
     languages = {ftl.language for ftl in files}
+    for language in sorted(system_only - (languages - {FALLBACK})):
+        errors.append(f"{SYSTEM_ONLY}: {language} must name a non-default catalog")
+    required = languages - (system_only - {FALLBACK})
     named = {ftl.language for ftl in files if ENDONYM in ftl.messages}
     for language in sorted(languages - named):
         errors.append(f"{language} does not name itself: add {ENDONYM} to its language.ftl")
@@ -357,7 +368,7 @@ def platform(files: list[Ftl], plist: dict, translations: list[Path], desktop: s
         if path.stem not in languages:
             errors.append(f"{path}: {path.stem} is not one of the app's languages")
     installer = {path.stem for path in translations if path.suffix == ".isl"}
-    for language in sorted(languages - installer):
+    for language in sorted(required - installer):
         errors.append(f"{INSTALLER}/{language}.isl is missing: the installer has no {language} text")
     # The plain Comment is the English one.
     commented = {FALLBACK} if re.search(r"^Comment=", desktop, re.MULTILINE) else set()
@@ -366,7 +377,7 @@ def platform(files: list[Ftl], plist: dict, translations: list[Path], desktop: s
         if language not in languages:
             errors.append(f"{DESKTOP_ENTRY}: [{tag}] is not one of the app's languages")
         commented.add(language)
-    for language in sorted(languages - commented):
+    for language in sorted(required - commented):
         tag = language.replace("-", "_")
         errors.append(f"{DESKTOP_ENTRY}: no Comment[{tag}] for {language}")
     return errors
@@ -401,6 +412,7 @@ def main() -> int:
             plistlib.loads(INFO_PLIST.read_bytes()),
             translations,
             DESKTOP_ENTRY.read_text(encoding="utf-8"),
+            frozenset(SYSTEM_ONLY.read_text(encoding="utf-8").splitlines()),
         )
     )
     for error in errors:

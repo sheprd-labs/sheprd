@@ -41,6 +41,7 @@ sheprd-credentials.workspace    = true
 sheprd-diagnostics.workspace    = true
 sheprd-github.workspace         = true
 sheprd-i18n.workspace           = true
+sheprd-mcp                      = { optional = true, workspace = true }
 sheprd-memory.workspace         = true
 sheprd-mods.workspace           = true
 sheprd-orchestrator.workspace   = true
@@ -49,6 +50,9 @@ sheprd-remote.workspace         = true
 sheprd-relay = { features = ["signed-directory"], workspace = true }
 # Remote control without its server: the control protocol and `app`.
 sheprd-remote-control.workspace         = true
+# A plain host's relay agent without its runtime: its `status --json` and
+# the access file the app hands it (Settings > Fleet).
+sheprd-relay-agent.workspace            = true
 sheprd-updater.workspace        = true
 sheprd-traces.workspace         = true
 sheprd-usage.workspace          = true
@@ -72,12 +76,11 @@ serde.workspace                = true
 serde_ignored.workspace        = true
 serde_json.workspace           = true
 # The `moonframe` feature: Sheprd in a window Moonframe lays out in Luau.
-# `acp` runs the agent behind the sparkles (the built-in `feedback` mod);
-# `studio` is Developer Mode (Inspect Element, the Developer tools). Not
-# `syntax`: its SQL grammar pins `cc` to a range the workspace can't share.
+# Its developer tools ship with it. Not `syntax`: its
+# SQL grammar pins `cc` to a range the workspace can't share.
 async-channel = { optional = true, workspace = true }
 futures-lite  = { optional = true, workspace = true }
-moonframe     = { features = ["acp", "studio"], optional = true, workspace = true }
+moonframe     = { optional = true, workspace = true }
 sha2.workspace                 = true
 skrifa.workspace               = true
 sysinfo.workspace              = true
@@ -118,7 +121,7 @@ test-case.workspace = true
 libc.workspace = true
 
 [features]
-default = ["azure", "boat", "boxd", "coder", "container", "daytona", "opensandbox", "railway", "sprites"]
+default = ["azure", "boat", "boxd", "coder", "container", "daytona", "mcp", "moonframe", "opensandbox", "railway", "sprites"]
 # Machines from cloud providers as devices: the shared device list, background
 # jobs, and connector. Turned on by each provider below; not useful alone.
 cloud = ["sheprd-client/cloud", "sheprd-remote/cloud", "sheprd-usage/cloud", "sheprd-vcs/cloud"]
@@ -141,17 +144,28 @@ opensandbox = ["cloud", "sheprd-client/opensandbox", "sheprd-remote/opensandbox"
 railway = ["cloud", "sheprd-client/railway", "sheprd-remote/railway"]
 # Fly Sprites as devices, with an API token and this app as their exec relay.
 sprites = ["cloud", "sheprd-client/sprites", "sheprd-remote/sprites"]
+# `sheprd mcp`: a Model Context Protocol server over stdio that MCP clients
+# start, behind the `[features] mcp` switch, which is off until the user turns
+# it on (`docs/mcp-plan.md`). Without this feature the command, the switch, and
+# its Settings row do not exist.
+mcp = ["dep:sheprd-mcp"]
 # Development only: `--mockup` shows UI variants from HERDR_MOCKUP_FILE side by
 # side in a native window. Never enabled in release builds. GPUI's test support
 # provides `Window::render_to_image`, so `--capture` needs no screen-recording
-# permission.
-mockup = ["gpui_platform/test-support"]
-# Development only: a plain launch opens Sheprd in a window Moonframe lays out
-# from `moonframe/app` (Luau), with Inspect Element and the sparkles agent to
-# change it live; `sheprd` commands and `--socket`/`--session` launches stay
-# the app's own. Off by default: without it the app is unchanged.
-# `just run-moonframe` builds and runs it.
-moonframe = ["dep:async-channel", "dep:futures-lite", "dep:moonframe"]
+# permission. GitHub's test support seeds pull requests the rich-chat fixture
+# shows.
+mockup = ["gpui_platform/test-support", "sheprd-github/test-support"]
+# A plain launch opens Sheprd in a window Moonframe lays out from the Luau in
+# `moonframe/app`, compiled into the binary; `sheprd` commands, `--classic`,
+# `--socket` and `--session` launches, and `moonframe_window = false` under
+# `[features]` open the classic window. Release builds ship it, with
+# Moonframe's Developer Mode (Inspect Element, the Developer tools) and the
+# sparkles agent (`acp`), which edits the user's copy of the layout.
+moonframe = ["dep:async-channel", "dep:futures-lite", "dep:moonframe", "moonframe/acp", "moonframe/studio"]
+# Development only, never in release builds: with `moonframe`, the layout is
+# read from `moonframe/app` in this checkout so saving a file reloads it, and
+# the sparkles' agent edits it there. `just run-moonframe` builds it.
+moonframe-studio = ["moonframe"]
 # With `moonframe`: writes the window's rendered frame to `MOONFRAME_CAPTURE`,
 # for checks where the session has no screen recording permission.
 moonframe-capture = ["moonframe", "moonframe/capture"]
@@ -166,6 +180,7 @@ integration-test = [
 ]
 
 [target.'cfg(unix)'.dependencies]
+sheprd-terminal.workspace = true
 # `system`: the host name nearby pairing advertises over Bluetooth.
 rustix = { features = ["system"], workspace = true }
 
@@ -189,6 +204,7 @@ windows = { features = [
   "Data_Xml_Dom",
   "UI_Notifications",
   "Win32_Graphics_Gdi",
+  "Win32_Graphics_DirectWrite",
   "Win32_UI_Shell_Common",
   "Win32_UI_WindowsAndMessaging",
 ], workspace = true }
@@ -219,6 +235,7 @@ font-kit.workspace              = true
 block2.workspace                = true
 dispatch2.workspace             = true
 objc2-core-foundation.workspace = true
+objc2-virtualization.workspace  = true
 objc2-web-kit.workspace         = true
 objc2-user-notifications.workspace = true
 cocoa                        = { optional = true, workspace = true }

@@ -77,6 +77,7 @@ fn pr_label(pr: &crate::control::pull_requests::WorkspacePullRequest) -> Markup 
         Tone::Held => ("pr-held", "blocked or behind"),
         Tone::Merged => ("pr-merged", "merged"),
         Tone::Muted => ("pr-muted", "draft or unknown"),
+        Tone::Queued => ("pr-queued", "queued to merge"),
         Tone::Ready => ("pr-ready", "ready to merge"),
         Tone::Waiting => ("pr-waiting", "checks or review pending"),
     };

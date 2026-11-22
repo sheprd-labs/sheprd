@@ -58,6 +58,7 @@ fn the_phone_reads_the_tabs_the_app_saves() {
         place: Default::default(),
         scope: Scope::endpoint("mac"),
         title: "build".into(),
+        space: None,
         workspace_id: "w1".into(),
         zoom: Default::default(),
     };

@@ -1,9 +1,10 @@
 //! The rail beside the entries: what runs beside the conversation, the
-//! agent's plan, and the files its tool calls changed, each a section that
-//! folds to one line. It hides on request and in panes too narrow for it, and
+//! agent's plan, the files its tool calls changed, and the pull requests it
+//! worked on, each a section that folds to one line. It hides on request and in panes too narrow for it, and
 //! the header then keeps the plan's progress at hand.
 
 mod activity;
+pub(super) mod pull_requests;
 
 use self::activity::{Group, running_height};
 use super::{
@@ -61,6 +62,7 @@ impl SheprdWindow {
         !transcript.plan.is_empty()
             || !transcript.activities.is_empty()
             || !chat.prepared.changed().is_empty()
+            || !transcript.pull_requests.is_empty()
     }
 
     /// Whether the rail is drawn in a pane of `bounds`.
@@ -282,6 +284,7 @@ impl SheprdWindow {
         .collect::<Vec<_>>();
         let plan = self.render_chat_rail_plan(chat, busy, cx);
         let files = self.render_chat_rail_changed(chat, busy, cx);
+        let pull_requests = self.render_chat_rail_pull_requests(chat, busy, cx);
         let moving = chat.rail_folds.moving(motion::now());
         let rail = div()
             .id("chat-rail")
@@ -298,6 +301,7 @@ impl SheprdWindow {
             .children(work)
             .children(plan)
             .children(files)
+            .children(pull_requests)
             .when(moving, |rail| {
                 // Draws the next frame while a fold still moves.
                 rail.child(

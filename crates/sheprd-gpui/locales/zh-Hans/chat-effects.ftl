@@ -1,0 +1,14 @@
+chat-effects-balloons = 气球
+chat-effects-celebration = 庆祝
+chat-effects-confetti = 彩纸
+chat-effects-echo = 回声
+chat-effects-fireworks = 烟花
+chat-effects-gentle = 轻柔
+chat-effects-ink = 隐形墨水
+chat-effects-lasers = 激光
+chat-effects-loud = 响亮
+chat-effects-love = 爱心
+chat-effects-slam = 震动
+chat-effects-spotlight = 聚光灯
+chat-effects-zap = 太空飞船
+chat-effects-replay = 重播{ $effect }效果

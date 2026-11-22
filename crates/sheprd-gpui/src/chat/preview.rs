@@ -24,9 +24,11 @@ use super::{
 };
 use crate::{SheprdWindow, config::ChatLayoutMode};
 
+mod continued;
 mod effects;
 mod input_resize;
 mod progress;
+mod pull_requests;
 mod running;
 mod selection;
 mod states;
@@ -123,6 +125,9 @@ impl Options {
                 | "widgets-end"
                 | "jump"
                 | "conversation"
+                | "continued"
+                | "continued-before"
+                | "continued-open"
                 | "existing"
                 | "loading"
                 | "input-resize"
@@ -130,6 +135,8 @@ impl Options {
                 | "turns"
                 | "progress"
                 | "progress-before"
+                | "pull-requests"
+                | "pull-requests-before"
                 | "running"
                 | "running-open"
                 | "running-rail"
@@ -142,7 +149,7 @@ impl Options {
                 | "all"
         ) {
             bail!(
-                "HERDR_TEST_RICH_CHAT expects math, code, diagram, effects, activity, activity-open, running-rail, attachments, questions, selection, user, widgets, widgets-end, jump, conversation, existing, loading, input-resize, tools, turns, progress, progress-before, running, running-open, steps, steps-open, state-completed, state-failed, state-stopped, state-waiting, or all"
+                "HERDR_TEST_RICH_CHAT expects math, code, diagram, effects, activity, activity-open, running-rail, attachments, questions, selection, user, widgets, widgets-end, jump, conversation, continued, continued-before, continued-open, existing, loading, input-resize, tools, turns, progress, progress-before, pull-requests, pull-requests-before, running, running-open, steps, steps-open, state-completed, state-failed, state-stopped, state-waiting, or all"
             );
         }
         let hold = std::env::var("HERDR_TEST_RICH_CHAT_HOLD_MS")
@@ -439,7 +446,7 @@ fn install(
         },
         read_only: options.read_only || existing, // i18n: data
         entries: vec![
-            Entry { id: EntryId(1), kind: EntryKind::User { text: "Show the result with equations, clear formatting, and controls I can explore.".into(), files: 0 } }, // i18n: data
+            Entry { id: EntryId(1), kind: EntryKind::User { text: "Show the result with equations, clear formatting, and controls I can explore.".into(), files: 0, note: None} }, // i18n: data
             Entry { id: EntryId(2), kind: EntryKind::Agent { text: content } },
         ],
         ..Transcript::default()
@@ -473,6 +480,9 @@ fn install(
     }
     if options.case.starts_with("progress") {
         transcript.entries = progress::entries(options.case == "progress");
+    }
+    if options.case.starts_with("pull-requests") {
+        pull_requests::apply(&mut transcript, options.case == "pull-requests");
     }
     if options.case.starts_with("running") {
         transcript.entries = running::entries();
@@ -518,12 +528,16 @@ fn install(
             },
         }];
     }
+    if options.case.starts_with("continued") {
+        continued::apply(&options.case, &mut transcript);
+    }
     if options.case == "user" {
         transcript.entries = vec![Entry {
             id: EntryId(1),
             kind: EntryKind::User {
                 text: USER.into(),
                 files: 0,
+                note: None,
             },
         }];
     }
@@ -562,6 +576,12 @@ fn install(
     {
         pane.expanded.insert(EntryId(1));
     }
+    if options.case == "continued-open"
+        && let Some(pane) = view.chats.pane_mut(PANE)
+    {
+        pane.expanded
+            .extend([continued::DIVIDER, continued::COMPACTED]);
+    }
     // The first sub-agent's steps and the table of what runs, open.
     if options.case == "running-open"
         && let Some(pane) = view.chats.pane_mut(PANE)
@@ -577,10 +597,14 @@ fn install(
         pane.toggle_expanded(EntryId(4));
     }
     // The rail, which a fixture leaves off, listing what runs.
-    if options.case == "running-rail"
+    if (options.case == "running-rail" || options.case.starts_with("pull-requests"))
         && let Some(pane) = view.chats.pane_mut(PANE)
     {
         pane.rail = true;
+    }
+    #[cfg(feature = "mockup")]
+    if options.case.starts_with("pull-requests") {
+        pull_requests::seed(&mut view.menu.pr_cache);
     }
     // Every running step in full, from the working row.
     if options.case == "steps-open"
@@ -793,6 +817,7 @@ fn attachment_entries() -> Result<Vec<Entry>> {
             kind: EntryKind::User {
                 text: "Can you explain this image and link the notes?".into(), // i18n: data
                 files: 0,
+                note: None,
             },
         },
         Entry {
@@ -812,6 +837,7 @@ fn earlier_turns() -> Vec<Entry> {
         kind: EntryKind::User {
             text: text.into(),
             files: 0,
+            note: None,
         },
     };
     let agent = |id, text: &str| Entry {
@@ -859,6 +885,7 @@ fn tool_entries() -> Vec<Entry> {
             kind: EntryKind::User {
                 text: "Why does the send button stay pink when the box is empty?".into(), // i18n: data
                 files: 0,
+                note: None,
             },
         },
         Entry {

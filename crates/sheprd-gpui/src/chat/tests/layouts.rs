@@ -13,6 +13,7 @@ use sheprd_client::ConnectTarget;
 mod prompt_width;
 mod send_first_line;
 mod setting_icons;
+mod settings_one_line;
 mod terminal_footer;
 
 fn switch(view: &Entity<SheprdWindow>, mode: ChatLayoutMode, cx: &mut VisualTestContext) {

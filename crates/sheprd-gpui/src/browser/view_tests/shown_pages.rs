@@ -7,11 +7,19 @@ use crate::browser::TabId;
 fn restored(
     cx: &mut gpui::TestAppContext,
 ) -> (Entity<SheprdWindow>, &mut VisualTestContext, TabId) {
+    restored_at(cx, url("https://a.test/"))
+}
+
+/// As `restored`, with the tab at `location`.
+fn restored_at(
+    cx: &mut gpui::TestAppContext,
+    location: Location,
+) -> (Entity<SheprdWindow>, &mut VisualTestContext, TabId) {
     let (view, cx) = window(cx);
     let tab_scope = view.read_with(cx, |view, _| scope(&view.endpoints[0]));
     let id = cx.update(|_, cx| {
         Store::update(cx, |store| {
-            store.open(tab_scope, "w0", Some(url("https://a.test/")), None)
+            store.open(tab_scope, "w0", Some(location), None)
         })
         .unwrap()
     });
@@ -76,4 +84,18 @@ fn a_page_that_could_not_be_made_is_not_retried_every_tick(cx: &mut gpui::TestAp
             Some("no web view")
         );
     });
+}
+
+/// A machine's tab a restored layout shows gets its display as a web page
+/// does, rather than staying blank once the machine runs.
+#[cfg(target_os = "macos")]
+#[gpui::test]
+fn a_machine_a_restored_layout_shows_gets_its_display_on_the_next_tick(
+    cx: &mut gpui::TestAppContext,
+) {
+    let name = crate::machine::Name::try_from("restored-test".to_owned()).unwrap();
+    let (view, cx, id) = restored_at(cx, Location::Machine { name });
+    assert!(!made(&view, cx, id), "drawing makes no display");
+    tick(&view, cx);
+    assert!(made(&view, cx, id));
 }

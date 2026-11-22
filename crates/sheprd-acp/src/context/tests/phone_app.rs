@@ -23,6 +23,7 @@ fn the_phone_app_is_told_about_sizes_and_effects_and_the_web_app_is_not() {
     assert!(app.contains(":::slam"), "{app}");
     assert!(app.contains("::confetti"), "{app}");
     assert!(app.contains("until tapped"), "{app}");
+    assert!(app.contains("`::wizz`"), "{app}");
     // After the phone's own text, so the place reads first.
     assert!(app.find("Their screen is small") < app.find(":big["));
 

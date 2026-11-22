@@ -55,19 +55,24 @@ fn with_checkouts(dir: &std::path::Path, checkout: &std::path::Path) -> Shared {
 }
 
 #[test]
-fn herdr_closes_the_workspace_alone_and_never_forces_a_deletion() {
+fn herdr_closes_the_workspace_alone_and_forces_a_deletion_only_when_asked() {
     let (method, params) = herdr_call(Action::Close, "w1");
     assert_eq!(method.name(), "workspace.close");
     assert_eq!(
         params,
         json!({ "workspace_id": "w1", "close_group": false })
     );
-    let (method, params) = herdr_call(Action::RemoveWorktree, "w1");
+    let (method, params) = herdr_call(Action::RemoveWorktree { discard: false }, "w1");
     assert_eq!(method, ApiMethod::WorktreeRemove);
     assert_eq!(method.name(), "worktree.remove");
     assert_eq!(
         params,
         json!({ "workspace_id": "w1", "force": false, "trust_repository": false })
+    );
+    let (_, params) = herdr_call(Action::RemoveWorktree { discard: true }, "w1");
+    assert_eq!(
+        params,
+        json!({ "workspace_id": "w1", "force": true, "trust_repository": false })
     );
 }
 

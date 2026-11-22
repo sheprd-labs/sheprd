@@ -16,6 +16,8 @@ pub enum Error {
     Name,
     #[error("This computer keeps no Sheprd tabs")]
     NoTabs,
+    #[error("This workspace is not a linked worktree that can be deleted")]
+    NotWorktree,
     #[error(transparent)]
     Panes(#[from] sheprd_session::panes::Error),
     #[error("Open Sheprd on this computer to close this workspace or delete its worktree")]
@@ -24,5 +26,7 @@ pub enum Error {
     SheprdOpen,
     #[error("That is not a Herdr 2 terminal")]
     Terminal(#[from] sheprd_backend::Error),
+    #[error("Git kept this worktree, which may have uncommitted changes")]
+    WorktreeKept,
     // keep-sorted end
 }

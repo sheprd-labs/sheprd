@@ -40,6 +40,9 @@ mod tests;
 pub(crate) use marks::Marks;
 pub(crate) use model::{Key, Open, Row, Sections, State};
 pub(crate) use replies::MAX_TEXT as MAX_REPLY;
+// What the Dock badge, built where it is shown, reads of the user's marks.
+#[cfg(any(target_os = "macos", windows, test))]
+pub(crate) use {core::core_agent_key, marks::Hold, model::agent_key};
 
 use crate::{SheprdWindow, i18n::fl, orchestrator::RunState, sidebar::ActivityPanel};
 use gpui::{prelude::*, *};

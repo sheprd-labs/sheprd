@@ -353,7 +353,11 @@ fn resolves_platform_alias(family: &str) -> bool {
             .select_family_by_name(family)
             .is_ok()
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(windows)]
+    {
+        crate::localized_fonts::resolves(family)
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
     {
         // Preserve enumeration-based validation on the other platforms.
         let _ = family;

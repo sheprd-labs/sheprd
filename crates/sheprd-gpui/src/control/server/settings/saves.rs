@@ -103,6 +103,7 @@ pub(super) fn font(
     let task = cx.background_executor().spawn(async move {
         if let Some(name) = &name
             && !text_system.all_font_names().iter().any(|font| font == name)
+            && !resolves_platform_font_alias(name)
         {
             return Response::error(
                 ErrorCode::NotFound,
@@ -118,6 +119,18 @@ pub(super) fn font(
         }
     });
     answer_when_done(task, wait, incoming, watches, cx);
+}
+
+fn resolves_platform_font_alias(name: &str) -> bool {
+    #[cfg(windows)]
+    {
+        crate::localized_fonts::resolves(name)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = name;
+        false
+    }
 }
 
 /// Installed families as `settings fonts` lists them: sorted without regard

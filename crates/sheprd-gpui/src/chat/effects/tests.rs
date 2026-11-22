@@ -1,6 +1,6 @@
 use super::{
     Bubble, Pose, Screen,
-    scene::{Mark, Rect, Words, scene, speck},
+    scene::{Mark, Rect, Words, scene, speck, wizz_shake},
 };
 
 const PANE: Rect = Rect {
@@ -208,4 +208,25 @@ fn zap_keeps_every_letter_inside_a_narrow_or_short_pane() {
             }
         }
     }
+}
+
+#[test]
+fn a_wizz_shakes_then_settles_and_rests_outside_its_length() {
+    let length = Screen::Wizz.length().as_secs_f32();
+    assert_eq!(wizz_shake(-0.1, length), (0., 0.));
+    assert_eq!(wizz_shake(length, length), (0., 0.));
+    assert_eq!(wizz_shake(length + 1., length), (0., 0.));
+    let widest = |from: f32, to: f32| {
+        (0..100)
+            .map(|step| from + (to - from) * step as f32 / 100.)
+            .map(|t| wizz_shake(t, length).0.abs())
+            .fold(0., f32::max)
+    };
+    for step in 0..200 {
+        let (dx, dy) = wizz_shake(length * step as f32 / 200., length);
+        assert!(dx.abs() <= 12. && dy.abs() <= 12., "{step}: {dx} {dy}");
+    }
+    // Wide at first, and much calmer near the end.
+    assert!(widest(0., length * 0.2) > 8.);
+    assert!(widest(length * 0.8, length) < widest(0., length * 0.2) / 2.);
 }

@@ -23,24 +23,27 @@ public struct TermSize: Codable, Hashable, Sendable {
 public enum LiveRequest: Encodable, Hashable, Sendable {
     /// `since` is the cursor of a cached transcript, so an unchanged chat
     /// answers `chat_resumed` instead of a snapshot; `size` asks for a
-    /// terminal at the phone's size.
-    case subscribe(LiveView, since: Cursor? = nil, size: TermSize? = nil)
+    /// terminal at the phone's size. A `background` chat is followed while
+    /// no screen shows it: the computer neither marks its answers seen nor
+    /// lets it keep a view on screen from starting.
+    case subscribe(LiveView, since: Cursor? = nil, size: TermSize? = nil, background: Bool = false)
     case unsubscribe(LiveView)
     /// Scrolls a terminal held at the phone's size, as a mouse wheel
     /// would: `lines` above zero go back into its history.
     case termScroll(pane: String, lines: Int)
 
-    enum CodingKeys: String, CodingKey { case type, view, pane, since, size, lines }
+    enum CodingKeys: String, CodingKey { case type, view, pane, since, size, lines, background }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         let view: LiveView
         switch self {
-        case let .subscribe(subscribed, since, size):
+        case let .subscribe(subscribed, since, size, background):
             try c.encode("subscribe", forKey: .type)
             view = subscribed
             try c.encodeIfPresent(since, forKey: .since)
             try c.encodeIfPresent(size, forKey: .size)
+            if background { try c.encode(true, forKey: .background) }
         case let .unsubscribe(unsubscribed):
             try c.encode("unsubscribe", forKey: .type)
             view = unsubscribed

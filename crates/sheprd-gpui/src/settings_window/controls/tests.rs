@@ -13,6 +13,7 @@ mod chat_width;
 mod device_icons;
 mod features;
 mod focus_follows_mouse;
+mod font_aliases;
 mod indicators;
 mod repository_icons;
 mod session_restore;
@@ -340,13 +341,14 @@ fn browser_skill_choice_changes_only_after_success_and_serializes(cx: &mut TestA
 #[test]
 fn font_filter_keeps_all_four_hundred_families_and_matches_case_insensitively() {
     let names: Vec<_> = (0..400).map(|i| format!("Family {i:03}")).collect();
-    assert_eq!(filter_fonts(&names, "").len(), 400);
+    let aliases = HashMap::new();
+    assert_eq!(filter_fonts(&names, &aliases, "").len(), 400);
     assert_eq!(
-        filter_fonts(&names, " FAMILY 39 "),
+        filter_fonts(&names, &aliases, " FAMILY 39 "),
         (390..400).collect::<Vec<_>>()
     );
-    assert_eq!(filter_fonts(&names, "Family 399"), vec![399]);
-    assert!(filter_fonts(&names, "missing").is_empty());
+    assert_eq!(filter_fonts(&names, &aliases, "Family 399"), vec![399]);
+    assert!(filter_fonts(&names, &aliases, "missing").is_empty());
 }
 
 #[test]

@@ -1,0 +1,10 @@
+layout-normal = 标准
+layout-compact = 紧凑
+layout-comfortable = 宽松
+layout-normal-rounded = 标准圆角
+layout-compact-rounded = 紧凑圆角
+layout-comfortable-rounded = 宽松圆角
+layout-superset = Superset
+layout-orca = Orca
+layout-minimal = 极简
+layout-devices = 设备

@@ -100,6 +100,7 @@ impl SheprdWindow {
             workspace: workspace.to_owned(),
             pending: Some(pending),
             force,
+            started: std::time::Instant::now(),
         });
         Ok(())
     }

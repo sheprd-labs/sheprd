@@ -114,6 +114,7 @@ impl SheprdWindow {
 impl Render for SheprdWindow {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.core_terminals.start_frame();
+        self.chat_turns.next_frame();
         self.restore_menu_focus(window, cx);
         self.leave_vanished_region(window, cx);
         self.sync_backdrop(window, cx);
@@ -720,18 +721,7 @@ impl Render for SheprdWindow {
                         .as_ref()
                         .is_some_and(|location| !location.is_page()) =>
                 {
-                    match tab.location {
-                        Some(crate::browser::Location::Code { .. }) => {
-                            self.render_code_tab(slot, &tab, cx)
-                        }
-                        Some(crate::browser::Location::Devices) => {
-                            self.render_devices_tab(slot, &tab, cx)
-                        }
-                        Some(crate::browser::Location::CoreTerminal { .. }) => {
-                            self.render_core_terminal_tab(slot, &tab, cx)
-                        }
-                        _ => self.render_review_tab(slot, &tab, cx),
-                    }
+                    self.render_app_tab(slot, &tab, cx)
                 }
                 (Shown::Page(_), Some(tab)) => self.render_browser(slot, &tab, owns_keyboard, cx),
                 (Shown::Elsewhere(tab), _) => match self.live_frame_of(tab, window_frame.clone()) {
@@ -947,6 +937,9 @@ impl Render for SheprdWindow {
                 root.extend(banner.map(IntoElement::into_any_element));
             }
             self.append_overlays(&mut root, window, cx);
+        } else {
+            // After every chat, which record where they are as they paint.
+            root.extend([self.chat_turns_sweep(cx).into_any_element()]);
         }
         crate::titlebar::frame(window, self.theme.active, root)
     }

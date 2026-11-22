@@ -67,16 +67,30 @@ pub struct Palette {
 /// noticing, such as the machine's load, is not in it.
 #[derive(Clone)]
 pub struct Stamp {
+    /// The unread agents, which each answer from a daemon replaces whole.
+    agent_read: Arc<crate::agent_read::Sets>,
     agent_sort: AgentSort,
     agents_list: bool,
+    /// The chat whose turns the layout shows; see `chat::turns`.
+    chat_turns: Option<crate::chat::turns::TurnsStamp>,
     connected: bool,
+    details_visible: bool,
+    /// The device footer, and the picker while it is open, as a host's
+    /// layout reads them: small, and built only while the window changes.
+    device_picker: Value,
     /// Every device's snapshot and folds; see `hosted_devices_stamp`.
     devices: u64,
+    /// How many merged worktrees the sidebar's broom would remove.
+    merged: usize,
     metrics: SidebarMetrics,
+    /// Whether Back and Forward fit the left column's header.
+    navigation: bool,
     panel: ActivityPanel,
     section: bool,
     sidebar_visible: bool,
     snapshot: Option<Arc<ClientShellSnapshot>>,
+    /// The status bar's connection message; see `connection_message`.
+    status: Option<String>,
     status_bar_visible: bool,
     theme: u32,
 }
@@ -89,14 +103,21 @@ impl PartialEq for Stamp {
             _ => false,
         };
         same_snapshot
+            && Arc::ptr_eq(&self.agent_read, &other.agent_read)
             && self.agent_sort == other.agent_sort
             && self.agents_list == other.agents_list
+            && self.chat_turns == other.chat_turns
             && self.connected == other.connected
+            && self.details_visible == other.details_visible
+            && self.device_picker == other.device_picker
             && self.devices == other.devices
+            && self.merged == other.merged
             && self.metrics == other.metrics
+            && self.navigation == other.navigation
             && self.panel == other.panel
             && self.section == other.section
             && self.sidebar_visible == other.sidebar_visible
+            && self.status == other.status
             && self.status_bar_visible == other.status_bar_visible
             && self.theme == other.theme
     }
@@ -128,11 +149,13 @@ fn panel_id(panel: ActivityPanel) -> &'static str {
 }
 
 /// An agent as the window's agents list labels it: the place it runs (its
-/// workspace, and its tab when that earns a place), its pane's name, and the
-/// word its integration chose for its status.
+/// workspace, and its tab when that earns a place), its pane's name, the
+/// word its integration chose for its status, and whether it has a reply no
+/// one read (`crate::agent_read`).
 fn agent_state(
     agent: &Listed<'_>,
     show_state: bool,
+    unread: bool,
     (endpoint, host): (&str, Option<&str>),
 ) -> Value {
     let place = agent.place();
@@ -154,9 +177,31 @@ fn agent_state(
         "status": status_name(agent.status()),
         "tab": place.and_then(|(_, tab)| tab),
         "title": title,
+        "unread": unread,
         "workspace": agent.workspace(),
         "workspace_label": place.map(|(workspace, _)| workspace),
     })
+}
+
+/// Moonframe's named text sizes and their scale of its base, the UI size.
+const TEXT_STEPS: [(&str, f32); 7] = [
+    ("small", 0.85),
+    ("normal", 1.0),
+    ("large", 1.2),
+    ("title", 1.5),
+    ("headline", 1.75),
+    ("display", 2.25),
+    ("hero", 3.0),
+];
+
+/// The named size nearest `size` over Moonframe's `base`: how the sidebar's
+/// own font size reaches Luau, which names sizes rather than pixels.
+fn text_step(size: f32, base: f32) -> &'static str {
+    let ratio = size / base;
+    TEXT_STEPS
+        .iter()
+        .min_by(|(_, a), (_, b)| (a - ratio).abs().total_cmp(&(b - ratio).abs()))
+        .map_or("normal", |(name, _)| name)
 }
 
 /// The configured layout's name and the spacing it and the config's
@@ -167,6 +212,9 @@ fn layout_state(name: &str, metrics: &SidebarMetrics) -> Value {
         "child_indent": metrics.child_indent,
         "gap": metrics.gap,
         "name": name,
+        // How far rows step in under a device's header, as several devices
+        // list them; the sidebar has no tag sections to add theirs.
+        "nest": metrics.nest,
         "outline": metrics.highlight == Highlight::Outline,
         "padding": metrics.padding,
         "pr_counts": metrics.pr_counts,
@@ -194,7 +242,7 @@ fn status_colors(theme: &Theme) -> Value {
 }
 
 /// `color` as `#rrggbb`, how a mod's style names one.
-fn hex(color: u32) -> String {
+pub(crate) fn hex(color: u32) -> String {
     format!("#{:06x}", color & 0xff_ffff)
 }
 
@@ -224,15 +272,22 @@ impl SheprdWindow {
     /// Whether a host's state may have changed; see [`Stamp`].
     pub(crate) fn hosted_stamp(&self) -> Stamp {
         Stamp {
+            agent_read: self.agent_read.clone(),
             agent_sort: self.agent_sort,
             agents_list: self.hosted_agents_list(),
+            chat_turns: self.hosted_chat_turns_stamp(),
             connected: self.live.status.is_connected(),
+            details_visible: self.details_visible,
+            device_picker: self.hosted_device_picker(),
             devices: self.hosted_devices_stamp(),
+            merged: self.merged_worktrees().len(),
             panel: self.activity_panel(),
             section: self.activity_section().is_some(),
             metrics: self.hosted_metrics(),
+            navigation: self.navigation_fits_sidebar(self.viewport_width),
             sidebar_visible: self.sidebar_visible,
             snapshot: self.live.snapshot.clone(),
+            status: self.connection_message(),
             status_bar_visible: self.status_bar_visible,
             theme: self.theme.background,
         }
@@ -260,7 +315,10 @@ impl SheprdWindow {
                     .agents
                     .shows_status_text(agent.identity());
                 let host = multi.then_some(endpoint.label.as_str());
-                Some(agent_state(&agent, shows, (&endpoint.id, host)))
+                let unread = agent
+                    .favorite_key()
+                    .is_some_and(|key| self.agent_read.contains(&endpoint.id, &key));
+                Some(agent_state(&agent, shows, unread, (&endpoint.id, host)))
             })
             .collect()
     }
@@ -286,18 +344,15 @@ impl SheprdWindow {
                     // as the window's own bubble is.
                     "unseen": self.activity.unseen(panel, counts.latest(panel)),
                     "id": panel_id(panel),
+                    // Sheprd's own icon, as its bar draws it.
+                    "icon": crate::icons::hosted::app_name(super::activity::icon(panel)),
                     "label": super::activity::label(panel).to_string(),
                 })
             })
             .collect();
-        let reading = self.selected_host().and_then(|host| {
-            self.system_load
-                .get(&host)
-                .and_then(|load| load.latest().copied())
-        });
         let theme = &self.theme;
         HostedState {
-            load: load_state(reading.as_ref()),
+            load: self.hosted_load(),
             palette: Palette {
                 accent: theme.primary(),
                 active: theme.active,
@@ -326,16 +381,24 @@ impl SheprdWindow {
                     AgentSort::Grouped => "grouped",
                     AgentSort::Priority => "priority",
                 },
+                "chat_turns": self.hosted_chat_turns(),
+                // Merged worktrees the spaces heading's broom removes.
+                "merged": self.merged_worktrees().len(),
                 "layout": layout_state(self.config.layout.mode.name(), &self.hosted_metrics()),
                 "connected": self.live.status.is_connected(),
+                "details_visible": self.details_visible,
                 "panel": panel_id(self.activity_panel()),
                 "panels": panels,
                 "section": self.activity_section().is_some(),
+                "navigation_in_header": self.navigation_fits_sidebar(self.viewport_width),
                 "sidebar_visible": self.sidebar_visible,
-                "status": self.live.status_text(self.local_error.as_deref()),
+                // The classic status bar's message, absent when it shows none.
+                "status": self.connection_message(),
                 "status_bar_visible": self.status_bar_visible,
+                "usage": self.hosted_usage(),
             "workspaces": self.hosted_workspaces(cx),
                 "devices": self.hosted_devices(cx),
+                "device_picker": self.hosted_device_picker(),
                 "multi": self.endpoints.len() > 1,
                 "build": build_state(),
             }),
@@ -354,10 +417,15 @@ impl SheprdWindow {
                 "on_muted": hex(self.theme.text_on(self.theme.muted)),
                 "removed": hex(self.theme.ink(self.theme.palette[1])),
                 "sidebar": hex(self.theme.sidebar_background()),
+                // The sidebar's font size, as Moonframe names sizes over the
+                // UI size its text starts from.
+                "sidebar_size": text_step(self.config.sidebar.size, self.config.ui.size),
                 "subtext": hex(self.theme.subtext()),
                 "success": hex(self.theme.palette[2]),
                 "surface": hex(self.theme.surface),
                 "status": status_colors(&self.theme),
+                // The unread agent dot's, as the window's own rows draw it.
+                "unread": hex(self.theme.palette[4]),
                 "warning": hex(self.theme.palette[3]),
             }),
         }

@@ -94,6 +94,8 @@ sidebar-spoken-muted = notifications muted
 # A row's badge, in place of a pull request number: its branch has commits and
 # no pull request yet. Keep it about as short as "#123".
 sidebar-pull-request-unopened = +PR
+# A stacked pull request's number and its layer: $position of $size, from the bottom.
+sidebar-pull-request-stacked = { $number } { $position }/{ $size }
 
 # The agents header's coordinator group filter, which a click steps through;
 # a group's own name stands in for this label once one is picked.

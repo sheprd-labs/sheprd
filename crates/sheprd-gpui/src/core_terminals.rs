@@ -21,6 +21,7 @@ mod context;
 mod effects;
 mod error;
 mod fallback;
+mod favorites;
 pub(crate) mod files;
 mod folders;
 mod history;
@@ -43,6 +44,7 @@ mod screen;
 mod selection;
 mod session;
 mod sidebar;
+mod spaces;
 mod split;
 mod start;
 mod tabs;
@@ -64,6 +66,8 @@ pub(crate) use fallback::Holder;
 pub(crate) use hosts::Host;
 pub(crate) use hub::{Hub, Start, State};
 pub(crate) use sheprd_session::panes;
+#[cfg(test)]
+pub(crate) use spaces::edits_for_test as spaces_edits_for_test;
 pub(crate) use view::{CoreTerminalView, LinkClick, Look};
 pub(crate) use workspaces::kept_label;
 
@@ -777,6 +781,7 @@ impl SheprdWindow {
         );
         self.poll_core_panes(window, cx);
         self.poll_core_edits(cx);
+        self.sync_shared_spaces(cx);
         // While a phone may start work here, this computer's core is joined
         // (never started) to see it, with or without a tab of its own.
         if crate::remote::supervisor::Supervisor::enabled(cx) {

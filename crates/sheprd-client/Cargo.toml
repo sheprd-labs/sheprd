@@ -27,18 +27,19 @@ sprites = ["cloud"]
 test-support = []
 
 [dependencies]
+# The agents a chat runs, for moving a terminal agent into one.
 base64.workspace            = true
 crossbeam-channel.workspace = true
-sheprd-backend.workspace     = true
-sheprd-protocol.workspace    = true
-# The agents a chat runs, for moving a terminal agent into one.
-sheprd-chat-protocol.workspace = true
 serde.workspace             = true
 serde_json.workspace        = true
+sheprd-backend.workspace     = true
+sheprd-chat-protocol.workspace = true
+sheprd-protocol.workspace    = true
 tempfile.workspace          = true
 thiserror.workspace         = true
 toml_edit.workspace         = true
 tracing.workspace           = true
+uuid.workspace              = true
 
 [target.'cfg(unix)'.dependencies]
 rustix.workspace = true
@@ -64,3 +65,6 @@ windows-sys = { features = [
 [target.'cfg(unix)'.dev-dependencies]
 libc.workspace = true
 nix.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libproc.workspace = true

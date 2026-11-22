@@ -36,7 +36,7 @@ struct GitHubSignInSheetView: View {
             page.close()
             if !signedIn, !sample { Task { await GitHubReads.reader.signIn?.cancel() } }
         }
-        .sensoryFeedback(.success, trigger: copied)
+        .haptic(.success, trigger: copied)
     }
 
     private var signedIn: Bool {

@@ -9,6 +9,7 @@ use std::{
 
 mod changes;
 mod hidden_cup;
+mod offline_host;
 mod right_click;
 mod scope;
 mod toggle;
@@ -71,6 +72,11 @@ fn cup_of(cx: &mut gpui::TestAppContext) -> Cup {
 /// A stand-in window that a test reports work for.
 fn window(id: u64) -> WindowId {
     WindowId::from(id)
+}
+
+/// One endpoint, the window's only one, doing `work`.
+fn local(work: Work) -> std::array::IntoIter<(&'static str, Work), 1> {
+    [("local", work)].into_iter()
 }
 
 fn commands(log: &Log) -> Vec<Command> {

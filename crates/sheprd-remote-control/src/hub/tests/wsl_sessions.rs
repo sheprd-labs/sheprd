@@ -138,7 +138,13 @@ async fn a_chat_is_refused_in_a_distribution_whatever_else_could_run_it() {
 async fn a_new_workspace_is_refused_in_a_distribution() {
     let hub = Hub::offline(Layout::default());
     let refused = hub
-        .create_workspace("/home/me/repo", None, Agent::Codex, Some("default@Ubuntu"))
+        .create_workspace(NewWorkspace {
+            agent: Agent::Codex,
+            branch: None,
+            cwd: "/home/me/repo",
+            session: Some("default@Ubuntu"),
+            title: None,
+        })
         .await;
     assert!(matches!(refused, Err(Error::WslChat)));
 }

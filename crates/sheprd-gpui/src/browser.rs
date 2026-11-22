@@ -35,6 +35,11 @@ mod hidden;
 mod kit;
 mod layouts;
 mod location;
+#[cfg(target_os = "macos")]
+mod machine_guide;
+mod machine_tab;
+#[cfg(target_os = "macos")]
+pub(crate) use machine_tab::open_in as open_machine_in;
 #[cfg(any(target_os = "macos", windows, test))]
 mod markdown;
 #[cfg(any(target_os = "macos", windows))]
@@ -92,6 +97,7 @@ pub(crate) use page_keys::bind as bind_page_keys;
 /// A page screenshot as PNG, for `browser screenshot`.
 #[cfg(target_os = "macos")]
 pub(crate) use snapshot::png as page_png;
+pub(crate) use store::spaces as shared;
 pub(crate) use store::{Ending, Scope, Store, Tab, TabId, is_kept_id};
 pub(crate) use tab_appear::{Leaving, Listed};
 pub(crate) use tab_scroll::{Thumb, ThumbDrag};

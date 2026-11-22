@@ -27,6 +27,8 @@ impl Localize for Error {
             ),
             Self::Caffeine(error) => error.localize(),
             Self::Chat(error) => error.localize(),
+            Self::ChatBrief(error) => error.localize(),
+            Self::ChatPullRequests(error) => error.localize(),
             Self::Cleanup {
                 source,
                 path: file,
@@ -106,6 +108,7 @@ impl Localize for Error {
                 fl!("error-linked-file-missing", path = path(file))
             }
             Self::LinkHandlers(error) => error.localize(),
+            Self::LinkInput(error) => error.localize(),
             Self::LinkOnAnotherHost { host } => {
                 fl!("error-link-on-another-host", host = host.as_str())
             }
@@ -123,11 +126,15 @@ impl Localize for Error {
                 path = path(file),
                 error = source.to_string()
             ),
+            Self::Machine(error) => error.localize(),
             Self::MalformedLink => fl!("error-malformed-link"),
+            #[cfg(feature = "mcp")]
+            Self::Mcp(error) => error.localize(),
             Self::MissingDeletion => fl!("error-missing-deletion"),
             Self::MissingHome => fl!("error-missing-home"),
             Self::MissingStateRoot => fl!("error-missing-state-root"),
             Self::Mods(error) => error.localize(),
+            Self::Naming(error) => error.localize(),
             Self::Nearby(error) => error.localize(),
             Self::NoSnapshot => fl!("error-no-snapshot"),
             Self::NoTab => fl!("error-no-tab"),

@@ -124,19 +124,40 @@ mod socket {
     mod arrange;
     mod chat_recovery;
     mod convert;
+    mod herdr_1_worktree;
     mod holds;
     mod new_work;
     mod recovery;
     mod screens;
+    mod shared_new_workspace;
+    mod shared_spaces;
+    mod shared_spaces_safety;
     mod spaces;
     mod wake;
+
+    /// The fake core's documents, by name: value and version.
+    type Docs = Arc<Mutex<HashMap<String, (Value, u64)>>>;
 
     struct Fake {
         _dir: tempfile::TempDir,
         attaches: mpsc::Receiver<Value>,
+        /// Documents the daemon reads and writes, which a test may seed.
+        docs: Docs,
+        /// A shared document another client writes just before the
+        /// daemon's next write of it lands, making that write stale.
+        first: Arc<Mutex<Option<Value>>>,
+        /// Makes the next shared document write land but answer an error.
+        lose: Arc<AtomicBool>,
         inputs: mpsc::Receiver<Vec<u8>>,
         resizes: mpsc::Receiver<(u16, u16)>,
         server: thread::JoinHandle<()>,
+    }
+
+    /// Whether `name` is a document Sheprd keeps in the core: a chat's
+    /// recovery record or the shared workspaces.
+    fn sheprd_doc(name: &str) -> bool {
+        name == sheprd_session::spaces::DOC
+            || (name.len() <= 32 && name.starts_with("sheprd-chat-"))
     }
 
     /// A client that has gone away resets the socket rather than closing it
@@ -195,6 +216,10 @@ mod socket {
         let (sent, inputs) = mpsc::channel();
         let (attached, attaches) = mpsc::channel();
         let (resized, resizes) = mpsc::channel();
+        let docs = Docs::default();
+        let first = Arc::new(Mutex::new(None));
+        let lose = Arc::new(AtomicBool::new(false));
+        let (shared_docs, shared_first, shared_lose) = (docs.clone(), first.clone(), lose.clone());
         let server = thread::spawn(move || {
             let (mut socket, _) = listener.accept().unwrap();
             socket
@@ -210,8 +235,9 @@ mod socket {
             writeln!(socket, "{response}").unwrap();
             let mut decoder = Decoder::default();
             let mut channel = 6;
-            let mut recovery_docs = HashMap::<String, (Value, u64)>::new();
             while let Some(frame) = receive(&mut socket, &mut decoder) {
+                let mut stale = false;
+                let mut lost_answer = false;
                 if frame.kind == Kind::Resize {
                     let side =
                         |at: usize| u16::from_le_bytes([frame.payload[at], frame.payload[at + 1]]);
@@ -243,22 +269,37 @@ mod socket {
                         if name == "herdr-app" {
                             json!({"value": doc, "version": if doc.is_null() { 0 } else { 1 }})
                         } else {
-                            assert!(name.len() <= 32 && name.starts_with("sheprd-chat-"));
+                            assert!(sheprd_doc(name), "unexpected document {name}");
                             let (value, version) =
-                                recovery_docs.get(name).cloned().unwrap_or((Value::Null, 0));
+                                lock(&docs).get(name).cloned().unwrap_or((Value::Null, 0));
                             json!({"value": value, "version": version})
                         }
                     }
                     "doc.set" => {
                         let name = request["params"]["name"].as_str().unwrap();
-                        assert!(name.len() <= 32 && name.starts_with("sheprd-chat-"));
-                        let version = recovery_docs.get(name).map_or(0, |(_, version)| *version);
-                        assert_eq!(request["params"]["version"], version);
-                        recovery_docs.insert(
-                            name.to_owned(),
-                            (request["params"]["value"].clone(), version + 1),
-                        );
-                        json!({"version": version + 1})
+                        assert!(sheprd_doc(name), "unexpected document {name}");
+                        let mut docs = lock(&docs);
+                        // Another client's write that lands first, once.
+                        if name == sheprd_session::spaces::DOC
+                            && let Some(value) = lock(&first).take()
+                        {
+                            let version = docs.get(name).map_or(0, |(_, version)| *version);
+                            docs.insert(name.to_owned(), (value, version + 1));
+                        }
+                        let version = docs.get(name).map_or(0, |(_, version)| *version);
+                        if request["params"]["version"] == version {
+                            docs.insert(
+                                name.to_owned(),
+                                (request["params"]["value"].clone(), version + 1),
+                            );
+                            // A write that lands but whose answer is lost.
+                            lost_answer = name == sheprd_session::spaces::DOC
+                                && lose.swap(false, Ordering::SeqCst);
+                            json!({"version": version + 1})
+                        } else {
+                            stale = true;
+                            Value::Null
+                        }
                     }
                     "terminal.attach" => {
                         attached.send(request["params"].clone()).unwrap();
@@ -269,6 +310,11 @@ mod socket {
                         channel += 1;
                         json!({"channel": channel, "seq": 0, "terminals": []})
                     }
+                    "terminal.read" => json!({
+                        "text": format!("screen of {}", request["params"]["terminal"].as_str().unwrap()),
+                        "complete": true,
+                        "how": "screen",
+                    }),
                     method => panic!("unexpected method {method}"),
                 };
                 // A cwd ending in `/refused`, or an attach 13 columns wide,
@@ -277,7 +323,13 @@ mod socket {
                     .as_str()
                     .is_some_and(|cwd| cwd.ends_with("/refused"))
                     || request["params"]["cols"] == 13;
-                let response = if refused {
+                let response = if stale {
+                    json!({"jsonrpc": "2.0", "id": request["id"],
+                        "error": {"code": -32000, "message": "stale", "data": {"kind": "conflict"}}})
+                } else if lost_answer {
+                    json!({"jsonrpc": "2.0", "id": request["id"],
+                        "error": {"code": -32000, "message": "lost"}})
+                } else if refused {
                     json!({"jsonrpc": "2.0", "id": request["id"],
                         "error": {"code": -32000, "message": "refused"}})
                 } else {
@@ -343,7 +395,10 @@ mod socket {
             Fake {
                 _dir: dir,
                 attaches,
+                docs: shared_docs,
+                first: shared_first,
                 inputs,
+                lose: shared_lose,
                 resizes,
                 server,
             },
@@ -469,6 +524,7 @@ mod poller;
 mod renames;
 mod saved_beside_spaces;
 mod screen_history;
+mod shared_poller;
 mod unlisted_name;
 mod workspace_changes;
 

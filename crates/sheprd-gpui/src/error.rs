@@ -33,6 +33,10 @@ pub enum Error {
     Caffeine(#[from] crate::caffeine::Error),
     #[error(transparent)]
     Chat(#[from] crate::chat::Error),
+    #[error(transparent)]
+    ChatBrief(#[from] crate::control::brief::Error),
+    #[error(transparent)]
+    ChatPullRequests(#[from] crate::chat::pull_requests::Error),
     #[error("{source}; removing {}: {cleanup}", path.display())]
     Cleanup {
         #[source]
@@ -172,6 +176,8 @@ pub enum Error {
     LinkedFileMissing { path: PathBuf },
     #[error(transparent)]
     LinkHandlers(#[from] crate::link_handlers::Error),
+    #[error(transparent)]
+    LinkInput(#[from] crate::control::link_input::Error),
     #[error("This link names a file on another computer, {host}. It is not opened from here.")]
     LinkOnAnotherHost { host: String },
     #[error(transparent)]
@@ -198,8 +204,13 @@ pub enum Error {
         #[source]
         source: io::Error,
     },
+    #[error(transparent)]
+    Machine(#[from] crate::machine::Error),
     #[error("This link's address is not valid, so it opens nothing.")]
     MalformedLink,
+    #[cfg(feature = "mcp")]
+    #[error(transparent)]
+    Mcp(#[from] crate::mcp::Error),
     #[error("Reopen the deletion dialog.")]
     MissingDeletion,
     #[error("HOME is not set")]
@@ -208,6 +219,8 @@ pub enum Error {
     MissingStateRoot,
     #[error(transparent)]
     Mods(#[from] crate::mods::Error),
+    #[error(transparent)]
+    Naming(#[from] crate::naming::Error),
     #[error(transparent)]
     Nearby(#[from] crate::remote::nearby::Error),
     #[error("No current daemon snapshot.")]

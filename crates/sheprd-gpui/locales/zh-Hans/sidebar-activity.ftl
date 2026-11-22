@@ -1,0 +1,14 @@
+sidebar-activity-bar = 活动栏
+sidebar-activity-overview = 概览
+sidebar-activity-workspaces = 工作区
+sidebar-activity-pull-requests = 拉取请求
+sidebar-activity-issues = 议题
+sidebar-activity-tasks = 任务
+sidebar-activity-security = 安全
+sidebar-activity-automations = 自动化
+sidebar-activity-ports = 端口
+sidebar-activity-usage = 用量
+sidebar-activity-traces = 运行记录
+sidebar-activity-settings = 设置
+sidebar-activity-spoken = { $label }，{ $count } 项
+sidebar-activity-spoken-new = { $label }，{ $count } 项，有新活动

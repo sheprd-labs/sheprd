@@ -100,28 +100,29 @@ impl SheprdWindow {
         look: &Look,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
-        let (foreground, surface) = (look.theme.foreground, look.theme.surface);
-        // It does more than its place suggests, so it says so.
-        let hint = SharedString::from(fl!("overview-alerts-clear-hint"));
-        pill(
-            "overview-alerts-clear".to_owned(),
-            "icons/x.svg",
+        clear_all(
+            "overview-alerts-clear",
             fl!("overview-alerts-clear"),
             look,
+            cx,
         )
-        .tooltip(move |_, cx| {
-            cx.new(|_| crate::usage::Hint {
-                text: hint.clone(),
-                foreground,
-                surface,
-            })
-            .into()
-        })
-        .on_click(cx.listener(|this, _, window, cx| {
-            // The shelf folds and unfolds on a click; this one only clears.
-            cx.stop_propagation();
-            this.clear_all_notifications(window, cx);
-        }))
+    }
+
+    /// The header's Clear all, the same command at the top of the page: the
+    /// shelf is the last thing on it, under every agent row. Offered only
+    /// while this window holds something the command clears, an alert or a
+    /// toast on screen, so it is never a click that does nothing here.
+    pub(super) fn overview_clear_all(
+        &self,
+        look: &Look,
+        cx: &mut Context<Self>,
+    ) -> Option<Stateful<Div>> {
+        let clearable = self.endpoints.iter().any(|endpoint| {
+            let toasts = &endpoint.toasts;
+            toasts.history.alerts().next().is_some()
+                || toasts.entries.iter().any(|(_, notice)| notice.visible)
+        });
+        clearable.then(|| clear_all("overview-clear-all", fl!("overview-clear-all"), look, cx))
     }
 
     pub(super) fn overview_alert(
@@ -257,4 +258,33 @@ impl SheprdWindow {
         window.focus(&self.focus, cx);
         cx.notify();
     }
+}
+
+/// A pill that runs Clear All Notifications, with the hint that says how far
+/// it reaches.
+fn clear_all(
+    id: &str,
+    label: String,
+    look: &Look,
+    cx: &mut Context<SheprdWindow>,
+) -> Stateful<Div> {
+    let (foreground, surface) = (look.theme.foreground, look.theme.surface);
+    // It does more than its place suggests, so it says so.
+    let hint = SharedString::from(fl!("overview-alerts-clear-hint"));
+    pill(id.to_owned(), "icons/x.svg", label, look)
+        .flex_none()
+        .tooltip(move |_, cx| {
+            cx.new(|_| crate::usage::Hint {
+                text: hint.clone(),
+                foreground,
+                surface,
+            })
+            .into()
+        })
+        .on_click(cx.listener(|this, _, window, cx| {
+            // The shelf's row folds and unfolds on a click; this one only
+            // clears.
+            cx.stop_propagation();
+            this.clear_all_notifications(window, cx);
+        }))
 }

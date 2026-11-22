@@ -61,6 +61,7 @@ fn control_notes_and_feedback_resolve_remote_keys_without_local_aliases(
         pane_id: key.pane_id,
         daemon_socket: Some("/local.sock".into()),
         wait_seconds: 0,
+        via: None,
     };
     let (incoming, call) = scoped_notes::queued_feedback(&server, &request);
     cx.update(|cx| feedback(&request, incoming, &mut Vec::new(), cx));
@@ -103,6 +104,7 @@ fn missing_remote_control_callers_are_refused_instead_of_queued_locally(
         pane_id: pane,
         daemon_socket: Some("/local.sock".into()),
         wait_seconds: 0,
+        via: None,
     };
     let (incoming, call) = scoped_notes::queued_feedback(&server, &request);
     cx.update(|cx| feedback(&request, incoming, &mut Vec::new(), cx));

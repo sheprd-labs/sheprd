@@ -161,3 +161,55 @@ async fn a_device_with_too_many_streams_open_is_refused() {
         429
     );
 }
+
+/// The phone answers every ping, so a socket quiet for two of them is a
+/// path that stopped carrying traffic; one missed pong is not.
+#[test]
+fn a_socket_quiet_past_two_pings_is_closed() {
+    assert!(QUIET_LIMIT >= PING_INTERVAL * 2);
+    assert!(!too_quiet(PING_INTERVAL));
+    assert!(!too_quiet(QUIET_LIMIT));
+    assert!(too_quiet(QUIET_LIMIT + Duration::from_secs(1)));
+}
+
+/// A phone whose path went quiet stops taking bytes: a write that waits
+/// past its limit ends the socket rather than holding it open.
+#[tokio::test]
+async fn a_write_that_cannot_go_out_ends_the_socket() {
+    let limit = Duration::from_millis(20);
+    let stuck = std::future::pending::<Result<(), ()>>();
+    assert!(matches!(bounded(limit, stuck).await, Some(Ending::Stalled)));
+    assert!(matches!(
+        bounded(limit, async { Err::<(), _>(()) }).await,
+        Some(Ending::SendFailed)
+    ));
+    assert!(bounded(limit, async { Ok::<(), ()>(()) }).await.is_none());
+    assert!(WRITE_LIMIT < QUIET_LIMIT);
+}
+
+/// A chat's snapshot can run to megabytes: its write gets the time a slow
+/// but working connection needs, while a small one keeps the short limit.
+#[test]
+fn a_large_message_gets_time_to_go_out() {
+    assert_eq!(write_limit(0), WRITE_LIMIT);
+    assert_eq!(write_limit(1024), WRITE_LIMIT);
+    let five_megabytes = 5 * 1024 * 1024;
+    assert_eq!(
+        write_limit(five_megabytes),
+        WRITE_LIMIT + Duration::from_secs(five_megabytes as u64 / SLOWEST_BYTES_PER_SEC)
+    );
+    assert!(write_limit(five_megabytes) >= Duration::from_secs(5 * 60));
+    assert!(write_limit(usize::MAX) > WRITE_LIMIT);
+}
+
+/// No ping goes out while a long write does, so its time is not silence:
+/// a snapshot that took minutes must not close the socket at the next ping.
+#[test]
+fn time_spent_writing_is_not_quiet() {
+    let heard = Instant::now();
+    let now = heard + Duration::from_secs(300);
+    let after = not_counting(heard, Duration::from_secs(290), now);
+    assert!(!too_quiet(now - after));
+    assert_eq!(not_counting(heard, Duration::from_secs(400), now), now);
+    assert_eq!(not_counting(heard, Duration::ZERO, now), heard);
+}

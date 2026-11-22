@@ -105,6 +105,7 @@ struct QuestionSheet: View {
     /// One choice replaces the other, and the typed answer, when the
     /// question takes only one.
     private func pick(_ label: String, in question: AskedQuestion) {
+        Feedback.shared.touch(.select)
         if question.multiple {
             if chosen.remove(label) == nil { chosen.insert(label) }
         } else {
@@ -117,6 +118,7 @@ struct QuestionSheet: View {
     private func send(_ answers: [String]) {
         let fleet = model.fleet
         let command = ChatCommand.answerQuestion(permission: permission.id, answers: answers)
+        Feedback.shared.touch(.send)
         Task { _ = await fleet.send(command, to: key) }
         dismiss()
     }
@@ -148,6 +150,7 @@ struct QuestionSheet: View {
     private func answer(_ option: PermissionOption) {
         Task {
             guard await OwnerCheck.allows(option) else { return }
+            Feedback.shared.touch(.send)
             let fleet = model.fleet
             Task { _ = await fleet.send(.answer(permission: permission.id, option: option.id), to: key) }
             dismiss()

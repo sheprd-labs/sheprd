@@ -142,6 +142,7 @@ pub fn request(command: Command, snapshot: &ClientShellSnapshot) -> Option<(Meth
         | Command::NewWorktree
         | Command::OpenWorktree
         | Command::RemoveWorktree
+        | Command::RemoveMergedWorktrees
         | Command::WorktreeNotes
         | Command::EditWorktreeNote
         | Command::Find
@@ -190,6 +191,8 @@ pub fn request(command: Command, snapshot: &ClientShellSnapshot) -> Option<(Meth
         | Command::SplitEditor
         | Command::OpenCode
         | Command::OpenPx0
+        | Command::OpenMachine
+        | Command::NewMachine
         | Command::RemotePair
         | Command::ToggleFullScreen
         | Command::CycleWindows

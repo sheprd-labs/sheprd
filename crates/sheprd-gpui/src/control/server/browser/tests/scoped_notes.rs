@@ -25,6 +25,7 @@ fn scoped_feedback_requests_keep_same_named_waiters_separate(cx: &mut gpui::Test
         pane_id: "p1".into(),
         daemon_socket: Some("/first.sock".into()),
         wait_seconds: 30,
+        via: None,
     };
     let other = FeedbackRequest {
         daemon_socket: Some("/other.sock".into()),

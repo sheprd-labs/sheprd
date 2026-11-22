@@ -9,7 +9,7 @@ fn ids<'a>(store: &'a Store, scope: &'a Scope) -> Vec<&'a str> {
 }
 
 #[test]
-fn kept_workspaces_are_numbered_per_app_and_listed_per_host() {
+fn kept_workspaces_take_random_ids_and_are_listed_per_host() {
     let (here, there) = (Scope::endpoint("here"), Scope::endpoint("there"));
     let mut store = Store::default();
     assert!(store.keep_default(&here, "herdr-2", "Herdr 2"));
@@ -23,14 +23,16 @@ fn kept_workspaces_are_numbered_per_app_and_listed_per_host() {
     let second = store
         .keep_workspace(&there, "web", "/src/web", false)
         .unwrap();
-    assert_eq!((first.as_str(), second.as_str()), ("space-1", "space-2"));
-    assert_eq!(ids(&store, &here), ["herdr-2", "space-1"]);
-    assert_eq!(ids(&store, &there), ["space-2"]);
-    assert_eq!(
-        store.kept_workspace(&here, "space-1").unwrap().cwd,
-        "/src/api"
-    );
-    assert!(store.kept_workspace(&there, "space-1").is_none());
+    assert_ne!(first, second);
+    for id in [&first, &second] {
+        let digits = id.strip_prefix("space-").unwrap();
+        assert_eq!(digits.len(), 16);
+        assert!(digits.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+    assert_eq!(ids(&store, &here), ["herdr-2", first.as_str()]);
+    assert_eq!(ids(&store, &there), [second.as_str()]);
+    assert_eq!(store.kept_workspace(&here, &first).unwrap().cwd, "/src/api");
+    assert!(store.kept_workspace(&there, &first).is_none());
 }
 
 #[test]
@@ -78,6 +80,7 @@ fn kept_workspaces_survive_a_restart_and_a_damaged_one_costs_only_itself() {
     let reread = sheprd_session::SavedTabs::parse(&bytes).unwrap();
     assert_eq!(reread.workspaces("s").next().unwrap().label, "api");
     let without = serde_json::to_string(&Saved {
+        synced: Default::default(),
         tabs: Vec::new(),
         workspaces: Vec::new(),
     })

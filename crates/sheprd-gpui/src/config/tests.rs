@@ -19,6 +19,7 @@ mod code_navigation;
 mod code_start;
 mod coordinator_suffix;
 mod default_fonts;
+mod default_theme;
 mod device_footer;
 mod device_icons;
 mod device_theme;

@@ -10,6 +10,8 @@ mod core_panes;
 mod en_xa;
 mod frecency_ranking;
 mod go_to_search;
+/// Opening or making a virtual Mac, offered where machines run.
+mod machines;
 mod notes;
 mod plugin_selection;
 mod preview_layout;

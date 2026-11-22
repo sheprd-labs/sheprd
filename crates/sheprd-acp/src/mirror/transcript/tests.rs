@@ -7,6 +7,8 @@ use std::io::Write as _;
 mod activities;
 mod bounds;
 mod codex_messages;
+mod commands;
+mod compaction;
 mod metadata;
 mod notices;
 mod question_replies;

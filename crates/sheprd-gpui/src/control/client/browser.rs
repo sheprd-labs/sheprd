@@ -124,6 +124,7 @@ pub(super) fn feedback(wait: u64, _: &Context) -> crate::Result<Output> {
         pane_id,
         daemon_socket: Some(notes_daemon()?),
         wait_seconds: wait.min(MAX_WAIT_SECONDS),
+        via: None,
     });
     match send(&request)? {
         // Notes keep their line breaks: they are Markdown for the agent.

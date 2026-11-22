@@ -2,11 +2,20 @@
 
 use super::*;
 
-fn ids(names: &[&str]) -> HashSet<TerminalId> {
+/// Blocked agents in the terminals `names`, none of them listed.
+fn agents(names: &[&str]) -> Vec<CoreAgent> {
     names
         .iter()
-        .map(|name| TerminalId::new(*name).unwrap())
+        .map(|name| CoreAgent {
+            terminal: TerminalId::new(*name).unwrap(),
+            status: AgentStatus::Blocked,
+            listed: false,
+        })
         .collect()
+}
+
+fn sync_core(window: WindowId, agents: Vec<CoreAgent>, cx: &mut App) {
+    super::sync_core(window, agents, 0, |_| None, cx);
 }
 
 #[gpui::test]
@@ -22,19 +31,23 @@ fn core_agents_count_once_across_windows_beside_herdr_1(cx: &mut gpui::TestAppCo
             view.endpoints[0].live.status = ConnectionStatus::Connected;
             let id = window.window_handle().window_id();
             sync(id, &view.endpoints, cx);
-            sync_core(id, ids(&["t1", "t2"]), cx);
+            sync_core(id, agents(&["t1", "t2"]), cx);
             assert_eq!(cx.global::<Badge>().published, Some(3));
         })
         .unwrap();
     second
         .update(cx, |_, window, cx| {
-            sync_core(window.window_handle().window_id(), ids(&["t2", "t3"]), cx);
+            sync_core(
+                window.window_handle().window_id(),
+                agents(&["t2", "t3"]),
+                cx,
+            );
             assert_eq!(cx.global::<Badge>().published, Some(4));
         })
         .unwrap();
     first
         .update(cx, |_, window, cx| {
-            sync_core(window.window_handle().window_id(), HashSet::new(), cx);
+            sync_core(window.window_handle().window_id(), Vec::new(), cx);
             assert_eq!(cx.global::<Badge>().published, Some(3));
         })
         .unwrap();

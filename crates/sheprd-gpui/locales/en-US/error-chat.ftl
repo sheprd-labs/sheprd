@@ -27,6 +27,7 @@ error-chat-version = the chat program speaks protocol version { $version }
 
 # $agent is an agent's name, such as Claude Code.
 error-chat-start-agent-missing = { $agent } is not installed on this host
+error-chat-start-brief-remote = a brief can only start a chat on this machine
 error-chat-start-disabled = ACP chats are off in Settings
 error-chat-start-line = the chat's command cannot be typed into a shell
 error-chat-start-no-workspace = no workspace is focused
@@ -103,6 +104,8 @@ error-chat-rejection-unknown-queued = that prompt is no longer queued
 error-chat-rejection-agent-unavailable = the program could not deliver the command to the agent
 error-chat-rejection-agent-fixed = the chat's agent cannot change while it is working
 error-chat-rejection-agent-missing = that agent is not installed where the chat runs
+error-chat-rejection-invalid-pull-request = that is not a GitHub pull request address, such as https://github.com/OWNER/REPO/pull/7
+error-chat-rejection-too-many-pull-requests = the chat already lists { $count } pull requests
 # $count is the most files one prompt takes.
 error-chat-rejection-too-many-attachments = a prompt takes at most { $count } files
 error-chat-rejection-queue-full = too many prompts are waiting; wait for the turn to end

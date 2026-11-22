@@ -8,6 +8,7 @@ use crate::{
 use sheprd_client::ConnectTarget;
 
 mod core;
+mod holds;
 mod locale;
 mod mutes;
 mod permission;
@@ -113,32 +114,40 @@ fn only_done_and_blocked_need_attention_even_when_focused(cx: &mut gpui::TestApp
         state.agents[0].focused = true;
         let state = Arc::new(state);
         let contribution = badge.windows.entry(id).or_default();
-        assert!(contribution.update(std::iter::once((None, &state, local())), None));
-        assert!(!contribution.update(std::iter::once((None, &state, local())), None));
+        assert!(contribution.update(
+            std::iter::once((None, &state, local())),
+            None,
+            None,
+            SystemTime::now()
+        ));
+        assert!(!contribution.update(
+            std::iter::once((None, &state, local())),
+            None,
+            None,
+            SystemTime::now()
+        ));
         badge.publish();
         assert_eq!(badge.published, Some(expected));
     }
     let mut state = snapshot(2);
     state.agents[1].agent_status = AgentStatus::Done;
     let mut state = Arc::new(state);
-    assert!(
-        badge
-            .windows
-            .entry(id)
-            .or_default()
-            .update(std::iter::once((None, &state, local())), None)
-    );
+    assert!(badge.windows.entry(id).or_default().update(
+        std::iter::once((None, &state, local())),
+        None,
+        None,
+        SystemTime::now()
+    ));
     badge.publish();
     assert_eq!(badge.published, Some(1));
     // A replacement snapshot need not change its revision for the cache to notice.
     Arc::make_mut(&mut state).agents.clear();
-    assert!(
-        badge
-            .windows
-            .entry(id)
-            .or_default()
-            .update(std::iter::once((None, &state, local())), None)
-    );
+    assert!(badge.windows.entry(id).or_default().update(
+        std::iter::once((None, &state, local())),
+        None,
+        None,
+        SystemTime::now()
+    ));
     badge.publish();
     assert_eq!(badge.published, Some(0));
 }
@@ -156,11 +165,12 @@ fn count_drops_from_two_to_one_despite_a_lagging_duplicate_window(cx: &mut gpui:
     }
     let stale = Arc::new(state.clone());
     for id in [first, second] {
-        badge
-            .windows
-            .entry(id)
-            .or_default()
-            .update(std::iter::once((None, &stale, local())), None);
+        badge.windows.entry(id).or_default().update(
+            std::iter::once((None, &stale, local())),
+            None,
+            None,
+            SystemTime::now(),
+        );
     }
     badge.publish();
     assert_eq!(
@@ -173,31 +183,34 @@ fn count_drops_from_two_to_one_despite_a_lagging_duplicate_window(cx: &mut gpui:
     state.revision = 1;
     state.agents[0].agent_status = AgentStatus::Idle;
     let seen = Arc::new(state.clone());
-    badge
-        .windows
-        .get_mut(&first)
-        .unwrap()
-        .update(std::iter::once((None, &seen, local())), None);
+    badge.windows.get_mut(&first).unwrap().update(
+        std::iter::once((None, &seen, local())),
+        None,
+        None,
+        SystemTime::now(),
+    );
     badge.publish();
     assert_eq!(badge.published, Some(1));
     state.agents[1].agent_status = AgentStatus::Idle;
     let seen = Arc::new(state.clone());
-    badge
-        .windows
-        .get_mut(&first)
-        .unwrap()
-        .update(std::iter::once((None, &seen, local())), None);
+    badge.windows.get_mut(&first).unwrap().update(
+        std::iter::once((None, &seen, local())),
+        None,
+        None,
+        SystemTime::now(),
+    );
     badge.publish();
     assert_eq!(badge.published, Some(0));
 
     state.agents[0].agent_status = AgentStatus::Blocked;
     state.agents[0].state_change_seq = 11;
     let waiting = Arc::new(state);
-    badge
-        .windows
-        .get_mut(&second)
-        .unwrap()
-        .update(std::iter::once((None, &waiting, local())), None);
+    badge.windows.get_mut(&second).unwrap().update(
+        std::iter::once((None, &waiting, local())),
+        None,
+        None,
+        SystemTime::now(),
+    );
     badge.publish();
     assert_eq!(
         badge.published,
@@ -206,11 +219,12 @@ fn count_drops_from_two_to_one_despite_a_lagging_duplicate_window(cx: &mut gpui:
     );
 
     // Separate hosts may report identical boot and pane IDs.
-    badge
-        .windows
-        .get_mut(&first)
-        .unwrap()
-        .update(std::iter::once((Some("remote"), &waiting, local())), None);
+    badge.windows.get_mut(&first).unwrap().update(
+        std::iter::once((Some("remote"), &waiting, local())),
+        None,
+        None,
+        SystemTime::now(),
+    );
     badge.publish();
     assert_eq!(badge.published, Some(2));
 }

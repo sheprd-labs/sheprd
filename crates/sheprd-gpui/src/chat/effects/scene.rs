@@ -134,8 +134,26 @@ pub(crate) fn scene(
         Screen::Lasers => lasers(t, length, w, h, marks),
         Screen::Love => love(t, length, w, h, marks),
         Screen::Spotlight => spotlight(t, length, w, h, target, marks),
+        Screen::Wizz => marks.push(Mark::Veil {
+            alpha: 0.15 * envelope(t, length, 0.05, 0.4),
+            hole: None,
+        }),
         Screen::Zap => zap::zap(t, length, w, h, letters, marks),
     }
+}
+
+/// How far a wizz shakes the chat `t` seconds into its `length`: fast and
+/// wide at first, settling to rest as it ends.
+pub(crate) fn wizz_shake(t: f32, length: f32) -> (f32, f32) {
+    let k = t / length;
+    if t < 0. || k >= 1. {
+        return (0., 0.);
+    }
+    let amp = 12. * (1. - k);
+    (
+        (t * TAU * 14.).sin() * amp,
+        (t * TAU * 9. + 1.).sin() * amp * 0.4,
+    )
 }
 
 fn confetti(t: f32, length: f32, w: f32, h: f32, marks: &mut Vec<Mark>) {

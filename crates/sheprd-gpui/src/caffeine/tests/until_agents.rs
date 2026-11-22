@@ -9,7 +9,7 @@ fn until_agents_finish(cx: &mut gpui::TestAppContext, log: &Log, reports: &Repor
 }
 
 fn observe_in(cx: &mut gpui::TestAppContext, id: u64, work: Work, reports: &Reports) {
-    cx.update(|cx| observe(window(id), work, cx, reports.sink()));
+    cx.update(|cx| observe(window(id), local(work), cx, reports.sink()));
     cx.run_until_parked();
 }
 
@@ -52,7 +52,7 @@ fn agents_finishing_while_the_hold_is_made_release_it(cx: &mut gpui::TestAppCont
     observe_in(cx, 1, Work::Working, &reports);
     cx.update(|cx| {
         toggle_until_agents_finish_with(cx, holder(&log), reports.sink());
-        observe(window(1), Work::Idle, cx, reports.sink());
+        observe(window(1), local(Work::Idle), cx, reports.sink());
     });
     cx.run_until_parked();
 
@@ -115,7 +115,10 @@ fn a_window_reports_its_working_agents(cx: &mut gpui::TestAppContext) {
     handle
         .update(cx, |view, window, cx| {
             let id = window.window_handle().window_id();
-            let working = |cx: &mut App| cx.default_global::<Caffeine>().working.contains(&id);
+            let working = |cx: &mut App| {
+                let working = &cx.default_global::<Caffeine>().working;
+                working.iter().any(|(window, _)| *window == id)
+            };
             let mut busy = snapshot(1);
             busy.agents[0].agent_status = AgentStatus::Working;
             view.endpoints[0]

@@ -49,7 +49,7 @@ fn status(context: &Context) -> crate::Result<Output> {
 }
 
 pub(super) fn local(language: &Language) -> LanguageInfo {
-    let locale = language.resolve(&crate::i18n::available(), &sheprd_i18n::system_languages());
+    let locale = crate::i18n::resolve(language, &sheprd_i18n::system_languages());
     LanguageInfo {
         configured: language.to_string(),
         pseudo: None,
@@ -77,8 +77,9 @@ pub(super) fn text(info: &LanguageInfo, running: bool) -> String {
 fn list() -> crate::Result<Output> {
     // Each language by its name in itself, as Settings lists it; a
     // pseudo-locale has none.
-    let languages: Vec<_> = crate::i18n::available()
-        .into_iter()
+    let languages: Vec<_> = crate::i18n::selectable()
+        .iter()
+        .cloned()
         .map(|locale| {
             let name = crate::i18n::endonym(&locale);
             (locale, Some(name))

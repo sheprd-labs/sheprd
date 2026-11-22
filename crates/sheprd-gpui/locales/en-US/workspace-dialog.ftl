@@ -74,3 +74,7 @@ workspace-dialog-daemon-waiting = Waiting for the daemon. Dismissing does not ca
 workspace-dialog-remove-failed = Remove worktree: { $error }
 workspace-dialog-unexpected = Unexpected daemon response. Review current workspace state before retrying.
 workspace-dialog-setup-failed = The setup script did not start: { $error }
+workspace-dialog-removing = Removing the checkout…
+# $seconds is how long the removal has waited, in whole seconds.
+workspace-dialog-removing-elapsed = { $seconds }s
+workspace-dialog-removing-note = Other workspace actions wait until Git finishes. Dismissing does not cancel it.

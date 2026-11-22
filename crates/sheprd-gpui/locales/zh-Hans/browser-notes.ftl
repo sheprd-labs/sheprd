@@ -1,0 +1,29 @@
+browser-notes-title = 批注
+browser-notes-describe = 描述要更改的内容…
+browser-notes-region = 选区
+browser-notes-page = 批注整页
+browser-notes-empty = 点击页面元素、选中文字或按住 Shift 拖出选区，再描述要更改的内容。
+browser-notes-capturing = 正在截图…
+browser-notes-add = 添加批注
+browser-notes-save = 保存批注
+browser-notes-placeholder = 添加批注…
+browser-notes-sent = { $note } · 已发送
+browser-notes-withdraw = 撤回
+browser-notes-copy = 拷贝
+browser-notes-clear-sent = 清除已发送项
+
+browser-notes-region-size = 选区 { $width }×{ $height }
+browser-notes-whole-page = 整页
+browser-notes-page-result = 页面结果
+browser-notes-page-result-summary = 页面结果：{ $summary }
+
+browser-notes-no-page = 没有可批注的页面
+browser-notes-armed = 点击元素或选中文字以添加批注
+browser-notes-full = 请先清除已发送的批注，或移除部分批注
+browser-notes-result = 页面已生成结果，可发送给智能体
+browser-notes-empty-note = 请先填写要更改的内容
+browser-notes-screenshots-failed = 无法保存截图
+browser-notes-copied = 已拷贝批注
+browser-notes-pending = 之前的批注仍在等待发送
+browser-notes-delivered = 智能体已收到这些批注
+browser-notes-withdrawn = 已撤回批注

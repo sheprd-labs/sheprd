@@ -138,3 +138,26 @@ fn recall_needs_the_sheprd_command_too() {
         None
     );
 }
+
+#[test]
+fn the_pull_request_line_goes_with_the_memory_guide_when_the_chat_listens() {
+    let mut context = Context::default()
+        .with_memory(Some(Path::new(SHEPRD)), None)
+        .with_pull_requests(Some(Path::new(SHEPRD)));
+    let note = context.before(None).unwrap();
+    assert!(note.contains("side rail"), "{note}");
+    assert!(note.contains(&format!("`{SHEPRD} chat pr add URL`")));
+    let (_, after_memory) = note.split_once("</memory>\n").unwrap();
+    assert!(
+        after_memory.contains("chat pr add"),
+        "outside the memory block"
+    );
+    assert_eq!(context.before(None), None, "once");
+
+    let mut silent = Context::default()
+        .with_memory(Some(Path::new(SHEPRD)), None)
+        .with_pull_requests(None);
+    assert!(!silent.before(None).unwrap().contains("chat pr add"));
+    let guide = pull_requests_guide(Path::new("C:/Program Files/Sheprd/sheprd.exe"));
+    assert!(guide.contains("`\"C:/Program Files/Sheprd/sheprd.exe\" chat pr add URL`"));
+}

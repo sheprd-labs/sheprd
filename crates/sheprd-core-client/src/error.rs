@@ -62,6 +62,8 @@ pub enum Error {
     Session(String),
     #[error(transparent)]
     Sessions(#[from] crate::sessions::Error),
+    #[error(transparent)]
+    Spaces(#[from] sheprd_session::spaces::Error),
     #[error("cannot start herdr-core at {}", binary.display())]
     Start {
         binary: PathBuf,

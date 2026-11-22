@@ -15,13 +15,21 @@ public enum ChatCommand: Encodable, Hashable, Sendable {
     case setOption(id: String, value: OptionValue)
     case unqueue(UUID)
     case setAutoAccept(Bool)
+    /// Ends one running sub-agent, shell, or monitor the agent marked
+    /// stoppable, leaving the turn and everything else running.
+    case stopActivity(callId: String)
+    /// Hands the chat to another agent its `Harnesses` offers, by name,
+    /// keeping the conversation; refused while a turn runs.
+    case setAgent(String)
 
     public enum OptionValue: Hashable, Sendable {
         case choice(String)
         case toggle(Bool)
     }
 
-    enum CodingKeys: String, CodingKey { case command, text, attachments, option, permission, id, value, on, answers }
+    enum CodingKeys: String, CodingKey { case command, text, attachments, option, permission, id, value, on, answers, agent
+        case callId = "call_id"
+    }
     enum ValueKeys: String, CodingKey { case type, id, value }
     enum AttachmentKeys: String, CodingKey { case path }
 
@@ -67,6 +75,12 @@ public enum ChatCommand: Encodable, Hashable, Sendable {
         case let .setAutoAccept(on):
             try c.encode("set_auto_accept", forKey: .command)
             try c.encode(on, forKey: .on)
+        case let .stopActivity(callId):
+            try c.encode("stop_activity", forKey: .command)
+            try c.encode(callId, forKey: .callId)
+        case let .setAgent(agent):
+            try c.encode("set_agent", forKey: .command)
+            try c.encode(agent, forKey: .agent)
         }
     }
 }

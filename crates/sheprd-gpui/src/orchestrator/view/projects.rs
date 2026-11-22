@@ -4,8 +4,8 @@
 //! holds, is an entry under its organization, and picking one shows its rows
 //! whichever checkout or organization listed them. Every other checkout is
 //! an entry by its repository's name. Each shows how many of the shown
-//! list's items it holds and a check while picked, under "All projects";
-//! none picked lists everything. A repository browsed to without a checkout
+//! list's items it holds and a checkbox, as several may be picked at once,
+//! under "All projects", which clears them; none picked lists everything. A repository browsed to without a checkout
 //! is listed under its project, where it can be closed.
 
 use super::{Menu, OrchestratorView, repo::Repo, rows::Tab};
@@ -229,7 +229,10 @@ impl OrchestratorView {
             .on_click(cx.listener(|this, _, _, cx| {
                 this.toggle_menu(Menu::Repos);
                 cx.notify();
-            })),
+            }))
+            .when(self.menu == Some(Menu::Repos), |el| {
+                el.child(self.render_project_filter_menu(cx))
+            }),
         )
     }
 
@@ -342,7 +345,8 @@ impl OrchestratorView {
             rows.push(
                 self.menu_row(format!("orchestrator-project-filter-{index}").into(), on)
                     .when(indent, |el| el.pl_4())
-                    .child(check(on))
+                    // A box on every row says several may be picked at once.
+                    .child(crate::toggles::checkbox(theme, 13., on))
                     .child(div().flex_1().min_w_0().truncate().child(label))
                     .when(count > 0, |el| {
                         el.child(div().text_color(rgb(theme.muted)).child(count.to_string()))
@@ -357,19 +361,25 @@ impl OrchestratorView {
                     .into_any_element(),
             );
         }
-        deferred(crate::motion::pop_in(
-            self.bounded_menu(
-                260.,
-                "orchestrator-project-filter-frame",
-                div()
-                    .id("orchestrator-project-filter-list")
-                    .min_h_0()
-                    .overflow_y_scroll()
-                    .flex()
-                    .flex_col()
-                    .children(rows),
+        self.drop_down(
+            Menu::Repos,
+            crate::motion::pop_in(
+                self.bounded_menu(
+                    Menu::Repos,
+                    260.,
+                    "orchestrator-project-filter-frame",
+                    div()
+                        .id("orchestrator-project-filter-list")
+                        .min_h_0()
+                        .overflow_y_scroll()
+                        .flex()
+                        .flex_col()
+                        .gap(px(super::browse::PICK_GAP))
+                        .children(rows),
+                ),
+                "orchestrator-project-filter-menu",
             ),
-            "orchestrator-project-filter-menu",
-        ))
+            cx,
+        )
     }
 }

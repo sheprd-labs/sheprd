@@ -1,5 +1,6 @@
 mod accessibility;
 mod adopt;
+mod adopt_title;
 mod agent_row_rescroll;
 mod chats;
 mod clear;
@@ -14,6 +15,7 @@ mod effects;
 mod fall_through;
 mod fallback_bells;
 mod fallback_reuse;
+mod favorite_keys;
 mod file_images;
 mod focus;
 mod folders;

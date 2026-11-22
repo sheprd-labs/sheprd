@@ -39,8 +39,11 @@ impl SheprdWindow {
             self.chat_header_button("chat-agent-picker".into())
                 .tooltip(self.chat_setting_hint(&fl!("chat-settings-agent"), &name))
                 .child(mark(current).element(MARK, self.theme.foreground))
+                .flex_shrink_1()
+                .min_w(px(46.))
                 .child(
                     div()
+                        .min_w_0()
                         .max_w(px(160.))
                         .truncate()
                         .child(crate::notifications::safe_text(&name, 80)),

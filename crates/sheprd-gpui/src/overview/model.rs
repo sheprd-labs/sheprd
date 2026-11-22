@@ -242,6 +242,31 @@ fn checkout(
     (key, label, branch)
 }
 
+/// The key the user's marks remember a host's agent by: the host's
+/// endpoint id, the checkout it works in, and its name. The Dock badge
+/// finds an agent's row by it.
+#[cfg(any(target_os = "macos", windows, test))]
+pub(crate) fn agent_key(
+    endpoint: &str,
+    snapshot: &ClientShellSnapshot,
+    agent: &ClientShellAgent,
+) -> Key {
+    keyed(
+        endpoint,
+        checkout(snapshot, agent).0,
+        crate::sidebar::agent_name(agent),
+    )
+}
+
+/// The key of the agent `name` in `checkout`, both already found.
+fn keyed(endpoint: &str, checkout: String, name: &str) -> Key {
+    Key::Agent {
+        endpoint: endpoint.to_owned(),
+        checkout,
+        agent: name.to_owned(),
+    }
+}
+
 /// What an agent says it does: its pane's title, else its name.
 fn title(agent: &ClientShellAgent, name: &str) -> String {
     let title = agent
@@ -292,11 +317,7 @@ pub(crate) fn agent_rows(
                 .and_then(|shown| Some((shown.worktree.as_ref()?, shown.branch.as_deref()?)))
                 .and_then(|(tree, branch)| pr(&tree.key, branch));
             Row {
-                key: Key::Agent {
-                    endpoint: endpoint.id.clone(),
-                    checkout,
-                    agent: name.to_owned(),
-                },
+                key: keyed(&endpoint.id, checkout, name),
                 state: State::of(agent.agent_status),
                 title: title(agent, name),
                 detail,

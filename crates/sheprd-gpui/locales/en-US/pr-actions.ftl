@@ -24,3 +24,6 @@ pr-actions-method = Method
 # The confirm button before a merge method is chosen.
 pr-actions-merge = Merge
 pr-actions-merge-title = Merge pull request
+# A stacked pull request's merge lands the open pull requests below it too.
+# $numbers lists them bottom first, such as "#1362, #1364".
+pr-actions-merge-stack = Merging lands { $numbers }, bottom first.

@@ -203,7 +203,9 @@ fn every_focus_changing_command_fences_immediate_input_until_ack_and_surface(
                         view.palette_key(&key("ctrl-tab"), window, cx);
                         let hidden = usize::from(!view.live.supports_pane_clear)
                             + usize::from(!view.live.supports_edit_scrollback)
-                            + usize::from(!crate::menus::IN_WINDOW);
+                            + usize::from(!crate::menus::IN_WINDOW)
+                            // Open and New Virtual Mac show only on macOS.
+                            + 2 * usize::from(!cfg!(target_os = "macos"));
                         for _ in 0..crate::controls::COMMANDS.len() - 2 - hidden {
                             view.palette_key(&key("down"), window, cx);
                         }

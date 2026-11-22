@@ -193,6 +193,10 @@ impl SheprdWindow {
             self.add_nearby_key(event, window, cx);
             return;
         }
+        if self.menu.page == Some(Page::RemoveMerged) {
+            self.merged_sweep_key(event, window, cx);
+            return;
+        }
         if self.menu.page == Some(Page::RemoveWsl) {
             self.remove_wsl_key(event, window, cx);
             return;
@@ -301,9 +305,23 @@ impl SheprdWindow {
             "enter" if matches!(self.menu.page, Some(Page::Dialog(_))) => {
                 self.submit_workspace_dialog(window, cx)
             }
+            // Rewriting history, merging, and queueing also take a fresh
+            // press: the one that opened the dialog may still be held.
+            "enter"
+                if event.is_held
+                    && matches!(
+                        self.menu.page,
+                        Some(Page::GitRestack | Page::PrMerge | Page::PrQueue)
+                    ) => {}
             "enter" if self.menu.page == Some(Page::GitCommit) => self.submit_git_commit(cx),
+            "enter" if self.menu.page == Some(Page::GitRestack) => self.submit_git_restack(cx),
             "enter" if self.menu.page == Some(Page::PrComment) => self.submit_pr_comment(cx),
+            // A dialog a command opened confirms only by a click.
+            "enter"
+                if matches!(self.menu.page, Some(Page::PrMerge | Page::PrQueue))
+                    && self.menu.asked_by_command => {}
             "enter" if self.menu.page == Some(Page::PrMerge) => self.submit_pr_merge(cx),
+            "enter" if self.menu.page == Some(Page::PrQueue) => self.submit_pr_queue(cx),
             "enter" if self.menu.page == Some(Page::OverviewReply) => {
                 self.submit_overview_reply(window, cx)
             }

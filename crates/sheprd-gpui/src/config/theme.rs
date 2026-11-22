@@ -332,9 +332,11 @@ pub struct Theme {
 impl Default for Theme {
     fn default() -> Self {
         let mut palette = [0; 256];
+        // The first theme people see, so every color reads on the background
+        // (`default_theme` tests hold that). Magenta is also the accent.
         palette[..16].copy_from_slice(&[
-            0x000000, 0x800000, 0x008000, 0x808000, 0x000080, 0x800080, 0x008080, 0xc0c0c0,
-            0x808080, 0xff0000, 0x00ff00, 0xffff00, 0x0000ff, 0xff00ff, 0x00ffff, 0xffffff,
+            0x2b313b, 0xef7a85, 0xa3d98b, 0xf0c674, 0x6cb2ff, 0xb99cf5, 0x5fd3e0, 0xc5ccd6,
+            0x6b7585, 0xff9aa2, 0xbde8a6, 0xffd98e, 0x94c8ff, 0xcdb5fb, 0x86e1ec, 0xf2f4f8,
         ]);
         for (index, color) in palette.iter_mut().enumerate().skip(16) {
             let n = index as u32;

@@ -11,9 +11,10 @@ use crate::{
 pub const VERSION: u32 = 1;
 
 /// Additions to [`VERSION`] a client declares it reads in its greeting:
-/// 1 is `Change::Activity`, 2 is `Change::Harnesses`. A program sends a
-/// client of an earlier revision only what that client can decode.
-pub const REVISION: u32 = 2;
+/// 1 is `Change::Activity`, 2 is `Change::Harnesses`, 3 is
+/// `Change::PullRequest`, 4 is `Change::Brief`. A program sends a client of
+/// an earlier revision only what that client can decode.
+pub const REVISION: u32 = 4;
 
 /// The longest prompt a client may send, in bytes.
 pub const MAX_PROMPT_SIZE: usize = 256 * 1024;
@@ -137,6 +138,11 @@ pub enum Command {
     SetAgent {
         agent: Agent,
     },
+    /// Lists a pull request the agent worked on, by its GitHub address, as
+    /// `sheprd chat pr add` asks for one changed without `gh`.
+    AddPullRequest {
+        url: String,
+    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -208,6 +214,12 @@ pub enum Rejection {
     AgentFixed,
     #[error("that agent is not installed where the chat runs")]
     AgentMissing,
+    #[error(
+        "that is not a GitHub pull request address, such as https://github.com/OWNER/REPO/pull/7"
+    )]
+    InvalidPullRequest,
+    #[error("the chat already lists {} pull requests", crate::MAX_PULL_REQUESTS)]
+    TooManyPullRequests,
     /// A command this program's version does not know, from a newer client.
     #[error("this chat program is older than Sheprd; start a new chat to use that")]
     Unsupported,

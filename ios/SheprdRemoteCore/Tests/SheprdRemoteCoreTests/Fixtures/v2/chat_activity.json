@@ -1,0 +1,57 @@
+{
+  "type": "chat_changes",
+  "pane": "p1",
+  "changes": [
+    {
+      "cursor": {
+        "epoch": "01234567-89ab-cdef-0123-456789abcdef",
+        "seq": 45
+      },
+      "change": {
+        "change": "activity",
+        "activity": {
+          "call_id": "toolu_1",
+          "detail": "Reading crates/sheprd-acp/src/main.rs",
+          "kind": "subagent",
+          "label": "Find where the rail reads activities",
+          "started_ms": 1770000000000,
+          "state": "running",
+          "stoppable": true
+        }
+      }
+    },
+    {
+      "cursor": {
+        "epoch": "01234567-89ab-cdef-0123-456789abcdef",
+        "seq": 46
+      },
+      "change": {
+        "change": "activity",
+        "activity": {
+          "call_id": "toolu_2",
+          "finished_ms": 1770000060000,
+          "kind": "shell",
+          "label": "cargo test -p sheprd-chat-protocol",
+          "started_ms": 1770000010000,
+          "state": "failed"
+        }
+      }
+    },
+    {
+      "cursor": {
+        "epoch": "01234567-89ab-cdef-0123-456789abcdef",
+        "seq": 47
+      },
+      "change": {
+        "change": "harnesses",
+        "harnesses": {
+          "available": [
+            "claude",
+            "codex"
+          ],
+          "current": "claude"
+        }
+      }
+    }
+  ]
+}

@@ -32,6 +32,7 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         guard always || VoiceSettings.speaks else { return }
         stop()
         let session = AVAudioSession.sharedInstance()
+        Feedback.shared.holdAudio(self)
         try? session.setCategory(.playback, options: .duckOthers)
         try? session.setActive(true)
         await withCheckedContinuation { continuation in
@@ -39,6 +40,7 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate {
             synthesizer.speak(AVSpeechUtterance(string: words))
         }
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        Feedback.shared.releaseAudio(self)
     }
 
     func stop() {

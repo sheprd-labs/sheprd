@@ -1,0 +1,9 @@
+tab-layout-classic = 经典
+tab-layout-pills = 胶囊
+tab-layout-outline = 描边
+tab-layout-underline = 下划线
+tab-layout-cards = 卡片
+tab-layout-curved = 曲边
+tab-layout-compact = 紧凑
+tab-layout-muted-hint = { $label }（通知已静音）
+tab-layout-close = 关闭标签页

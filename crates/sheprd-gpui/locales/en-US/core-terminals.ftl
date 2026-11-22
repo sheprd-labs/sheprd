@@ -7,6 +7,10 @@ core-terminals-workspaces-need-core = herdr-core is not installed on this host, 
 # herdr-core runs in the host's Herdr instead.
 core-terminals-host-without-core = herdr-core is not installed on this host, so the tab runs in its Herdr. Choose Install Herdr 2 in the host's menu to add it
 core-terminals-too-many-tabs = Too many tabs are open
+# A change to a kept Herdr 2 workspace or tab that the host's shared copy,
+# which every computer and phone showing the host reads, refused. $reason is
+# the error, in English or from herdr-core.
+core-terminals-shared-refused = The host's other clients will not see this change: { $reason }
 # An automation's agent runs in this computer's Herdr 2, not on the host shown.
 core-terminals-this-computer = This agent runs on this computer; show it to open the agent
 core-terminals-connecting = Connecting to herdr-core...

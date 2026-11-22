@@ -232,6 +232,12 @@ impl Core {
         .map(drop)
     }
 
+    /// `terminal`'s screen as text, which the core reads itself: nothing
+    /// attaches, so the terminal's size and its viewers are left alone.
+    pub fn read(&self, terminal: &str) -> Result<wire::Read> {
+        self.typed(Method::TerminalRead, &json!({"terminal": terminal}))
+    }
+
     pub fn kill(&self, terminal: &str) -> Result<Terminal> {
         self.typed(Method::TerminalKill, &json!({"terminal": terminal}))
     }

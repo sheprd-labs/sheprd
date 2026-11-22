@@ -8,6 +8,7 @@ fn each_tone_takes_its_own_palette_color() {
         (Tone::Held, theme.palette[208]),
         (Tone::Merged, theme.palette[5]),
         (Tone::Muted, theme.muted),
+        (Tone::Queued, theme.palette[136]),
         (Tone::Ready, theme.palette[2]),
         (Tone::Waiting, theme.palette[3]),
     ] {

@@ -43,7 +43,7 @@ struct PairView: View {
                     }
                 }
             }
-            .sensoryFeedback(trigger: pairing.step) { _, step in
+            .haptic(trigger: pairing.step) { _, step in
                 if case .paired = step { .success } else { nil }
             }
             .navigationTitle("Pair a computer")

@@ -7,6 +7,7 @@ mod announcements;
 mod atomic_projection;
 mod checkpoint_turns;
 mod cleanup_slot;
+mod connection_message;
 mod connection_status;
 mod daemon_messages;
 mod daemon_version;

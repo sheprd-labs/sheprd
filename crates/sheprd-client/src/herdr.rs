@@ -4,7 +4,9 @@
 
 mod agent_kind;
 pub mod convert;
+pub mod observe;
 pub mod processes;
+pub mod prompt;
 pub mod sessions;
 pub mod snapshot;
 pub mod worktree;

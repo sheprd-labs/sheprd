@@ -16,8 +16,10 @@ use crate::{
 use gpui::{prelude::*, *};
 use sheprd_client::protocol::{AgentStatus, ClientShellAgent, ClientShellSnapshot};
 
+pub(crate) mod favorites;
 pub(crate) mod groups;
 pub(crate) mod listed;
+pub(crate) mod read;
 
 pub(super) fn agents_sort(window: &SheprdWindow, cx: &mut Context<SheprdWindow>) -> Stateful<Div> {
     let theme = &window.theme;

@@ -78,7 +78,7 @@ ANTHROPIC_BASE_URL = "https://llm.example.com"
 
 - **From a group's menu.** A group's **…** menu lists **New Chat** with one row per agent. A row opens a tab named after the agent in the focused workspace, in the focused pane's folder.
 - **With one click.** Each tab strip offers a button per installed agent that starts its chat in a new tab; **+** still opens a terminal tab. `[chat] launcher` places the buttons: `plus` (the default, sliding out from under **+**), `beside`, `leading`, `trailing`, `button` (one button for the agent last started), or `off`.
-- **From the command line.** `sheprd chat new AGENT` does the same from a pane, and `sheprd-acp claude` starts a chat by hand in any pane.
+- **From the command line.** `sheprd chat new AGENT` does the same from a pane, and `sheprd-acp claude` starts a chat by hand in any pane. Run by a chat's agent, `sheprd chat new` with no agent starts one like that chat: the same agent, model, thinking level, and permission mode. The chat tells its agent so, so asking it to start an agent in a new workspace gets a chat rather than a terminal agent.
 
 The rows and buttons show once the app has found `sheprd-acp`, first beside its own executable and then on the login shell's `PATH`.
 
@@ -106,6 +106,8 @@ The agent's CLI stops, `sheprd-acp --resume` continues the same session in its s
 For Herdr 1, Herdr must know the agent's session, which takes its integration: run `herdr integration install claude` (or `codex`, `copilot`, `opencode`), then restart the agent. This does not install session reporting for Herdr 2. Herdr 2's Claude path reads `~/.claude/sessions/<pid>.json` and refuses a missing or mismatched record.
 
 Only an idle agent moves. The agent is stopped with Ctrl+C alone, so nothing in its input is submitted, but text in its input is lost and whatever it ran in the background stops with it. If it has not stopped after 30 seconds, the move gives up and the agent keeps running.
+
+The move continues the same session: nothing is sent to the agent as a new prompt. The chat opens at the agent's last prompt and reply, under a **Continued from …'s earlier session** line. On the desktop, **Show N earlier turns** above that prompt opens the rest of the conversation. A context compaction shows as **Context compacted**, with Claude's summary in its details, and slash commands typed in the terminal show as short notes.
 
 Limits:
 
@@ -164,6 +166,10 @@ Besides your words, a chat tells the agent two things it cannot see, in a note a
 - **Where you are typing.** The desktop app on the agent's machine or on another computer over SSH, the terminal pane's own chat view, or Sheprd's iPhone and iPad app or web app, along with how the phone reached the computer: the local network, Tailscale, or Sheprd's relay. The note goes again only when you switch devices, so moving from your desk to your phone and back mid-chat tells the agent each time, while a phone changing networks does not. Opening the same chat from the desktop app on another computer over SSH also counts, since paths are no longer yours to open.
 
 Where you cannot open files on the agent's machine, as on a phone, the agent is asked to put pictures in the chat instead of giving a path: it saves a screenshot or a mockup as an image and links it, which attaches the picture to the message. HTML mockups are rendered to screenshots first.
+
+### Seeing what the agent was told
+
+**As sent** in a chat's header shows the conversation as the agent received it: above each of your messages, the note that went with it, dimmed and in the terminal font, with **Copy** beside it. When the chat switched agents, the conversation handed to the new one shows there too. A message that went alone shows nothing more. Click **As sent** again to hide the notes. The agent's own system prompt, such as Claude Code's, stays inside the agent, so the chat cannot show it. A chat restored from an agent's log shows the notes the log kept.
 
 ### Changing what the agent is told
 

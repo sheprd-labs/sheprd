@@ -770,6 +770,7 @@ impl SheprdWindow {
                         self.live.supports_edit_scrollback || palette.core_view.is_some()
                     }
                     Command::ToggleMenuBar => crate::menus::IN_WINDOW,
+                    Command::OpenMachine | Command::NewMachine => cfg!(target_os = "macos"),
                     _ => true,
                 })
                 .map(|info| {

@@ -24,6 +24,8 @@ const SINCE_WIDTH: f32 = 40.;
 const TITLE_MIN: f32 = 140.;
 /// The least the branch and host columns shrink to.
 const COLUMN_MIN: f32 = 56.;
+/// How tall a [`pill`] is.
+const PILL_HEIGHT: f32 = 22.;
 
 /// Where a row is drawn, which decides its actions.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -73,7 +75,7 @@ impl SheprdWindow {
             .text_color(rgb(theme.foreground))
             .text_font(frame.look.ui)
             .text_size(px(frame.look.ui.size))
-            .child(self.overview_summary(&frame.look, &sections))
+            .child(self.overview_summary(&frame.look, &sections, cx))
             .children(self.overview_batch(&frame.look, &sections, cx))
             .child(
                 div()
@@ -95,7 +97,7 @@ impl SheprdWindow {
             .into_any_element()
     }
 
-    fn overview_summary(&self, look: &Look, sections: &Sections) -> Div {
+    fn overview_summary(&self, look: &Look, sections: &Sections, cx: &mut Context<Self>) -> Div {
         let theme = look.theme;
         let stat = |count: usize, text: fn(usize) -> String, status: AgentStatus| {
             // A zero says nothing the missing stat does not.
@@ -124,6 +126,11 @@ impl SheprdWindow {
             .border_color(rgb(theme.active))
             .child(
                 div()
+                    // As tall as Clear all, so the line keeps its height
+                    // when that comes and goes.
+                    .min_h(px(PILL_HEIGHT))
+                    .flex()
+                    .items_center()
                     .text_size(px(look.ui.size + 3.))
                     .font_weight(FontWeight::SEMIBOLD)
                     .child(fl!("overview-title")),
@@ -143,6 +150,9 @@ impl SheprdWindow {
                 |count| fl!("overview-stat-ready", count = count),
                 AgentStatus::Done,
             ))
+            .when_some(self.overview_clear_all(look, cx), |summary, clear| {
+                summary.child(div().flex_1()).child(clear)
+            })
     }
 
     fn overview_list(&self, frame: &Frame, sections: &Sections, cx: &mut Context<Self>) -> Div {
@@ -853,7 +863,7 @@ pub(super) fn pill(id: String, icon: &'static str, label: String, look: &Look) -
     div()
         .id(SharedString::from(id))
         .debug_selector(move || selector.clone())
-        .h(px(22.))
+        .h(px(PILL_HEIGHT))
         .px(px(6.))
         .flex()
         .items_center()

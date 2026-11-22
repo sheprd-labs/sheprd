@@ -9,6 +9,7 @@ mod create;
 pub(crate) mod github;
 mod live;
 mod model;
+pub(crate) mod previews;
 mod search;
 mod summarize;
 mod title;
@@ -36,7 +37,10 @@ use axum::{
 };
 use model::{ChatSnapshot, Home, Sources};
 use secrecy::SecretString;
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 use tokio::sync::mpsc;
 use wire::{ClientMessage, ServerMessage};
 
@@ -51,6 +55,20 @@ const INBOUND_QUEUE: usize = 16;
 const MAX_STREAMS: usize = 8;
 /// How often an idle socket is pinged, so proxies and NATs keep it.
 const PING_INTERVAL: Duration = Duration::from_secs(20);
+/// How long a socket may go without a frame from the phone, which
+/// answers every ping, before it is closed as a path that stopped
+/// carrying traffic: two pings unanswered, and some room for a slow pong.
+const QUIET_LIMIT: Duration = Duration::from_secs(45);
+/// How long a small write may wait for room to send. A phone whose path
+/// went quiet stops taking bytes, and a write to it would otherwise wait
+/// for the operating system to give up, keeping the socket and its views
+/// alive past [`QUIET_LIMIT`].
+const WRITE_LIMIT: Duration = Duration::from_secs(10);
+/// The slowest a phone may take a large message, in bytes a second: a
+/// chat's snapshot carries its whole transcript and can run to megabytes,
+/// and a slow but working connection must still get it in one piece, or
+/// each reconnect would ask for it again and the chat would never load.
+const SLOWEST_BYTES_PER_SEC: u64 = 16 * 1024;
 
 /// This computer's home as the state holds it now, for `device`.
 fn home(state: &Shared, device: &DeviceId) -> Home {
@@ -67,9 +85,12 @@ fn home(state: &Shared, device: &DeviceId) -> Home {
     let pull_requests = state.pull_requests.borrow().clone();
     let checkouts = state.lending.checkouts.current();
     let recognized = state.lending.recognized();
+    let favorites = state.favorites.current();
+    let seen = state.seen();
     let mut home = Home::project(Sources {
         checkouts: &checkouts,
         computer: &state.computer,
+        favorites: &favorites,
         fingerprint: &state.fingerprint,
         layout: &layout,
         load: *state.load.borrow(),
@@ -78,9 +99,11 @@ fn home(state: &Shared, device: &DeviceId) -> Home {
         recognized: &recognized,
         shortcuts_ms: state.shortcuts.current().updated_ms,
         tags: state.tags.current(),
+        unread: &seen.unread,
         version: crate::server::version(),
-        waiting: state.attention().len(),
+        waiting: seen.needing.len(),
     });
+    home.preview_terminals(&state.previews.current());
     home.github = Some(state.github.enabled());
     home.github_hosts = github::lent_hosts(state, device);
     home
@@ -99,8 +122,15 @@ pub(crate) async fn get_chat(
     _device: Device,
     Path(pane): Path<String>,
 ) -> Result<Json<ChatSnapshot>, ApiError> {
-    state.hub.layout().chat(&pane).ok_or(ApiError::NotFound)?;
-    let link = state.hub.chat(&pane).ok_or(ApiError::NotFound)?;
+    let link = match state.hub.layout().chat(&pane) {
+        Some(_) => state.hub.chat(&pane).ok_or(ApiError::NotFound)?,
+        None if state.hub.observable(&pane) => state
+            .hub
+            .observe(&pane)
+            .await
+            .map_err(|_| ApiError::NotFound)?,
+        None => return Err(ApiError::NotFound),
+    };
     let (transcript, cursor) = link.base();
     Ok(Json(ChatSnapshot {
         pane,
@@ -132,7 +162,9 @@ pub(crate) async fn live(
 
 /// Carries messages between the socket and the session until either ends:
 /// the phone closes, sends a binary or oversized frame, or the session
-/// says `bye`.
+/// says `bye`, or the phone stays quiet past [`QUIET_LIMIT`] or takes no
+/// bytes for its [`write_limit`]. Logs how it ended and how long the phone
+/// had been quiet.
 async fn serve(mut socket: WebSocket, state: Shared, device: DeviceId, token: SecretString) {
     let _connected = Connected::new(state.clone(), device.clone());
     let (to_phone, mut outbound) = mpsc::channel(OUTBOUND_QUEUE);
@@ -140,50 +172,126 @@ async fn serve(mut socket: WebSocket, state: Shared, device: DeviceId, token: Se
     let session = tokio::spawn(live::run(state, token, device, from_phone, to_phone));
     let mut ping = tokio::time::interval(PING_INTERVAL);
     ping.reset();
-    loop {
+    let opened = Instant::now();
+    let mut heard = opened;
+    let ending = loop {
         tokio::select! {
             message = outbound.recv() => {
-                let Some(message) = message else { break };
+                let Some(message) = message else { break Ending::SessionEnded };
                 let bye = matches!(message, ServerMessage::Bye { .. });
-                if !send(&mut socket, &message).await || bye {
-                    break;
+                let writing = Instant::now();
+                if let Some(ending) = send(&mut socket, &message).await {
+                    break ending;
+                }
+                heard = not_counting(heard, writing.elapsed(), Instant::now());
+                if bye {
+                    break Ending::Bye;
                 }
             }
-            frame = socket.recv() => match frame {
-                Some(Ok(Message::Text(text))) => {
-                    let reply = match serde_json::from_str::<ClientMessage>(&text) {
-                        Ok(message) => inbound
-                            .try_send(message)
-                            .err()
-                            .map(|_| "too many messages at once"),
-                        Err(_) => Some("that message is not one this socket reads"),
-                    };
-                    if let Some(message) = reply {
-                        let error = ServerMessage::Error { message: message.to_owned(), view: None };
-                        if !send(&mut socket, &error).await {
-                            break;
+            frame = socket.recv() => {
+                if matches!(frame, Some(Ok(_))) {
+                    heard = Instant::now();
+                }
+                match frame {
+                    Some(Ok(Message::Text(text))) => {
+                        let reply = match serde_json::from_str::<ClientMessage>(&text) {
+                            Ok(message) => inbound
+                                .try_send(message)
+                                .err()
+                                .map(|_| "too many messages at once"),
+                            Err(_) => Some("that message is not one this socket reads"),
+                        };
+                        if let Some(message) = reply {
+                            let error = ServerMessage::Error { message: message.to_owned(), view: None };
+                            let writing = Instant::now();
+                            if let Some(ending) = send(&mut socket, &error).await {
+                                break ending;
+                            }
+                            heard = not_counting(heard, writing.elapsed(), Instant::now());
                         }
                     }
+                    Some(Ok(Message::Ping(_) | Message::Pong(_))) => {}
+                    Some(Ok(Message::Close(_))) | None => break Ending::PhoneClosed,
+                    Some(Ok(Message::Binary(_))) => break Ending::Unreadable,
+                    Some(Err(_)) => break Ending::ReadFailed,
                 }
-                Some(Ok(Message::Ping(_) | Message::Pong(_))) => {}
-                Some(Ok(Message::Binary(_) | Message::Close(_)) | Err(_)) | None => break,
             },
             _ = ping.tick() => {
-                if socket.send(Message::Ping(Default::default())).await.is_err() {
-                    break;
+                if too_quiet(heard.elapsed()) {
+                    break Ending::Quiet;
                 }
+                let writing = Instant::now();
+                if let Some(ending) = bounded(WRITE_LIMIT, socket.send(Message::Ping(Default::default()))).await {
+                    break ending;
+                }
+                heard = not_counting(heard, writing.elapsed(), Instant::now());
             }
         }
-    }
+    };
     session.abort();
-    let _ = socket.send(Message::Close(None)).await;
+    let _ = bounded(WRITE_LIMIT, socket.send(Message::Close(None))).await;
+    tracing::info!(
+        ?ending,
+        lasted_s = opened.elapsed().as_secs(),
+        quiet_s = heard.elapsed().as_secs(),
+        "a phone's live socket ended"
+    );
 }
 
-async fn send(socket: &mut WebSocket, message: &ServerMessage) -> bool {
+/// Why a live socket ended, as its log line says.
+#[derive(Debug)]
+enum Ending {
+    Bye,
+    PhoneClosed,
+    Quiet,
+    ReadFailed,
+    SendFailed,
+    SessionEnded,
+    Stalled,
+    Unreadable,
+}
+
+/// When the phone was last heard from, with `writing`, the time a write to
+/// it took to go out, not counted as quiet: no ping went out meanwhile for
+/// it to answer, and a large write that went through shows the path works.
+fn not_counting(heard: Instant, writing: Duration, now: Instant) -> Instant {
+    heard
+        .checked_add(writing)
+        .map_or(now, |moved| moved.min(now))
+}
+
+/// Whether a phone quiet for `quiet` has stopped answering pings.
+fn too_quiet(quiet: Duration) -> bool {
+    quiet > QUIET_LIMIT
+}
+
+/// Sends `message`; how the socket ends when it cannot.
+async fn send(socket: &mut WebSocket, message: &ServerMessage) -> Option<Ending> {
     let Ok(text) = serde_json::to_string(message) else {
-        return false;
+        return Some(Ending::SendFailed);
     };
-    socket.send(Message::Text(text.into())).await.is_ok()
+    bounded(
+        write_limit(text.len()),
+        socket.send(Message::Text(text.into())),
+    )
+    .await
+}
+
+/// How long a write of `bytes` may take: [`WRITE_LIMIT`], and the time to
+/// send them at [`SLOWEST_BYTES_PER_SEC`] on top.
+fn write_limit(bytes: usize) -> Duration {
+    let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
+    WRITE_LIMIT.saturating_add(Duration::from_secs(bytes / SLOWEST_BYTES_PER_SEC))
+}
+
+/// Waits up to `limit` for `write`; how the socket ends when it fails or
+/// is still waiting then, nothing when it went out.
+async fn bounded<E>(limit: Duration, write: impl Future<Output = Result<(), E>>) -> Option<Ending> {
+    match tokio::time::timeout(limit, write).await {
+        Ok(Ok(())) => None,
+        Ok(Err(_)) => Some(Ending::SendFailed),
+        Err(_) => Some(Ending::Stalled),
+    }
 }
 
 #[cfg(test)]

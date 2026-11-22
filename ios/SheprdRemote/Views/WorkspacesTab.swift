@@ -347,6 +347,7 @@ private struct WorkspaceRow: View {
                 if let counts { Text(counts).font(.caption).foregroundStyle(.secondary) }
             }
             Spacer(minLength: 4)
+            if workspace.uncommitted == true { UncommittedMark() }
             WorkspacePullRequestBadge(workspace: workspace)
         }
     }
@@ -430,6 +431,21 @@ struct UnopenedPill: View {
     }
 }
 
+/// Uncommitted changes in a checkout: the pencil in a yellow square that
+/// Sheprd's sidebar draws.
+struct UncommittedMark: View {
+    var size: CGFloat = 20
+
+    var body: some View {
+        Image(systemName: "pencil").font(.system(size: size * 0.55, weight: .semibold))
+            .foregroundStyle(.yellow)
+            .frame(width: size, height: size)
+            .background(Color.yellow.opacity(0.15), in: .rect(cornerRadius: size * 0.28))
+            .overlay(RoundedRectangle(cornerRadius: size * 0.28).strokeBorder(Color.yellow.opacity(0.55), lineWidth: 1))
+            .accessibilityLabel("Uncommitted changes")
+    }
+}
+
 /// A pull request's number, colored as Sheprd colors its state.
 struct PullRequestPill: View {
     var pullRequest: Home.PullRequest
@@ -451,6 +467,7 @@ extension Home.PullRequest.Tone {
         case .attention: .red
         case .held: .orange
         case .merged: .purple
+        case .queued: .brown
         case .ready: .green
         case .waiting: .yellow
         case .other: .secondary
@@ -463,6 +480,7 @@ extension Home.PullRequest.Tone {
         case .attention: "xmark.circle.fill"
         case .held: "exclamationmark.triangle.fill"
         case .merged: "arrow.triangle.merge"
+        case .queued: "hourglass.circle.fill"
         case .ready: "checkmark.circle.fill"
         case .waiting: "clock.fill"
         case .other: "pencil.circle.fill"
@@ -474,6 +492,7 @@ extension Home.PullRequest.Tone {
         case .attention: "needs attention"
         case .held: "blocked or behind"
         case .merged: "merged"
+        case .queued: "queued to merge"
         case .ready: "ready to merge"
         case .waiting: "checks or review pending"
         case .other: "draft"

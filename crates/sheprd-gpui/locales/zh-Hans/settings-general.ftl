@@ -1,0 +1,19 @@
+settings-general-section-interface = 界面
+settings-general-section-features = 功能
+settings-general-section-clipboard = 剪贴板
+settings-general-section-worktrees = 工作树
+settings-general-section-browser-skill = 浏览器技能
+settings-general-section-startup = 启动
+settings-general-section-updates = 更新
+
+settings-general-language-system = 跟随系统（{ $language }）
+settings-general-language-unavailable = { $tag }（当前显示为{ $language }）
+settings-general-menu-bar = 显示菜单栏
+settings-general-menu-bar-description = 在窗口顶部显示菜单栏。隐藏时可按 F10 临时打开菜单，也可通过“切换菜单栏”恢复显示。
+settings-general-window-controls = 显示窗口控制按钮
+settings-general-window-controls-description = 在菜单栏中显示最小化、最大化和关闭按钮。菜单栏隐藏时，按钮会显示在标题栏中。请关闭窗口管理器的服务端窗口装饰，以免出现两排按钮。
+settings-general-browser-skill-missing = 尚未安装。
+settings-general-browser-skill-install = 安装
+settings-general-browser-skill-remove = 移除
+settings-general-launch-at-login-disabled = 此功能已在系统的“设置 > 应用 > 启动”中关闭。请在该页面重新启用。
+settings-general-error-launch-at-login = 登录时启动：{ $error }

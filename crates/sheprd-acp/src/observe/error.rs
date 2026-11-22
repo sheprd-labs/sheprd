@@ -1,4 +1,4 @@
-use std::{io, num::ParseIntError};
+use std::io;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -11,18 +11,25 @@ pub enum Error {
     ConfigDirNotUtf8,
     #[error("Codex transcript directory exceeds the observation limit")]
     DayTooLarge,
+    #[cfg(any(target_os = "linux", test))]
     #[error("process environment exceeds the observation limit")]
     EnvironmentTooLarge,
     #[error("the original agent exited or was replaced")]
     Exited,
+    #[cfg(target_os = "macos")]
+    #[error("invalid process id")]
+    InvalidPid,
+    #[cfg(any(target_os = "linux", test))]
     #[error("invalid process start time")]
-    InvalidStartTime(#[source] ParseIntError),
+    InvalidStartTime(#[source] std::num::ParseIntError),
+    #[cfg(any(target_os = "linux", test))]
     #[error("invalid process stat")]
     InvalidStat,
     #[error(transparent)]
     Io(#[from] io::Error),
     #[error(transparent)]
     Mirror(#[from] crate::mirror::Error),
+    #[cfg(any(target_os = "linux", test))]
     #[error("missing process start time")]
     MissingStartTime,
     #[error("Codex session has no creation timestamp")]
@@ -31,6 +38,9 @@ pub enum Error {
     NotUuidV7,
     #[error("the original agent process has changed")]
     ProcessChanged,
+    #[cfg(target_os = "macos")]
+    #[error("the kernel would not describe the agent process")]
+    ProcessInfo,
     // Only Unix exposes the inode identity that tells a rotated log apart.
     #[cfg(unix)]
     #[error("the transcript rotated; reconnect to verify its new file")]
@@ -41,6 +51,7 @@ pub enum Error {
     SessionChanged,
     #[error("Codex session creation timestamp is out of range")]
     TimestampRange,
-    #[error("existing terminal observation requires Linux process metadata")]
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[error("existing terminal observation requires Linux or macOS process metadata")]
     Unsupported,
 }

@@ -29,6 +29,7 @@ impl SheprdWindow {
             title,
             origin: None,
             place: Place::Group,
+            space: None,
             zoom: Zoom::default(),
         };
         self.browser.pages.ensure(&tab, window, cx)

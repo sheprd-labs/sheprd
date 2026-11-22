@@ -22,3 +22,9 @@ crates/sheprd-relay/src/tests/fixtures/** -text
 website/site/relays.json -text
 website/site/relays.json.asc -text
 website/site/relays.json.sig -text
+# Videos, such as the feature screencasts scripts/screencast renders, go to
+# Git LFS so clones and history stay small. Deploys that serve them need LFS
+# fetched (Netlify: GIT_LFS_ENABLED=true).
+*.mov filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.webm filter=lfs diff=lfs merge=lfs -text

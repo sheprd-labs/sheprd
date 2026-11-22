@@ -9,8 +9,9 @@ fn an_explicit_unknown_core_pane_never_falls_back_to_herdr_ones_workspace(
         for pane in ["core:t-missing", "core@7:ssh:box:t-missing"] {
             let response = serve(
                 call(ChatOp::New {
-                    agent: "codex".into(),
+                    agent: Some("codex".into()),
                     pane: Some(pane.into()),
+                    prompt: None,
                 }),
                 cx,
             );

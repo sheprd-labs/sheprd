@@ -5,6 +5,7 @@ fn feedback_request() -> Request {
         pane_id: "p1".into(),
         daemon_socket: Some("/session.sock".into()),
         wait_seconds: 600,
+        via: None,
     })
 }
 

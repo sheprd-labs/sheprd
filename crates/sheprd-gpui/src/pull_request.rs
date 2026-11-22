@@ -51,6 +51,8 @@ pub(crate) fn tone_color(tone: Tone, theme: &crate::config::Theme) -> u32 {
         Tone::Attention => theme.palette[1],
         Tone::Merged => theme.palette[5],
         Tone::Muted => theme.muted,
+        // ANSI's dark goldenrod, near GitHub's own queued badge.
+        Tone::Queued => theme.palette[136],
         Tone::Ready => theme.palette[2],
         // ANSI's extended orange distinguishes a blocked/behind branch from
         // pending checks without borrowing a lifecycle color.

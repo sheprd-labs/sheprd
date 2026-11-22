@@ -33,7 +33,7 @@ impl Ask {
         let names_workspace =
             |workspace: &str| !workspace.is_empty() && workspace.len() <= MAX_TERMINAL;
         match &self.op {
-            Op::CloseWorkspace { workspace } | Op::RemoveWorktree { workspace } => {
+            Op::CloseWorkspace { workspace } | Op::RemoveWorktree { workspace, .. } => {
                 names_workspace(workspace)
             }
             Op::RenameWorkspace { workspace, name } => {
@@ -69,9 +69,14 @@ pub enum Op {
     /// their terminals end, as its menu's Close does.
     CloseWorkspace { workspace: String },
     /// Deletes the linked worktree of a workspace Sheprd keeps for Herdr 2,
-    /// then closes the workspace. Never forced: a checkout with changes
-    /// stays.
-    RemoveWorktree { workspace: String },
+    /// then closes the workspace. A checkout with changes stays unless the
+    /// person confirmed on the phone that they are discarded; a Sheprd that
+    /// does not know `discard` keeps it, as before.
+    RemoveWorktree {
+        workspace: String,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        discard: bool,
+    },
 }
 
 /// Sheprd's answer to an [`Ask`].
@@ -93,7 +98,7 @@ pub enum Failure {
     Busy,
     #[error("no Sheprd window has this tab open")]
     Gone,
-    #[error("this checkout has uncommitted changes; delete it in Sheprd to discard them")]
+    #[error("this checkout has uncommitted changes")]
     Dirty,
     #[error("this workspace is not a linked worktree Sheprd can delete")]
     NotWorktree,

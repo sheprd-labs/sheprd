@@ -44,6 +44,16 @@ pub enum HostOp {
     PrComments,
     /// Open it in a browser tab.
     PrOpen,
+    PrCreate {},
+    /// Open the Git popup's merge dialog for it, which on a GitHub stack
+    /// lands the open layers below it too. Only the dialog opens: the user
+    /// picks the method and confirms there.
+    PrMerge,
+    /// Open the confirmation that adds it to its base branch's merge queue,
+    /// or takes it out. The user confirms there.
+    PrQueue {
+        change: QueueOp,
+    },
     /// Last reported GitHub GraphQL quota and active account pauses.
     PrQuota,
     /// Ports the caller's workspace's processes listen on, and forwards.
@@ -104,6 +114,14 @@ pub enum HostOp {
     },
 }
 
+/// What `pr queue` asks to confirm.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QueueOp {
+    Add,
+    Remove,
+}
+
 impl HostOp {
     pub fn wait_seconds(&self) -> u64 {
         match self {
@@ -131,6 +149,55 @@ pub struct PrInfo {
     pub review: Option<String>,
     pub merge_status: Option<String>,
     pub checks: Vec<CheckInfo>,
+    /// The GitHub stack the pull request is a layer of. Absent from an
+    /// older app's answer.
+    #[serde(default)]
+    pub stack: Option<StackInfo>,
+    /// Its entry in the base branch's merge queue.
+    #[serde(default)]
+    pub queue: Option<QueueInfo>,
+}
+
+/// A pull request's stack, and what merging at its layer would do.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StackInfo {
+    pub number: u64,
+    /// The branch the bottom layer merges into.
+    pub base: String,
+    pub size: u64,
+    /// The pull request's own layer, from 1 at the bottom.
+    pub position: u64,
+    /// `merged`, `ready`, `blocked`, or `unread` when a layer up to this
+    /// one was not read, so neither merged nor ready can be said.
+    pub verdict: String,
+    /// How many open layers merging here would land, when `ready`.
+    pub ready: Option<usize>,
+    /// The lowest layer that cannot merge, when `blocked`.
+    pub blocked_by: Option<u64>,
+    /// Why it cannot: a layer status word other than `merged` or `ready`.
+    pub reason: Option<String>,
+    /// The layers read, bottom first.
+    pub layers: Vec<LayerInfo>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerInfo {
+    pub position: u64,
+    pub number: u64,
+    pub title: String,
+    /// `merged`, `ready`, `closed`, `draft`, `conflicts`, `checks_failed`,
+    /// `changes_requested`, `checks_running`, `review_required`, `behind`,
+    /// `held`, or `undecided`.
+    pub status: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QueueInfo {
+    pub position: u64,
+    /// `queued`, `awaiting_checks`, `mergeable`, `unmergeable`, `locked`,
+    /// or `unknown`.
+    pub state: String,
+    pub eta_seconds: Option<u64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

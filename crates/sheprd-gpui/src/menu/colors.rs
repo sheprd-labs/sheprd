@@ -142,8 +142,5 @@ mod tests {
                 assert!(ratio >= 3., "{name}: {ratio:.2} against {background:06x}");
             }
         }
-        // The raw palette blue it replaces did not read on the default theme.
-        let theme = crate::config::Theme::default();
-        assert!(contrast(rgb(theme.palette[4]), rgb(theme.background)) < 3.);
     }
 }

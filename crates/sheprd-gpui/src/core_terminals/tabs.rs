@@ -54,7 +54,8 @@ impl SheprdWindow {
         let mut closed = Vec::new();
         terminals.tabs.retain(|id, shown| {
             let Some(stored) = store.get(*id) else {
-                if !shown.observe {
+                // A tab another client closed: it ends its terminals.
+                if !shown.observe && !store.dropped_shared(*id) {
                     let host = &shown.host;
                     closed.extend(
                         (shown.panes.terminals().into_iter())

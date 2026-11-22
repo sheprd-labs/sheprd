@@ -1,0 +1,19 @@
+#!/bin/bash
+# Runs as root after Install Sheprd Agent.pkg copies the app and its
+# LaunchAgent: starts the agent now in the signed-in user's session, so its
+# Accessibility prompt shows at once rather than at the next login. macOS
+# shows no prompt for Screen Recording, only a notification, so its pane in
+# System Settings opens too, with Sheprd Agent listed and switched off.
+label=so.pen.sheprd.machine-agent
+plist="/Library/LaunchAgents/$label.plist"
+chown root:wheel "$plist"
+chmod 644 "$plist"
+user=$(stat -f %Su /dev/console)
+[[ -n $user && $user != root ]] || exit 0
+domain="gui/$(id -u "$user")"
+launchctl bootout "$domain/$label" 2>/dev/null || true
+launchctl bootstrap "$domain" "$plist"
+sleep 1
+launchctl asuser "$(id -u "$user")" sudo -u "$user" \
+    open 'x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_ScreenCapture' || true
+exit 0

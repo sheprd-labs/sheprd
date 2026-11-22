@@ -95,6 +95,7 @@ fn a_waiting_caller_does_not_hold_up_the_next_one() {
                     pane_id: "w_1:p1".into(),
                     daemon_socket: Some("/tmp/daemon.sock".into()),
                     wait_seconds: 30,
+                    via: None,
                 }),
             )
         }
@@ -128,6 +129,7 @@ fn feedback_waits_are_bounded() {
             pane_id: "p".into(),
             daemon_socket: Some("/tmp/daemon.sock".into()),
             wait_seconds,
+            via: None,
         }))
     };
     assert_eq!(wait(5), ANSWER_TIMEOUT + Duration::from_secs(5));
@@ -146,6 +148,7 @@ fn an_answer_over_the_bound_is_refused_and_its_notes_kept() {
         pane_id: "w_1:p1".into(),
         daemon_socket: Some("/tmp/daemon.sock".into()),
         wait_seconds: 0,
+        via: None,
     };
     let caller = thread::spawn({
         let path = address.path.clone();

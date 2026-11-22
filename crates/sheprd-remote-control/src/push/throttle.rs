@@ -49,7 +49,7 @@ impl Throttle {
         now_ms: u64,
     ) -> Option<Notification> {
         self.forget(now_ms);
-        let urgent = notification.clear || notification.kind.asks();
+        let urgent = notification.clear || notification.kind.asks() || notification.wizz;
         if let Some(recent) = self.chats.get_mut(&notification.tag)
             && !urgent
             && now_ms.saturating_sub(recent.last_ms) < CHAT_INTERVAL_MS

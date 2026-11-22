@@ -33,6 +33,38 @@ pub(super) fn pr(pr: &PrInfo) -> String {
         let _ = writeln!(text, "{}", details.join(" · "));
     }
     let _ = writeln!(text, "Checks: {}", summary(&pr.checks));
+    if let Some(stack) = &pr.stack {
+        let verdict = match (&stack.blocked_by, &stack.reason, stack.ready) {
+            (Some(number), Some(reason), _) => {
+                format!("blocked by #{number} ({})", reason.replace('_', " "))
+            }
+            (_, _, Some(count)) => format!("ready to merge {count}"),
+            _ => stack.verdict.clone(),
+        };
+        let _ = writeln!(
+            text,
+            "Stack: layer {} of {} onto {} · {verdict}",
+            stack.position, stack.size, stack.base
+        );
+        let layers: Vec<String> = stack
+            .layers
+            .iter()
+            .map(|layer| format!("#{} {}", layer.number, layer.status.replace('_', " ")))
+            .collect();
+        let _ = writeln!(text, "  {}", layers.join(" · "));
+    }
+    if let Some(queue) = &pr.queue {
+        let _ = write!(
+            text,
+            "Queue: position {} · {}",
+            queue.position,
+            queue.state.replace('_', " ")
+        );
+        if let Some(seconds) = queue.eta_seconds {
+            let _ = write!(text, " · about {} min", seconds.div_ceil(60).max(1));
+        }
+        text.push('\n');
+    }
     text.push_str(&pr.url);
     text
 }

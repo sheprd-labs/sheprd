@@ -2,7 +2,9 @@
 //! attachments by path on this computer, which a phone must never name, so
 //! an upload is checked to be an image by its bytes, written 0600 to a
 //! private folder under a random name, and known to the phone only by an
-//! opaque id that a prompt's attachment carries. Uploads are forgotten and
+//! opaque id that a prompt's attachment carries. A file dropped on a
+//! terminal is any kind, kept under its name made safe, its path typed by
+//! this computer rather than named by the phone. Uploads are forgotten and
 //! deleted after a day, and only a bounded number are kept.
 
 use sheprd_chat_protocol::{Attachment, ImageType};
@@ -16,6 +18,12 @@ use std::{
 /// The largest picture a phone may send; the chat program's own image
 /// limit is 5 MiB of base64, which this stays under.
 pub(crate) const MAX_UPLOAD: usize = 3_500_000;
+/// The largest file a phone may drop on a terminal; kept modest, as up to
+/// [`MAX_UPLOADS`] of them stay on disk for a day.
+pub(crate) const MAX_FILE: usize = 16 * 1024 * 1024;
+/// The most UTF-8 bytes of a file's name kept in its stored name. File
+/// systems limit a name's bytes, often to 255, and the id and `-` go first.
+const MAX_NAME: usize = 100;
 /// Uploads kept at once.
 const MAX_UPLOADS: usize = 64;
 /// How long an upload stays attachable.
@@ -24,6 +32,8 @@ const LIFETIME_MS: u64 = 24 * 60 * 60 * 1000;
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum Error {
     // keep-sorted start
+    #[error("the file is larger than {MAX_FILE} bytes")]
+    FileTooLarge,
     #[error("that is not a PNG, JPEG, GIF, or WebP picture")]
     NotAnImage,
     #[error("the picture is larger than {MAX_UPLOAD} bytes")]
@@ -93,9 +103,33 @@ impl Uploads {
             return Err(Error::TooLarge);
         }
         let kind = sniff(bytes).ok_or(Error::NotAnImage)?;
+        let name = format!("{id}.{}", extension(kind));
+        self.keep(id, &name, bytes, now_ms)
+    }
+
+    /// Stores any file a phone drops on a terminal under the name it had,
+    /// made safe and prefixed by `id`, so the program reading the path sees
+    /// its kind. Returns its id. Blocking.
+    pub(crate) fn store_file(
+        &self,
+        id: String,
+        name: &str,
+        bytes: &[u8],
+        now_ms: u64,
+    ) -> Result<String, Error> {
+        if bytes.len() > MAX_FILE {
+            return Err(Error::FileTooLarge);
+        }
+        let name = format!("{id}-{}", file_name(name));
+        self.keep(id, &name, bytes, now_ms)
+    }
+
+    /// Writes `bytes` as `name` and remembers it by `id`, dropping the
+    /// oldest upload past the bound.
+    fn keep(&self, id: String, name: &str, bytes: &[u8], now_ms: u64) -> Result<String, Error> {
         self.prune(now_ms);
         private_dir(&self.dir).map_err(Error::Write)?;
-        let path = self.dir.join(format!("{id}.{}", extension(kind)));
+        let path = self.dir.join(name);
         write_private(&path, bytes).map_err(Error::Write)?;
         let mut uploads = self.uploads.lock().unwrap_or_else(PoisonError::into_inner);
         if uploads.len() >= MAX_UPLOADS
@@ -168,6 +202,44 @@ impl Uploads {
             keep
         });
     }
+}
+
+/// The last part of a name a phone sent, kept to letters, digits, `.`,
+/// `-`, and `_`, never hidden or empty, and at most [`MAX_NAME`] bytes,
+/// keeping its extension and whole characters.
+pub(crate) fn file_name(name: &str) -> String {
+    let last = name.rsplit(['/', '\\']).next().unwrap_or_default();
+    let safe: String = last
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || matches!(c, '.' | '-' | '_') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let safe = safe.trim_start_matches('.');
+    if safe.is_empty() {
+        return "file".to_owned();
+    }
+    if safe.len() <= MAX_NAME {
+        return safe.to_owned();
+    }
+    // Over the limit: the start and the extension, which says the kind.
+    let extension = safe
+        .rfind('.')
+        .map(|dot| &safe[dot..])
+        .filter(|extension| extension.len() <= 16)
+        .unwrap_or_default();
+    let room = MAX_NAME - extension.len();
+    let end = safe
+        .char_indices()
+        .map(|(at, c)| at + c.len_utf8())
+        .take_while(|&end| end <= room)
+        .last()
+        .unwrap_or(0);
+    format!("{}{extension}", &safe[..end])
 }
 
 fn private_dir(dir: &Path) -> std::io::Result<()> {

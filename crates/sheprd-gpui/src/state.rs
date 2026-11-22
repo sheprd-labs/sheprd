@@ -304,6 +304,20 @@ impl LiveState {
         !(self.herdr_1_absent() && core_answers)
     }
 
+    /// What the status bar says of this host's connection, if anything:
+    /// nothing while it is connected without an error, nor while
+    /// [`Self::reports_herdr_1`] keeps quiet about a Herdr 1 the host lacks.
+    pub(crate) fn connection_message(
+        &self,
+        local_error: Option<&str>,
+        core_answers: bool,
+    ) -> Option<String> {
+        let quiet = matches!(self.status, ConnectionStatus::Connected)
+            && local_error.is_none()
+            && self.error.is_none();
+        (self.reports_herdr_1(core_answers) && !quiet).then(|| self.status_text(local_error))
+    }
+
     fn answer_slot(&mut self, answer: Answer) -> &mut Option<(String, Option<DialogResponse>)> {
         match answer {
             Answer::Cleanup => &mut self.cleanup_response,

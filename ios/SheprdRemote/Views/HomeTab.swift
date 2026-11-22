@@ -9,16 +9,22 @@ struct HomeTab: View {
     @AppStorage(HomeRow.sortKey) private var sort = AgentSort.priority
     @Binding var pairing: Bool
     @State private var query = ""
+    /// Lists only agents with a reply no one read.
+    @AppStorage("homeUnreadOnly") private var unreadOnly = false
 
     var body: some View {
         let listed = model.agentListFilter()
+        let chats = model.fleet.chatItems.filter { listed($0.computer, $0.workspace) }
+        let agents = model.fleet.agentTerminals.filter { listed($0.computer, $0.workspace) }
+        let unread = (chats.map(HomeRow.chat) + agents.map(HomeRow.agent))
+            .compactMap(\.readTarget).filter(\.unread).map(\.key)
         let sections = HomeRow.sections(
             sort,
-            chats: model.fleet.chatItems.filter { listed($0.computer, $0.workspace) },
-            agents: model.fleet.agentTerminals.filter { listed($0.computer, $0.workspace) }
+            chats: unreadOnly ? chats.filter(\.unread) : chats,
+            agents: unreadOnly ? agents.filter(\.unread) : agents
         )
         Group {
-            if query.isEmpty { chats(sections) } else { SearchResults(query: query, workspacesAsRoutes: true) }
+            if query.isEmpty { self.chats(sections, unread: unread) } else { SearchResults(query: query, workspacesAsRoutes: true) }
         }
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Workspaces, chats, terminals")
         .navigationBarTitleDisplayMode(.inline)
@@ -53,9 +59,10 @@ struct HomeTab: View {
         }
     }
 
-    private func chats(_ sections: [AgentSort.Section<HomeRow>]) -> some View {
-        ChatList(sections: sections)
+    private func chats(_ sections: [AgentSort.Section<HomeRow>], unread: [PaneKey]) -> some View {
+        ChatList(sections: sections, unread: unread, unreadOnly: $unreadOnly)
             .nearbyBanner()
+            .fleetOffer()
             .overlay {
                 if model.computers.isEmpty {
                     ContentUnavailableView {

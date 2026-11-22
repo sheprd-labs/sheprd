@@ -91,6 +91,9 @@ pub(crate) struct NewWorkspace {
     session: Option<String>,
     #[serde(default)]
     start: Option<Start>,
+    /// The workspace's name; empty names it for its folder or branch.
+    #[serde(default)]
+    title: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -254,16 +257,18 @@ pub(crate) async fn create_workspace(
     Json(request): Json<NewWorkspace>,
 ) -> Result<Json<CreatedWorkspace>, ApiError> {
     check_prompt(&request.prompt)?;
+    let title = check_title(&request.title)?;
     let (agent, branch) =
         check_new_workspace(&state, &request.cwd, &request.branch, &request.agent).await?;
     let created = state
         .hub
-        .create_workspace(
-            &request.cwd,
-            branch.as_deref(),
+        .create_workspace(hub::NewWorkspace {
             agent,
-            request.session.as_deref(),
-        )
+            branch: branch.as_deref(),
+            cwd: &request.cwd,
+            session: request.session.as_deref(),
+            title,
+        })
         .await?;
     let opened = open(&state, created.pane, request.start, request.prompt, origin).await;
     Ok(Json(CreatedWorkspace {
@@ -320,6 +325,22 @@ fn check_prompt(prompt: &str) -> Result<(), ApiError> {
         return Err(ApiError::Invalid("the prompt is too long"));
     }
     Ok(())
+}
+
+/// The workspace name a request gives, trimmed: `None` when blank, and
+/// refused when longer than a workspace name may be or holding control
+/// characters, which no row could show.
+pub(crate) fn check_title(title: &str) -> Result<Option<&str>, ApiError> {
+    let title = title.trim();
+    if title.chars().count() > sheprd_session::saved::MAX_LABEL_CHARS {
+        return Err(ApiError::Invalid("the title is too long"));
+    }
+    if title.chars().any(char::is_control) {
+        return Err(ApiError::Invalid(
+            "the title cannot hold control characters",
+        ));
+    }
+    Ok((!title.is_empty()).then_some(title))
 }
 
 /// How opening a new chat went.

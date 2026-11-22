@@ -1,7 +1,8 @@
 //! The menu behind a group's "…" button: tabs other than a terminal to open
 //! in the group (a blank browser tab, the focused checkout's review, the
 //! repository's orchestrator, the focused workspace's listening ports, its
-//! VS Code), a new chat with an agent through `herdr-acp`, closing the tab it shows, its other tabs, or the group itself,
+//! VS Code), a new chat with an agent through `herdr-acp`, a virtual Mac or a
+//! new one (macOS), closing the tab it shows, its other tabs, or the group itself,
 //! and splitting it. A terminal tab comes from the group's "+". Closing a
 //! tab here is the tab's own close; closing the group closes no tab: its
 //! tabs go to the group that takes its room.
@@ -37,6 +38,12 @@ enum Action {
     VsCode,
     /// A new tab running a `herdr-acp` chat with the agent.
     Chat(Agent),
+    /// A virtual Mac in a tab of this group.
+    #[cfg(target_os = "macos")]
+    Machine(crate::machine::Name),
+    /// Settings > Virtual Macs, which makes one.
+    #[cfg(target_os = "macos")]
+    NewMachine,
     Px0,
     /// One of the focused workspace's listening ports and where it opens.
     Port {
@@ -64,6 +71,10 @@ impl Action {
             // A product's name.
             Self::VsCode => "VS Code".into(), // i18n: data
             Self::Chat(agent) => agent.display_name().into(),
+            #[cfg(target_os = "macos")]
+            Self::Machine(name) => name.to_string().into(),
+            #[cfg(target_os = "macos")]
+            Self::NewMachine => fl!("group-menu-new-machine").into(),
             Self::Px0 => "px0".into(),
             Self::Port { link, .. } => link.label().into(),
             Self::Close => fl!("group-menu-close-tab").into(),
@@ -84,6 +95,10 @@ impl Action {
                 Some(crate::icons::AgentIcon::from_identity(Some(agent.name())).path())
             }
             Self::Port { .. } => Some("icons/arrow-right.svg"),
+            #[cfg(target_os = "macos")]
+            Self::Machine(_) => Some("icons/computer.svg"),
+            #[cfg(target_os = "macos")]
+            Self::NewMachine => Some("icons/plus.svg"),
             Self::Split => Some("icons/split.svg"),
             Self::Close | Self::CloseOthers | Self::CloseGroup => None,
         }
@@ -94,6 +109,8 @@ impl Action {
         match self {
             Self::Port { number, .. } => format!("group-menu-Port{number}"), // i18n: data
             Self::Chat(agent) => format!("group-menu-Chat-{agent}"),         // i18n: data
+            #[cfg(target_os = "macos")]
+            Self::Machine(name) => format!("group-menu-Machine-{name}"), // i18n: data
             action => format!("group-menu-{action:?}"),
         }
     }
@@ -103,6 +120,8 @@ impl Action {
         match self {
             Self::NewBrowserTab | Self::Review | Self::Orchestrator | Self::VsCode | Self::Px0 => 0,
             Self::Chat(_) => 1,
+            #[cfg(target_os = "macos")]
+            Self::Machine(_) | Self::NewMachine => 5,
             Self::Port { .. } => 2,
             Self::Close | Self::CloseOthers | Self::CloseGroup => 3,
             Self::Split => 4,
@@ -114,6 +133,8 @@ impl Action {
         match self {
             Self::Chat(_) => Some(fl!("group-menu-new-chat")),
             Self::Port { .. } => Some(fl!("group-menu-listening")),
+            #[cfg(target_os = "macos")]
+            Self::Machine(_) | Self::NewMachine => Some(fl!("group-menu-machines")),
             _ => None,
         }
     }
@@ -161,6 +182,15 @@ impl SheprdWindow {
             actions.push(Action::Px0);
         }
         actions.extend(self.chat_agents().into_iter().map(Action::Chat));
+        #[cfg(target_os = "macos")]
+        {
+            actions.extend(
+                crate::machine::known::known()
+                    .into_iter()
+                    .map(Action::Machine),
+            );
+            actions.push(Action::NewMachine);
+        }
         if let Some((_, _, listed)) = self.focused_listening_ports() {
             actions.extend(listed.ports.iter().filter_map(|port| {
                 Some(Action::Port {
@@ -200,6 +230,9 @@ impl SheprdWindow {
         }
         self.menu.anchor = anchor;
         self.menu.page = Some(Page::Group);
+        // Its rows name the machines; a read finishing after this redraws it.
+        #[cfg(target_os = "macos")]
+        crate::machine::known::refresh(cx);
         self.menu.group = Some(GroupMenu {
             group,
             selected: None,
@@ -219,6 +252,10 @@ impl SheprdWindow {
             Action::Orchestrator => self.open_orchestrator(window, cx),
             Action::VsCode => self.open_code(Some(group), window, cx),
             Action::Chat(agent) => self.start_chat_or_flash(agent, cx),
+            #[cfg(target_os = "macos")]
+            Action::Machine(name) => self.open_machine(name, window, cx),
+            #[cfg(target_os = "macos")]
+            Action::NewMachine => self.offer_new_machine(cx),
             Action::Px0 => {
                 self.open_px0(Some(group), window, cx);
             }
@@ -347,6 +384,8 @@ impl SheprdWindow {
                 // It has no default key; one bound to open_code shows.
                 Action::VsCode => self.keymap().primary(Command::OpenCode).to_owned().into(),
                 Action::Px0 => self.keymap().primary(Command::OpenPx0).to_owned().into(),
+                #[cfg(target_os = "macos")]
+                Action::NewMachine => self.keymap().primary(Command::NewMachine).to_owned().into(),
                 Action::Port { process, .. } => process.clone().into(),
                 _ => "".into(),
             };

@@ -19,7 +19,7 @@ struct VoiceSheet: View {
         .presentationDragIndicator(.visible)
         .animation(.snappy, value: session.phase)
         .animation(.snappy, value: session.draft)
-        .sensoryFeedback(.start, trigger: session.phase == .listening)
+        .haptic(.start, trigger: session.phase == .listening)
         .onDisappear { session.cancel() }
     }
 

@@ -4,8 +4,10 @@ use super::text;
 mod automation;
 mod gpu;
 mod local_ports;
+mod pr_create;
 mod quota;
 mod security;
+mod stack;
 mod usage_pick;
 use crate::control::protocol::{
     app::HostInfo,
@@ -42,6 +44,8 @@ fn a_pull_request_reads_as_a_short_summary() {
             check("lint", "failed"),
             check("doc", "passed"),
         ],
+        stack: None,
+        queue: None,
     };
     assert_eq!(
         text::pr(&pr),

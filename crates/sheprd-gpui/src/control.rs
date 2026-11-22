@@ -6,17 +6,23 @@
 //! talks to it. Only this user's local processes can reach it: an agent on
 //! an SSH host has no path to this machine's socket.
 
+pub(crate) mod brief;
 mod client;
+pub(crate) mod link_input;
 pub(crate) mod listen_token;
 mod server;
 
 use crate::browser::Location;
 pub(crate) use crate::cli::control::Placement;
 use crate::window::main_window::MainWindow;
+#[cfg(all(test, feature = "mcp"))]
+pub(crate) use client::relay;
 #[cfg(windows)]
 pub(crate) use client::send_focus;
 #[cfg(feature = "mockup")]
 pub(crate) use client::send_notes;
+#[cfg(feature = "mcp")]
+pub(crate) use client::{Context, Output, code as error_code, dispatch, exit, relay_as};
 pub(crate) use client::{run, send_link, status as exit_status};
 use gpui::App;
 use protocol::Caller;
@@ -28,11 +34,12 @@ pub use protocol::{
     app::{FontSize, Size, Switch},
     events::{Cursor, EventKind},
     settings::Sound,
-    tabs::ZoomChange,
+    tabs::{MachineButton, MachineModifier, ZoomChange},
     work::Script,
 };
 pub(crate) use sheprd_control_protocol::Error;
-use sheprd_control_protocol::{protocol, socket};
+pub(crate) use sheprd_control_protocol::protocol;
+use sheprd_control_protocol::socket;
 use std::path::{Path, PathBuf};
 
 #[cfg(any(target_os = "macos", windows))]

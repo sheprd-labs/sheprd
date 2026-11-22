@@ -136,6 +136,7 @@ struct ChatRowLabel: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(title).lineLimit(1)
+                        .fontWeight(item.unread ? .semibold : nil)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     if item.drafted {
                         Image(systemName: "pencil.circle.fill")
@@ -147,11 +148,11 @@ struct ChatRowLabel: View {
                             .font(.footnote.monospacedDigit()).foregroundStyle(.secondary)
                             .fixedSize()
                     } else if !item.needsYou, let date = item.lastAnswer {
-                        LastAnswer(date: date)
+                        LastAnswer(date: date, unread: item.unread)
                     }
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    detail.font(.subheadline).foregroundStyle(.secondary).lineLimit(RowLines.clamped(lines))
+                    detail.font(.subheadline).foregroundStyle(item.unread ? .primary : .secondary).lineLimit(RowLines.clamped(lines))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityValue(showsWorkspace && !showsPullRequest && item.workspace.merged ? "Pull request merged" : "")
                     // Its workspace's pull request, colored by state, says at a
@@ -160,6 +161,8 @@ struct ChatRowLabel: View {
                 }
             }
         }
+        // In the row's leading margin, so read and unread rows line up.
+        .overlay(alignment: .leading) { UnreadDot(unread: item.unread).offset(x: -15) }
     }
 
     /// The chat's title, else its first prompt, else its agent's name, so a
@@ -238,8 +241,11 @@ enum RowPlace {
 }
 
 /// A terminal tab with an agent in it, such as `claude` run in a shell,
-/// drawn like a chat row; it opens the terminal.
+/// drawn like a chat row; it opens the terminal. A terminal glyph starts its
+/// detail line, so it reads apart from a chat, and what its screen last
+/// showed follows where it runs.
 struct AgentTerminalRowLabel: View {
+    @AppStorage(RowLines.key) private var lines = RowLines.choices.lowerBound
     var item: TerminalItem
     var showsComputer = true
     /// Off on the workspace's own screen, which shows the tab's name
@@ -257,24 +263,33 @@ struct AgentTerminalRowLabel: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(item.title).lineLimit(1)
+                        .fontWeight(item.unread ? .semibold : nil)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    if !item.needsYou, !item.working, let date = item.changed { LastAnswer(date: date) }
+                    if !item.needsYou, !item.working, let date = item.changed { LastAnswer(date: date, unread: item.unread) }
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(place)
-                        .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                    Text("\(Image(systemName: "apple.terminal")) \(detail)")
+                        .font(.subheadline).foregroundStyle(.secondary).lineLimit(RowLines.clamped(lines))
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityLabel(Text("Terminal: \(detail)"))
                         .accessibilityValue(showsWorkspace && !showsPullRequest && item.workspace.merged ? "Pull request merged" : "")
                     if showsPullRequest { WorkspacePullRequestBadge(workspace: item.workspace).fixedSize() }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .overlay(alignment: .leading) { UnreadDot(unread: item.unread).offset(x: -15) }
     }
 
-    private var place: AttributedString {
-        guard showsWorkspace else { return AttributedString(tabName) }
-        return RowPlace.line([showsComputer ? AttributedString(item.computer.name) : nil, RowPlace.name(of: item.workspace)])
+    private var detail: AttributedString {
+        let preview = (item.terminal.agent?.preview?.trimmingCharacters(in: .whitespacesAndNewlines))
+            .flatMap { $0.isEmpty ? nil : AttributedString($0) }
+        guard showsWorkspace else { return RowPlace.line([AttributedString(tabName), preview]) }
+        return RowPlace.line([
+            showsComputer ? AttributedString(item.computer.name) : nil,
+            RowPlace.name(of: item.workspace),
+            preview,
+        ])
     }
 
     /// The tab's name, unless Sheprd only numbered it or it repeats the
@@ -291,11 +306,14 @@ struct AgentTerminalRowLabel: View {
 /// "3h", a weekday within the week, then the date.
 struct LastAnswer: View {
     let date: Date
+    /// The reply is unread, so the time is in the tint, as Mail shows it.
+    var unread = false
 
     var body: some View {
         TimelineView(.everyMinute) { context in
             Text(Self.label(date, now: context.date))
-                .font(.footnote.monospacedDigit()).foregroundStyle(.secondary)
+                .font(.footnote.monospacedDigit().weight(unread ? .semibold : .regular))
+                .foregroundStyle(unread ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                 .fixedSize()
                 .accessibilityLabel("Last answered \(date.formatted(.relative(presentation: .named)))")
         }
@@ -362,6 +380,7 @@ struct AnswerCard: View {
                 sending = false
                 return
             }
+            Feedback.shared.touch(.send)
             problem = await model.fleet.send(.answer(permission: question.id, option: option.id), to: item.key)
             sending = false
         }

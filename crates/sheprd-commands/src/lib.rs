@@ -19,6 +19,9 @@ pub enum Command {
     OpenWorktree,
     /// The focused linked worktree's delete confirmation.
     RemoveWorktree,
+    /// Asks once, then removes every linked worktree on the selected device
+    /// whose pull request is merged.
+    RemoveMergedWorktrees,
     /// Go To, listing only the checkouts that have a note.
     WorktreeNotes,
     /// The focused checkout's note.
@@ -108,6 +111,10 @@ pub enum Command {
     SplitEditor,
     OpenCode,
     OpenPx0,
+    /// A virtual Mac in a tab, or Settings when there is none or a choice.
+    OpenMachine,
+    /// Settings > Virtual Macs, where a machine is made from Apple's macOS.
+    NewMachine,
     /// The remote control pairing dialog.
     RemotePair,
     ToggleFullScreen,
@@ -213,6 +220,11 @@ pub const COMMANDS: &[CommandInfo] = &[
         command: Command::RemoveWorktree,
         name: "remove_worktree",
         message: "commands-remove-worktree",
+    },
+    CommandInfo {
+        command: Command::RemoveMergedWorktrees,
+        name: "remove_merged_worktrees",
+        message: "commands-remove-merged-worktrees",
     },
     CommandInfo {
         command: Command::WorktreeNotes,
@@ -798,6 +810,16 @@ pub const COMMANDS: &[CommandInfo] = &[
         command: Command::OpenPx0,
         name: "open_px0",
         message: "commands-open-px0",
+    },
+    CommandInfo {
+        command: Command::OpenMachine,
+        name: "open_machine",
+        message: "commands-open-machine",
+    },
+    CommandInfo {
+        command: Command::NewMachine,
+        name: "new_machine",
+        message: "commands-new-machine",
     },
     CommandInfo {
         command: Command::RemotePair,

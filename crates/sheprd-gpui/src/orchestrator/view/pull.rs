@@ -12,18 +12,18 @@ use crate::{
     i18n::{Localize, fl},
     orchestrator::Item,
     pr_actions,
-    pull_request::{MergeMethod, Outcome, PullRequest, State},
+    pull_request::{Outcome, PullRequest, State},
 };
 use gpui::{prelude::*, *};
 
 impl OrchestratorView {
     /// The token that reads the followed pull request's repository.
-    fn pr_token(&self) -> Option<std::sync::Arc<secrecy::SecretString>> {
+    fn pr_token(&self) -> Option<crate::github::ServerToken> {
         let tokens = self.request()?.token.as_ref()?;
-        Some(match self.pr.target() {
-            Some(target) => tokens.for_owner(&target.owner).clone(),
-            None => tokens.main().clone(),
-        })
+        match self.pr.target() {
+            Some(target) => tokens.for_owner(&target.server, &target.owner).cloned(),
+            None => tokens.main().cloned(),
+        }
     }
 
     /// The looked-up status of the open pull request, once it arrived.
@@ -79,13 +79,13 @@ impl OrchestratorView {
         cx.notify();
     }
 
-    /// Merges the open pull request at the head the user saw.
-    /// Merges `expected`, the pull request and head commit the user confirmed.
-    /// A refresh that moved the head, or another pull request opened since,
-    /// refuses the merge instead of naming a commit the user never saw.
-    pub(super) fn merge(
+    /// Runs `action`, a merge, a stack merge, or a queue change, on
+    /// `expected`, the pull request and head commit the user confirmed. A
+    /// refresh that moved the head, or another pull request opened since,
+    /// refuses it instead of naming a commit the user never saw.
+    pub(super) fn run_pr_action(
         &mut self,
-        method: MergeMethod,
+        action: pr_actions::Action,
         expected: &pr_actions::Target,
         cx: &mut Context<Self>,
     ) {
@@ -102,9 +102,7 @@ impl OrchestratorView {
             return;
         };
         let methods = pr.merge_methods.clone();
-        let _ = self
-            .pr
-            .start(pr_actions::Action::Merge(method), &methods, token);
+        let _ = self.pr.start(action, &methods, token);
         cx.notify();
     }
 
@@ -209,12 +207,27 @@ impl OrchestratorView {
                         super::dispatch::merge_action(method),
                         false,
                     )
+                    .debug_selector(move || format!("orchestrator-merge-{}", method.graphql()))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.merge_open = false;
-                        // The confirmation names what the row showed.
-                        if let Some(target) = this.pr.target().cloned() {
-                            this.ask(Confirm::Merge { method, target }, cx);
-                        }
+                        // The confirmation names what the row showed; a
+                        // stacked one's names every layer it lands.
+                        let Some(target) = this.pr.target().cloned() else {
+                            return;
+                        };
+                        let stacked = this
+                            .open_pull_request()
+                            .filter(|pr| pr.stack().is_some())
+                            .map(|pr| pr.lands());
+                        let confirm = match stacked {
+                            Some(lands) => Confirm::Land {
+                                change: super::stack::Change::Merge(method),
+                                target,
+                                lands,
+                            },
+                            None => Confirm::Merge { method, target },
+                        };
+                        this.ask(confirm, cx);
                     }))
                 }))
                 .when(pr.merge_methods.is_empty(), |el| {
@@ -225,8 +238,10 @@ impl OrchestratorView {
 
     /// Whether the open pull request can be merged from here.
     pub(super) fn mergeable(&self) -> bool {
+        // A stacked one merges with the layers below it, so only once all
+        // of them are known and ready, and through the stack's confirmation.
         self.open_pull_request()
-            .is_some_and(|pr| pr.state == State::Open && !pr.is_draft)
+            .is_some_and(|pr| pr.state == State::Open && !pr.is_draft && pr.stack_mergeable())
             && self.pr.target().is_some()
             && self.pr.running().is_none()
     }

@@ -27,7 +27,7 @@ fn fixture(window: &mut Window, cx: &mut Context<SettingsWindow>) -> SettingsWin
     let mut view = SettingsWindow::new(source.downgrade(), cx);
     view.section = Section::Fonts;
     view.controls.names = (0..472).map(|i| format!("Family {i:03}")).collect();
-    view.controls.filtered = filter_fonts(&view.controls.names, "");
+    view.controls.filtered = filter_fonts(&view.controls.names, &view.controls.aliases, "");
     view.controls.discovering = false;
     view.sync_controls(cx);
     window.focus(&view.focus, cx);

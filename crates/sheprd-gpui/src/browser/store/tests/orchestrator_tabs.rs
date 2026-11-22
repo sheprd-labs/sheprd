@@ -18,6 +18,7 @@ fn orchestrator_tabs_saved_by_earlier_builds_are_dropped_on_load() {
         )
         .unwrap();
     let bytes = serde_json::to_vec(&Saved {
+        synced: Default::default(),
         tabs: store.tabs.clone(),
         workspaces: Vec::new(),
     })

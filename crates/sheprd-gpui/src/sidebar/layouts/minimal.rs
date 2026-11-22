@@ -156,7 +156,7 @@ impl RowLayout for Minimal {
                         .debug_selector(|| format!("pr-{}", row.label))
                         .h(px(line_height(cx.font)))
                         .text_color(rgb(pr.color)),
-                    pr.number.as_str(),
+                    pr.label.as_str(),
                     parts::glyph_at(cx.font, cx.font.size),
                     0.4,
                 )

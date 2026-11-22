@@ -122,7 +122,7 @@ impl SheprdWindow {
             spawn,
             cx,
         );
-        self.start_core_chat_tab(agent, scope, id, Some(cwd), cx)
+        self.start_core_chat_tab(agent, scope, id, Some(cwd), None, cx)
     }
 
     /// Keeps a new workspace for a checkout at `cwd` whose first tab shows

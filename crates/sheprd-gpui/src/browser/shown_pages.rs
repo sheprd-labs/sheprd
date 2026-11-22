@@ -49,7 +49,7 @@ impl SheprdWindow {
             })
             .filter_map(|id| store.get(id))
             .filter(|tab| !tab.place.is_editor())
-            .filter(|tab| tab.location.as_ref().is_some_and(Location::is_page))
+            .filter(|tab| tab.location.as_ref().is_some_and(has_page))
             .cloned()
             .collect();
         for tab in &wanted {
@@ -59,4 +59,11 @@ impl SheprdWindow {
             cx.notify();
         }
     }
+}
+
+/// Whether a tab at `location` shows a native page: a web page, or on macOS
+/// a machine's display, which a restored tab needs as much as a web page.
+fn has_page(location: &Location) -> bool {
+    location.is_page()
+        || (cfg!(target_os = "macos") && matches!(location, Location::Machine { .. }))
 }

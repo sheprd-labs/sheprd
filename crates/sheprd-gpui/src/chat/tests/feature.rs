@@ -37,7 +37,7 @@ fn off_no_chat_attaches_and_none_starts(cx: &mut TestAppContext) {
         assert!(!view.can_start_chat());
         assert!(view.chat_agents().is_empty());
         assert!(matches!(
-            view.start_chat(Agent::Opencode, None),
+            view.start_chat(Agent::Opencode, None, None),
             Err(start::Error::Disabled)
         ));
     });

@@ -129,5 +129,9 @@ overview-alerts-empty = No alerts yet
 overview-alerts-clear = Clear
 # The tooltip of that button.
 overview-alerts-clear-hint = Clear all notifications in every window: alerts, toasts, and the app's system notifications
+# The same command at the top of the page, in the header beside the
+# counts, shown while there is an alert or a toast to clear. It shares the
+# tooltip above.
+overview-clear-all = Clear all
 # The host a Herdr 2 agent row names when no Herdr 1 runs on this computer.
 overview-core-host = This computer

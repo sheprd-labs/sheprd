@@ -38,6 +38,7 @@ methods! {
     TerminalKill => "terminal.kill", true;
     TerminalLabel => "terminal.label", false;
     TerminalList => "terminal.list", true;
+    TerminalRead => "terminal.read", false;
     TerminalRun => "terminal.run", true;
     TerminalSend => "terminal.send", false;
     TerminalWait => "terminal.wait", false;

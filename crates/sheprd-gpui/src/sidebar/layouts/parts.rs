@@ -136,7 +136,7 @@ impl<'a> Line<'a> {
         share: f32,
     ) -> Self {
         let text = text.into();
-        let natural = (text.chars().count() as f32 * glyph)
+        let natural = (row::visible_chars(&text) as f32 * glyph)
             .ceil()
             .min(share * self.width);
         self.push(shell, Content::Text(text, 0.), natural, Fit::Keep)
@@ -411,8 +411,8 @@ pub(super) fn pr_number(key: &str, pr: &PrBadge, size: f32, glyph: f32) -> (f32,
         .gap(px(3.))
         .text_color(rgb(pr.color))
         .child(icon("icons/git-branch.svg", size, pr.color))
-        .child(label_text(&pr.number));
-    let width = size + 3. + (pr.number.chars().count() as f32 * glyph).ceil();
+        .child(label_text(&pr.label));
+    let width = size + 3. + (row::visible_chars(&pr.label) as f32 * glyph).ceil();
     (width, element)
 }
 

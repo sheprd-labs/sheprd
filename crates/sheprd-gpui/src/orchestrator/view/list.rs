@@ -36,13 +36,19 @@ const PULL_REQUEST_AUTHOR_WIDTH: f32 = 100.;
 /// What a title keeps before an author joins it beside an open item.
 pub(super) const AUTHOR_TITLE_MIN: f32 = 280.;
 /// The gap between a row's cells, and its padding on either side.
-const CELL_GAP: f32 = 8.;
+const CELL_GAP: f32 = 16.;
 const ROW_PADDING: f32 = 16.;
+/// The pull request number column at least: its icon and a four-digit
+/// number at the usual text size.
+const NUMBER_WIDTH: f32 = 60.;
+/// The number column's icon and the gap after it, and a monospace digit's
+/// advance as a share of its text size: the column grows to the longest
+/// number listed, at whatever size the text is.
+const NUMBER_ICON: f32 = 16.;
+const MONO_ADVANCE: f32 = 0.62;
 /// The list width below which the search field takes its own line, at the
 /// usual text size: the Pull requests list's controls fill the row.
 const SEARCH_BESIDE_WIDTH: f32 = 960.;
-/// What that line adds above a dropdown.
-const SEARCH_LINE: f32 = 40.;
 /// The columns saying where a pull request stands, at the usual text size:
 /// see [`Look::column`].
 const STATUS_WIDTH: f32 = 80.;
@@ -62,9 +68,54 @@ pub(super) enum Empty {
     Nothing,
 }
 impl OrchestratorView {
-    /// Whether rows keep only the columns that fit beside an open item.
+    /// Whether rows keep only the columns that fit: beside an open item, or
+    /// in a list too narrow for every column and a readable title.
     fn compact(&self) -> bool {
-        self.detail.is_some()
+        self.detail.is_some() || self.list_width.get() < self.full_fit()
+    }
+
+    /// The pull request number column: wide enough for the longest number
+    /// listed at the current text size, and never narrower than usual.
+    fn number_width(&self) -> f32 {
+        let text = f32::from(self.look.small()) * MONO_ADVANCE * self.number_chars as f32;
+        (NUMBER_ICON + text)
+            .ceil()
+            .max(self.look.column(NUMBER_WIDTH))
+    }
+
+    /// The list width at which `fixed` columns, the source and project
+    /// columns while shown, and a title of [`AUTHOR_TITLE_MIN`] fit.
+    fn fit(&self, fixed: &[f32]) -> f32 {
+        let source = self.mixed_sources.then_some(SOURCE_WIDTH);
+        let project = self.listing_projects().then_some(PROJECT_WIDTH);
+        let cells = fixed.iter().chain(&source).chain(&project);
+        // Every cell but the title has a gap after it.
+        let (count, width) =
+            cells.fold((0., 0.), |(count, width), cell| (count + 1., width + cell));
+        width + AUTHOR_TITLE_MIN + count * CELL_GAP + 2. * ROW_PADDING
+    }
+
+    /// The list width at which a row keeps every column, as it does with
+    /// no item open.
+    fn full_fit(&self) -> f32 {
+        let look = &self.look;
+        match self.tab {
+            // Age, run, author, comments, and action.
+            Tab::Issues => self.fit(&[32., 30., ISSUE_AUTHOR_WIDTH, 34., ACTION_WIDTH]),
+            // Age, run, assignee, status, author, and action.
+            Tab::Tasks => self.fit(&[32., 30., 110., TASK_STATUS_WIDTH, ACTION_WIDTH]),
+            // Number, author, status, review, checks, size, run, and age.
+            Tab::PullRequests => self.fit(&[
+                self.number_width(),
+                PULL_REQUEST_AUTHOR_WIDTH,
+                look.column(STATUS_WIDTH),
+                look.column(REVIEW_WIDTH),
+                look.column(CHECKS_WIDTH),
+                70.,
+                30.,
+                32.,
+            ]),
+        }
     }
 
     /// Whether the search field sits above its controls, not beside them.
@@ -76,15 +127,6 @@ impl OrchestratorView {
         self.look.column(SEARCH_BESIDE_WIDTH)
     }
 
-    /// How far a dropdown moves down for the search field's own line.
-    pub(super) fn search_line(&self) -> f32 {
-        if self.search_stacked() {
-            SEARCH_LINE
-        } else {
-            0.
-        }
-    }
-
     /// Whether rows name their author: always, unless an open item leaves
     /// the title too little room for it.
     fn shows_author(&self) -> bool {
@@ -93,24 +135,18 @@ impl OrchestratorView {
 
     /// The list width at which a row beside an open item fits its author.
     pub(super) fn author_fit(&self) -> f32 {
-        let (cells, fixed) = match self.tab {
-            // Age, run, title, author, and action.
-            Tab::Issues | Tab::Tasks => (5., 32. + 30. + ISSUE_AUTHOR_WIDTH + ACTION_WIDTH),
-            // Number, title, author, two dots, and age.
-            Tab::PullRequests => (6., 48. + PULL_REQUEST_AUTHOR_WIDTH + 12. + 12. + 32.),
-        };
-        let (source_cells, source) = if self.mixed_sources {
-            (1., SOURCE_WIDTH)
-        } else {
-            (0., 0.)
-        };
-        let (project_cells, project) = if self.listing_projects() {
-            (1., PROJECT_WIDTH)
-        } else {
-            (0., 0.)
-        };
-        let gaps = cells + source_cells + project_cells - 1.;
-        fixed + source + project + AUTHOR_TITLE_MIN + gaps * CELL_GAP + 2. * ROW_PADDING
+        match self.tab {
+            // Age, run, author, and action.
+            Tab::Issues | Tab::Tasks => self.fit(&[32., 30., ISSUE_AUTHOR_WIDTH, ACTION_WIDTH]),
+            // Number, author, two dots, and age.
+            Tab::PullRequests => self.fit(&[
+                self.number_width(),
+                PULL_REQUEST_AUTHOR_WIDTH,
+                12.,
+                12.,
+                32.,
+            ]),
+        }
     }
 
     /// A row's author, in a column `width` wide.
@@ -220,7 +256,10 @@ impl OrchestratorView {
                 head.push((String::new(), Some(ACTION_WIDTH)));
             }
             Tab::PullRequests => {
-                head.push((fl!("orchestrator-column-pull-request"), Some(48.)));
+                head.push((
+                    fl!("orchestrator-column-pull-request"),
+                    Some(self.number_width()),
+                ));
                 if sources {
                     head.push((fl!("orchestrator-column-source"), Some(SOURCE_WIDTH)));
                 }
@@ -283,7 +322,7 @@ impl OrchestratorView {
             .flex_col()
             .child(measure(
                 self.list_width.clone(),
-                [self.author_fit(), self.search_fit()],
+                [self.author_fit(), self.search_fit(), self.full_fit()],
             ))
             // Column heads over nothing to line up are clutter.
             .when(count > 0, |el| el.child(column_head(look, &head)))
@@ -491,7 +530,7 @@ impl OrchestratorView {
             .h(px(self.row_height()))
             .flex()
             .items_center()
-            .gap_2()
+            .gap(px(CELL_GAP))
             .px_4()
             .border_b_1()
             .border_color(rgb(theme.active))
@@ -674,7 +713,7 @@ impl OrchestratorView {
             .child(
                 div()
                     .flex_none()
-                    .w(px(48.))
+                    .w(px(self.number_width()))
                     .flex()
                     .items_center()
                     .gap_1()
@@ -807,15 +846,16 @@ impl OrchestratorView {
 }
 
 /// Records the list's width as it lays out, and draws again when that moves
-/// it across a width in `fits`, so rows gain or lose their author and the
-/// search field its line on the next frame.
-fn measure(width: Rc<Cell<f32>>, fits: [f32; 2]) -> impl IntoElement {
+/// it across a width in `fits`, so rows gain or lose their author or their
+/// full columns, and the search field its line, on the next frame.
+fn measure(width: Rc<Cell<f32>>, fits: [f32; 3]) -> impl IntoElement {
     canvas(
         move |bounds, window, _| {
             let now = f32::from(bounds.size.width);
             let before = width.replace(now);
+            // Too late to draw this frame again: draw the next.
             if fits.iter().any(|fit| (before >= *fit) != (now >= *fit)) {
-                window.refresh();
+                window.request_animation_frame();
             }
         },
         |_, _, _, _| {},
@@ -846,7 +886,7 @@ fn column_head(look: &Look, cells: &[(String, Option<f32>)]) -> Div {
         .flex_none()
         .flex()
         .items_center()
-        .gap_2()
+        .gap(px(CELL_GAP))
         .h(px(24.))
         .px_4()
         .border_b_1()

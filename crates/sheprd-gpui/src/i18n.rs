@@ -20,7 +20,7 @@ mod tests;
 pub(crate) use check::check;
 pub(crate) use errors::Localize;
 pub(crate) use sheprd_i18n::FluentValue;
-use sheprd_i18n::{Catalog, Direction, FluentArgs, Language, Locale, Pseudo};
+use sheprd_i18n::{Catalog, Direction, FluentArgs, Language, LanguageIdentifier, Locale, Pseudo};
 use std::sync::LazyLock;
 
 include!(concat!(env!("OUT_DIR"), "/messages.rs"));
@@ -110,8 +110,33 @@ fn command_args(command: crate::Command) -> Vec<(&'static str, FluentValue<'stat
 }
 
 /// The languages with messages; pseudo-locales are not among them.
-pub(crate) fn available() -> Vec<Locale> {
-    Catalog::available(FILES)
+fn available() -> &'static [Locale] {
+    static AVAILABLE: LazyLock<Vec<Locale>> = LazyLock::new(|| Catalog::available(FILES));
+    &AVAILABLE
+}
+
+/// The languages that can be selected explicitly.
+pub(crate) fn selectable() -> &'static [Locale] {
+    const SYSTEM_ONLY: &str = include_str!("../system-only-locales.txt");
+    static SELECTABLE: LazyLock<Vec<Locale>> = LazyLock::new(|| {
+        available()
+            .iter()
+            .filter(|locale| {
+                let tag = locale.to_string();
+                !SYSTEM_ONLY.lines().any(|system_only| system_only == tag)
+            })
+            .cloned()
+            .collect()
+    });
+    &SELECTABLE
+}
+
+pub(crate) fn resolve(language: &Language, system: &[LanguageIdentifier]) -> Locale {
+    let locales = match language {
+        Language::System => available(),
+        Language::Locale(_) => selectable(),
+    };
+    language.resolve(locales, system)
 }
 
 /// Each language with messages, named in itself, as [`available`] orders them.
@@ -170,7 +195,7 @@ impl CurrentLocale {
             |pseudo| Language::Locale(pseudo.locale()),
         );
         Self {
-            locale: requested.resolve(&available(), &sheprd_i18n::system_languages()),
+            locale: resolve(&requested, &sheprd_i18n::system_languages()),
             configured,
             pseudo,
         }

@@ -298,6 +298,39 @@ impl SheprdWindow {
         }
     }
 
+    /// Counts on the badge the window's herdr-core agents that need the
+    /// user, as a Herdr 1 agent is counted: blocked, or done, and not muted.
+    /// One the Overview lists is left out while the user's mark holds its
+    /// row; the stand-in shell's, which it does not list, never is. A window
+    /// that lost the core counts none.
+    #[cfg(any(target_os = "macos", windows, test))]
+    pub(crate) fn count_core_agents(&self, window: WindowId, connected: bool, cx: &mut App) {
+        let agents = self
+            .agent_terminals(cx)
+            .filter(|_| connected)
+            .filter(|info| matches!(info.agent, AgentStatus::Blocked | AgentStatus::Done))
+            .filter(|info| !self.core_terminal_silenced(&super::Host::Local, &info.id, cx))
+            .map(|info| crate::app_badge::CoreAgent {
+                terminal: info.id.clone(),
+                status: info.agent,
+                // The rows the Overview lists, as `core_overview_rows` finds them.
+                listed: self.core_terminals.tab_of(&info.id).is_some(),
+            })
+            .collect();
+        let infos = &self.core_terminals.infos;
+        crate::app_badge::sync_core(
+            window,
+            agents,
+            infos.lists(),
+            |terminal| {
+                infos
+                    .get(terminal)
+                    .and_then(crate::overview::core_agent_key)
+            },
+            cx,
+        );
+    }
+
     /// Plays the news whose delay is over and still holds, and counts the
     /// agents that need the user on the badge. Runs every tick, after
     /// `core_terminals.shown` is current. A window that lost the core
@@ -306,17 +339,7 @@ impl SheprdWindow {
         let id = window.window_handle().window_id();
         let connected = self.core_terminals.hub.backend().is_some();
         #[cfg(any(target_os = "macos", windows))]
-        {
-            // Counted as a Herdr 1 agent is: blocked, or done.
-            let attention: HashSet<TerminalId> = self
-                .agent_terminals(cx)
-                .filter(|_| connected)
-                .filter(|info| matches!(info.agent, AgentStatus::Blocked | AgentStatus::Done))
-                .filter(|info| !self.core_terminal_silenced(&super::Host::Local, &info.id, cx))
-                .map(|info| info.id.clone())
-                .collect();
-            crate::app_badge::sync_core(id, attention, cx);
-        }
+        self.count_core_agents(id, connected, cx);
         // What the active window shows: the tab of its active group, a
         // chat's included, whatever holds the keyboard, or the stand-in
         // shell while that group shows the terminal rather than a page.

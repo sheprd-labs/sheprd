@@ -24,7 +24,7 @@ impl OrchestratorView {
     pub(super) fn render_detail(
         &mut self,
         detail: Detail,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let Some(item) = self.item(&detail.key).cloned() else {
@@ -77,7 +77,7 @@ impl OrchestratorView {
             .min_h_0()
             .flex()
             .flex_col()
-            .child(self.render_detail_header(&item, detail.tab, item_runs.len(), cx))
+            .child(self.render_detail_header(&item, detail.tab, item_runs.len(), window, cx))
             .child(body)
             .into_any_element()
     }
@@ -87,6 +87,7 @@ impl OrchestratorView {
         item: &Item,
         active: DetailTab,
         runs: usize,
+        window: &Window,
         cx: &mut Context<Self>,
     ) -> Div {
         let look = &self.look;
@@ -136,7 +137,10 @@ impl OrchestratorView {
                     .flex()
                     .flex_col()
                     .gap_2()
-                    .child(self.render_tags(item))
+                    .child(
+                        self.render_tags(item)
+                            .children(self.render_stack_chip(window, cx)),
+                    )
                     .child(
                         div()
                             .debug_selector(|| "orchestrator-detail-title".into())

@@ -105,3 +105,25 @@ fn a_client_before_harnesses_gets_the_count_in_their_place() {
     let message = change(harnesses, 1, epoch);
     assert_eq!(current.message(message.clone()), Some(message));
 }
+
+#[test]
+fn a_client_before_pull_requests_gets_the_count_in_their_place() {
+    let pull = Change::PullRequest {
+        pull_request: sheprd_chat_protocol::PullRequest::parse("https://github.com/o/r/pull/1")
+            .unwrap(),
+    };
+    let epoch = Cursor::new_epoch();
+    let mut revision_two = Downgrade::new(2);
+    assert!(revision_two.message(snapshot(1, epoch)).is_some());
+    let harnesses = change(Change::Harnesses { harnesses: None }, 1, epoch);
+    assert_eq!(revision_two.message(harnesses.clone()), Some(harnesses));
+    assert_eq!(
+        revision_two.message(change(pull.clone(), 2, epoch)),
+        Some(change(Change::Clients { count: 1 }, 2, epoch))
+    );
+    let mut current = Downgrade::new(REVISION);
+    let message = change(pull, 1, epoch);
+    assert_eq!(current.message(message.clone()), Some(message));
+}
+
+mod briefs;

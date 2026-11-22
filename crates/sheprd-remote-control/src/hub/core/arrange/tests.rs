@@ -42,28 +42,36 @@ fn while_sheprd_is_closed_its_saved_tab_is_changed_in_its_file() {
     let dir = tempfile::tempdir().unwrap();
     let path = saved_file(dir.path());
     let source = tests_support_source(Some(path.clone()), Some(SCOPE));
-    source.arrange_saved(4, "t2", &Op::Zoom).unwrap();
+    source
+        .arrange_saved(&TabRef::File(4), "t2", &Op::Zoom)
+        .unwrap();
     assert_eq!(read(&path)["tabs"][0]["location"]["zoomed"], "t2");
     source
-        .arrange_saved(4, "t2", &Op::RenameTab(Some("logs".into())))
+        .arrange_saved(&TabRef::File(4), "t2", &Op::RenameTab(Some("logs".into())))
         .unwrap();
     source
-        .arrange_saved(4, "t1", &Op::RenamePane(Some("server".into())))
+        .arrange_saved(
+            &TabRef::File(4),
+            "t1",
+            &Op::RenamePane(Some("server".into())),
+        )
         .unwrap();
     let rename = Op::RenameWorkspace {
         workspace: "w1".into(),
         name: " API ".into(),
     };
-    source.arrange_saved(0, "", &rename).unwrap();
+    source.arrange_saved(&TabRef::File(0), "", &rename).unwrap();
     let saved = read(&path);
     assert_eq!(saved["tabs"][0]["location"]["name"], "logs");
     assert_eq!(saved["tabs"][0]["location"]["names"]["t1"], "server");
     assert_eq!(saved["workspaces"][0]["label"], "API");
     assert_eq!(saved["workspaces"][0]["custom"], true);
-    source.arrange_saved(4, "t1", &Op::Close).unwrap();
+    source
+        .arrange_saved(&TabRef::File(4), "t1", &Op::Close)
+        .unwrap();
     assert_eq!(read(&path)["tabs"], json!([]));
     assert!(matches!(
-        source.arrange_saved(4, "t1", &Op::Zoom),
+        source.arrange_saved(&TabRef::File(4), "t1", &Op::Zoom),
         Err(HubError::Core(super::super::Error::Arrange(Error::Edit(
             edit::Error::Tab
         ))))
@@ -74,7 +82,7 @@ fn while_sheprd_is_closed_its_saved_tab_is_changed_in_its_file() {
 fn without_saved_tabs_there_is_nothing_to_change() {
     let source = tests_support_source(None, Some(SCOPE));
     assert!(matches!(
-        source.arrange_saved(4, "t1", &Op::Zoom),
+        source.arrange_saved(&TabRef::File(4), "t1", &Op::Zoom),
         Err(HubError::Core(super::super::Error::Arrange(Error::NoTabs)))
     ));
 }
@@ -149,12 +157,14 @@ fn a_starting_or_running_sheprd_holding_its_tabs_keeps_them() {
     sheprd.lock().unwrap();
     let source = tests_support_source(Some(path.clone()), Some(SCOPE));
     assert!(matches!(
-        source.arrange_saved(4, "t2", &Op::Zoom),
+        source.arrange_saved(&TabRef::File(4), "t2", &Op::Zoom),
         Err(HubError::Core(super::super::Error::Arrange(
             Error::SheprdOpen
         )))
     ));
     assert_eq!(std::fs::read(&path).unwrap(), before);
     drop(sheprd);
-    source.arrange_saved(4, "t2", &Op::Zoom).unwrap();
+    source
+        .arrange_saved(&TabRef::File(4), "t2", &Op::Zoom)
+        .unwrap();
 }

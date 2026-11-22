@@ -1,0 +1,17 @@
+palette-filter-all = 全部
+palette-filter-navigation = 导航
+palette-filter-commands = 命令
+palette-filter-projects = 项目
+palette-filter-notes = 笔记
+palette-count = { $shown } / { $total }
+palette-placeholder = 搜索工作区、命令、智能体和项目…
+palette-badge-command = 界面操作
+palette-badge-herdr-command = Herdr 命令
+palette-badge-mod = 扩展
+palette-badge-project = 项目
+palette-not-on-screen = 当前未显示。按 Enter 跳转并查看实时内容。
+palette-loading-projects = 正在加载本地项目…
+palette-no-results = 无匹配结果。请试试更短的关键词。
+palette-opening-project = 正在打开本地项目…按 Esc 关闭提示。
+palette-hints = ↑↓ / Tab / ⌃N ⌃P 移动 · ⌃Tab 筛选 · ↵ 选择 · Esc 关闭
+palette-go-to-hints = ↑↓ / Tab / ⌃N ⌃P 移动 · ⌃Tab 筛选 · ⌥B/W/I/D/A 状态 · ⌥P 预览 · ↵ 选择 · Esc 关闭

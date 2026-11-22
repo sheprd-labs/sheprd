@@ -9,7 +9,7 @@ use sheprd_chat_protocol::EndpointId;
 use sheprd_client::protocol::AgentStatus;
 use std::collections::BTreeSet;
 
-fn chat(pane: &str, status: AgentStatus) -> ChatRow {
+pub(super) fn chat(pane: &str, status: AgentStatus) -> ChatRow {
     ChatRow {
         named: true,
         pane: pane.to_owned(),
@@ -33,14 +33,15 @@ fn terminal(pane: &str, status: AgentStatus) -> Terminal {
             status,
             pane: pane.to_owned(),
             title: None,
-            changed_ms: None,
+            // Finished after the marks began: news unless read.
+            changed_ms: Some(1),
         }),
         agents: Vec::new(),
         convert: None,
     }
 }
 
-fn layout(chats: Vec<ChatRow>, terminals: Vec<Terminal>) -> Layout {
+pub(super) fn layout(chats: Vec<ChatRow>, terminals: Vec<Terminal>) -> Layout {
     Layout {
         workspaces: vec![Workspace {
             id: "w1".to_owned(),
@@ -56,15 +57,19 @@ fn layout(chats: Vec<ChatRow>, terminals: Vec<Terminal>) -> Layout {
     }
 }
 
-fn panes<const N: usize>(names: [&str; N]) -> BTreeSet<String> {
+pub(super) fn panes<const N: usize>(names: [&str; N]) -> BTreeSet<String> {
     names.into_iter().map(str::to_owned).collect()
 }
 
+/// A chat whose last reply came after the marks began, asking nothing.
 fn no_questions(_: &str) -> ChatFacts {
-    ChatFacts::default()
+    ChatFacts {
+        finish: Some(1),
+        questions: 0,
+    }
 }
 
-fn finished_at(ms: u64) -> impl Fn(&str) -> ChatFacts {
+pub(super) fn finished_at(ms: u64) -> impl Fn(&str) -> ChatFacts {
     move |_| ChatFacts {
         finish: Some(ms),
         questions: 0,
@@ -88,7 +93,8 @@ fn finished_blocked_and_asking_agents_count_once_each() {
         ],
     );
     let questions = |pane: &str| ChatFacts {
-        finish: None,
+        // Only chats that finished have a reply.
+        finish: (pane == "done").then_some(1),
         questions: match pane {
             "asking" => 1,
             "both" => 3,
@@ -105,23 +111,23 @@ fn finished_blocked_and_asking_agents_count_once_each() {
 fn opening_a_finished_agent_stops_it_counting_until_it_finishes_again() {
     let opened = Opened::default();
     let done = layout(vec![chat("p", AgentStatus::Done)], Vec::new());
-    assert_eq!(opened.needing(&done, no_questions), panes(["p"]));
+    assert_eq!(opened.needing(&done, finished_at(1)), panes(["p"]));
 
-    opened.open(&done, "p", no_questions);
-    assert_eq!(opened.needing(&done, no_questions), panes([]));
+    opened.open(&done, "p", finished_at(1));
+    assert_eq!(opened.needing(&done, finished_at(1)), panes([]));
 
     let working = layout(vec![chat("p", AgentStatus::Working)], Vec::new());
-    assert_eq!(opened.needing(&working, no_questions), panes([]));
-    assert_eq!(opened.needing(&done, no_questions), panes(["p"]));
+    assert_eq!(opened.needing(&working, finished_at(1)), panes([]));
+    assert_eq!(opened.needing(&done, finished_at(2)), panes(["p"]));
 }
 
 #[test]
 fn opening_an_agent_still_working_does_not_hide_its_finish() {
     let opened = Opened::default();
     let working = layout(vec![chat("p", AgentStatus::Working)], Vec::new());
-    opened.open(&working, "p", no_questions);
+    opened.open(&working, "p", finished_at(1));
     let done = layout(vec![chat("p", AgentStatus::Done)], Vec::new());
-    assert_eq!(opened.needing(&done, no_questions), panes(["p"]));
+    assert_eq!(opened.needing(&done, finished_at(2)), panes(["p"]));
 }
 
 #[test]
@@ -170,15 +176,15 @@ fn an_agent_that_finishes_after_its_last_view_closed_counts() {
     let opened = Opened::default();
     let working = layout(vec![chat("p", AgentStatus::Working)], Vec::new());
     let done = layout(vec![chat("p", AgentStatus::Done)], Vec::new());
-    opened.begin(&working, "p", no_questions);
-    opened.begin(&working, "p", no_questions);
-    opened.end(&working, "p", no_questions);
-    assert_eq!(opened.needing(&done, no_questions), panes([]));
-    opened.end(&done, "p", no_questions);
+    opened.begin(&working, "p", finished_at(1));
+    opened.begin(&working, "p", finished_at(1));
+    opened.end(&working, "p", finished_at(1));
+    assert_eq!(opened.needing(&done, finished_at(2)), panes([]));
+    opened.end(&done, "p", finished_at(2));
     let again = Opened::default();
-    again.begin(&working, "p", no_questions);
-    again.end(&working, "p", no_questions);
-    assert_eq!(again.needing(&done, no_questions), panes(["p"]));
+    again.begin(&working, "p", finished_at(1));
+    again.end(&working, "p", finished_at(1));
+    assert_eq!(again.needing(&done, finished_at(2)), panes(["p"]));
 }
 
 #[test]

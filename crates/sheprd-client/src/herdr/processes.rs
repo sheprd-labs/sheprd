@@ -3,6 +3,9 @@
 use super::snapshot::{Process, ProcessInfo};
 use sheprd_chat_protocol::Agent;
 
+mod identity;
+pub use identity::{ProcessIdentity, local_identity};
+
 /// The most processes matching an agent that are worth telling apart: past
 /// these the pane runs something no single session explains.
 const MAX_MATCHING_PROCESSES: usize = 16;
@@ -51,6 +54,60 @@ pub fn agent_args(agent: Agent, argv: &[String]) -> Option<&[String]> {
         _ => false,
     };
     matches.then_some(&argv[2..])
+}
+
+/// The one process running `agent` in a pane, among the matches
+/// [`agent_processes`] finds, all in the foreground group. npm launchers
+/// remain in the foreground alongside their native child: that child is
+/// picked only when every other match is a verified launcher ancestor.
+/// `identity` gives each process's parent, group and birth on its host.
+pub fn agent_pid(
+    agent: Agent,
+    info: &ProcessInfo,
+    identity: impl Fn(u32) -> Option<ProcessIdentity>,
+) -> Option<u32> {
+    let group = info.foreground_process_group_id?;
+    let matching = agent_processes(agent, info)?;
+    if matching.is_empty()
+        || matching
+            .iter()
+            .any(|process| identity(process.pid).is_none_or(|stat| stat.group != group))
+    {
+        return None;
+    }
+    if matching.len() == 1 {
+        return Some(matching[0].pid);
+    }
+    let mut native = matching
+        .iter()
+        .filter(|process| program(&process.argv) == Some(agent.name()));
+    let pid = native.next()?.pid;
+    if native.next().is_some() {
+        return None;
+    }
+    for wrapper in matching.iter().filter(|process| process.pid != pid) {
+        let mut child = pid;
+        let ancestor = (0..matching.len()).any(|_| {
+            let Some(stat) = identity(child) else {
+                return false;
+            };
+            let Some(parent) = identity(stat.parent) else {
+                return false;
+            };
+            if parent.started > stat.started
+                || parent.group != group
+                || !matching.iter().any(|process| process.pid == stat.parent)
+            {
+                return false;
+            }
+            child = stat.parent;
+            child == wrapper.pid
+        });
+        if !ancestor {
+            return None;
+        }
+    }
+    Some(pid)
 }
 
 #[cfg(test)]

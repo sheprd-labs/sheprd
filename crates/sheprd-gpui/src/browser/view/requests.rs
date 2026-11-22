@@ -321,6 +321,17 @@ impl SheprdWindow {
         self.browser.pages.contains(id)
     }
 
+    /// Whether tab `id`'s page is still being built, and why it could not
+    /// be made if it could not: what a native check reports when a page
+    /// never arrives.
+    #[cfg(all(windows, feature = "integration-test"))]
+    pub(crate) fn page_progress(&self, id: TabId) -> (bool, Option<SharedString>) {
+        (
+            self.browser.pages.is_building(id),
+            self.browser.failed.get(&id).cloned(),
+        )
+    }
+
     /// Loads `location` in tab `id`'s page, if this window has made it or
     /// is building it.
     pub(crate) fn load_requested_page(&mut self, id: TabId, location: &crate::browser::Location) {
@@ -350,8 +361,10 @@ impl SheprdWindow {
         let Some(page) = self.browser.pages.page(id) else {
             return Ok(false);
         };
-        page.raw()
-            .evaluate_script_with_callback(PAGE_TEXT_SCRIPT, done)?;
+        let Some(view) = page.web() else {
+            return Ok(false);
+        };
+        view.evaluate_script_with_callback(PAGE_TEXT_SCRIPT, done)?;
         Ok(true)
     }
 }
@@ -381,7 +394,10 @@ impl SheprdWindow {
             width: f64::from(f32::from(bounds.size.width)),
             height: f64::from(f32::from(bounds.size.height)),
         };
-        crate::browser::snapshot::capture(page.raw(), rect, done);
+        let Some(view) = page.web() else {
+            return false;
+        };
+        crate::browser::snapshot::capture(view, rect, done);
         true
     }
 }

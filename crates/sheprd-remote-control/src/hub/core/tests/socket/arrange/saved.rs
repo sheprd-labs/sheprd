@@ -11,7 +11,11 @@ fn a_failed_saved_split_ends_only_the_shell_it_started() {
     editable.tabs = Some(path.clone());
     editable.scope = Some("local:/test.sock".into());
     source.poll().unwrap();
-    assert!(source.arrange_saved(4, "t1", &Op::SplitRight).is_err());
+    assert!(
+        source
+            .arrange_saved(&TabRef::File(4), "t1", &Op::SplitRight)
+            .is_err()
+    );
     let run = run_request(&fake);
     let kill = run_request(&fake);
     assert_eq!(run["method"], "terminal.run");

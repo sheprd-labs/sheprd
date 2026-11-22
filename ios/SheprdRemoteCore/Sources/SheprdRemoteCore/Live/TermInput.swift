@@ -6,6 +6,10 @@ import Foundation
 public enum TermInput {
     /// The most keys one request carries, as the daemon allows.
     public static let maxKeys = 64
+    /// The most UTF-8 bytes one paste request carries, as the daemon allows.
+    public static let maxPaste = 64 * 1024
+    /// The most text one paste from the phone sends, over as many requests.
+    public static let maxPasted = 1024 * 1024
 
     /// Held modifiers for the next key.
     public struct Modifiers: OptionSet, Hashable, Sendable {
@@ -51,6 +55,50 @@ public enum TermInput {
         return stride(from: 0, to: keys.count, by: maxKeys).map {
             .keys(Array(keys[$0..<min($0 + maxKeys, keys.count)]))
         }
+    }
+
+    /// Text as pastes of at most `limit` UTF-8 bytes, in order, each ending
+    /// after a line where one fits and never inside a character, so long
+    /// text reaches the terminal whole instead of cut off. A character
+    /// larger than `limit` (any number of combining marks) is the one cut,
+    /// between its Unicode scalars, rather than dropped with what follows.
+    public static func pastes(for text: String, limit: Int = maxPaste) -> [Send] {
+        var sends: [Send] = []
+        var rest = Substring(text)
+        while !rest.isEmpty {
+            guard rest.utf8.count > limit else {
+                sends.append(.paste(String(rest)))
+                break
+            }
+            var end = rest.startIndex
+            var line: Substring.Index?
+            var bytes = 0
+            for index in rest.indices {
+                bytes += rest[index].utf8.count
+                guard bytes <= limit else { break }
+                end = rest.index(after: index)
+                if rest[index].isNewline { line = end }
+            }
+            let cut = line ?? end
+            guard cut > rest.startIndex else {
+                let scalars = rest.unicodeScalars
+                var split = scalars.startIndex
+                var bytes = 0
+                for index in scalars.indices {
+                    bytes += UTF8.width(scalars[index])
+                    guard bytes <= limit else { break }
+                    split = scalars.index(after: index)
+                }
+                // A scalar is at most four bytes; a smaller limit sends one.
+                if split == scalars.startIndex { split = scalars.index(after: split) }
+                sends.append(.paste(String(scalars[..<split])))
+                rest = Substring(scalars[split...])
+                continue
+            }
+            sends.append(.paste(String(rest[..<cut])))
+            rest = rest[cut...]
+        }
+        return sends
     }
 
     /// One character as a key, or `nil` for control characters it has no

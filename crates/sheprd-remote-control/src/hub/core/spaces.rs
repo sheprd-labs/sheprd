@@ -2,13 +2,12 @@
 
 mod names;
 
-use super::{id, projection};
+use super::{id, kept::Kept, projection};
 use crate::hub::{Layout, Workspace};
 use serde::Deserialize;
 use serde_json::Value;
 use sheprd_client::protocol::AgentStatus;
 use sheprd_core_client::wire::Terminal;
-use sheprd_session::SavedTabs;
 use std::{
     collections::HashSet,
     io::{self, Write},
@@ -182,8 +181,7 @@ impl Spaces {
         &self,
         boot: &str,
         records: &[Terminal],
-        saved: Option<&SavedTabs>,
-        scope: Option<&str>,
+        kept: Option<Kept<'_>>,
         names: &mut Names,
     ) -> Layout {
         let mut layout = Layout {
@@ -192,13 +190,7 @@ impl Spaces {
             working: 0,
             workspaces: Vec::new(),
         };
-        let held: HashSet<&str> = saved
-            .zip(scope)
-            .into_iter()
-            .flat_map(|(saved, scope)| saved.core_tabs(scope))
-            .flat_map(|tab| tab.panes.terminals())
-            .map(|terminal| terminal.as_str())
-            .collect();
+        let held = kept.map(Kept::held).unwrap_or_default();
         let mut assigned = HashSet::new();
         // A local space's terminals a saved tab holds instead. A local space
         // vouches for them, so another machine's space cannot omit them.
@@ -236,7 +228,7 @@ impl Spaces {
                 let _ = tab.root.leaves(&mut addresses, 0);
                 let (saved_here, addresses): (Vec<_>, Vec<_>) = addresses
                     .into_iter()
-                    .partition(|address| held.contains(address));
+                    .partition(|address| held.contains(*address));
                 vouched.extend(saved_here);
                 let members = addresses
                     .into_iter()
@@ -283,7 +275,7 @@ impl Spaces {
             .collect::<Vec<_>>();
         layout
             .workspaces
-            .extend(projection::project(boot, &unlisted, saved, scope).workspaces);
+            .extend(projection::project_kept(boot, &unlisted, kept).workspaces);
         layout
     }
 }

@@ -63,6 +63,31 @@ fn close_probe_detects_untracked_staged_unstaged_and_unpublished_work() {
     ));
 }
 
+#[test]
+fn close_probe_keeps_dirty_work_in_a_repository_without_a_first_commit() {
+    let directory = tempfile::tempdir().unwrap();
+    let checkout = directory.path().to_str().unwrap();
+    let init = Command::new("git")
+        .args(["-C", checkout, "init", "-b", "test"])
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .output()
+        .unwrap();
+    assert!(init.status.success());
+    let input = Input {
+        repo_key: Some(directory.path().join(".git").to_str().unwrap().to_owned()),
+        branch: "test".into(),
+        checkout: Some(checkout.into()),
+    };
+    let probe =
+        || close_status(&input, Instant::now() + Duration::from_secs(15), &|| false).unwrap();
+    // No commit exists, so nothing is unpublished and nothing is dirty.
+    assert_eq!(probe(), (false, false));
+    std::fs::write(directory.path().join("new"), "uncommitted\n").unwrap();
+    assert_eq!(probe(), (true, false));
+}
+
 struct Peer {
     git: Git,
     incoming: mpsc::Receiver<(u64, Input, Job)>,
@@ -234,6 +259,7 @@ fn one_action_runs_at_a_time_and_reports_its_own_result() {
         Completion::Action(Ok(Outcome {
             message: "Committed abc1234 subject".into(),
             url: None,
+            restacked: None,
         })),
         now,
     );
@@ -258,7 +284,7 @@ fn one_action_runs_at_a_time_and_reports_its_own_result() {
     assert!(
         peer.git
             .error()
-            .is_some_and(|error| error.contains("rejected"))
+            .is_some_and(|error| error.to_string().contains("rejected"))
     );
 }
 
@@ -349,14 +375,18 @@ fn a_stopped_worker_is_reported_and_does_not_strand_an_action() {
     drop(peer.outgoing);
     assert!(peer.git.poll(now));
     assert!(peer.git.running().is_none());
-    assert_eq!(peer.git.error(), Some(Error::Worker.to_string().as_str()));
+    assert!(matches!(
+        peer.git.error(),
+        Some(crate::Error::Git(Error::Worker))
+    ));
 }
 
 #[test]
 fn created_pull_requests_must_match_their_repository() {
     let response = |url: &str, number: u64| serde_json::json!({"data":{"createPullRequest":{"pullRequest":{"number":number,"url":url}}}});
-    let outcome = parse_created(
+    let outcome = create_pr::parse_created(
         &response("https://github.com/example/project/pull/7", 7),
+        &sheprd_github::Server::GitHub,
         "example",
         "project",
     )
@@ -373,7 +403,12 @@ fn created_pull_requests_must_match_their_repository() {
         ("https://github.com/example/project/pull/0", 0),
     ] {
         assert!(matches!(
-            parse_created(&response(url, number), "example", "project"),
+            create_pr::parse_created(
+                &response(url, number),
+                &sheprd_github::Server::GitHub,
+                "example",
+                "project"
+            ),
             Err(crate::Error::GitHub(sheprd_github::Error::PullRequest(
                 sheprd_github::pull_request::Error::Identity
             )))

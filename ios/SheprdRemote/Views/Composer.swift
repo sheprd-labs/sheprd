@@ -8,11 +8,22 @@ import UniformTypeIdentifiers
 /// library, the camera, or the clipboard, text shortcuts, dictation on
 /// the phone, and send or stop.
 struct Composer: View {
+    /// Where what is composed goes.
+    enum Destination {
+        /// The chat's program, as a prompt.
+        case chat
+        /// A terminal agent's own terminal, whose conversation is shown
+        /// read only: pictures as dropped files, then the words, then
+        /// Enter; stopping presses Esc.
+        case terminal
+    }
+
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
     let key: PaneKey
     let store: ChatStore
     let transcript: Transcript
+    var destination = Destination.chat
     @Binding var problem: String?
     @State private var draft = ""
     /// Tells this composer from another window's on the same chat.
@@ -25,21 +36,33 @@ struct Composer: View {
     @State private var dictation = Dictation()
     /// The draft before dictation began, which dictated words follow.
     @State private var beforeDictation = ""
-    @FocusState private var focused: Bool
+    @State private var focused = false
+    /// Counts sends, for the haptic.
+    @State private var sends = 0
+    /// The last message on its way to a terminal: the next waits for it, so
+    /// two messages never interleave their pictures, words, and Enter.
+    @State private var terminalSend: Task<Void, Never>?
+
+    /// Whether nothing can be sent: a read-only transcript, unless what is
+    /// typed goes to the agent's terminal.
+    private var readOnly: Bool { transcript.readOnly && destination == .chat }
 
     var body: some View {
         VStack(spacing: 8) {
             if !completions.isEmpty { completionList }
-            if !pictures.isEmpty || (clipboardHasImage && focused) { pictureStrip }
+            // The field itself takes a pasted picture, so the strip shows
+            // only what is attached.
+            if !pictures.isEmpty { pictureStrip }
             if case let .failed(reason) = dictation.phase {
                 Text(reason).font(.footnote).foregroundStyle(.secondary)
             }
             HStack(alignment: .bottom, spacing: 10) {
                 attachMenu
-                TextField("Message \(transcript.agent)", text: $draft, axis: .vertical)
-                    .lineLimit(1...6)
-                    .focused($focused)
-                    .padding(.horizontal, 16).padding(.vertical, 11)
+                ComposerField(placeholder: "Message \(transcript.agent)", text: $draft, focused: $focused) { images in
+                    for image in images.prefix(4 - pictures.count) { add(image) }
+                }
+                .disabled(readOnly)
+                .padding(.horizontal, 16).padding(.vertical, 11)
                     .glassEffect(.regular, in: .rect(cornerRadius: 22))
                 trailingButton
             }
@@ -69,7 +92,8 @@ struct Composer: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             clipboardHasImage = UIPasteboard.general.hasImages
         }
-        .sensoryFeedback(.start, trigger: dictation.phase == .listening) { _, now in now }
+        .haptic(.start, trigger: dictation.phase == .listening) { _, now in now }
+        .haptic(.impact(weight: .light), trigger: sends)
         .onAppear {
             model.fleet.composerOpened(id, in: key)
             // Memory first, which keeps uploads already under way; the
@@ -133,7 +157,7 @@ struct Composer: View {
         }
         .buttonStyle(.glass)
         .buttonBorderShape(.circle)
-        .disabled(transcript.readOnly)
+        .disabled(readOnly)
         .accessibilityLabel("Add a picture or shortcut")
     }
 
@@ -158,16 +182,25 @@ struct Composer: View {
                 Image(systemName: "mic.fill").font(.body.bold()).frame(width: 36, height: 36)
             }
             .buttonStyle(.glass).buttonBorderShape(.circle)
-            .disabled(transcript.readOnly)
+            .disabled(readOnly)
             .accessibilityLabel("Dictate")
         } else {
             Button {
-                if stopping { send(.cancel) } else { sendPrompt() }
+                if !stopping {
+                    sendPrompt()
+                    return
+                }
+                Feedback.shared.touch(.stop)
+                if destination == .terminal {
+                    toTerminal(keys: ["esc"])
+                } else {
+                    send(.cancel)
+                }
             } label: {
                 Image(systemName: stopping ? "stop.fill" : "arrow.up").font(.body.bold()).frame(width: 36, height: 36)
             }
             .buttonStyle(.glassProminent).buttonBorderShape(.circle)
-            .disabled(transcript.readOnly)
+            .disabled(readOnly)
             .accessibilityLabel(stopping ? "Stop" : "Send")
         }
     }
@@ -198,13 +231,6 @@ struct Composer: View {
                             .offset(x: 6, y: -6)
                             .accessibilityLabel("Remove picture")
                         }
-                }
-                if clipboardHasImage, pictures.count < 4 {
-                    PasteButton(payloadType: PastedImage.self) { pasted in
-                        for image in pasted.prefix(4 - pictures.count) { add(image.image) }
-                    }
-                    .labelStyle(.iconOnly)
-                    .buttonBorderShape(.roundedRectangle(radius: 10))
                 }
             }
             .padding(.top, 6).padding(.horizontal, 2)
@@ -254,6 +280,12 @@ struct Composer: View {
 
     private func add(_ prepared: PreparedImage) {
         guard pictures.count < 4 else { return }
+        // A terminal takes a picture only with the words it goes with: its
+        // path is typed into the prompt then, not as soon as it is chosen.
+        if destination == .terminal {
+            pictures.append(Picture(thumbnail: prepared.thumbnail, jpeg: prepared.jpeg, progress: UploadProgress(), task: Task { "" }, upload: .sent("")))
+            return
+        }
         let progress = UploadProgress()
         let picture = Picture(
             thumbnail: prepared.thumbnail,
@@ -302,8 +334,8 @@ struct Composer: View {
         model.fleet.save(draft: saved, for: key, by: id)
     }
 
-    /// The clipboard's pictures, read from the attach menu. Unlike the
-    /// strip's `PasteButton`, iOS may ask before letting the app read them.
+    /// The clipboard's pictures, read from the attach menu. Unlike a paste
+    /// in the field, iOS may ask before letting the app read them.
     private func pastePhotos() {
         for image in (UIPasteboard.general.images ?? []).prefix(4 - pictures.count) { add(image) }
     }
@@ -325,6 +357,11 @@ struct Composer: View {
     private func sendPrompt() {
         let text = draft
         let sentPictures = pictures
+        sends += 1
+        if destination == .terminal {
+            sendToTerminal(text, pictures: sentPictures)
+            return
+        }
         draft = ""
         pictures = []
         dictation.reset()
@@ -357,6 +394,47 @@ struct Composer: View {
 
     private func send(_ command: ChatCommand) {
         Task { problem = await model.fleet.send(command, to: key) }
+    }
+
+    /// Types the message into the agent's terminal: each picture's path as
+    /// a dropped file, the words as one paste, then Enter, in that order.
+    /// What fails goes back into the composer.
+    private func sendToTerminal(_ text: String, pictures sent: [Picture]) {
+        draft = ""
+        pictures = []
+        dictation.reset()
+        saveDraft()
+        let pane = key.pane
+        let before = terminalSend
+        terminalSend = Task {
+            await before?.value
+            do {
+                try await model.fleet.call(key.device) { client, token in
+                    for picture in sent { try await client.termUpload(picture.jpeg, pane: pane, bearer: token) }
+                    if !text.isEmpty { try await client.termPaste(text, pane: pane, bearer: token) }
+                    try await client.termKeys(["enter"], pane: pane, bearer: token)
+                }
+                problem = nil
+            } catch {
+                problem = error.localizedDescription
+                draft = draft.isEmpty ? text : text + "\n\n" + draft
+                pictures = Array((sent + pictures).prefix(4))
+                saveDraft()
+            }
+        }
+    }
+
+    private func toTerminal(keys: [String]) {
+        let pane = key.pane
+        Task {
+            do {
+                try await model.fleet.call(key.device) { client, token in
+                    try await client.termKeys(keys, pane: pane, bearer: token)
+                }
+            } catch {
+                problem = error.localizedDescription
+            }
+        }
     }
 }
 
@@ -392,19 +470,6 @@ struct ThinProgress: View {
             .progressViewStyle(.linear)
             .scaleEffect(y: 0.6, anchor: .center)
             .animation(.easeOut(duration: 0.25), value: value)
-    }
-}
-
-/// An image from the clipboard, through `PasteButton`, which reads it
-/// without the paste prompt.
-struct PastedImage: Transferable {
-    let image: UIImage
-
-    static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(importedContentType: .image) { data in
-            guard let image = UIImage(data: data) else { throw CocoaError(.fileReadCorruptFile) }
-            return PastedImage(image: image)
-        }
     }
 }
 

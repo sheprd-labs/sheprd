@@ -57,16 +57,24 @@ async fn an_open_list_hears_when_a_phone_saw_a_finished_agent() {
             cwd: "/work".into(),
             session: None,
             worktree: None,
-            chats: vec![crate::hub::ChatRow {
-                named: true,
-                pane: "p1".into(),
+            chats: Vec::new(),
+            // An agent that finished, at a known time, since marks began.
+            terminals: vec![crate::hub::Terminal {
                 tab: "t1".into(),
-                endpoint: sheprd_chat_protocol::EndpointId::random(),
-                agent: None,
-                title: "Fix".into(),
-                status: sheprd_client::protocol::AgentStatus::Done,
+                label: String::new(),
+                cwd: None,
+                panes: Vec::new(),
+                zoomed: false,
+                agent: Some(crate::hub::TerminalAgent {
+                    name: None,
+                    status: sheprd_client::protocol::AgentStatus::Done,
+                    pane: "p1".into(),
+                    title: None,
+                    changed_ms: Some(1),
+                }),
+                agents: Vec::new(),
+                convert: None,
             }],
-            terminals: Vec::new(),
         }],
     });
     let state = state_with(dir.path(), hub);

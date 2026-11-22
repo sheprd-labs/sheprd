@@ -173,8 +173,8 @@ impl SheprdWindow {
                     .phone_close_workspace(workspace, window, cx)
                     .then_some(Some(Answer::Done));
             }
-            Op::RemoveWorktree { workspace } => {
-                return self.phone_remove_worktree(ask.id, workspace, window, cx);
+            Op::RemoveWorktree { workspace, discard } => {
+                return self.phone_remove_worktree(ask.id, workspace, *discard, window, cx);
             }
             _ => {}
         }

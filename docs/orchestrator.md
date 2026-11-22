@@ -50,7 +50,7 @@ agent-launcher wrote it and check that migration keeps its rows.
 | `prompt.rs` | Prompt profiles, agent-launcher's built-in and review prompts. |
 | `naming.rs` | agent-launcher's branch names, and runs found from branches. |
 | `beads/claim.rs` | Claiming a bead for a dispatch, and giving it back. |
-| `view/` | The view entity: the list of every repository (`view/repo.rs` keeps each one's worker, snapshot, and rows; an item's page and actions go to its own), the backend and project pills, filters, the item pane, dialogs. Pure row, merge, and grouping logic is in `view/rows.rs`; what the Tasks section adds is in `view/tasks.rs`. |
+| `view/` | The view entity: the list of every repository (`view/repo.rs` keeps each one's worker, snapshot, and rows; an item's page and actions go to its own), the backend and project pills, filters, the item pane, dialogs. Pure row, merge, and grouping logic is in `view/rows.rs`; what the Tasks section adds is in `view/tasks.rs`. A stacked pull request's chip and popover are in `view/stack.rs`, which merges the stack or changes its place in the merge queue (`view/stack/actions.rs`) through GitHub's asynchronous merge API, after the view's confirmation names what lands. |
 | `host.rs` | The window's one view and the repositories it lists, one per Git common directory per host across every connected host's workspaces: the tick that feeds it, and its events. |
 | `section.rs` | The Pull requests, Issues, and Tasks sections, and the commands that open them narrowed to a project. |
 

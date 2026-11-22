@@ -1,0 +1,14 @@
+tab-strip-tabs = 标签页
+tab-strip-new-tab = 新建标签页
+tab-strip-split = 拆分
+tab-strip-actions = 标签页操作
+tab-strip-new-chat = 新建{ $agent }聊天
+tab-strip-new-agent-chat = 新建智能体聊天
+tab-strip-new-agent-chat-instead = 新建{ $agent }聊天：{ $why }
+tab-strip-release-new-window = 松开以在新窗口中打开
+tab-strip-opening = 正在打开…
+tab-strip-show-here = 在此显示
+tab-strip-no-tabs = 暂无标签页
+tab-strip-no-tabs-hint = 点击“+”打开终端标签页，或从“⋯”菜单中选择其他类型的标签页。
+tab-strip-nothing = 暂无内容。
+tab-strip-muted = { $label }，通知已静音

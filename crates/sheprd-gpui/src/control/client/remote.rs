@@ -11,13 +11,20 @@ use crate::{
 use sheprd_remote_control::control::{Device, Status};
 use std::io::IsTerminal as _;
 
+mod push_status;
+
 pub(super) fn remote(command: RemoteCommand, context: &Context) -> crate::Result<Output> {
     let op = match command {
         RemoteCommand::Status => RemoteOp::Status,
         RemoteCommand::Pair { address } => RemoteOp::Pair { address },
         RemoteCommand::Devices => RemoteOp::Devices,
+        RemoteCommand::PushStatus => RemoteOp::PushStatus,
+        RemoteCommand::TestPush => RemoteOp::TestPush,
         RemoteCommand::Revoke { device } => RemoteOp::Revoke { device },
         RemoteCommand::Restart => RemoteOp::Restart,
+        RemoteCommand::AddLink => RemoteOp::AddLink {
+            link: piped_link()?,
+        },
         RemoteCommand::RelayToken { relay, clear } => RemoteOp::RelayToken {
             relay: relay.to_string(),
             token: if clear { None } else { Some(piped_token()?) },
@@ -38,6 +45,16 @@ fn piped_token() -> crate::Result<sheprd_remote_control::control::relays::Listen
         return Err(crate::control::listen_token::Error::Terminal.into());
     }
     Ok(crate::control::listen_token::read(stdin.lock())?)
+}
+
+/// The pairing link piped on standard input. A terminal is refused, as
+/// for a listen token.
+fn piped_link() -> crate::Result<sheprd_remote_control::app::pairing::LinkText> {
+    let stdin = std::io::stdin();
+    if stdin.is_terminal() {
+        return Err(crate::control::link_input::Error::Terminal.into());
+    }
+    Ok(crate::control::link_input::read(stdin.lock())?)
 }
 
 /// What a reply prints, as text and as JSON.
@@ -81,6 +98,39 @@ pub(super) fn output(reply: &Reply) -> crate::Result<Output> {
             let now = crate::remote::now_ms();
             let lines: Vec<String> = devices.iter().map(|device| line(device, now)).collect();
             Output::data(lines.join("\n"), &json)
+        }
+        Reply::PushStatus {
+            enabled,
+            push_relay,
+            status,
+            error,
+            hosts,
+        } => {
+            let json = serde_json::json!({
+                "enabled": enabled,
+                "push_relay": push_relay,
+                "status": status,
+                "error": error,
+                "hosts": hosts,
+            });
+            let mut text =
+                push_status::text(*enabled, *push_relay, status.as_deref(), error.as_deref());
+            if !hosts.is_empty() {
+                text.push_str("\n\nLinked hosts:\n");
+                text.push_str(&push_status::hosts(hosts));
+            }
+            Output::data(text, &json)
+        }
+        Reply::TestPush { mode, pushes } => {
+            let json = serde_json::json!({ "mode": mode, "pushes": pushes });
+            let output = Output::data(push_status::test_text(*mode, pushes), &json)?;
+            Ok(if pushes.is_empty() {
+                output.nothing()
+            } else if pushes.iter().all(|push| push.outcome.worked()) {
+                output
+            } else {
+                output.failed()
+            })
         }
         Reply::RelayToken { relay, token } => {
             let json = serde_json::json!({ "relay": relay, "token": token });

@@ -1,0 +1,25 @@
+{
+  "prompt": {
+    "question": [
+      "Deploy",
+      "Which environment?"
+    ],
+    "choices": [
+      {
+        "number": 1,
+        "label": "Staging",
+        "detail": "The one the team shares."
+      },
+      {
+        "number": 2,
+        "label": "Production"
+      },
+      {
+        "number": 3,
+        "label": "Type something.",
+        "text": true
+      }
+    ],
+    "selected": 0
+  }
+}

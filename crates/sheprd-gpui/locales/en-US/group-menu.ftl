@@ -12,3 +12,5 @@ group-menu-split-right = Split Right
 # listening ports.
 group-menu-new-chat = New Chat
 group-menu-listening = Listening
+group-menu-machines = Virtual Macs
+group-menu-new-machine = New Virtual Mac…

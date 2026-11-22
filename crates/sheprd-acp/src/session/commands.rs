@@ -44,12 +44,13 @@ impl<R: FnMut(Update)> Session<R> {
             }
             Command::StopActivity { call_id } => self.stop_activity(&call_id),
             Command::SetAgent { agent } => self.set_agent(agent),
+            Command::AddPullRequest { url } => self.add_pull_request(&url),
         }
         .err();
         self.ack(conn, id, rejected);
     }
 
-    fn prompt(
+    pub(super) fn prompt(
         &mut self,
         id: CommandId,
         text: String,
@@ -71,7 +72,7 @@ impl<R: FnMut(Update)> Session<R> {
         if !self.transcript.status.accepts_prompts() {
             return Err(Rejection::NotReady);
         }
-        if self.turn.is_some() || !self.ready {
+        if self.turn.is_some() || !self.ready || self.carrying() {
             let waiting = &self.transcript.queued;
             let text_size: usize = waiting.iter().map(|queued| queued.text.len()).sum();
             if waiting.len() >= MAX_QUEUED || text_size + text.len() > MAX_QUEUED_TEXT {
@@ -113,10 +114,11 @@ impl<R: FnMut(Update)> Session<R> {
             shown.push_str(sheprd_chat_protocol::ATTACHED);
             shown.push_str(attachment.name());
         }
-        let prompt = self.projector.prompt(&shown, attachments.len());
-        self.emit(prompt);
         let mut blocks = Vec::with_capacity(prepared.len() + 3);
-        if let Some(note) = self.context.before_prompt(origin, text) {
+        self.context
+            .running(crate::context::Running::of(&self.transcript));
+        let note = self.context.before_prompt(origin, text);
+        if let Some(note) = &note {
             blocks.push(wire::ContentBlock::Text(wire::TextContent::new(note)));
         }
         // The agent that took over hears the conversation next, apart from
@@ -125,6 +127,15 @@ impl<R: FnMut(Update)> Session<R> {
         if let Some(handoff) = &handoff {
             blocks.push(wire::ContentBlock::Text(wire::TextContent::new(handoff)));
         }
+        // The transcript keeps what went ahead of the person's words apart
+        // from them, for a client to show when asked.
+        let sent = [note.as_deref(), handoff.as_deref()]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+        let sent = (!sent.is_empty()).then(|| sent.join("\n\n"));
+        let prompt = self.projector.prompt(&shown, attachments.len(), sent);
+        self.emit(prompt);
         if !text.trim().is_empty() {
             blocks.push(wire::ContentBlock::Text(wire::TextContent::new(text)));
         }
@@ -155,7 +166,7 @@ impl<R: FnMut(Update)> Session<R> {
 
     /// Sends the oldest queued prompt once the agent is free.
     pub(super) fn next_queued(&mut self) {
-        if self.turn.is_some() || !self.ready {
+        if self.turn.is_some() || !self.ready || self.carrying() {
             return;
         }
         let mut queued = self.transcript.queued.clone();
@@ -237,7 +248,10 @@ impl<R: FnMut(Update)> Session<R> {
         Ok(())
     }
 
-    fn set_mode(&mut self, mode: String) -> Result<(), Rejection> {
+    pub(super) fn set_mode(&mut self, mode: String) -> Result<(), Rejection> {
+        if !self.ready {
+            return self.defer_mode(mode);
+        }
         let session = self.acp_session.clone().ok_or(Rejection::NotReady)?;
         let known = self
             .transcript
@@ -254,7 +268,10 @@ impl<R: FnMut(Update)> Session<R> {
         Ok(())
     }
 
-    fn set_option(&mut self, id: String, value: &OptionValue) -> Result<(), Rejection> {
+    pub(super) fn set_option(&mut self, id: String, value: &OptionValue) -> Result<(), Rejection> {
+        if !self.ready {
+            return self.defer_option(id, value.clone());
+        }
         let session = self.acp_session.clone().ok_or(Rejection::NotReady)?;
         let known = self
             .transcript
@@ -277,7 +294,7 @@ impl<R: FnMut(Update)> Session<R> {
 
     /// Turns auto-accepting on or off; turning it on also answers the
     /// requests already waiting.
-    fn set_auto_accept(&mut self, on: bool) {
+    pub(super) fn set_auto_accept(&mut self, on: bool) {
         if self.transcript.auto_accept != on {
             self.emit(Change::AutoAccept { on });
         }

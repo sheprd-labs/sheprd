@@ -5,7 +5,10 @@ use crate::teleport::{self, Envelope, Host, ProcessInfoResult, SessionKind, Snap
 use sheprd_chat_protocol::Agent;
 use sheprd_client::{
     ConnectTarget, ScriptLimits,
-    herdr::processes::{agent_args, agent_processes, program},
+    herdr::{
+        observe::{self, observable},
+        processes::{self, ProcessIdentity, agent_args, agent_processes},
+    },
     protocol::{ClientShellAgent, ClientShellSnapshot},
     shell_quote,
 };
@@ -28,7 +31,6 @@ const SETTLED: Duration = Duration::from_secs(30);
 /// One unreachable probe keeps the overlays; this many in a row drop them.
 const MAX_FAILURES: u8 = 2;
 mod batch;
-mod codex;
 mod error;
 pub(crate) use error::Error;
 
@@ -392,9 +394,7 @@ fn inspect_host(
                 .foreground_processes
                 .iter()
                 .find(|process| process.pid == pid)?;
-            if agent == Agent::Codex
-                && !codex::session_matches(agent_args(agent, &process.argv)?, &session.value)
-            {
+            if !observe::launch_agrees(agent, agent_args(agent, &process.argv)?, &session.value) {
                 return None;
             }
             let unchanged = last.snapshot.pane(&pane.pane_id).is_some_and(|after| {
@@ -442,73 +442,14 @@ pub(crate) fn candidates(snapshot: &ClientShellSnapshot) -> Vec<&ClientShellAgen
         .collect()
 }
 
-/// The agent named `name`, when it is one whose running conversation can be
-/// observed: its CLI reports a session id the observer can read.
-pub(crate) fn observable(name: &str) -> Option<Agent> {
-    match name.parse() {
-        Ok(agent @ (Agent::Codex | Agent::Claude)) => Some(agent),
-        _ => None,
-    }
-}
-
-#[derive(Clone, Copy)]
-struct ProcessIdentity {
-    parent: u32,
-    group: u32,
-    started: u64,
-}
-
-/// npm launchers remain in the foreground alongside their native child. Pick
-/// that child only when all other matches are verified launcher ancestors.
+/// [`sheprd_client::herdr::processes::agent_pid`] over the identities this
+/// probe read on the agent's host.
 fn agent_pid(
     agent: Agent,
     info: &teleport::ProcessInfo,
     processes: &HashMap<u32, ProcessIdentity>,
 ) -> Option<u32> {
-    let group = info.foreground_process_group_id?;
-    let matching = agent_processes(agent, info)?;
-    if matching.is_empty()
-        || matching.iter().any(|process| {
-            processes
-                .get(&process.pid)
-                .is_none_or(|stat| stat.group != group)
-        })
-    {
-        return None;
-    }
-    if matching.len() == 1 {
-        return Some(matching[0].pid);
-    }
-    let mut native = matching
-        .iter()
-        .filter(|process| program(&process.argv) == Some(agent.name()));
-    let pid = native.next()?.pid;
-    if native.next().is_some() {
-        return None;
-    }
-    for wrapper in matching.iter().filter(|process| process.pid != pid) {
-        let mut child = pid;
-        let ancestor = (0..matching.len()).any(|_| {
-            let Some(stat) = processes.get(&child) else {
-                return false;
-            };
-            let Some(parent) = processes.get(&stat.parent) else {
-                return false;
-            };
-            if parent.started > stat.started
-                || parent.group != group
-                || !matching.iter().any(|process| process.pid == stat.parent)
-            {
-                return false;
-            }
-            child = stat.parent;
-            child == wrapper.pid
-        });
-        if !ancestor {
-            return None;
-        }
-    }
-    Some(pid)
+    processes::agent_pid(agent, info, |pid| processes.get(&pid).copied())
 }
 
 /// A pane whose reported session names an agent that may be observed.

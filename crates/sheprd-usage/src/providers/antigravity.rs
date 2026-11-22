@@ -142,10 +142,13 @@ pub(crate) fn parse(body: &str) -> Result<Report> {
 }
 
 /// The model family a group's limits are named by, or the group's own name.
+/// Only the generic Gemini group is shortened: a specific one such as
+/// `Gemini 4 Argon` has limits of its own and keeps its name.
 fn group_title(name: Option<String>) -> Text {
     let name = name.unwrap_or_default().trim().to_owned();
     let lower = name.to_lowercase();
-    if lower.contains("gemini") {
+    let family = lower.strip_suffix(" models").unwrap_or(&lower).trim_end();
+    if family == "gemini" {
         Text::service("Gemini")
     } else if lower.contains("claude") || lower.contains("gpt") {
         Text::service("Claude/GPT")
@@ -353,6 +356,38 @@ mod tests {
         assert_eq!(
             report.windows[3].resets_at,
             Some(SystemTime::UNIX_EPOCH + Duration::from_secs(1_789_670_427))
+        );
+    }
+
+    #[test]
+    fn a_specific_gemini_group_keeps_its_name() {
+        let report = parse(
+            r#"{"status": "SUCCESS", "command": {"name": "usage", "data": {"groups": [
+              {"name": "Gemini Models", "buckets": [
+                {"id": "gemini-weekly", "name": "Weekly Limit Remaining", "window": "weekly",
+                 "remaining_fraction": 0.3}]},
+              {"name": "Gemini 4 Argon", "buckets": [
+                {"id": "gemini-argon-wtu-weekly", "name": "Weekly Limit Remaining",
+                 "window": "weekly", "remaining_fraction": 0.0}]}
+            ]}}}"#,
+        )
+        .unwrap();
+        let used: Vec<_> = report
+            .windows
+            .iter()
+            .map(|window| (window.kind.clone(), window.percent()))
+            .collect();
+        let weekly = |group: &str| {
+            Kind::Named(
+                Text::message("usage-antigravity-window")
+                    .arg("group", group)
+                    .arg("cadence", "weekly")
+                    .arg("name", ""),
+            )
+        };
+        assert_eq!(
+            used,
+            [(weekly("Gemini"), 70), (weekly("Gemini 4 Argon"), 100)]
         );
     }
 

@@ -1,4 +1,4 @@
-use crate::{Language, Locale};
+use crate::{CjkScript, Language, Locale};
 use fluent_langneg::{LanguageIdentifier as Matched, NegotiationStrategy, negotiate_languages};
 use unic_langid::LanguageIdentifier;
 
@@ -46,6 +46,18 @@ pub fn negotiate<R: AsRef<LanguageIdentifier>>(requested: &[R], available: &[Loc
 
 /// `id` as the identifier `fluent-langneg` matches.
 fn matched(id: &LanguageIdentifier) -> Option<Matched> {
+    let mut id = id.clone();
+    // A region-only Traditional Chinese preference otherwise matches a
+    // Simplified catalog as a wildcard when no Traditional catalog exists.
+    if id.script.is_none()
+        && id.language.as_str() == "zh"
+        && matches!(
+            CjkScript::of(&id),
+            Some(CjkScript::Traditional | CjkScript::HongKong)
+        )
+    {
+        id.script = Some(unic_langid::script!("Hant"));
+    }
     id.to_string().parse().ok()
 }
 

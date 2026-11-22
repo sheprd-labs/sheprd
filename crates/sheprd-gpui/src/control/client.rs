@@ -5,6 +5,7 @@ mod app;
 mod browser;
 mod chat;
 mod events;
+mod fleet;
 mod help;
 mod hosts;
 mod local;
@@ -17,7 +18,7 @@ mod work;
 
 use super::{
     ErrorCode,
-    protocol::{Call, Caller, Request, Response},
+    protocol::{Call, Caller, Request, Response, Via},
 };
 use super::{socket, socket_path};
 use crate::cli::control::{BrowserCommand, ControlCommand, Invocation};
@@ -106,6 +107,13 @@ impl Output {
     pub(crate) fn failed(mut self) -> Self {
         self.status = exit::REFUSED;
         self
+    }
+
+    /// The text a person reads, the data a program reads, and whether it
+    /// reports a failure (`failed`), for answers that are not printed.
+    #[cfg(feature = "mcp")]
+    pub(crate) fn parts(&self) -> (&str, &serde_json::Value, bool) {
+        (&self.text, &self.json, self.status == exit::REFUSED)
     }
 
     /// Also print `text` on standard error, unless `--json` asked.
@@ -211,11 +219,38 @@ pub(super) fn caller_from(
         daemon_socket,
         window: None,
         terminal_id,
+        via: None,
     }
 }
 
+thread_local! {
+    /// The relay every request this thread sends carries; see [`relay_as`].
+    static RELAY: std::cell::RefCell<Option<Via>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Marks every request this thread sends from now on as relayed by `via`,
+/// or as direct with `None`. `sheprd mcp` runs its tools on one thread and
+/// sets this once it knows its client, so no request it sends, whichever
+/// command builds it, reaches the app unmarked.
+#[cfg(feature = "mcp")]
+pub(crate) fn relay_as(via: Option<Via>) {
+    RELAY.with(|relay| *relay.borrow_mut() = via);
+}
+
+/// The relay this thread's requests carry now.
+#[cfg(all(test, feature = "mcp"))]
+pub(crate) fn relay() -> Option<Via> {
+    RELAY.with(|relay| relay.borrow().clone())
+}
+
 fn send(request: &Request) -> crate::Result<Response> {
-    Ok(socket::call(&socket_path()?, request)?)
+    let path = socket_path()?;
+    let Some(via) = RELAY.with(|relay| relay.borrow().clone()) else {
+        return Ok(socket::call(&path, request)?);
+    };
+    let mut relayed = request.clone();
+    relayed.set_via(Some(via));
+    Ok(socket::call(&path, &relayed)?)
 }
 
 /// Hands a `herdr-gpui://` link to the running app; what it did, for a
@@ -315,7 +350,17 @@ pub(crate) fn status(error: &crate::Error) -> u8 {
         // or not a token is the caller's to fix.
         crate::Error::ListenToken(crate::control::listen_token::Error::Read(_)) => exit::REFUSED,
         crate::Error::ListenToken(_) => exit::USAGE,
+        // So for a pairing link.
+        crate::Error::LinkInput(crate::control::link_input::Error::Read(_)) => exit::REFUSED,
+        crate::Error::LinkInput(_) => exit::USAGE,
         crate::Error::Control(crate::control::Error::Unavailable { .. }) => exit::NOT_RUNNING,
+        crate::Error::ChatPullRequests(error) => chat_pull_requests_status(error),
+        // A file that could not be read is a failure; a brief that is not
+        // one is the caller's to fix.
+        crate::Error::ChatBrief(
+            crate::control::brief::Error::Open { .. } | crate::control::brief::Error::Read(_),
+        ) => exit::REFUSED,
+        crate::Error::ChatBrief(_) => exit::USAGE,
         crate::Error::Control(crate::control::Error::Rejected { code, .. }) => match code {
             ErrorCode::InvalidUrl => exit::USAGE,
             ErrorCode::NotFound | ErrorCode::WorkspaceNotFound | ErrorCode::NoWindow => {
@@ -330,8 +375,30 @@ pub(crate) fn status(error: &crate::Error) -> u8 {
     }
 }
 
+/// How `chat pr` failing exits: the caller's mistakes as usage, a chat
+/// that is not there as not running.
+fn chat_pull_requests_status(error: &crate::chat::pull_requests::Error) -> u8 {
+    use crate::chat::pull_requests::Error;
+    use sheprd_chat_protocol::Rejection;
+    match error {
+        Error::InvalidEndpoint
+        | Error::InvalidUrl
+        | Error::NoChat
+        | Error::Rejected(Rejection::InvalidPullRequest) => exit::USAGE,
+        Error::Connect(_) => exit::NOT_RUNNING,
+        Error::Timeout => exit::TIMEOUT,
+        Error::Rejected(Rejection::Unsupported) => exit::UNSUPPORTED,
+        Error::Closed
+        | Error::Io(_)
+        | Error::NoEndpointDir
+        | Error::Protocol(_)
+        | Error::Refused
+        | Error::Rejected(_) => exit::REFUSED,
+    }
+}
+
 /// The error's code as JSON names it.
-fn code(error: &crate::Error) -> &'static str {
+pub(crate) fn code(error: &crate::Error) -> &'static str {
     match status(error) {
         exit::USAGE => "usage",
         exit::NOT_RUNNING => "not_running",
@@ -451,71 +518,95 @@ pub(crate) fn run(invocation: Invocation) -> ExitCode {
             print!("{}", browser::EXAMPLE);
             return ExitCode::SUCCESS;
         }
-        ControlCommand::Browser(command) => browser::run(command, &context),
-        ControlCommand::Status => app::status(&context),
-        ControlCommand::App(command) => app::app(command, &context),
-        ControlCommand::Open { path } => open::open(&path, &context),
-        ControlCommand::Window(command) => app::window(command, &context),
-        ControlCommand::Ui(command) => app::ui(command, &context),
-        ControlCommand::Run { name } => app::run_command(&name, &context),
-        ControlCommand::Commands => local::commands(),
-        ControlCommand::Tab(command) => tabs::tab(command, &context),
-        ControlCommand::Code(command) => tabs::code(command, &context),
-        ControlCommand::Devices => tabs::devices(&context),
-        ControlCommand::Orchestrator(command) => tabs::orchestrator(command, &context),
-        ControlCommand::Review => tabs::review(&context),
-        ControlCommand::Chat(command) => chat::chat(command, &context),
-        ControlCommand::Px0 => tabs::px0(&context),
-        ControlCommand::Notes(command) => work::notes(command, &context),
-        ControlCommand::Memory(command) => work::memory(command, &context),
-        ControlCommand::Worktree(command) => work::worktree(command, &context),
-        ControlCommand::Feedback { wait } => browser::feedback(wait, &context),
-        ControlCommand::Checkpoint(command) => work::checkpoint(command, &context),
-        ControlCommand::Scripts { kind } => work::scripts(kind, &context),
-        ControlCommand::Teleport { worktree, host } => {
-            work::teleport(worktree.as_deref(), host, &context)
+        #[cfg(feature = "mcp")]
+        ControlCommand::Mcp(crate::cli::control::McpCommand::Serve) => return crate::mcp::serve(),
+        command => dispatch(command, &context),
+    };
+    finish(result, context.json)
+}
+
+/// Runs a command and returns what it answered, printing nothing: `run`
+/// prints it, and `sheprd mcp` returns it to its client.
+pub(crate) fn dispatch(command: ControlCommand, context: &Context) -> crate::Result<Output> {
+    match command {
+        ControlCommand::Help(family) => Ok(Output::message(help::usage(family))),
+        ControlCommand::Browser(BrowserCommand::Help) => {
+            Ok(Output::message(help::usage(Some("browser"))))
         }
-        ControlCommand::FanOut(fan_out) => work::fan_out(fan_out, &context),
-        ControlCommand::Pr(command) => hosts::pr(command, &context),
-        ControlCommand::Host(command) => hosts::host(command, &context),
-        ControlCommand::Cloud(command) => hosts::cloud(command, &context),
-        ControlCommand::Ports(command) => hosts::ports(command, &context),
+        ControlCommand::Skill | ControlCommand::Browser(BrowserCommand::Skill) => {
+            Ok(Output::message(crate::agent_skill::text(
+                crate::agent_skill::executable().as_deref(),
+            )))
+        }
+        ControlCommand::Browser(BrowserCommand::Example) => Ok(Output::message(browser::EXAMPLE)),
+        ControlCommand::Browser(command) => browser::run(command, context),
+        ControlCommand::Status => app::status(context),
+        ControlCommand::App(command) => app::app(command, context),
+        ControlCommand::Open { path } => open::open(&path, context),
+        ControlCommand::Window(command) => app::window(command, context),
+        ControlCommand::Ui(command) => app::ui(command, context),
+        ControlCommand::Run { name } => app::run_command(&name, context),
+        ControlCommand::Commands => local::commands(),
+        ControlCommand::Tab(command) => tabs::tab(command, context),
+        ControlCommand::Code(command) => tabs::code(command, context),
+        ControlCommand::Devices => tabs::devices(context),
+        ControlCommand::Machine(command) => tabs::machine(command, context),
+        ControlCommand::Orchestrator(command) => tabs::orchestrator(command, context),
+        ControlCommand::Review => tabs::review(context),
+        ControlCommand::Chat(command) => chat::chat(command, context),
+        ControlCommand::Px0 => tabs::px0(context),
+        ControlCommand::Notes(command) => work::notes(command, context),
+        ControlCommand::Memory(command) => work::memory(command, context),
+        #[cfg(feature = "mcp")]
+        ControlCommand::Mcp(command) => crate::mcp::command(command),
+        ControlCommand::Worktree(command) => work::worktree(command, context),
+        ControlCommand::Feedback { wait } => browser::feedback(wait, context),
+        ControlCommand::Checkpoint(command) => work::checkpoint(command, context),
+        ControlCommand::Scripts { kind } => work::scripts(kind, context),
+        ControlCommand::Teleport { worktree, host } => {
+            work::teleport(worktree.as_deref(), host, context)
+        }
+        ControlCommand::FanOut(fan_out) => work::fan_out(fan_out, context),
+        ControlCommand::Pr(command) => hosts::pr(command, context),
+        ControlCommand::Host(command) => hosts::host(command, context),
+        ControlCommand::Cloud(command) => hosts::cloud(command, context),
+        ControlCommand::Ports(command) => hosts::ports(command, context),
         ControlCommand::Processes { pane, terminal } => {
             local::processes(pane.as_deref(), terminal.as_deref())
         }
-        ControlCommand::Usage => hosts::usage(&context),
-        ControlCommand::UsagePick => hosts::usage_pick(&context),
-        ControlCommand::System => hosts::system(&context),
-        ControlCommand::Security(command) => hosts::security(command, &context),
-        ControlCommand::Automation(command) => hosts::automation(command, &context),
-        ControlCommand::Remote(command) => remote::remote(command, &context),
-        ControlCommand::Mod(command) => mods::run(command, &context),
+        ControlCommand::Usage => hosts::usage(context),
+        ControlCommand::UsagePick => hosts::usage_pick(context),
+        ControlCommand::System => hosts::system(context),
+        ControlCommand::Security(command) => hosts::security(command, context),
+        ControlCommand::Automation(command) => hosts::automation(command, context),
+        ControlCommand::Remote(command) => remote::remote(command, context),
+        ControlCommand::Fleet(command) => fleet::fleet(command, context),
+        ControlCommand::Mod(command) => mods::run(command, context),
         ControlCommand::Search {
             files,
             query,
             limit,
         } => local::search(files, &query, limit),
-        ControlCommand::Config(command) => settings::config(command, &context),
-        ControlCommand::Theme(command) => settings::theme(command, &context),
-        ControlCommand::Language(command) => settings::language(command, &context),
-        ControlCommand::Font(command) => settings::font(command, &context),
-        ControlCommand::Keybinds(command) => settings::keybinds(command, &context),
-        ControlCommand::Caffeine(command) => settings::caffeine(command, &context),
-        ControlCommand::Sound(command) => settings::sound(command, &context),
-        ControlCommand::Bell => settings::bell(&context),
+        ControlCommand::Config(command) => settings::config(command, context),
+        ControlCommand::Theme(command) => settings::theme(command, context),
+        ControlCommand::Language(command) => settings::language(command, context),
+        ControlCommand::Font(command) => settings::font(command, context),
+        ControlCommand::Keybinds(command) => settings::keybinds(command, context),
+        ControlCommand::Caffeine(command) => settings::caffeine(command, context),
+        ControlCommand::Sound(command) => settings::sound(command, context),
+        ControlCommand::Bell => settings::bell(context),
         ControlCommand::Events {
             after,
             follow,
             wait,
             kinds,
-        } => events::events(after, follow, wait, kinds, &context),
-        ControlCommand::Wait { what, timeout } => events::wait(what, timeout, &context),
+        } => events::events(after, follow, wait, kinds, context),
+        ControlCommand::Wait { what, timeout } => events::wait(what, timeout, context),
         ControlCommand::Logs { path, lines } => local::logs(path, lines),
-        ControlCommand::Update(command) => settings::update(command, &context),
+        ControlCommand::Update(command) => settings::update(command, context),
         ControlCommand::Diagnostics { output } => local::diagnostics(&output),
-        ControlCommand::Integrations(command) => settings::integrations(command, &context),
-    };
-    finish(result, context.json)
+        ControlCommand::Integrations(command) => settings::integrations(command, context),
+    }
 }
 
 #[cfg(test)]

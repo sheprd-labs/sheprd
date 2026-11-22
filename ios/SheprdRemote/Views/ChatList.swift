@@ -12,6 +12,11 @@ struct ChatList: View {
     @Environment(AppModel.self) private var model
     @AppStorage(HomeRow.sortKey) private var sort = AgentSort.priority
     var sections: [AgentSort.Section<HomeRow>]
+    /// The unread agents among those the filters leave, for the bar above
+    /// the list.
+    var unread: [PaneKey] = []
+    /// Lists only unread agents.
+    @Binding var unreadOnly: Bool
     /// Where each section's header is, so a jump can clear the bars.
     @State private var headerJump = HeaderJump()
     /// What a swipe or long press asked to close, waiting for confirmation.
@@ -57,13 +62,17 @@ struct ChatList: View {
         ScrollViewReader { proxy in
             List {
                 UnpairedCards()
+                if !unread.isEmpty || unreadOnly { UnreadBar(unread: unread, only: $unreadOnly) }
                 ForEach(sections) { section in
                     let key = Self.key(section, sort: sort)
                     let folded = model.collapsed.home.contains(key)
                     Section {
                         if !folded { ForEach(section.items) { row($0) } }
                     } header: {
-                        SectionHeader(title: section.title, count: section.items.count, status: section.status, folded: folded) {
+                        SectionHeader(
+                            title: section.title, count: section.items.count, status: section.status,
+                            starred: section.id == AgentSort.favoritesID, folded: folded
+                        ) {
                             withAnimation(.snappy) { model.collapsed.home.toggle(key) }
                         }
                         .id(Self.headerID(key))
@@ -130,8 +139,9 @@ struct ChatList: View {
 
     @ViewBuilder
     private func row(_ row: HomeRow) -> some View {
-        // A section names the workspace when they are grouped by it.
-        let grouped = sort == .workspace
+        // A section names the workspace when they are grouped by it; the
+        // Favorites section mixes workspaces, so its rows name their own.
+        let grouped = sort == .workspace && !row.favorite
         switch row {
         case let .chat(item):
             Group {
@@ -148,14 +158,21 @@ struct ChatList: View {
                 }
             }
             .contextMenu {
+                if let read = row.readTarget { ReadMenuButton(target: read) }
+                if let favorite = row.favoriteTarget { FavoriteMenuButton(target: favorite) }
                 Button("Close Chat", systemImage: "xmark.circle", role: .destructive) { closing = .chat(item.key, title: item.chat.title) }
             }
             .closeSwipe(.chat(item.key, title: item.chat.title), closing: $closing)
-            .summarizeSwipe(item.key)
+            .summarizeSwipe(item.key, favorite: row.favoriteTarget, read: row.readTarget)
         case let .agent(item):
             if let route = item.route {
                 NavigationLink(value: route) { AgentTerminalRowLabel(item: item, showsComputer: !grouped, showsWorkspace: !grouped) }
+                    .contextMenu {
+                        if let read = row.readTarget { ReadMenuButton(target: read) }
+                        if let favorite = row.favoriteTarget { FavoriteMenuButton(target: favorite) }
+                    }
                     .closeSwipe(item.closeTarget, closing: $closing)
+                    .favoriteSwipe(row.favoriteTarget, read: row.readTarget)
             }
         }
     }
@@ -183,6 +200,8 @@ private struct SectionHeader: View {
     var count: Int
     /// The status its rows share, shown as a colored dot.
     var status: Home.AgentStatus?
+    /// The favorites' section, which shows a star instead.
+    var starred = false
     var folded: Bool
     var toggle: () -> Void
 
@@ -191,7 +210,11 @@ private struct SectionHeader: View {
             HStack(spacing: 6) {
                 Image(systemName: "chevron.right").font(.caption.bold())
                     .rotationEffect(.degrees(folded ? 0 : 90))
-                if let status { StatusDot(status: status) }
+                if starred {
+                    Image(systemName: "star.fill").foregroundStyle(.yellow)
+                } else if let status {
+                    StatusDot(status: status)
+                }
                 Text(title).lineLimit(1)
                 Text(count, format: .number).foregroundStyle(.secondary).monospacedDigit()
                 Spacer(minLength: 0)

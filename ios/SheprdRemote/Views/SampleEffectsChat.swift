@@ -51,8 +51,8 @@ extension ChatStore {
         for entry in transcript.entries {
             guard case let .agent(text) = entry.kind else { continue }
             let message = AgentMessage.parse(text)
-            for order in 0..<message.bubbles {
-                effects.replayBubble(ChatEffects.BubbleKey(entry: entry.id, order: order))
+            for (order, effect) in message.bubbleEffects.enumerated() {
+                effects.replayBubble(ChatEffects.BubbleKey(entry: entry.id, order: order), effect: effect)
             }
             if message.screen?.rawValue == name { effects.replayScreen(entry) }
         }

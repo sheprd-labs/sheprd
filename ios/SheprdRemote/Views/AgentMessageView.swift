@@ -23,7 +23,7 @@ struct AgentMessageView: View {
                     BubbleEffectView(
                         effect: effect,
                         since: effects?.ledger.bubbleSince(key),
-                        replay: effects.map { effects in { effects.replayBubble(key) } }
+                        replay: effects.map { effects in { effects.replayBubble(key, effect: effect) } }
                     ) {
                         MarkdownView(blocks: blocks)
                     }

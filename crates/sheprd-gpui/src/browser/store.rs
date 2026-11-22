@@ -10,6 +10,7 @@ use sheprd_session::SavedWorkspace;
 use std::path::PathBuf;
 
 mod kept;
+pub(crate) mod spaces;
 
 pub(crate) use kept::is_kept_id;
 
@@ -158,6 +159,10 @@ pub(crate) struct Tab {
     /// Tabs saved before panels existed are all `Group` tabs.
     #[serde(default, skip_serializing_if = "is_group")]
     pub place: Place,
+    /// The id of the tab in its core's shared document (`spaces`), once
+    /// it has one: a herdr-core tab of a kept workspace.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub space: Option<String>,
     /// How large the page draws; tabs saved before zoom draw at 100%.
     #[serde(default, skip_serializing_if = "Zoom::is_actual")]
     pub zoom: Zoom,
@@ -209,6 +214,9 @@ struct Saved {
         skip_serializing_if = "Vec::is_empty"
     )]
     workspaces: Vec<SavedWorkspace>,
+    /// What each core's shared document held when last read, by scope.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    synced: std::collections::BTreeMap<String, spaces::Synced>,
 }
 
 #[derive(Default)]
@@ -216,9 +224,12 @@ pub(crate) struct Store {
     tabs: Vec<Tab>,
     /// Herdr 2 workspaces, in the user's order (`kept.rs`).
     pub(super) workspaces: Vec<SavedWorkspace>,
-    /// The last kept workspace number handed out this run.
-    last_kept: u64,
     next: u64,
+    /// Tabs taken out because a core's shared document dropped them, whose
+    /// terminals the client that closed them ends, not a window here.
+    pub(super) dropped: std::collections::VecDeque<TabId>,
+    /// What each core's shared document held when last read (`spaces.rs`).
+    pub(super) synced: std::collections::BTreeMap<String, spaces::Synced>,
     pub(super) closed: super::closed::ClosedTabs,
     writer: Option<state_file::Writer<Saved>>,
     /// Held from before the tabs are read until the app quits, so the
@@ -314,6 +325,7 @@ impl Store {
                         Ok(Saved {
                             tabs: Vec::new(),
                             workspaces: Vec::new(),
+                            synced: Default::default(),
                         }),
                         parse,
                     )
@@ -324,8 +336,9 @@ impl Store {
                 tracing::warn!(%error, "Cannot restore browser tabs");
                 None
             });
-        let (tabs, workspaces) =
-            saved.map_or_else(Default::default, |saved| (saved.tabs, saved.workspaces));
+        let (tabs, workspaces, synced) = saved.map_or_else(Default::default, |saved| {
+            (saved.tabs, saved.workspaces, saved.synced)
+        });
         let writer = path.and_then(
             |path| match state_file::Writer::start("browser-tabs", path) {
                 Ok(writer) => Some(writer),
@@ -337,6 +350,7 @@ impl Store {
         );
         let mut store = Self::with_tabs(tabs, writer);
         store.workspaces = workspaces;
+        store.synced = synced;
         store._owner = owner;
         Ok(store)
     }
@@ -350,8 +364,9 @@ impl Store {
             _owner: None,
             tabs,
             workspaces: Vec::new(),
-            last_kept: 0,
             next,
+            dropped: Default::default(),
+            synced: Default::default(),
             closed: Default::default(),
             writer,
             quitting: false,
@@ -383,7 +398,7 @@ impl Store {
         f(cx.global_mut::<Self>())
     }
 
-    fn save(&self) {
+    pub(super) fn save(&self) {
         if self.quitting {
             return;
         }
@@ -391,6 +406,7 @@ impl Store {
             writer.save(Saved {
                 tabs: self.tabs.clone(),
                 workspaces: self.workspaces.clone(),
+                synced: self.synced.clone(),
             });
         }
     }
@@ -493,6 +509,7 @@ impl Store {
             title,
             origin,
             place,
+            space: None,
             zoom: Zoom::default(),
         })
     }

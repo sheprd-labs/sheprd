@@ -1,6 +1,6 @@
 ---
 name: herdr-gpui-browser
-description: "Open a browser tab in Sheprd beside your terminal to show the user a web page, HTML file, or mockup, and get back their notes and picks. Use it in Herdr (HERDR_ENV=1 or HC_TERMINAL_ID set) when the user asks to open, start, or show a browser tab, page, preview, or mockup, to explain or visualize how something works, or to mock up UI variants to pick from; prefer it there over other browser skills or a system browser. Also use it for what Sheprd, not the herdr daemon, shows or keeps: a file at a line, a review of your changes, repository memory shared by worktrees and tabs (search it before a task, add what you learn), worktree notes, checkpoints and their diffs, your branch's pull request and CI, vulnerability reports and Dependabot alerts, asking the user to approve an automation script you wrote, forwarding or stopping ports, cloud machines, remote control from a phone, its windows and tabs, waiting for a tab to close or the user's notes, Sheprd settings, themes, and fonts, and keeping the machine awake."
+description: "Open a browser tab in Sheprd beside your terminal to show the user a web page, HTML file, or mockup, and get back their notes and picks. Use it in Herdr (HERDR_ENV=1 or HC_TERMINAL_ID set) when the user asks to open, start, or show a browser tab, page, preview, or mockup, to explain or visualize how something works, or to mock up UI variants to pick from; prefer it there over other browser skills or a system browser. Also use it for what Sheprd, not the herdr daemon, shows or keeps: a file at a line, a review of your changes, repository memory (search it before a task, add what you learn), worktree notes, checkpoints and their diffs, your branch's pull request and CI, vulnerability reports and Dependabot alerts, approving your automation script, forwarding or stopping ports, cloud machines, virtual Macs (commands, screenshots, clicks, keys), remote control from a phone, its windows and tabs, waiting on a tab or notes, starting an agent like you, Sheprd settings, themes, fonts, and keeping the machine awake."
 ---
 <!-- herdr-gpui-managed-skill v1: Sheprd keeps this file up to date. Edit a copy under another name to keep your changes. -->
 
@@ -54,6 +54,9 @@ Tests :big[pass]: :huge[214 of 214]. :small[CI took 4 min.]
   `balloons`, `celebration`, `fireworks`, `love`, `lasers`, `echo`,
   `spotlight`, or `zap`, where pixel ships shoot down the message's letters)
   fills the chat pane for a moment, when long work finally succeeds. Never use them in routine replies.
+- When you are stuck and truly need the person, such as a decision only they
+  can make, end the reply with a line `::wizz`: the chat shakes, and a paired
+  phone buzzes even when locked. Once per wait at most.
 - The iPhone and iPad app draws them too (ink shows on a tap). Terminal views
   and the phone web app show the directives as plain text, so the reply still
   reads well there.
@@ -323,6 +326,29 @@ private terminal output: Sheprd refuses them. If your agent keeps a memory
 of its own, prefer this one for what other agents of the repository should
 know. `list`, `search`, and `index` exit 4 when they find nothing.
 
+## Starting another agent
+
+When the user asks you to start another agent, such as in a new workspace,
+tab, or worktree, start the same kind you are, with the same settings,
+unless they ask for another:
+
+- **You run in a Sheprd chat** (`SHEPRD_CHAT_ENDPOINT` is set, and Sheprd's
+  note told you so): create the workspace or tab with `herdr`, then run
+  `sheprd chat new --pane ID` with a pane of it. With no agent named it
+  starts your agent with your chat's model, thinking, and permission mode.
+  Do not run an agent's terminal command there instead.
+- **You hand it a task**: write the task to a file and start the chat with
+  it, `sheprd chat new [AGENT] --pane ID --prompt-file PATH` (or
+  `--prompt TEXT`, or `--prompt-file -` for standard input; at most 96 KB).
+  Sheprd sends it as the new chat's first prompt and shows it as your
+  brief, not the user's words. Do not paste a task into a chat with
+  `herdr agent prompt` or `herdr pane send-text`. A brief works only for
+  chats on this machine; on an SSH host the command exits 8.
+- **You run in a terminal**: start the same CLI you run as, with the same
+  options, such as the model and permission flags you were started with
+  (`ps -o args= -p $PPID` from your shell usually shows your command line),
+  with `herdr`.
+
 ## More of Sheprd from the command line
 
 The same executable drives the rest of Sheprd's own features. For Herdr 1,
@@ -349,7 +375,9 @@ what Sheprd shows or keeps.
 | Update the Sheprd app on another machine (the user confirms in Sheprd) | `sheprd host update studio` |
 | Save the working tree before a risky change, and compare later | `sheprd checkpoint create before refactor`, `sheprd checkpoint diff ID` |
 | Your branch's pull request, its checks, and (with your workspace focused) its comments | `sheprd pr`, `sheprd pr checks`, `sheprd pr comments` |
+| Ask to create your branch's pull request without `gh` credentials; focus the local checkout and your core pane first, then the user clicks Create pull request in Sheprd | `sheprd pr create`; only opens the native action, does not submit or return a PR URL; after confirmation use `sheprd pr` and `sheprd chat pr add URL` |
 | Diagnose missing GitHub details: last reported GraphQL quota and rate-limit retry delays | `sheprd pr quota --json` |
+| Ask the user to merge your branch's pull request (with the stack below it), or to add it to or take it out of the merge queue; they confirm in Sheprd | `sheprd pr merge`, `sheprd pr queue add\|remove` |
 | List the vulnerability reports outsiders filed and the open Dependabot alerts of your repositories, most severe first | `sheprd security --json` |
 | Show the user an alert's or a vulnerability report's page in Sheprd | `sheprd security open OWNER/NAME 42` or `... GHSA-xxxx-xxxx-xxxx` |
 | Ask the user to approve an automation script you wrote (the app shows its plan; the user approves) | `sheprd automation approve .herdr/automations/nightly.luau` |
@@ -359,7 +387,10 @@ what Sheprd shows or keeps.
 | See every port this computer listens on, with the process, directory, and workspace behind it | `sheprd ports all --json` |
 | Ask the user to stop (or pause) whatever holds a port you need | `sheprd ports stop 3000`; they confirm in the app |
 | See the processes under a pane, with CPU and memory | `sheprd processes` |
+| Start another agent like yourself, in a chat (see [Starting another agent](#starting-another-agent)) | `sheprd chat new --pane ID` from a chat, then `sheprd chat` for its status |
+| Hand another agent a task, shown as your brief in its new chat | `sheprd chat new [AGENT] --pane ID --prompt-file PATH` |
 | Start a chat with another agent in a new tab, shown as a native chat view | `sheprd chat new claude`, then `sheprd chat` for its status |
+| List a pull request you changed without `gh` in your chat's side rail (`gh pr` commands show there on their own) | `sheprd chat pr add https://github.com/OWNER/REPO/pull/N`; `sheprd chat pr` lists them |
 | Move a terminal agent into a native chat, keeping its conversation (an agent that is idle, in another pane) | `sheprd chat convert --pane ID`, then `sheprd chat` for its status |
 | Render existing Linux Codex/Claude conversations in their current panes | `sheprd config set chat.render_existing true` (needs `features.acp_chats`, on by default); `chat status --json` reports the session and input mode |
 | List or focus the app's windows and its own tabs | `sheprd window`, `sheprd tab`, `sheprd tab focus ID` |
@@ -370,7 +401,15 @@ what Sheprd shows or keeps.
 | Get cloud machines of your own (the user confirms once), and wait until they are ready | `sheprd cloud create coder --count 3 --json`, `sheprd cloud wait BATCH --timeout 600 --json` |
 | Run a command on a saved cloud machine (clone, build, commit, push) | `sheprd cloud exec ID --cwd ~/code/app -- git status` |
 | Delete saved cloud machines you are done with, then follow it | `sheprd cloud destroy ID... --json`, `sheprd cloud wait BATCH --timeout 600 --json` |
+| List the virtual Macs on this computer, open one, or make one from an image (or ask the user to install macOS on a new one) | `sheprd machine list`, `sheprd machine open NAME`, `sheprd machine new NAME --from IMAGE`, `sheprd machine new` |
+| Get a virtual Mac ready for agents when `machine agent` does not answer: show the user the setup guide, then ask them to follow it | `sheprd machine setup NAME` |
+| Run a command inside a running virtual Mac (build, test, install an app) | `sheprd machine exec NAME --cwd ~/app -- xcodebuild test` |
+| Test a Mac app's UI in a virtual Mac: look at its screen, then click, type, or press keys | `sheprd machine screenshot NAME /tmp/s.png`, `sheprd machine click NAME X Y`, `sheprd machine type NAME TEXT`, `sheprd machine key NAME cmd+s` |
 | Check remote control and its daemon-host network interfaces, or pair a phone (Tailscale preferred; optionally choose an origin from status) | `sheprd remote status`, `sheprd remote pair [--address HTTPS_ORIGIN]` |
+| Check whether iPhone pushes go out (off, or through the push relay) and whether the last ones worked, here and on each linked host; read-only, the user turns the push relay off or on in Settings | `sheprd remote push-status --json` |
+| Check that iPhone notifications arrive: send each paired phone a test alert through the push relay | `sheprd remote test-push --json` |
+| See the user's fleet of computers and phones and which hosts each reaches, or ask to remove one (the user confirms in Settings > Fleet) | `sheprd fleet status --json`, `sheprd fleet remove MEMBER` |
+| Add another computer running Sheprd on any network from its pairing link (piped on stdin, never an argument); the user clicks Pair | `sheprd remote add-link < FILE` |
 | Keep this computer's listen token for a private relay (piped on stdin, never an argument), or forget it | `sheprd remote relays token ENDPOINT < FILE`, `sheprd remote relays token ENDPOINT --clear` |
 | Keep the machine awake during a long job | `sheprd caffeine on --for 2h` |
 | Check whether the app runs, and which windows and hosts it has | `sheprd status` |

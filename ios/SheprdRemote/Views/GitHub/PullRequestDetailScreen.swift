@@ -19,8 +19,6 @@ struct PullRequestDetailScreen: View {
     /// that account, and is not shown.
     @State private var held: (reading: PullRequestReading, signOuts: Int)?
     @State private var tried = false
-    /// A link from GitHub's text, waiting for the reader to confirm it.
-    @State private var pendingLink: URL?
 
     /// How often the screen reads again while it stays in front.
     static let refresh: Duration = .seconds(60)
@@ -84,23 +82,9 @@ struct PullRequestDetailScreen: View {
                 try? await Task.sleep(for: Self.refresh)
             }
         }
-        // GitHub's text is untrusted: only `https` links, and only after
-        // asking.
-        .environment(\.openURL, OpenURLAction { url in
-            guard url.scheme?.lowercased() == "https" else { return .discarded }
-            pendingLink = url
-            return .handled
-        })
-        .confirmationDialog(
-            "Open this link?",
-            isPresented: Binding(get: { pendingLink != nil }, set: { if !$0 { pendingLink = nil } }),
-            titleVisibility: .visible,
-            presenting: pendingLink
-        ) { url in
-            Button("Open in Safari") { UIApplication.shared.open(url) }
-        } message: { url in
-            Text(url.absoluteString)
-        }
+        // GitHub's text is untrusted: only `https` links, in the in-app
+        // browser, which shows where they lead.
+        .browsesLinks(schemes: ["https"])
     }
 
     private struct Refresh: Equatable {

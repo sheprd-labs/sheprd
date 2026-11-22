@@ -72,7 +72,24 @@ impl Localize for git::Error {
             ),
             Self::PullRequestBase => fl!("error-vcs-git-pull-request-base"),
             Self::PullRequestTitle => fl!("error-vcs-git-pull-request-title"),
+            Self::Restack(error) => error.localize(),
             Self::Worker => fl!("error-vcs-git-worker"),
+            // keep-sorted end
+        }
+    }
+}
+
+impl Localize for git::restack::Error {
+    fn localize(&self) -> String {
+        match self {
+            // keep-sorted start
+            Self::Dirty => fl!("error-vcs-git-restack-dirty"),
+            Self::Merges => fl!("error-vcs-git-restack-merges"),
+            Self::Moved => fl!("error-vcs-git-restack-moved"),
+            Self::Stopped { details } => {
+                fl!("error-vcs-git-restack-stopped", details = details.as_str())
+            }
+            Self::Target => fl!("error-vcs-git-restack-target"),
             // keep-sorted end
         }
     }
@@ -89,20 +106,25 @@ fn failed_step(operation: &str) -> &'static str {
         "count changes" => "count-changes", // i18n: data
         "count working tree changes" => "count-working-tree", // i18n: data
         "fetch the pull request branch" => "fetch-pull-request", // i18n: data
+        "fetch the stack's base" => "fetch-stack-base", // i18n: data
         "find the checkout" => "find-checkout", // i18n: data
         "find where the branch started" => "find-branch-start", // i18n: data
+        "forget the fetched base" => "forget-fetched-base", // i18n: data
         "list attribute files" => "list-attribute-files", // i18n: data
         "list branches" => "list-branches", // i18n: data
         "list files" => "list-files",       // i18n: data
+        "list the branch's merges" => "list-merges", // i18n: data
         "list untracked files" => "list-untracked", // i18n: data
         "list working tree changes" => "list-working-tree", // i18n: data
         "prepare the remote pull request or issue checkout" => "prepare-remote-checkout", // i18n: data
         "push" => "push",
         "read attributes" => "read-attributes", // i18n: data
         "read HEAD" => "read-head",             // i18n: data
+        "read the branch's history" => "read-branch-history", // i18n: data
         "read the commit subject" => "read-commit-subject", // i18n: data
         "read the new commit" => "read-new-commit", // i18n: data
         "read the remote's default branch" => "read-default-branch", // i18n: data
+        "read the stack's base" => "read-stack-base", // i18n: data
         "read working tree changes" => "read-working-tree-changes", // i18n: data
         "read working tree state" => "read-working-tree-state", // i18n: data
         "stage changes" => "stage",             // i18n: data

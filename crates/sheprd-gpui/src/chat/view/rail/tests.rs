@@ -1,5 +1,7 @@
 use self::activity::Group;
 use super::*;
+
+mod pull_requests;
 use sheprd_chat_protocol::{Activity, ActivityKind, ActivityState, Transcript};
 
 #[core::prelude::v1::test]

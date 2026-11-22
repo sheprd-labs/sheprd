@@ -9,7 +9,9 @@
 //! refuses endpoints outside the known push services, so a paired device
 //! cannot make the daemon post to an arbitrary host.
 
+mod directives;
 mod encrypt;
+mod event;
 mod presence;
 mod send;
 mod subscription;
@@ -22,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use std::{io, path::PathBuf};
 
 pub(crate) use encrypt::{MAX_PAYLOAD, encrypt};
+pub(crate) use event::EventId;
 pub(crate) use presence::{Hold, Near};
 #[cfg(test)]
 pub(crate) use presence::{MAX_HELD, NEAR_TTL_MS};

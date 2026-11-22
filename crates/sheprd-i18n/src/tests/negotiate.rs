@@ -84,3 +84,23 @@ fn negotiation_keeps_scripts_regions_and_the_callers_locales() {
         locale("zh-Hans")
     );
 }
+
+#[test]
+fn traditional_chinese_regions_do_not_match_a_simplified_catalog() {
+    let simplified = locale("zh-Hans");
+    let traditional = locale("zh-Hant");
+    for tag in ["zh-TW", "zh-HK", "zh-MO"] {
+        assert_eq!(
+            negotiate(&ids(&[tag]), std::slice::from_ref(&simplified)),
+            Locale::FALLBACK
+        );
+        assert_eq!(
+            negotiate(&ids(&[tag]), &[simplified.clone(), traditional.clone()]),
+            traditional
+        );
+    }
+    assert_eq!(
+        negotiate(&ids(&["zh-TW", "zh-CN"]), std::slice::from_ref(&simplified)),
+        simplified
+    );
+}

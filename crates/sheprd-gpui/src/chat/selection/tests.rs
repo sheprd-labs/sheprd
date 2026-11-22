@@ -44,6 +44,7 @@ fn caret(
     }
 }
 
+mod earlier;
 mod tools;
 
 #[test]

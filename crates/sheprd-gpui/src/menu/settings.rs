@@ -328,6 +328,7 @@ impl SheprdWindow {
                 | Command::NewWorktree
                 | Command::OpenWorktree
                 | Command::RemoveWorktree
+                | Command::RemoveMergedWorktrees
                 | Command::EditWorktreeNote
                 | Command::Tab
                 | Command::SplitRight
@@ -394,6 +395,8 @@ impl SheprdWindow {
                 | Command::ToggleSidebar
                 | Command::OpenCode
                 | Command::OpenPx0
+                | Command::OpenMachine
+                | Command::NewMachine
                 | Command::RemotePair
                 | Command::ToggleStatusBar
                 | Command::ToggleMenuBar

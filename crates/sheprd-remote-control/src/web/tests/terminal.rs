@@ -4,7 +4,7 @@
 use super::*;
 use crate::hub::Workspace;
 
-fn with_terminal(dir: &std::path::Path) -> Shared {
+pub(super) fn with_terminal(dir: &std::path::Path) -> Shared {
     let state = state(dir);
     let layout = Layout {
         connected: true,

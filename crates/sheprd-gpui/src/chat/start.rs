@@ -18,9 +18,11 @@ use crate::{
 };
 use gpui::{prelude::*, *};
 use serde_json::json;
-use sheprd_chat_protocol::Agent;
+use sheprd_chat_protocol::{Agent, Settings};
 use sheprd_client::Method;
 use std::{
+    borrow::Cow,
+    collections::BTreeMap,
     path::{Path, PathBuf},
     time::{Duration, Instant},
 };
@@ -33,85 +35,15 @@ const PROGRAM: &str = if cfg!(windows) {
 } else {
     "herdr-acp"
 };
-/// Lets the chat switch to another installed agent whenever it is idle.
-/// Only a program that offers it is asked: one on an SSH host, or an older
-/// one found on `PATH` here, would refuse the option and start nothing.
-pub(crate) const CHOOSE: &str = "--choose";
-/// The most of the program's help read to find [`CHOOSE`] in it.
-const HELP_LIMIT: u64 = 64 * 1024;
-/// How long the program has to print its help: a wrapper that keeps its
-/// output open must not leave the question unanswered.
-const HELP_DEADLINE: Duration = Duration::from_secs(3);
+pub(crate) use sheprd_client::agent_choice::AgentChoice;
 
-/// Whether a new chat may switch agents.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(crate) enum AgentChoice {
-    /// It keeps the agent it starts with, as a program without
-    /// [`CHOOSE`] runs every chat.
-    #[default]
-    Fixed,
-    /// It starts with [`CHOOSE`].
-    Open,
+/// Whether `program` takes a brief, from its `--help`: an older one would
+/// refuse [`super::brief::FILE_OPTION`] and start nothing. Blocking: run it
+/// off the UI thread.
+pub(crate) fn takes_briefs(program: &Path) -> bool {
+    sheprd_client::agent_choice::offers(program, super::brief::FILE_OPTION)
 }
 
-impl AgentChoice {
-    /// The choice `program` offers, from its `--help`. Blocking for up to
-    /// [`HELP_DEADLINE`]: run it off the UI thread.
-    pub(crate) fn of(program: &Path) -> Self {
-        Self::of_within(program, HELP_DEADLINE)
-    }
-
-    /// [`Self::of`], giving up as [`Self::Fixed`] after `deadline`.
-    pub(crate) fn of_within(program: &Path, deadline: Duration) -> Self {
-        use std::io::Read as _;
-        let mut command = sheprd_client::new_command(program);
-        command
-            .arg("--help")
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::null());
-        let Ok(mut child) = command.spawn() else {
-            return Self::Fixed;
-        };
-        let (sender, receiver) = std::sync::mpsc::channel();
-        if let Some(stdout) = child.stdout.take() {
-            // Read apart, so the deadline holds while the read blocks. A
-            // child the program started may keep the pipe open past the
-            // kill below; the read then ends when that child does.
-            let _ = std::thread::Builder::new()
-                .name("acp-help".to_owned())
-                .spawn(move || {
-                    let mut help = Vec::new();
-                    let _ = stdout.take(HELP_LIMIT).read_to_end(&mut help);
-                    let _ = sender.send(help);
-                });
-        }
-        let help = receiver.recv_timeout(deadline).unwrap_or_default();
-        let _ = child.kill();
-        let _ = child.wait();
-        Self::from_help(&help)
-    }
-
-    /// The choice a program whose help reads `help` offers.
-    pub(crate) fn from_help(help: &[u8]) -> Self {
-        if help
-            .windows(CHOOSE.len())
-            .any(|word| word == CHOOSE.as_bytes())
-        {
-            Self::Open
-        } else {
-            Self::Fixed
-        }
-    }
-
-    /// The option that asks for it, if any.
-    pub(crate) fn option(self) -> Option<&'static str> {
-        match self {
-            Self::Fixed => None,
-            Self::Open => Some(CHOOSE),
-        }
-    }
-}
 /// How long a start may wait for the daemon to make its tab.
 const DEADLINE: Duration = Duration::from_secs(15);
 
@@ -120,6 +52,8 @@ pub enum Error {
     // keep-sorted start
     #[error("{} is not installed on this host", .0.display_name())]
     AgentMissing(Agent),
+    #[error("a brief can only start a chat on this machine")]
+    BriefRemote,
     #[error("ACP chats are off in Settings")]
     Disabled,
     #[error("the chat's command cannot be typed into a shell")]
@@ -184,14 +118,22 @@ pub(crate) fn locate_in(exe: Option<&Path>, path: Option<&std::ffi::OsStr>) -> O
 /// PowerShell Herdr gives panes. A leading space keeps it out of the history
 /// of shells that honor that. The shell stays when the chat quits, so an
 /// agent that failed to start leaves its message on screen.
-pub(crate) fn command_line(agent: Agent, choice: AgentChoice) -> String {
-    let choose = choice
+/// With `brief`, the line reads its file from the tab's environment.
+pub(crate) fn command_line(
+    agent: Agent,
+    choice: AgentChoice,
+    brief: Option<&super::brief::Brief>,
+) -> String {
+    let mut options = choice
         .option()
         .map_or_else(String::new, |option| format!("{option} "));
+    if let Some(brief) = brief {
+        options.push_str(&brief.line_words());
+    }
     if cfg!(windows) {
-        format!("& $env:{PROGRAM_ENV} {choose}{agent}")
+        format!("& $env:{PROGRAM_ENV} {options}{agent}")
     } else {
-        format!(" sh -c 'exec \"${PROGRAM_ENV}\" {choose}{agent}'")
+        format!(" sh -c 'exec \"${PROGRAM_ENV}\" {options}{agent}'")
     }
 }
 
@@ -203,7 +145,7 @@ pub(crate) fn shell_line(
     agent: Agent,
     program: &Path,
     choice: AgentChoice,
-    env: &std::collections::BTreeMap<String, String>,
+    env: &BTreeMap<String, String>,
 ) -> Option<String> {
     let assignments: Vec<String> = env
         .iter()
@@ -238,7 +180,7 @@ pub(crate) fn tab_params(
     cwd: Option<&str>,
     agent: Agent,
     program: Option<&Path>,
-    extra: &std::collections::BTreeMap<String, String>,
+    extra: &BTreeMap<String, String>,
 ) -> serde_json::Value {
     let mut params = json!({
         "workspace_id": workspace,
@@ -266,6 +208,8 @@ pub(crate) fn tab_params(
 #[derive(Debug)]
 pub(crate) struct Starting {
     agent: Agent,
+    /// The brief the chat starts with, whose file its line names.
+    brief: Option<super::brief::Brief>,
     /// Whether the chat runs on an SSH host, so its line finds the host's
     /// own program.
     remote: bool,
@@ -366,13 +310,64 @@ impl SheprdWindow {
         }
     }
 
+    /// The `[chat.env]` variables, with `carry`, the settings of the chat
+    /// a new one copies, when they fit their bound; else the new chat
+    /// starts with its agent's own.
+    pub(crate) fn chat_env(&self, carry: Option<&Settings>) -> Cow<'_, BTreeMap<String, String>> {
+        let brief = self.chats.brief.as_ref();
+        if carry.is_none() && brief.is_none() {
+            return Cow::Borrowed(&self.config.chat.env);
+        }
+        let mut env = self.config.chat.env.clone();
+        if let Some(brief) = brief {
+            env.insert(
+                super::brief::FILE_ENV.to_owned(),
+                brief.file.to_string_lossy().into_owned(),
+            );
+        }
+        match carry.map(Settings::encode).transpose() {
+            Ok(Some(text)) => {
+                env.insert(sheprd_chat_protocol::SETTINGS_ENV.to_owned(), text);
+            }
+            Ok(None) => {}
+            Err(error) => {
+                tracing::warn!(%error, "A new chat starts without the settings it copies");
+            }
+        }
+        Cow::Owned(env)
+    }
+
+    /// The built-in agent of the chat in pane `key` and the settings it
+    /// runs with, for a new chat like it; `None` when no chat this window
+    /// shows runs there, or it runs a custom command.
+    pub(crate) fn like_chat(&self, key: &str) -> Option<(Agent, Settings)> {
+        let transcript = self.chats.pane(key)?.session.transcript();
+        let agent = transcript
+            .harnesses
+            .as_ref()
+            .and_then(|harnesses| harnesses.current)
+            .or_else(|| {
+                Agent::ALL
+                    .iter()
+                    .copied()
+                    .find(|agent| agent.display_name() == transcript.agent)
+            })?;
+        Some((agent, Settings::of(agent, transcript)))
+    }
+
     pub(crate) fn chat_starting(&self) -> bool {
         self.chats.starting.is_some()
     }
 
     /// Opens a tab running a chat with `agent` in the workspace of `beside`,
-    /// else of the focused pane, in that pane's folder.
-    pub(crate) fn start_chat(&mut self, agent: Agent, beside: Option<&str>) -> Result<(), Error> {
+    /// else of the focused pane, in that pane's folder, with the settings
+    /// `carry` copies from another chat.
+    pub(crate) fn start_chat(
+        &mut self,
+        agent: Agent,
+        beside: Option<&str>,
+        carry: Option<&Settings>,
+    ) -> Result<(), Error> {
         if !self.config.features.acp_chats {
             return Err(Error::Disabled);
         }
@@ -380,6 +375,9 @@ impl SheprdWindow {
             return Err(Error::AgentMissing(agent));
         }
         let program = match self.chat_route().ok_or(Error::NotLocal)? {
+            super::Route::Ssh(_) | super::Route::Remote(_) if self.chats.brief.is_some() => {
+                return Err(Error::BriefRemote);
+            }
             super::Route::Ssh(_) | super::Route::Remote(_) => None,
             super::Route::Local => Some(self.chats.program.found()?.to_owned()),
         };
@@ -401,24 +399,22 @@ impl SheprdWindow {
             .ok_or(Error::NoWorkspace)?;
         let cwd = pane.and_then(|pane| pane.foreground_cwd.clone().or_else(|| pane.cwd.clone()));
         let boot = snapshot.boot_id.clone();
+        let params = tab_params(
+            &workspace,
+            cwd.as_deref(),
+            agent,
+            program.as_deref(),
+            &self.chat_env(carry),
+        );
         let endpoint = &self.endpoints[self.selected_endpoint];
         let request = endpoint
             .connection
-            .request_script(
-                &boot,
-                Method::TabCreate,
-                tab_params(
-                    &workspace,
-                    cwd.as_deref(),
-                    agent,
-                    program.as_deref(),
-                    &self.config.chat.env,
-                ),
-            )
+            .request_script(&boot, Method::TabCreate, params)
             .map_err(|_| Error::NotConnected)?;
         self.chats.last_started = Some(agent);
         self.chats.starting = Some(Starting {
             agent,
+            brief: self.chats.brief.clone(),
             remote: program.is_none(),
             boot,
             deadline: Instant::now() + DEADLINE,
@@ -433,9 +429,9 @@ impl SheprdWindow {
     /// A herdr-core tab in the active group splits with the chat instead.
     pub(crate) fn start_chat_or_flash(&mut self, agent: Agent, cx: &mut Context<Self>) {
         let started = match self.core_chat_group_tab(None, cx) {
-            Some(tab) => self.start_core_chat(agent, tab, cx),
-            None if self.kept_in_front().is_some() => self.start_kept_core_chat(agent, cx),
-            None => self.start_chat(agent, None),
+            Some(tab) => self.start_core_chat(agent, tab, None, cx),
+            None if self.kept_in_front().is_some() => self.start_kept_core_chat(agent, None, cx),
+            None => self.start_chat(agent, None, None),
         };
         if let Err(error) = started {
             self.flash_chat_error(&error, cx);
@@ -448,16 +444,16 @@ impl SheprdWindow {
     /// A herdr-core tab the strip shows splits with the chat instead.
     pub(crate) fn start_chat_in(&mut self, agent: Agent, group: GroupId, cx: &mut Context<Self>) {
         if let Some(tab) = self.core_chat_group_tab(Some(group), cx) {
-            if let Err(error) = self.start_core_chat(agent, tab, cx) {
+            if let Err(error) = self.start_core_chat(agent, tab, None, cx) {
                 self.flash_chat_error(&error, cx);
             }
             cx.notify();
             return;
         }
         let started = if self.kept_in_front().is_some() {
-            self.start_kept_core_chat(agent, cx)
+            self.start_kept_core_chat(agent, None, cx)
         } else {
-            self.start_chat(agent, None)
+            self.start_chat(agent, None, None)
         };
         match started {
             Ok(()) => self.expect_new_tab_in(group),
@@ -491,7 +487,7 @@ impl SheprdWindow {
                 .as_ref()
                 .is_some_and(|snapshot| snapshot.boot_id == starting.boot);
         if !current {
-            self.chats.starting = None;
+            discard_brief(self.chats.starting.take(), cx);
             return self.show_flash(
                 Flash::warning(fl!(
                     "chat-start-failed",
@@ -501,7 +497,7 @@ impl SheprdWindow {
             );
         }
         if Instant::now() >= starting.deadline {
-            self.chats.starting = None;
+            discard_brief(self.chats.starting.take(), cx);
             return self.show_flash(
                 Flash::warning(fl!("chat-start-failed", error = Error::Timeout.localize())),
                 cx,
@@ -528,7 +524,11 @@ impl SheprdWindow {
                 let line = if starting.remote {
                     remote_command_line(starting.agent)
                 } else {
-                    command_line(starting.agent, self.chats.program_choice)
+                    command_line(
+                        starting.agent,
+                        self.chats.program_choice,
+                        starting.brief.as_ref(),
+                    )
                 };
                 self.type_script_line(&starting.boot, &pane, &line)?;
                 Ok(tab)
@@ -538,10 +538,22 @@ impl SheprdWindow {
                 self.navigate_endpoint(&starting.endpoint_id, NavigationTarget::Tab(&tab), cx);
                 cx.notify();
             }
-            Err(error) => self.show_flash(
-                Flash::warning(fl!("chat-start-failed", error = error.localize())),
-                cx,
-            ),
+            Err(error) => {
+                discard_brief(Some(starting), cx);
+                self.show_flash(
+                    Flash::warning(fl!("chat-start-failed", error = error.localize())),
+                    cx,
+                );
+            }
         }
+    }
+}
+
+/// Deletes, off the UI thread, the brief of a chat that did not start.
+fn discard_brief(starting: Option<Starting>, cx: &App) {
+    if let Some(brief) = starting.and_then(|starting| starting.brief) {
+        cx.background_executor()
+            .spawn(async move { brief.discard() })
+            .detach();
     }
 }

@@ -22,6 +22,7 @@ use crate::{
     search_input::{Changed, SearchInput},
 };
 use gpui::{prelude::*, *};
+use std::collections::HashMap;
 
 /// Each face, with the message naming it.
 pub(in crate::settings_window) const FACES: [(FontFace, &str); 4] = [
@@ -43,6 +44,7 @@ pub(super) struct Controls {
     #[cfg(test)]
     family_io: Option<fonts::FamilyIo>,
     names: Vec<String>,
+    aliases: HashMap<String, Vec<String>>,
     filtered: Vec<usize>,
     scroll: UniformListScrollHandle,
     discovering: bool,
@@ -64,7 +66,11 @@ impl Controls {
             input.set_placeholder_with(|| crate::i18n::fl!("settings-fonts-search-placeholder"), cx)
         });
         let subscription = cx.subscribe(&search, |this, search, _: &Changed, cx| {
-            this.controls.filtered = filter_fonts(&this.controls.names, search.read(cx).text());
+            this.controls.filtered = filter_fonts(
+                &this.controls.names,
+                &this.controls.aliases,
+                search.read(cx).text(),
+            );
             this.controls.selected = 0;
             this.controls.scroll.scroll_to_item(0, ScrollStrategy::Top);
             cx.notify();
@@ -92,6 +98,7 @@ impl Controls {
             #[cfg(test)]
             family_io: None,
             names: Vec::new(),
+            aliases: HashMap::new(),
             filtered: Vec::new(),
             scroll: UniformListScrollHandle::new(),
             discovering: true,
@@ -126,12 +133,23 @@ impl Controls {
     }
 }
 
-fn filter_fonts(names: &[String], query: &str) -> Vec<usize> {
+fn filter_fonts(
+    names: &[String],
+    aliases: &HashMap<String, Vec<String>>,
+    query: &str,
+) -> Vec<usize> {
     let query = query.trim().to_lowercase();
     names
         .iter()
         .enumerate()
-        .filter_map(|(index, name)| name.to_lowercase().contains(&query).then_some(index))
+        .filter_map(|(index, name)| {
+            let name = name.to_lowercase();
+            (name.contains(&query)
+                || aliases
+                    .get(&name)
+                    .is_some_and(|aliases| aliases.iter().any(|alias| alias.contains(&query))))
+            .then_some(index)
+        })
         .collect()
 }
 
@@ -161,13 +179,19 @@ impl SettingsWindow {
                 .collect();
             names.sort_by_cached_key(|name| (name.to_lowercase(), name.clone()));
             names.dedup();
-            names
+            #[cfg(windows)]
+            let aliases = crate::localized_fonts::aliases();
+            #[cfg(not(windows))]
+            let aliases = HashMap::new();
+            (names, aliases)
         });
         cx.spawn(async move |this, cx| {
-            let names = discovery.await;
+            let (names, aliases) = discovery.await;
             let _ = this.update(cx, |this, cx| {
-                this.controls.filtered = filter_fonts(&names, this.controls.search.read(cx).text());
+                this.controls.filtered =
+                    filter_fonts(&names, &aliases, this.controls.search.read(cx).text());
                 this.controls.names = names;
+                this.controls.aliases = aliases;
                 this.controls.discovering = false;
                 cx.notify();
             });
@@ -309,7 +333,9 @@ impl SettingsWindow {
             Section::Theme | Section::Integrations | Section::Plugins | Section::Code => div(),
             #[cfg(feature = "cloud")]
             Section::CloudDevices => div(),
-            Section::RemoteControl => div(),
+            #[cfg(target_os = "macos")]
+            Section::Machines => div(),
+            Section::RemoteControl | Section::Fleet => div(),
         };
         div().flex().flex_col().min_w_0().child(content)
     }

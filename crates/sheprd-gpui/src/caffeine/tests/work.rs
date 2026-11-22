@@ -20,16 +20,13 @@ fn with_statuses(statuses: &[AgentStatus]) -> sheprd_client::protocol::ClientShe
 fn only_a_working_agent_counts_as_work() {
     use AgentStatus::*;
     let finished = with_statuses(&[Idle, Blocked, Done, Unknown]);
-    assert_eq!(Work::of([Some(&finished)]), Work::Idle);
+    assert_eq!(Work::of(Some(&finished)), Work::Idle);
     let busy = with_statuses(&[Done, Working]);
-    assert_eq!(Work::of([Some(&finished), Some(&busy)]), Work::Working);
-    assert_eq!(Work::of([]), Work::Idle);
+    assert_eq!(Work::of(Some(&busy)), Work::Working);
+    assert_eq!(Work::of(Some(&with_statuses(&[]))), Work::Idle);
 }
 
 #[test]
-fn an_unreadable_endpoint_is_unknown_unless_another_works() {
-    let finished = with_statuses(&[AgentStatus::Done]);
-    let busy = with_statuses(&[AgentStatus::Working]);
-    assert_eq!(Work::of([Some(&finished), None]), Work::Unknown);
-    assert_eq!(Work::of([None, Some(&busy)]), Work::Working);
+fn an_unreadable_endpoint_is_unknown() {
+    assert_eq!(Work::of(None), Work::Unknown);
 }

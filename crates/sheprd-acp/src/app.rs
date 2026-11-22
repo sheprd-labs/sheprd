@@ -131,14 +131,20 @@ fn choices(agent: crate::agents::Agent) -> Vec<crate::agents::Agent> {
 }
 
 /// Starts `start` in `cwd` as `harness`: what the agent says, and its end,
-/// reach the session through `inputs`, marked as this harness's.
+/// reach the session through `inputs`, marked as this harness's. The agent
+/// is told the endpoint of `chat`, the chat it runs in, when it listens.
 fn start(
     start: Start,
     cwd: &std::path::Path,
     inputs: &Sender<Input>,
     harness: HarnessId,
+    chat: Option<&EndpointId>,
 ) -> crate::Result<Started> {
-    let spawned = process::spawn(&start.program, &start.args, &start.env, cwd)?;
+    let mut env = start.env.clone();
+    if let Some(chat) = chat {
+        env.push((sheprd_chat_protocol::AGENT_CHAT_ENV, chat.as_str()));
+    }
+    let spawned = process::spawn(&start.program, &start.args, &env, cwd)?;
     let process = spawned.process.clone();
     let to_session = inputs.clone();
     let wired = start.reach.connect(
@@ -183,6 +189,28 @@ fn stop_later(process: process::AgentProcess) -> Option<thread::JoinHandle<()>> 
         Ok(handle) => Some(handle),
         Err(_) => {
             process.stop();
+            None
+        }
+    }
+}
+
+/// The settings the client that started this chat copied from another,
+/// for `harness` when it is the agent they were read from. A continued
+/// session keeps its own; a value that cannot be read says so in the chat.
+fn carried_settings(
+    harness: Option<crate::agents::Agent>,
+    continues: bool,
+    notices: &mut Vec<(NoticeLevel, String)>,
+) -> Option<sheprd_chat_protocol::Settings> {
+    let text = std::env::var(sheprd_chat_protocol::SETTINGS_ENV).ok()?;
+    let harness = harness.filter(|_| !continues)?;
+    match sheprd_chat_protocol::Settings::decode(&text) {
+        Ok(settings) => Some(settings).filter(|settings| settings.is_for(harness)),
+        Err(error) => {
+            notices.push((
+                NoticeLevel::Warning,
+                format!("This chat starts with its agent's own settings: {error}"),
+            ));
             None
         }
     }
@@ -247,7 +275,20 @@ pub(crate) fn run_owned(
         .with_context(|| format!("no directory {}", cwd.display()))?;
     let agent = agent(&options, &cwd);
     let (inputs, receiver) = bounded::<Input>(INPUTS);
-    let first = start(agent.start, &cwd, &inputs, HarnessId::default())?;
+    // Where the chat listens is chosen before its agent starts, so the agent
+    // can be told.
+    let address = options.attach.then(crate::attach::address);
+    let chat = address
+        .as_ref()
+        .and_then(|address| address.as_ref().ok())
+        .map(|(_, id)| id.clone());
+    let first = start(
+        agent.start,
+        &cwd,
+        &inputs,
+        HarnessId::default(),
+        chat.as_ref(),
+    )?;
     let agent_process = first.process.clone();
     // Stops the first agent on every early return; a switch stops it sooner.
     let owned_agent = agent_process.owned();
@@ -270,11 +311,11 @@ pub(crate) fn run_owned(
         }
     });
     // Held to the end: dropping the server removes its socket.
-    let (_server, endpoint) = if options.attach {
-        listen(inputs.clone(), &mut notices)
-    } else {
-        (None, None)
+    let (_server, endpoint) = match address {
+        Some(address) => listen(address, inputs.clone(), &mut notices),
+        None => (None, None),
     };
+    let listens = endpoint.is_some();
     let target = Target::from_env();
     let mut keeper = if target.is_none() && std::env::var_os("HC_TERMINAL_ID").is_some() {
         crate::restore::Keeper::core(
@@ -339,6 +380,20 @@ pub(crate) fn run_owned(
         }
         None => crate::context::Prompts::default(),
     };
+    // The brief is read, and its file removed, before anything can fail to
+    // start; one that cannot be read says so in the chat.
+    let brief = options.brief_file.as_deref().and_then(|path| {
+        crate::briefs::take(path, options.brief_from)
+            .map_err(|error| {
+                notices.push((
+                    NoticeLevel::Warning,
+                    format!("The brief this chat was started with was not sent: {error}"),
+                ));
+            })
+            .ok()
+    });
+    let settings_dir = crate::known::dir();
+    let settings = carried_settings(harness, options.load.is_some(), &mut notices);
     let config = Config {
         agent: agent.display,
         choices: harness.filter(|_| options.choose).map(choices),
@@ -346,11 +401,17 @@ pub(crate) fn run_owned(
         exit_with_agent: options.headless,
         harness,
         history,
+        known: settings_dir
+            .as_deref()
+            .map(crate::known::load)
+            .unwrap_or_default(),
+        listens,
         load: options.load,
         login_hint: agent.login_hint,
         pane: target.map(|target| target.pane),
         prompts,
         require_load: options.require_load,
+        settings,
         sheprd: crate::context::sheprd_executable(),
     };
     let launcher = inputs.clone();
@@ -386,11 +447,27 @@ pub(crate) fn run_owned(
                         report.prompt(prompt);
                     }
                 }
+                Update::Settings(agent, settings) => {
+                    if let Some(dir) = &settings_dir
+                        && let Err(error) = crate::known::save(dir, agent, &settings)
+                    {
+                        eprintln!(
+                            "sheprd-acp: could not keep {}'s settings: {error:#}",
+                            agent.name()
+                        );
+                    }
+                }
             });
+            if let Some(dir) = crate::briefs::dir() {
+                session.keep_briefs(dir);
+            }
             for (level, text) in notices {
                 session.notice(level, text);
             }
             session.start();
+            if let Some(brief) = brief {
+                session.brief(brief);
+            }
             let mut current = Some(first.process);
             let mut stopping = Vec::new();
             for input in receiver {
@@ -415,7 +492,7 @@ pub(crate) fn run_owned(
                             continue;
                         }
                         let next = builtin(agent, load.as_deref(), adapter, &cwd);
-                        match start(next.start, &cwd, &launcher, harness) {
+                        match start(next.start, &cwd, &launcher, harness, chat.as_ref()) {
                             Ok(started) => {
                                 let pid = started.process.id();
                                 current = Some(started.process);
@@ -472,10 +549,11 @@ fn headless_result(expected: bool) -> anyhow::Result<()> {
 }
 
 fn listen(
+    address: crate::Result<(PathBuf, EndpointId)>,
     inputs: Sender<Input>,
     notices: &mut Vec<(NoticeLevel, String)>,
 ) -> (Option<crate::attach::Server>, Option<EndpointId>) {
-    let listening = crate::attach::address().and_then(|(address, id)| {
+    let listening = address.and_then(|(address, id)| {
         crate::attach::Server::listen(&address, inputs).map(|server| (server, id))
     });
     match listening {

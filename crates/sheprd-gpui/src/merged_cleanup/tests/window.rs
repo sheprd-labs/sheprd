@@ -3,7 +3,7 @@ use crate::sidebar::layout_tests::fixture_window;
 
 /// A connected fixture window whose `w4` is an idle linked worktree with a
 /// merged pull request in the cache.
-fn merged_window(view: &mut SheprdWindow) -> Candidate {
+pub(super) fn merged_window(view: &mut SheprdWindow) -> Candidate {
     view.live.status = crate::state::ConnectionStatus::Connected;
     let mut snapshot = (**view.live.snapshot.as_ref().unwrap()).clone();
     for workspace in &mut snapshot.workspaces {
@@ -20,7 +20,7 @@ fn merged_window(view: &mut SheprdWindow) -> Candidate {
 }
 
 /// A finished check of `candidate` that found it clean at the merged head.
-fn checked(candidate: &Candidate) -> Probe {
+pub(super) fn checked(candidate: &Candidate) -> Probe {
     let (sender, receiver) = mpsc::sync_channel(1);
     sender.send(Ok(clean())).unwrap();
     Probe {

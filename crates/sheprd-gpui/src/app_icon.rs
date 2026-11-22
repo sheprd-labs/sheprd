@@ -8,7 +8,7 @@ pub(super) const PNG: &[u8] = if env!("HERDR_BUILD_WORKTREE").as_bytes()[0] == b
 };
 
 /// A host's own icon, as a 1024px PNG and a multi-resolution ICNS, in place of
-/// Sheprd's: the Moonframe build shows its own. Set once, before startup.
+/// Sheprd's. Set once, before startup.
 static HOST: std::sync::OnceLock<(&'static [u8], &'static [u8])> = std::sync::OnceLock::new();
 
 /// Makes `png` and `icns` the app's icon, for the Dock and the About box.

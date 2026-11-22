@@ -8,6 +8,7 @@ mod move_workspace;
 mod orchestrator_tabs;
 mod ownership;
 mod px0;
+mod spaces;
 
 fn url(value: &str) -> Option<Location> {
     Some(Location::Web {
@@ -132,6 +133,7 @@ fn saved_tabs_round_trip_and_invalid_files_are_rejected() {
         )
         .unwrap();
     let bytes = serde_json::to_vec(&Saved {
+        synced: Default::default(),
         tabs: store.tabs.clone(),
         workspaces: Vec::new(),
     })
@@ -246,6 +248,7 @@ fn saved_vs_code_tabs_round_trip_and_older_places_still_read() {
         )
         .unwrap();
     let bytes = serde_json::to_vec(&Saved {
+        synced: Default::default(),
         tabs: store.tabs.clone(),
         workspaces: Vec::new(),
     })

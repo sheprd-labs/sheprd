@@ -71,6 +71,47 @@ impl AgentTimes {
             }
         }
     }
+
+    /// Dates the terminal agents of herdr-core's `layout`, from core `boot`.
+    /// A core reports no sequence, so a change of status is the move.
+    pub(super) fn stamp_statuses(&mut self, boot: &str, layout: &mut Layout, now_ms: u64) {
+        let terminals = || {
+            layout
+                .workspaces
+                .iter()
+                .flat_map(|workspace| workspace.terminals.iter())
+                .flat_map(|terminal| terminal.agent.iter().chain(&terminal.agents))
+        };
+        let agents: Vec<(String, u64)> = terminals()
+            .map(|agent| (agent.pane.clone(), status_seq(agent.status)))
+            .collect();
+        self.observe(
+            boot,
+            agents.iter().map(|(pane, seq)| (pane.as_str(), *seq)),
+            now_ms,
+        );
+        let terminals = layout
+            .workspaces
+            .iter_mut()
+            .flat_map(|workspace| workspace.terminals.iter_mut());
+        for terminal in terminals {
+            for agent in terminal.agent.iter_mut().chain(&mut terminal.agents) {
+                agent.changed_ms = self.changed_ms(&agent.pane);
+            }
+        }
+    }
+}
+
+/// A status as the sequence [`AgentTimes`] follows.
+fn status_seq(status: sheprd_client::protocol::AgentStatus) -> u64 {
+    use sheprd_client::protocol::AgentStatus;
+    match status {
+        AgentStatus::Idle => 0,
+        AgentStatus::Working => 1,
+        AgentStatus::Blocked => 2,
+        AgentStatus::Done => 3,
+        AgentStatus::Unknown => 4,
+    }
 }
 
 #[cfg(test)]

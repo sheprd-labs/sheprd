@@ -49,6 +49,13 @@ import Testing
         }
     }
 
+    @Test func aWizzIsReadAndAbsentMeansNone() throws {
+        let wizz = try Self.alert(#"{"kind":"turn_ended","computer":"AB","pane":"p","title":"t","body":"b","wizz":true}"#)
+        #expect(wizz.wizz)
+        #expect(wizz.presentation.category == AlertPresentation.finishedCategory)
+        #expect(try !Self.alert(Self.question).wizz)
+    }
+
     @Test func actionsBecomeChatCommands() {
         #expect(AlertPresentation.command(action: "answer:allow", permission: 7, text: nil) == .answer(permission: 7, option: "allow"))
         #expect(AlertPresentation.command(action: "answer:allow", permission: nil, text: nil) == nil)

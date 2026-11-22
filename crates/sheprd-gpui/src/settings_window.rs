@@ -15,6 +15,11 @@ mod layouts;
 mod navigation;
 mod pages;
 pub(crate) use layouts::{apply_loaded_layout, layout_load_revision};
+pub(crate) use pages::fleet::{Pending as FleetPending, open as open_fleet};
+#[cfg(target_os = "macos")]
+pub(crate) use pages::machines::{
+    Deletion as MachineDeletion, offer_new as offer_new_machine, open as open_machines,
+};
 pub(crate) use pages::remote_control::{offer_linked_relay, open as open_remote};
 pub(crate) use pages::text_shortcuts::open as open_text_shortcuts;
 #[cfg(all(feature = "integration-test", target_os = "macos"))]
@@ -35,7 +40,7 @@ pub(crate) use sidebar::{apply_loaded_sidebar, sidebar_load_revision};
 mod themes;
 mod ui;
 #[cfg(all(feature = "integration-test", target_os = "macos"))]
-pub(crate) use native::verify_native;
+pub(crate) use native::{verify_native, verify_native_close};
 pub(crate) use themes::{
     apply_loaded_theme, apply_theme_draft, theme_load_revision, theme_pending,
 };
@@ -171,7 +176,10 @@ struct SettingsWindow {
     code: controls::code::CodeSettings,
     px0: controls::px0::Px0Settings,
     chat_env: controls::chat_env::ChatEnvSettings,
+    #[cfg(target_os = "macos")]
+    machines: pages::machines::MachinesPage,
     remote: pages::remote_control::RemoteSettings,
+    fleet: pages::fleet::FleetPage,
     text_shortcuts: pages::text_shortcuts::TextShortcutsPage,
     /// The open override dropdown, if any; its list renders inside its button.
     dropdown: Option<ui::Dropdown>,
@@ -339,7 +347,10 @@ impl SettingsWindow {
             code: Default::default(),
             px0: Default::default(),
             chat_env: Default::default(),
+            #[cfg(target_os = "macos")]
+            machines: Default::default(),
             remote: Default::default(),
+            fleet: Default::default(),
             text_shortcuts: Default::default(),
             dropdown: None,
             number_edit: None,
@@ -708,6 +719,10 @@ impl SettingsWindow {
         if section == Section::General {
             self.open_chat_env_settings(cx);
         }
+        #[cfg(target_os = "macos")]
+        if section == Section::Machines {
+            self.open_machines(cx);
+        }
         if section == Section::TextShortcuts {
             self.open_text_shortcuts_page(cx);
         }
@@ -715,6 +730,11 @@ impl SettingsWindow {
             self.open_remote_control(cx);
         } else {
             self.close_remote_control();
+        }
+        if section == Section::Fleet {
+            self.open_fleet(cx);
+        } else {
+            self.close_fleet();
         }
         self.body_scroll.set_offset(Point::default());
         window.focus(&self.focus, cx);
@@ -750,7 +770,10 @@ impl Render for SettingsWindow {
                 Section::Integrations => self.render_integration_controls(cx),
                 Section::Plugins => self.render_plugin_controls(cx),
                 Section::Code => self.render_code_controls(window, cx),
+                #[cfg(target_os = "macos")]
+                Section::Machines => self.render_machines(cx),
                 Section::RemoteControl => self.render_remote_control(cx),
+                Section::Fleet => self.render_fleet(cx),
                 #[cfg(feature = "cloud")]
                 Section::CloudDevices => self.render_cloud_devices(cx),
                 _ => self.render_controls(window, cx),

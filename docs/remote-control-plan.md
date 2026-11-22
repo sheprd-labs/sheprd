@@ -239,8 +239,9 @@ committed; Alpine's CSP build is vendored; everything is embedded with
 - **Home** (mockup Round 3 F, after Ghostty's mobile app): a horizontal
   strip of pending questions on top, then each computer as a section, and
   under it each workspace as an inset grouped list with ⊕ (new chat there)
-  and a collapse chevron. Rows carry the agent's icon with an unread or
-  question dot, the chat title, and `•••` while working. Terminal tabs show
+  and a collapse chevron. Rows carry the agent's icon with a question dot,
+  the chat title, and `•••` while working, and an unread agent's row a
+  leading dot (see Unread agents). Terminal tabs show
   a terminal icon and open the terminal view (see Terminal tabs). A
   floating glass toolbar holds settings, the eye, and ＋ (new workspace),
   with search apart.
@@ -417,6 +418,51 @@ phone never disturbs the desktop's layout.
     SSH: at once after an edit, else every two minutes. A machine without
     the program is not given one for this: no phone is paired with it, so
     the copy is all there is.
+- **Favorite agents.** Each computer's daemon keeps the agents a person
+  starred on any device, by pane (`favorites.json`, at most 256, the oldest
+  dropped first). Phones and Sheprd list them first, in a Favorites section
+  above whatever order is chosen.
+  - **The rule.** A change names one pane, starred or not, so two devices
+    starring different agents at once both count; the latest change to a
+    pane wins. Herdr 1 numbers panes from one again when it restarts, so the
+    favorites remember the primary session's boot and drop its panes when
+    another boot answers. herdr-core panes carry their core's id and named
+    sessions their name, so neither is mistaken for a new pane.
+  - **Phones.** `home` marks a starred chat and a terminal's starred agent
+    with `"favorite": true`, and `POST /api/v2/favorites` with
+    `{"pane": …, "favorite": …}` makes a change. A home is sent again at once
+    to every phone connected.
+  - **Sheprd.** It reads this computer's daemon over the control socket
+    (`Request::Favorites`) and a connected machine's by running
+    `sheprd-remote-control favorites [--offer]` over SSH, with a change as
+    JSON on standard input.
+- **Unread agents.** Each computer's daemon keeps what was read of its
+  agents, by pane as favorites name them (`read.json`, at most 1024 panes,
+  the oldest marks dropped first), so reading a chat on any phone or Sheprd
+  clears its dot on all of them, and the agent's next reply brings it back.
+  - **The rule.** A reply is known by when its turn ended, which survives
+    the agent restarting. A pane is unread while it has a reply other than
+    the one last read, or while someone marked it unread by hand. Replies
+    from before the daemon kept marks count as read, so the first start
+    lights nothing up. A terminal agent has replied while Herdr says it is
+    done, dated when the daemon saw its status move (herdr-core reports no
+    time, so its agents are dated the same way); one found done when the
+    daemon starts has no time and is not news, and a reply already read
+    stays read. Herdr 1 restarts drop that session's panes' marks, as
+    favorites do, and only that session's earlier replies count as read.
+    Marks past 1024 drop the oldest as they are made.
+  - **What reads.** A phone reads what it shows on screen, including what
+    is replied while it does; Sheprd reads an agent focused for a second in
+    a window in front. The badge counts unread agents beside those that
+    need an answer.
+  - **Phones.** `home` marks an unread chat and a terminal's unread agent
+    with `"unread": true`, and `POST /api/v2/read` with
+    `{"panes": […], "read": …}` marks up to 1024 panes read or unread,
+    answering `{"panes": […]}`, those unread now.
+  - **Sheprd.** It reads this computer's daemon over the control socket
+    (`Request::Read`) every five seconds and a connected machine's by
+    running `sheprd-remote-control read [--offer]` over SSH every 30, a
+    change going at once. Without a daemon nothing is unread there.
 - **WSL distributions.** A distribution saved as a device on a Windows
   computer is part of that computer, not another machine: it sleeps with it,
   and a phone usually cannot reach its network. So the Windows daemon follows
@@ -451,9 +497,10 @@ phone never disturbs the desktop's layout.
     - It takes each request (`HostPairings`) and copies its own
       `sheprd-remote-control` into the machine's home when the machine lacks
       that build (`~/.local/share/herdr-remote-control/bin/VERSION/`).
-    - It runs `sheprd-remote-control enroll` there over SSH. On the way that
-      sends this daemon's APNs key (0600), so the machine notifies the phone
-      itself. It starts the machine's daemon as a user service unless one is
+    - It runs `sheprd-remote-control enroll` there over SSH. No APNs key
+      goes along: the machine notifies the phone through the push relay
+      (`docs/apns-relay-plan.md`), and an older Sheprd's `apns` field is
+      ignored. It starts the machine's daemon as a user service unless one is
       installed, then adds the phone, marked `via` this computer. Only then
       does it turn on `[remote]` in that machine's Sheprd settings, creating
       them if it has none, so a Sheprd installed there later keeps the
@@ -514,7 +561,7 @@ that replaces the companion described here.)
 ### Built
 
 The companion lives in `ios/` (see `ios/README.md` for building, signing, and
-the APNs key):
+how pushes reach the phone):
 
 - **Project**: an XcodeGen spec (`ios/project.yml`) for the `SheprdRemote` app
   (visible name Sheprd) and the `SheprdRemoteWidgets` extension, iOS 17.2+, bundle
@@ -543,7 +590,8 @@ the APNs key):
 - **Push tokens**: the push-to-start token goes to every paired computer and
   each activity's token to its own, through `POST /api/apns` with
   `{push_to_start, activities: [{pane, token}]}`.
-- **Daemon**: `crates/sheprd-remote-control/src/apns` loads `STATE_DIR/apns/AuthKey.p8`
+- **Daemon** (as first built; it now sends only through the push relay,
+  `docs/apns-relay-plan.md`, and loads no key): `crates/sheprd-remote-control/src/apns` loaded `STATE_DIR/apns/AuthKey.p8`
   and `config.json` (absent: off), signs the ES256 provider token (renewed
   every fifty minutes), decides start, update, or end from the same inputs as
   `push::decide`, paces step updates to one per ten seconds per chat, and

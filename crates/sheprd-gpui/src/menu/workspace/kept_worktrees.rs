@@ -419,6 +419,7 @@ impl SheprdWindow {
                 workspace,
                 result,
             } => {
+                self.finish_merged_kept_removal(&request, result.is_ok());
                 if self.endpoints.iter().any(|endpoint| {
                     crate::browser::scope(endpoint) == scope && endpoint.connection.target == target
                 }) {
@@ -617,15 +618,18 @@ impl SheprdWindow {
         );
     }
 
+    /// Removes a merged cleanup's kept checkout in the background; answers
+    /// the request ID its result comes back under.
     pub(crate) fn remove_merged_kept_checkout(
         &mut self,
         workspace: String,
         path: String,
         candidate: crate::merged_cleanup::Candidate,
         cx: &mut Context<Self>,
-    ) {
+    ) -> String {
         let request = format!("kept-{}", uuid::Uuid::new_v4().simple());
-        self.remove_kept_checkout_for(request, workspace, path, false, Some(candidate), cx);
+        self.remove_kept_checkout_for(request.clone(), workspace, path, false, Some(candidate), cx);
+        request
     }
 
     fn remove_kept_checkout_for(

@@ -6,7 +6,7 @@ import UIKit
 
 /// Terminal A: the pane's screen full bleed, fit to the width and pinched
 /// larger or smaller, with the two key rows docked above the keyboard,
-/// paste and pictures in the header, the tab's other panes as chips, and
+/// paste, long text, pictures, and files in the header, the tab's other panes as chips, and
 /// the Sheprd action sheet.
 struct TerminalScreen: View {
     @Environment(AppModel.self) private var model
@@ -24,6 +24,12 @@ struct TerminalScreen: View {
     @GestureState private var pinch: CGFloat = 1
     @State private var picks: [PhotosPickerItem] = []
     @State private var choosingPhotos = false
+    @State private var choosingFiles = false
+    @State private var writing = false
+    /// What Write Text holds, kept when it is cancelled.
+    @State private var draft = ""
+    /// The file or picture on its way, shown until it is typed.
+    @State private var uploading: String?
     @State private var problem: String?
     @State private var clipboardHasText = UIPasteboard.general.hasStrings
     @State private var renaming = false
@@ -123,6 +129,10 @@ struct TerminalScreen: View {
         .overlay(alignment: .bottom) {
             if let typing {
                 VStack(spacing: 0) {
+                    if let uploading {
+                        Text("Uploading \(uploading)…").font(.footnote).foregroundStyle(.secondary).padding(6)
+                            .frame(maxWidth: .infinity).background(.bar)
+                    }
                     if let reason = problem ?? typing.problem {
                         Text(reason).font(.footnote).foregroundStyle(.orange).padding(6)
                             .frame(maxWidth: .infinity).background(.bar)
@@ -179,8 +189,17 @@ struct TerminalScreen: View {
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button { choosingPhotos = true } label: { Image(systemName: "photo") }
-                    .accessibilityLabel("Send a picture")
+                // Each drops into the terminal as typing would: text as a
+                // paste, a picture or file as its path on the computer.
+                Menu {
+                    Button("Write Text…", systemImage: "square.and.pencil") { writing = true }
+                    Button("Photo Library", systemImage: "photo.on.rectangle") { choosingPhotos = true }
+                    Button("Choose File…", systemImage: "folder") { choosingFiles = true }
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .disabled(uploading != nil)
+                .accessibilityLabel("Send text, a picture, or a file")
                 // A menu grows out of the button it opens from; a
                 // confirmation dialog would float in the middle instead.
                 Menu {
@@ -237,6 +256,16 @@ struct TerminalScreen: View {
             Text("The name shows in Sheprd and in your lists.")
         }
         .photosPicker(isPresented: $choosingPhotos, selection: $picks, maxSelectionCount: 1, matching: .images)
+        .sheet(isPresented: $writing) {
+            TermWriteSheet(draft: $draft) { text, done in typing?.paste(text, done: done) }
+                .environment(\.colorScheme, .dark)
+        }
+        .fileImporter(isPresented: $choosingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            switch result {
+            case let .success(urls): Task { await upload(files: urls) }
+            case let .failure(error): problem = error.localizedDescription
+            }
+        }
         .onChange(of: picks) { _, chosen in
             guard let item = chosen.first else { return }
             picks = []
@@ -298,7 +327,7 @@ struct TerminalScreen: View {
                 let text = dictation.text
                 dictation.reset()
                 return text
-            }, paste: typing.paste)
+            }, paste: { typing.paste($0) })
         }
     }
 
@@ -452,7 +481,29 @@ struct TerminalScreen: View {
         }
     }
 
+    /// Uploads each file in turn, so their paths are typed in the order
+    /// chosen; stops at the first that fails.
+    private func upload(files urls: [URL]) async {
+        let pane = key.pane
+        defer { uploading = nil }
+        for url in urls {
+            uploading = url.lastPathComponent
+            do {
+                let file = try await TermFile.read(url)
+                try await model.fleet.call(key.device) { client, token in
+                    try await client.termFile(file.data, name: file.name, pane: pane, bearer: token)
+                }
+                problem = nil
+            } catch {
+                problem = error.localizedDescription
+                return
+            }
+        }
+    }
+
     private func upload(_ item: PhotosPickerItem) async {
+        uploading = "picture"
+        defer { uploading = nil }
         guard let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data),
               let prepared = PreparedImage(image)
         else {

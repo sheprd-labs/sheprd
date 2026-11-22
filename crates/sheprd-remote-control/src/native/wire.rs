@@ -29,6 +29,11 @@ pub(crate) enum ClientMessage {
         /// view, Herdr sizes the pane's terminal to it.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         size: Option<TermSize>,
+        /// For `chat`: followed while no screen shows it, so it opens
+        /// current. It neither marks the chat's answers seen nor keeps a
+        /// view a screen shows from starting.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        background: bool,
     },
     Unsubscribe {
         #[serde(flatten)]

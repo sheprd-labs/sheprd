@@ -10,7 +10,8 @@ the owner and `native::changes::arrange` routes the intent:
 
 | Owner | Split, zoom and names | Persistence |
 | --- | --- | --- |
-| Sheprd saved tab | Daemon edits while the saved-tabs lock is free; otherwise the desktop answers through `control::layout` | `browser-tabs.json`, read under the same lock when desktop opens |
+| Shared document tab (`sheprd.spaces`, once written) | Daemon writes `spaces::Edit`s while the saved-tabs lock is free; otherwise the desktop answers through `control::layout`, asked by the saved tab holding the pane's terminal, or the daemon writes the document when no saved tab holds it | The core's `sheprd.spaces` document, which every client reads |
+| Sheprd saved tab (while the document is at version 0) | Daemon edits while the saved-tabs lock is free; otherwise the desktop answers through `control::layout` | `browser-tabs.json`, read under the same lock when desktop opens |
 | Daemon-owned tab | Daemon edits directly, including on a directly paired SSH/cloud host | `core-tabs.json`, scoped to the core boot identity |
 | External Herdr desktop `herdr-app` tab | Explicitly refused; split/zoom/rename capabilities are omitted | Owned by the unrelated app; there is no supported mutation contract |
 
@@ -40,18 +41,34 @@ iOS `closeWorkspace` and `removeWorktree` call
 `/api/v2/workspaces/{workspace}/close` and
 `/api/v2/workspaces/{workspace}/remove-worktree`, handled in
 `sheprd-remote-control/src/web/workspace.rs`. Herdr 1 gets `workspace.close`
-for that workspace alone (`close_group: false`) and `worktree.remove` without
-force. A workspace Sheprd keeps for Herdr 2 gets `Op::CloseWorkspace` or
+for that workspace alone (`close_group: false`) and `worktree.remove`, forced
+only for `?discard=true`. A workspace Sheprd keeps for Herdr 2 gets `Op::CloseWorkspace` or
 `Op::RemoveWorktree` through `control::layout`, which the desktop makes as its
 workspace menu does: closing ends the workspace's tabs, and deleting removes the
-linked checkout with Git, never forced, then closes the workspace. With the
-desktop closed the daemon makes neither and says to open Sheprd.
+linked checkout with Git, forced only for `discard`, then closes the workspace.
+
+With the desktop closed, it depends on where the workspace is kept:
+
+- In the core's written `sheprd.spaces` document, the daemon makes both
+  itself. It first refuses a document whose format this version cannot
+  write, or a workspace it no longer keeps, so nothing ends or is deleted
+  for a change that would not land. Closing ends the terminals of the
+  workspace's tabs and of terminals labelled for it, and forgets it only
+  once every tab still in it has had its terminals ended, so a tab another
+  client adds meanwhile is not dropped while still running. Deleting runs
+  `git worktree remove` on the checkout's root, with `--force` only for
+  `discard`, keeps the
+  branch, then closes the workspace.
+- In the saved-tabs file (the document never written), the daemon makes
+  neither and says to open Sheprd.
 
 Deleting is refused before it reaches either keeper for a main checkout, and
 for a checkout whose `.herdr/worktree.toml` has an archive script or cannot be
 read: Sheprd's own delete dialog runs that script first. A checkout with
-uncommitted changes stays; the phone is told to delete it in Sheprd, which
-offers to discard them.
+uncommitted changes stays unless the phone sends `?discard=true`, which it
+does only after the person confirms losing them: up front when the phone
+counted changes, or after a refusal for changes it had not counted. A Sheprd
+that predates `discard` ignores it and keeps the checkout.
 
 ## Verification boundaries
 

@@ -9,7 +9,9 @@ struct TerminalAgentTests {
         let terminal = try #require(home.workspaces.first?.terminals.first)
         #expect(terminal.agent?.pane == "p2")
         #expect(terminal.agent?.title == "Fix the build")
+        #expect(terminal.agent?.preview == "Fixed the build.\nPushed it.")
         #expect(terminal.agentPane?.pane == "p2")
+        #expect(terminal.agent?.opensAsChat == true)
     }
 
     @Test func opensTheAgentsPaneRatherThanTheFocusedOne() {
@@ -28,6 +30,17 @@ struct TerminalAgentTests {
         #expect(agent.status == .working)
         #expect(agent.pane == nil)
         #expect(agent.title == nil)
+        #expect(agent.preview == nil)
+        #expect(!agent.opensAsChat)
+    }
+
+    @Test func opensAsAChatOnlyWhenTheComputerSaysSoForAPane() throws {
+        let decode = { (json: String) in
+            try JSONDecoder().decode(Home.TerminalRow.DetectedAgent.self, from: Data(json.utf8))
+        }
+        #expect(try decode(#"{"name":"claude","status":"idle","pane":"p1","transcript":true}"#).opensAsChat)
+        #expect(try !decode(#"{"name":"claude","status":"idle","transcript":true}"#).opensAsChat)
+        #expect(try !decode(#"{"name":"claude","status":"idle","pane":"p1","transcript":false}"#).opensAsChat)
     }
 
     private func row(agentPane: String) -> Home.TerminalRow {

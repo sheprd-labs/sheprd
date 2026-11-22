@@ -1,26 +1,33 @@
 //! A phone's split, zoom, rename, or close of a Herdr 2 tab, made by the
 //! daemon itself when Sheprd cannot make it: herdr-core keeps no layout.
 //!
-//! - A tab Sheprd saves is Sheprd's. While it runs, it makes the change
-//!   (`control::layout`). While it is closed, the daemon edits the saved
-//!   tabs file through `sheprd_session::saved::edit`, touching only that
-//!   tab, and Sheprd reads it when it starts. A split's shell is labelled
-//!   for the tab's workspace, so a Sheprd that starts meanwhile still lists
-//!   it there.
+//! - A tab Sheprd keeps is Sheprd's. While it runs, it makes the change
+//!   (`control::layout`). While it is closed, the daemon writes it to the
+//!   core's shared document ([`doc`]) once that was written, and otherwise
+//!   edits the saved tabs file through `sheprd_session::saved::edit`,
+//!   touching only that tab, and Sheprd reads it when it starts. A split's
+//!   shell is labelled for the tab's workspace, so a Sheprd that starts
+//!   meanwhile still lists it there.
 //! - A tab no saved tab holds (on a host, or started outside Sheprd) is
 //!   the daemon's own ([`super::own`]), kept until Sheprd takes it in.
 //! - A Herdr desktop space's tab is that app's: it is refused.
 
+mod doc;
 mod error;
 
 pub use error::Error;
 
-use super::{HubError, Result, Source, lock, own::OWN_TAB, projection, saved::SAVED_TAB};
+use super::{
+    HubError, Result, Source, lock,
+    own::OWN_TAB,
+    projection,
+    saved::{SAVED_TAB, TabRef},
+};
 use crate::{control::layout::Op, hub::Hub};
 use sheprd_backend::TerminalId;
 use sheprd_core_client::wire::{Run, Terminal};
 use sheprd_session::{
-    NEW_WORKSPACE_LABEL, SESSION_LABEL, WORKSPACE_LABEL,
+    NEW_WORKSPACE_LABEL, NEW_WORKSPACE_TITLE_LABEL, SESSION_LABEL, WORKSPACE_LABEL,
     panes::Axis,
     saved::edit::{self, Change},
 };
@@ -43,13 +50,19 @@ impl HubError {
     pub(crate) fn desktop_owns_layout(&self) -> bool {
         matches!(self, Self::Core(super::Error::Arrange(Error::SheprdOpen)))
     }
+
+    /// Git kept a worktree it was asked to delete: a conflict the phone
+    /// may resolve by discarding its changes, as with Sheprd's refusal.
+    pub(crate) fn worktree_kept(&self) -> bool {
+        matches!(self, Self::Core(super::Error::Arrange(Error::WorktreeKept)))
+    }
 }
 
 /// Who changes a Herdr 2 tab's layout.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum Keeper {
-    /// Sheprd's saved tab `tab`, at the pane of the terminal at `terminal`.
-    Saved { tab: u64, terminal: String },
+    /// Sheprd's kept tab `tab`, at the pane of the terminal at `terminal`.
+    Saved { tab: TabRef, terminal: String },
     /// The daemon, at the pane of the terminal at this address.
     Own(String),
 }
@@ -100,10 +113,15 @@ impl Source {
             }
             let record = self.record(address)?;
             // Where its workspace is, for Sheprd to list it there too.
-            let labels = [WORKSPACE_LABEL, SESSION_LABEL, NEW_WORKSPACE_LABEL]
-                .into_iter()
-                .filter_map(|key| Some((key, record.labels.get(key)?.as_str())))
-                .collect();
+            let labels = [
+                WORKSPACE_LABEL,
+                SESSION_LABEL,
+                NEW_WORKSPACE_LABEL,
+                NEW_WORKSPACE_TITLE_LABEL,
+            ]
+            .into_iter()
+            .filter_map(|key| Some((key, record.labels.get(key)?.as_str())))
+            .collect();
             let new = self.start_beside(&record, labels)?;
             let split = TerminalId::new(new.address.as_str())
                 .map_err(Error::from)
@@ -143,19 +161,31 @@ impl Source {
         Ok(())
     }
 
-    /// Makes `op` at the terminal at `address` in Sheprd's saved tab `tab`,
-    /// writing the saved tabs while Sheprd is closed. Answers a split's new
-    /// terminal.
-    pub(super) fn arrange_saved(&self, tab: u64, address: &str, op: &Op) -> Result<Option<String>> {
+    /// Makes `op` at the terminal at `address` in Sheprd's kept tab `tab`
+    /// while Sheprd is closed: in the core's shared document once it was
+    /// written, else in the saved tabs. Answers a split's new terminal.
+    pub(super) fn arrange_saved(
+        &self,
+        tab: &TabRef,
+        address: &str,
+        op: &Op,
+    ) -> Result<Option<String>> {
+        let _editing = lock(&EDITING);
+        // Take ownership before starting a split's shell. A running desktop
+        // must receive the intent without a speculative terminal being made.
+        let _owner = self.tabs.as_deref().map(file_owner).transpose()?;
+        if lock(&self.poller).shared().is_some() {
+            return self.arrange_doc(tab, address, op);
+        }
+        let TabRef::File(tab) = *tab else {
+            // The document was read when the phone named its tab.
+            return Err(Error::Changed.into());
+        };
         let (path, scope) = self
             .tabs
             .as_deref()
             .zip(self.scope.as_deref())
             .ok_or(Error::NoTabs)?;
-        let _editing = lock(&EDITING);
-        // Take ownership before starting a split's shell. A running desktop
-        // must receive the intent without a speculative terminal being made.
-        let _owner = file_owner(path)?;
         match op {
             Op::RenameWorkspace { workspace, name } => {
                 edit_owned_file(path, |bytes| {
@@ -291,8 +321,24 @@ impl Hub {
     pub(crate) async fn arrange(&self, keeper: Keeper, op: Op) -> Result<Option<String>> {
         let core = self.core.clone().ok_or(super::Error::Disconnected)?;
         super::super::on_core(move || match keeper {
-            Keeper::Saved { tab, terminal } => core.arrange_saved(tab, &terminal, &op),
+            Keeper::Saved { tab, terminal } => core.arrange_saved(&tab, &terminal, &op),
             Keeper::Own(terminal) => core.arrange_own(&terminal, &op),
+        })
+        .await
+    }
+
+    /// Makes `op` in the shared document's tab `tab` though Sheprd runs,
+    /// as for a tab it does not show. Answers a split's new terminal.
+    pub(crate) async fn arrange_doc(
+        &self,
+        tab: TabRef,
+        terminal: String,
+        op: Op,
+    ) -> Result<Option<String>> {
+        let core = self.core.clone().ok_or(super::Error::Disconnected)?;
+        super::super::on_core(move || {
+            let _editing = lock(&EDITING);
+            core.arrange_doc(&tab, &terminal, &op)
         })
         .await
     }

@@ -85,6 +85,7 @@ pub(super) fn standing_word(tone: Tone, item: &Item, status: Option<&PrStatus>) 
         Tone::Held => fl!("orchestrator-badge-blocked"),
         Tone::Merged => fl!("orchestrator-standing-merged"),
         Tone::Muted => return None,
+        Tone::Queued => fl!("orchestrator-standing-queued"),
         Tone::Ready => fl!("orchestrator-standing-ready"),
         Tone::Waiting => fl!("orchestrator-standing-waiting"),
     })

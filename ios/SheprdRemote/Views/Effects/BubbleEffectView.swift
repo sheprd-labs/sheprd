@@ -85,7 +85,10 @@ struct InkCover<Content: View>: View {
                 .allowsHitTesting(false)
             }
             .contentShape(.rect)
-            .onTapGesture { withAnimation(.easeInOut(duration: 0.3)) { revealed.toggle() } }
+            .onTapGesture {
+                Feedback.shared.touch(.tap)
+                withAnimation(.easeInOut(duration: 0.3)) { revealed.toggle() }
+            }
             .accessibilityElement(children: revealed ? .contain : .ignore)
             .accessibilityLabel(revealed ? Text("") : Text("Hidden with invisible ink"))
             .accessibilityHint(revealed ? Text("Double-tap to hide it again") : Text("Double-tap to reveal"))

@@ -132,7 +132,7 @@ impl SheprdWindow {
         cx.notify();
     }
 
-    fn section_view(&self) -> Option<Entity<OrchestratorView>> {
+    pub(crate) fn section_view(&self) -> Option<Entity<OrchestratorView>> {
         self.orchestrator_view(self.activity.section_view?).cloned()
     }
 

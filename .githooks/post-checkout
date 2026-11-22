@@ -1,0 +1,5 @@
+#!/bin/sh
+# Git LFS keeps the videos (.gitattributes). Its own hooks fail without
+# git-lfs installed; these do nothing then, so other work is unaffected.
+command -v git-lfs >/dev/null 2>&1 || exit 0
+exec git lfs post-checkout "$@"

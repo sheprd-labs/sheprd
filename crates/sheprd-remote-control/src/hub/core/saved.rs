@@ -1,19 +1,36 @@
-//! Which of Sheprd's saved tabs a Herdr 2 pane is in. While Sheprd runs,
-//! only it changes such a tab's layout (`control::layout`): a phone names
-//! the tab and the pane's terminal, and Sheprd splits or zooms it as the
-//! desktop would; while it is closed, the daemon does (`super::arrange`).
+//! Which of Sheprd's kept tabs a Herdr 2 pane is in: a tab of the core's
+//! shared document once it was written, else one of Sheprd's saved tabs.
+//! While Sheprd runs, only it changes such a tab's layout
+//! (`control::layout`): a phone names the tab and the pane's terminal, and
+//! Sheprd splits or zooms it as the desktop would; while it is closed, the
+//! daemon does (`super::arrange`).
 
 use super::{Source, lock, pane_id};
 use crate::hub::Hub;
 
-/// How a saved tab's id reads in the layout.
+/// How a kept tab's id reads in the layout, before the id its keeper gave.
 pub(super) const SAVED_TAB: &str = "core:tab:";
 
+/// A tab Sheprd keeps for the core.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum TabRef {
+    /// A tab of the core's shared document, by its id there.
+    Doc(String),
+    /// One of Sheprd's saved tabs, by the id Sheprd gave it, read while the
+    /// document was never written; 0 for a workspace's change.
+    File(u64),
+}
+
 impl Source {
-    /// The id of the saved tab `tab` names, and the address of `pane`'s
-    /// terminal; `None` when either is not this core's.
-    pub(super) fn saved_target(&self, tab: &str, pane: &str) -> Option<(u64, String)> {
-        let id = tab.strip_prefix(SAVED_TAB)?.parse().ok()?;
+    /// The kept tab `tab` names, and the address of `pane`'s terminal;
+    /// `None` when either is not this core's. A numeric id names a saved
+    /// tab only while the shared document stands aside.
+    pub(super) fn saved_target(&self, tab: &str, pane: &str) -> Option<(TabRef, String)> {
+        let id = tab.strip_prefix(SAVED_TAB)?;
+        let id = match lock(&self.poller).shared() {
+            Some(shared) => TabRef::Doc(shared.spaces.tab(id)?.id.clone()),
+            None => TabRef::File(id.parse().ok()?),
+        };
         let state = lock(&self.state);
         let boot = &state.core.as_ref()?.hello().core.id;
         let terminal = state
@@ -23,11 +40,15 @@ impl Source {
         Some((id, terminal.address.clone()))
     }
 
-    /// Whether Sheprd keeps workspace `id` for this computer's Herdr 2.
+    /// Whether Sheprd keeps workspace `id` for this core.
     pub(super) fn keeps_workspace(&self, id: &str) -> bool {
-        self.scope
-            .as_deref()
-            .is_some_and(|scope| lock(&self.poller).keeps(scope, id))
+        lock(&self.poller).keeps(self.scope.as_deref(), id)
+    }
+
+    /// `scope`'s saved tab holding `terminal`, by which Sheprd knows the
+    /// shared document's tab holding it.
+    fn saved_tab_holding(&self, terminal: &str) -> Option<u64> {
+        lock(&self.poller).saved_tab_holding(self.scope.as_deref()?, terminal)
     }
 
     /// The pane id of this core's terminal at `address`.
@@ -38,6 +59,15 @@ impl Source {
 }
 
 impl Hub {
+    /// The saved tab Sheprd knows `tab` by, to ask it to change; `None`
+    /// for a tab of the shared document no saved tab holds.
+    pub(crate) fn desktop_tab(&self, tab: &TabRef, terminal: &str) -> Option<u64> {
+        match tab {
+            TabRef::File(id) => Some(*id),
+            TabRef::Doc(_) => self.core.as_ref()?.saved_tab_holding(terminal),
+        }
+    }
+
     /// Whether `workspace` is one Sheprd keeps for Herdr 2, which only
     /// Sheprd renames.
     pub(crate) fn kept_workspace(&self, workspace: &str) -> bool {

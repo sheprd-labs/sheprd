@@ -318,7 +318,7 @@ impl SheprdWindow {
             panel = panel.child(self.render_workspace_danger(action, label, cx));
         }
         panel = panel.children(self.render_workspace_plugins(cx));
-        if self.pr_profile().is_some() {
+        if self.pr_signed_in() {
             panel = panel.child(self.render_workspace_pr(pr_width, cx));
         }
         panel

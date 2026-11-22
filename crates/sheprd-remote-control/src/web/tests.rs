@@ -13,6 +13,7 @@ use secrecy::ExposeSecret as _;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower::ServiceExt;
 
+mod apns_delivery;
 mod apps;
 mod attention;
 mod changes;
@@ -20,6 +21,11 @@ mod convert;
 #[cfg(unix)]
 mod echo;
 mod empty_core;
+mod favorites;
+#[cfg(unix)]
+pub(crate) mod fleet;
+#[cfg(unix)]
+mod fleet_copy;
 mod github;
 mod handoff;
 mod hosts;
@@ -32,6 +38,7 @@ mod origins;
 mod pace;
 mod pairing;
 mod presence;
+mod prompt;
 mod pull_requests;
 mod rename;
 mod routes;
@@ -41,10 +48,13 @@ mod stream;
 #[cfg(unix)]
 mod streaming;
 mod tags;
+mod term_files;
 #[cfg(unix)]
 mod term_history;
 mod terminal;
+mod test_push;
 mod typed;
+mod unread;
 mod update;
 mod uploads;
 mod workspace;
@@ -81,13 +91,15 @@ pub(crate) fn state_lending(
     let auth = Auth::load(dir, Limits::default()).unwrap();
     let (pull_requests, _) = tokio::sync::watch::channel(Arc::new(Default::default()));
     Arc::new(State {
-        apns: None,
+        apns: crate::apns::Delivery::Off,
         apps: auth.apps(),
         auth: Mutex::new(auth),
         changes: Default::default(),
         computer: "Studio".into(),
         connected: Mutex::new(HashMap::new()),
+        favorites: Favorites::load(crate::app::favorites::file(dir)),
         fingerprint: authority.fingerprint().to_owned(),
+        fleet: None,
         github: Default::default(),
         authority: Some(authority),
         hub,
@@ -99,9 +111,11 @@ pub(crate) fn state_lending(
         near: Mutex::default(),
         opened: crate::web::attention::Opened::default(),
         port: 7443,
+        previews: Default::default(),
         privacy: Privacy::Generic,
         pull_requests,
         push: None,
+        pushes: Default::default(),
         relay: None,
         reports: Mutex::new(report_limit()),
         seen: Mutex::new(seen),

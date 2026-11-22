@@ -11,6 +11,17 @@ use sheprd_backend::{Backend as _, Role, Size, Spawn, TerminalId, TerminalInfo};
 use sheprd_core_client::CoreBackend;
 use std::sync::mpsc;
 
+/// The stand-in shell: named, so a later launch finds it again, and in the
+/// user's home, as a new Terminal window opens. The core's own folder is `/`
+/// when the app was opened from the Finder or the Dock.
+pub(super) fn shell_spawn() -> Spawn {
+    Spawn {
+        cwd: sheprd_client::local_path::home_dir(),
+        name: Some(SHELL.to_owned()),
+        ..Spawn::default()
+    }
+}
+
 /// The name of the shell the window shows in place of Herdr 1.
 const SHELL: &str = sheprd_session::STAND_IN_SHELL;
 
@@ -133,10 +144,7 @@ impl SheprdWindow {
             return;
         };
         let (send, receive) = mpsc::sync_channel(1);
-        let spawn = Spawn {
-            name: Some(SHELL.to_owned()),
-            ..Spawn::default()
-        };
+        let spawn = shell_spawn();
         let spawned = std::thread::Builder::new()
             .name("herdr-core-shell".into())
             .spawn(move || {

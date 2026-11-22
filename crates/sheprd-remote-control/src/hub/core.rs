@@ -8,10 +8,13 @@ mod checkouts;
 mod convert;
 mod create;
 pub(super) use create::Place;
+pub(crate) use saved::TabRef;
 mod error;
 mod hold;
 mod job;
+mod kept;
 mod lines;
+mod new_workspace;
 mod own;
 mod poller;
 mod projection;
@@ -52,6 +55,24 @@ const NEW_WORKSPACE: &str = "core:new:";
 const PREFIX: &str = "core:";
 /// Where terminals nothing else lists go, new ones from a phone included.
 pub(super) const UNLISTED: &str = "core:terminals";
+
+/// What a core whose desktop document is `spaces` and whose terminals are
+/// `terminals` lists, for other modules' tests.
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+pub(crate) fn project_spaces(boot: &str, spaces: Value, terminals: &[Terminal]) -> Layout {
+    let mut poller = poller::Poller::default();
+    poller
+        .read_spaces(
+            boot,
+            Ok(sheprd_core_client::wire::Doc {
+                value: spaces,
+                version: 1,
+            }),
+        )
+        .expect("spaces read");
+    poller.project(boot, terminals, None, None)
+}
 
 /// The workspace a phone's new workspace in `cwd` is listed as until
 /// Sheprd keeps one for it: named for its folder, so it keeps its id
@@ -177,6 +198,7 @@ impl Source {
         let next = {
             let mut poller = lock(&self.poller);
             poller.read_spaces(&boot, core.doc_get("herdr-app"))?;
+            poller.read_shared(core.doc_get(sheprd_session::spaces::DOC))?;
             let mut next = poller.project(
                 &boot,
                 &terminals,
@@ -193,6 +215,9 @@ impl Source {
             own.layouts.apply(&mut next, &boot, &terminals);
             drop(own);
             chats::lift(&mut next, &boot, &terminals);
+            poller
+                .times
+                .stamp_statuses(&boot, &mut next, crate::web::now_ms());
             next
         };
         let tabs = create::tab_panes(&next);
@@ -246,6 +271,14 @@ impl Source {
             .cloned()
             .ok_or(HubError::Response)?;
         Ok((core, terminal))
+    }
+
+    /// `pane`'s screen as text, which the core reads itself: no shared
+    /// screen is opened, so this never holds one a phone needs to open
+    /// another terminal. Blocking.
+    pub(super) fn screen_text(&self, pane: &str) -> Result<String> {
+        let (core, terminal) = self.terminal(pane)?;
+        Ok(core.read(&terminal.address)?.text)
     }
 
     /// The shared screen of `terminal`, opened outside the state lock.
@@ -379,14 +412,9 @@ fn id(address: &str) -> String {
     id
 }
 
-/// A pane's id. Addresses survive a core restart but start over when its
-/// state is wiped, which also gives the core a new id: naming the core
-/// keeps an open phone view from landing on an unrelated new terminal.
+/// A pane's id, which favorites share (`control::favorites::core_pane`).
 fn pane_id(boot: &str, address: &str) -> String {
-    let tag = boot.bytes().fold(0x811c_9dc5_u32, |hash, byte| {
-        (hash ^ u32::from(byte)).wrapping_mul(0x0100_0193)
-    });
-    format!("{PREFIX}{tag:08x}-{}", &id(address)[PREFIX.len()..])
+    crate::control::favorites::core_pane(boot, address)
 }
 
 pub(super) fn owns(params: &Value) -> bool {

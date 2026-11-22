@@ -12,7 +12,7 @@ fn right_click_holds_until_agents_finish_and_either_click_ends_it(cx: &mut gpui:
         // A worker that already exists never runs the real power APIs.
         cx.set_global(Caffeine {
             worker: Some(spawn(holder(&log)).unwrap()),
-            working: HashSet::from([id]),
+            working: HashSet::from([(id, "local".to_owned())]),
             ..Caffeine::default()
         });
         full_draw(window, cx).clear(cx);

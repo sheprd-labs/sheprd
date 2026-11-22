@@ -42,10 +42,14 @@ async fn sheprd_makes_the_change_and_the_phone_hears_when() {
         layout::Answer::Split("t9".into())
     });
     // The phone is told the new shell, to show it next.
-    let created =
-        crate::native::changes::change_layout(&state, 4, "t1".into(), layout::Op::SplitDown)
-            .await
-            .unwrap();
+    let created = crate::native::changes::change_layout(
+        &state,
+        crate::hub::TabRef::File(4),
+        "t1".into(),
+        layout::Op::SplitDown,
+    )
+    .await
+    .unwrap();
     assert_eq!(created.as_deref(), Some("t9"));
 }
 
@@ -68,10 +72,14 @@ async fn a_refusal_reaches_the_phone_as_a_conflict() {
     desktop(&state, |_| {
         layout::Answer::Failed(layout::Failure::Watching)
     });
-    let error =
-        crate::native::changes::change_layout(&state, 4, "t1".into(), layout::Op::SplitRight)
-            .await
-            .unwrap_err();
+    let error = crate::native::changes::change_layout(
+        &state,
+        crate::hub::TabRef::File(4),
+        "t1".into(),
+        layout::Op::SplitRight,
+    )
+    .await
+    .unwrap_err();
     assert_eq!(error.into_response().status(), StatusCode::CONFLICT);
 }
 
@@ -79,9 +87,14 @@ async fn a_refusal_reaches_the_phone_as_a_conflict() {
 async fn without_sheprd_the_phone_is_told_so() {
     let dir = tempfile::tempdir().unwrap();
     let state = state_with(dir.path(), Hub::offline(Layout::default()));
-    let error = crate::native::changes::change_layout(&state, 4, "t1".into(), layout::Op::Zoom)
-        .await
-        .unwrap_err();
+    let error = crate::native::changes::change_layout(
+        &state,
+        crate::hub::TabRef::File(4),
+        "t1".into(),
+        layout::Op::Zoom,
+    )
+    .await
+    .unwrap_err();
     assert_eq!(
         error.into_response().status(),
         StatusCode::SERVICE_UNAVAILABLE
@@ -115,10 +128,14 @@ async fn a_busy_sheprd_asks_the_phone_to_try_again() {
     let state = state_with(dir.path(), Hub::offline(Layout::default()));
     open(&state);
     desktop(&state, |_| layout::Answer::Failed(layout::Failure::Busy));
-    let error =
-        crate::native::changes::change_layout(&state, 4, "t1".into(), layout::Op::SplitRight)
-            .await
-            .unwrap_err();
+    let error = crate::native::changes::change_layout(
+        &state,
+        crate::hub::TabRef::File(4),
+        "t1".into(),
+        layout::Op::SplitRight,
+    )
+    .await
+    .unwrap_err();
     assert_eq!(
         error.into_response().status(),
         StatusCode::TOO_MANY_REQUESTS

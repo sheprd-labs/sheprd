@@ -8,6 +8,7 @@ mod activities;
 mod direct_subagents;
 mod edits;
 mod images;
+mod pasted;
 mod todos;
 mod tool_start;
 
@@ -185,6 +186,7 @@ fn plans_commands_usage_and_titles_are_projected() {
     assert!(transcript.modes.is_none() && transcript.session.is_none());
 
     transcript.session = Some(SessionInfo {
+        continued: None,
         cwd: None,
         id: "s".to_owned(),
         title: None,

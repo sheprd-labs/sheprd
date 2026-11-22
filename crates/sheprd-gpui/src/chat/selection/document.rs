@@ -222,8 +222,11 @@ impl Document {
             .map(|entry| (entry.id, entry))
             .collect();
         self.positions.clear();
-        for (entry, &(id, revision)) in transcript.entries.iter().zip(keys) {
-            if entry.id != id {
+        // Rows a continued conversation's fold hides hold no text: a
+        // selection in them ends with the fold, and Select All skips them.
+        let fold = crate::chat::earlier::earlier(transcript, &self.expanded);
+        for (index, (entry, &(id, revision))) in transcript.entries.iter().zip(keys).enumerate() {
+            if entry.id != id || fold.is_some_and(|fold| fold.hides(index)) {
                 continue;
             }
             let expanded = self.expanded.contains(&id);

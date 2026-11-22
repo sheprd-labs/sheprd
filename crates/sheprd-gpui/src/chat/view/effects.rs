@@ -190,6 +190,21 @@ impl SheprdWindow {
             .child(fl!("chat-effects-replay", effect = label))
     }
 
+    /// How far a wizz playing in the chat shakes it now, if one plays and
+    /// motion is not reduced.
+    pub(super) fn chat_wizz_shake(chat: &ChatPane, cx: &App) -> Option<(f32, f32)> {
+        if cx.reduce_motion() {
+            return None;
+        }
+        let now = motion::now();
+        let playing = chat.effects.playing(now)?;
+        if playing.effect != Screen::Wizz {
+            return None;
+        }
+        let t = playing.elapsed(now)?;
+        Some(scene::wizz_shake(t, playing.effect.length().as_secs_f32()))
+    }
+
     /// The pane effect playing over the chat, if one is and motion is not
     /// reduced.
     pub(super) fn render_chat_screen(&self, chat: &ChatPane, cx: &App) -> Option<AnyElement> {

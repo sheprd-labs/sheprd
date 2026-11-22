@@ -30,7 +30,7 @@ fn a_core_forwarded_terminal_cannot_launch_a_chat_on_the_connecting_host(cx: &mu
                 Vec::new(),
             );
             assert!(matches!(
-                view.start_core_chat(sheprd_chat_protocol::Agent::Codex, tab, cx),
+                view.start_core_chat(sheprd_chat_protocol::Agent::Codex, tab, None, cx),
                 Err(StartError::NotLocal)
             ));
         });

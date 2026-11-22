@@ -29,6 +29,8 @@ pub enum Error {
     PullRequestBase,
     #[error("The branch has no commit to describe. Commit before opening a pull request.")]
     PullRequestTitle,
+    #[error(transparent)]
+    Restack(#[from] super::restack::Error),
     #[error("Git worker stopped. Retry the operation.")]
     Worker,
     // keep-sorted end

@@ -18,7 +18,7 @@ final class TermTyping {
     private(set) var echo = TermEcho()
     /// What an input method is composing, typed once a candidate is picked.
     var composing = ""
-    private var pending: [TermInput.Send] = []
+    private var pending: [Queued] = []
     private var draining = false
     private weak var fleet: Fleet?
 
@@ -41,19 +41,32 @@ final class TermTyping {
         modifiers = modifiers.afterKey
     }
 
-    func paste(_ text: String) {
+    /// Pastes `text` whole, over as many requests as it takes; text past
+    /// what one paste may send is refused rather than cut off. `done` hears
+    /// whether all of it reached the terminal, so a caller can keep what
+    /// failed to arrive.
+    func paste(_ text: String, done: ((Bool) -> Void)? = nil) {
         guard !text.isEmpty else { return }
-        enqueue([.paste(String(text.prefix(64 * 1024)))])
+        guard text.utf8.count <= TermInput.maxPasted else {
+            problem = "That text is too long to paste; the limit is 1 MB."
+            done?(false)
+            return
+        }
+        enqueue(TermInput.pastes(for: text), done: done)
     }
 
-    private func enqueue(_ sends: [TermInput.Send]) {
-        for send in sends {
+    /// `done` is called once, after the last of `sends` is delivered or
+    /// dropped.
+    private func enqueue(_ sends: [TermInput.Send], done: ((Bool) -> Void)? = nil) {
+        for (index, send) in sends.enumerated() {
             echo.queue(send, at: .now)
+            let last = index == sends.count - 1
             // Keys typed while a request is out join the last batch.
-            if case let .keys(more) = send, case let .keys(queued)? = pending.last, queued.count + more.count <= TermInput.maxKeys {
-                pending[pending.count - 1] = .keys(queued + more)
+            if case let .keys(more) = send, let queued = pending.last, queued.done == nil, case let .keys(keys) = queued.send,
+               keys.count + more.count <= TermInput.maxKeys {
+                pending[pending.count - 1] = Queued(send: .keys(keys + more), done: last ? done : nil)
             } else {
-                pending.append(send)
+                pending.append(Queued(send: send, done: last ? done : nil))
             }
         }
         guard !draining else { return }
@@ -64,7 +77,8 @@ final class TermTyping {
     private func drain() async {
         defer { draining = false }
         while !pending.isEmpty, let fleet {
-            let send = pending.removeFirst()
+            let queued = pending.removeFirst()
+            let send = queued.send
             let pane = key.pane
             switch send {
             case let .keys(keys): echo.sending(keys.count, at: .now)
@@ -79,6 +93,7 @@ final class TermTyping {
                 }
                 problem = nil
                 echo.delivered(at: .now)
+                queued.done?(true)
                 Task { [weak self] in
                     // Typing since pushes this back: a later delivery
                     // tries again after its own wait.
@@ -89,11 +104,19 @@ final class TermTyping {
                 // What failed is dropped rather than replayed later into
                 // a screen that has moved on.
                 problem = error.localizedDescription
+                queued.done?(false)
+                for dropped in pending { dropped.done?(false) }
                 pending.removeAll()
                 echo.clear()
             }
         }
     }
+}
+
+/// One request's worth of input, and who waits to hear it arrived.
+private struct Queued {
+    var send: TermInput.Send
+    var done: ((Bool) -> Void)?
 }
 
 /// What was typed but is not on the screen yet, above the key rows: its
@@ -152,7 +175,7 @@ struct TermKeyRows: View {
         // Under the keyboard too: its rounded top corners would otherwise
         // show the window's light background beside the dark rows.
         .background { Rectangle().fill(.bar).ignoresSafeArea() }
-        .sensoryFeedback(.selection, trigger: typing.modifiers)
+        .haptic(.selection, trigger: typing.modifiers)
     }
 
     /// The keyboard's own mic cannot reach a terminal, which has no text
@@ -192,7 +215,12 @@ struct TermKeyRows: View {
     }
 
     private func keyButton(_ label: String, tint: Color? = nil, repeats: Bool = true, action: @escaping () -> Void) -> some View {
-        Button(action: action) { TermKeyCap(label: label, tint: tint) }
+        Button {
+            Feedback.shared.touch(.tap)
+            action()
+        } label: {
+            TermKeyCap(label: label, tint: tint)
+        }
             .buttonStyle(.plain)
             .buttonRepeatBehavior(repeats ? .enabled : .disabled)
     }

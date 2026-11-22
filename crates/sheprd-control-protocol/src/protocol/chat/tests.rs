@@ -71,8 +71,9 @@ fn chat_new_has_a_stable_wire_form() {
     let request = Request::Chat(Call {
         caller: Caller::default(),
         op: ChatOp::New {
-            agent: "claude".into(),
+            agent: Some("claude".into()),
             pane: None,
+            prompt: None,
         },
     });
     let text = serde_json::to_string(&request).unwrap();
@@ -81,6 +82,16 @@ fn chat_new_has_a_stable_wire_form() {
         "{text}"
     );
     assert_eq!(serde_json::from_str::<Request>(&text).unwrap(), request);
+    // No agent: the caller's chat's own.
+    let like = serde_json::from_str::<ChatOp>(r#"{"op":"new","pane":"w1:p2"}"#).unwrap();
+    assert_eq!(
+        like,
+        ChatOp::New {
+            agent: None,
+            pane: Some("w1:p2".into()),
+            prompt: None,
+        }
+    );
     let started = Response::Chat {
         reply: Reply::Started {
             agent: "claude".into(),
@@ -106,4 +117,5 @@ fn chat_convert_has_a_stable_wire_form() {
     assert_eq!(serde_json::from_str::<Reply>(&text).unwrap(), reply);
 }
 
+mod brief;
 mod shortcuts;

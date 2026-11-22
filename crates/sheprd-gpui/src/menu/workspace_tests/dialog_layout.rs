@@ -106,8 +106,8 @@ fn workspace_dialog_sections_and_buttons_stay_inside_the_panel(cx: &mut gpui::Te
             let cancel = cx.debug_bounds("dialog-cancel").unwrap();
             let submit = cx.debug_bounds("dialog-submit").unwrap();
             let error = cx.debug_bounds("dialog-error").unwrap();
-            // Only a creation waits on the daemon: a removal is queued and
-            // its dialog closes rather than reporting progress.
+            // Only a creation shows the waiting line; a removal still in
+            // flight shows its own bar (see worktree_delete_recovery).
             let waiting = (action == WorkspaceAction::NewWorktree)
                 .then(|| cx.debug_bounds("dialog-waiting").unwrap());
             // Creation drafts a branch and previews its checkout; deletion

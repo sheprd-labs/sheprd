@@ -1,5 +1,5 @@
 use super::*;
-use crate::hub::{Error as HubError, Workspace};
+use crate::hub::{Error as HubError, NewWorkspace, Workspace};
 use sheprd_chat_protocol::{Agent, ENDPOINT_ENV, EndpointId, TOKEN};
 use std::path::{Path, PathBuf};
 
@@ -134,7 +134,13 @@ async fn a_core_failure_is_reported_and_not_retried_on_herdr_one() {
     source.poll().unwrap();
     let hub = hub_on(&source, Layout::default());
     let error = hub
-        .create_workspace("/refused", None, Agent::Claude, None)
+        .create_workspace(NewWorkspace {
+            agent: Agent::Claude,
+            branch: None,
+            cwd: "/refused",
+            session: None,
+            title: None,
+        })
         .await
         .err()
         .unwrap();
@@ -153,12 +159,13 @@ async fn a_worktree_chat_starts_on_the_core_in_its_new_checkout() {
     let mut hub = hub_on(&source, Layout::default());
     hub.worktrees = Some(root.clone());
     let created = hub
-        .create_workspace(
-            repository.to_str().unwrap(),
-            Some("topic"),
-            Agent::Claude,
-            None,
-        )
+        .create_workspace(NewWorkspace {
+            agent: Agent::Claude,
+            branch: Some("topic"),
+            cwd: repository.to_str().unwrap(),
+            session: None,
+            title: None,
+        })
         .await
         .unwrap();
     // Listed apart until Sheprd keeps a workspace for the new checkout.
@@ -189,12 +196,13 @@ async fn a_worktree_whose_chat_fails_leaves_the_branch_free_to_retry() {
     hub.worktrees = Some(root.clone());
     // The fake core refuses a folder of this name.
     let error = hub
-        .create_workspace(
-            repository.to_str().unwrap(),
-            Some("refused"),
-            Agent::Claude,
-            None,
-        )
+        .create_workspace(NewWorkspace {
+            agent: Agent::Claude,
+            branch: Some("refused"),
+            cwd: repository.to_str().unwrap(),
+            session: None,
+            title: None,
+        })
         .await
         .err()
         .unwrap();
@@ -235,12 +243,13 @@ async fn a_worktree_git_refuses_starts_no_chat() {
     let mut hub = hub_on(&source, Layout::default());
     hub.worktrees = Some(dir.path().join("worktrees"));
     let error = hub
-        .create_workspace(
-            dir.path().to_str().unwrap(),
-            Some("topic"),
-            Agent::Claude,
-            None,
-        )
+        .create_workspace(NewWorkspace {
+            agent: Agent::Claude,
+            branch: Some("topic"),
+            cwd: dir.path().to_str().unwrap(),
+            session: None,
+            title: None,
+        })
         .await
         .err()
         .unwrap();
@@ -407,7 +416,7 @@ fn a_saved_tab_names_its_id_and_the_panes_terminal() {
     source.poll().unwrap();
     assert_eq!(
         source.saved_target("core:tab:4", &id("t1")),
-        Some((4, "t1".to_owned()))
+        Some((TabRef::File(4), "t1".to_owned()))
     );
     // A desktop space's tab, or a terminal no tab holds, is not Sheprd's.
     assert_eq!(source.saved_target("core:app-tab:ab", &id("t1")), None);
@@ -428,7 +437,13 @@ async fn a_named_herdr_1_session_is_refused_rather_than_ignored() {
         PathBuf::from("/nonexistent/herdr-client.sock"),
     );
     let refused = hub
-        .create_workspace("/code/one", None, Agent::Claude, Some("dev"))
+        .create_workspace(NewWorkspace {
+            agent: Agent::Claude,
+            branch: None,
+            cwd: "/code/one",
+            session: Some("dev"),
+            title: None,
+        })
         .await;
     assert!(
         matches!(refused, Err(HubError::SessionOnHerdr2)),

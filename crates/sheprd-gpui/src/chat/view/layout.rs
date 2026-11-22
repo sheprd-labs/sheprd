@@ -287,6 +287,20 @@ pub(super) fn composer_foot(
     send: Stateful<Div>,
 ) -> Div {
     let gap = px(8.);
+    // The last setting takes what is left of its line, so it stays there,
+    // truncating its label, rather than wrapping while that leaves room for
+    // its narrowest. The line breaks on that floor, not the full label, and
+    // the button keeps its own width inside, so the rest stays empty.
+    let mut settings = settings;
+    let last = settings.pop().map(|last| {
+        div()
+            .flex_grow(1.)
+            .flex_basis(px(0.))
+            .min_w(px(super::settings::SHRUNK))
+            .flex()
+            .items_center()
+            .child(last)
+    });
     div()
         .debug_selector(|| "chat-settings".into())
         .flex()
@@ -302,7 +316,8 @@ pub(super) fn composer_foot(
                 .gap(gap)
                 .child(attach)
                 .child(shortcuts)
-                .children(settings),
+                .children(settings)
+                .children(last),
         )
         .child(
             div()

@@ -57,6 +57,9 @@ public enum ScreenEffect: String, CaseIterable, Codable, Hashable, Sendable {
     case lasers
     case love
     case spotlight
+    /// A nudge, as MSN Messenger's: the chat shakes and buzzes to get the
+    /// person's attention.
+    case wizz
     case zap
     // keep-sorted end
 
@@ -73,6 +76,7 @@ public enum ScreenEffect: String, CaseIterable, Codable, Hashable, Sendable {
         case .lasers: 3.6
         case .love: 3
         case .spotlight: 3.3
+        case .wizz: 1.2
         case .zap: 4.6
         }
     }
@@ -118,7 +122,12 @@ public struct AgentMessage: Hashable, Sendable {
 
     /// How many bubbles play in the message.
     public var bubbles: Int {
-        parts.count { if case .bubble = $0 { true } else { false } }
+        bubbleEffects.count
+    }
+
+    /// The effect of each bubble that plays, in order.
+    public var bubbleEffects: [BubbleEffect] {
+        parts.compactMap { if case let .bubble(effect, _) = $0 { effect } else { nil } }
     }
 
     /// The message's words in brief, for the effects that draw them: its

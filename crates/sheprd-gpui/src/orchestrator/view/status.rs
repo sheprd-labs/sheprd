@@ -5,6 +5,7 @@
 
 use super::{
     OrchestratorView,
+    dispatch::Confirm,
     look::{GREEN, RED, YELLOW, agent_icon, ago},
     rows::{RunRow, Runs},
 };
@@ -242,8 +243,9 @@ impl OrchestratorView {
             .filter(|latest| runs.live(latest.run).is_some())
             .map(|latest| latest.run);
         let mergeable = self.mergeable();
+        let queue = self.queue_change(item);
         let has_write_action = writable && (!pull_request || reviewable);
-        if !has_write_action && live.is_none() && !mergeable {
+        if !has_write_action && live.is_none() && !mergeable && queue.is_none() {
             return None;
         }
         let key = item.key.canonical();
@@ -294,10 +296,30 @@ impl OrchestratorView {
                         fl!("orchestrator-merge-menu"),
                         false,
                     )
+                    .debug_selector(|| "orchestrator-detail-merge".into())
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.merge_open = !this.merge_open;
                         cx.notify();
                     })),
+                )
+            })
+            .when_some(queue, |el, (change, target, lands)| {
+                let label = match change {
+                    super::stack::Change::Dequeue => fl!("pr-stack-queue-remove"),
+                    _ => fl!("pr-stack-queue-add-one"),
+                };
+                el.child(
+                    look.button("orchestrator-detail-queue", label, false)
+                        .debug_selector(|| "orchestrator-detail-queue".into())
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            let (target, lands) = (target.clone(), lands.clone());
+                            let confirm = Confirm::Land {
+                                change,
+                                target,
+                                lands,
+                            };
+                            this.ask(confirm, cx);
+                        })),
                 )
             });
         Some(

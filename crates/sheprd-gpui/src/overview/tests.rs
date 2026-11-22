@@ -4,6 +4,7 @@ mod acting;
 mod alert_shelf;
 mod boot_fence;
 mod clear_alerts;
+mod clear_all;
 mod closed;
 mod closed_page;
 mod core;

@@ -23,6 +23,7 @@ use crate::{
 
 mod activities;
 mod codex_messages;
+mod commands;
 mod notices;
 mod question_replies;
 mod tool_activity;
@@ -230,6 +231,9 @@ struct Projection {
     answered: HashMap<QuestionKey, sheprd_chat_protocol::QuestionAnswer>,
     /// Claude Code's sub-agents and background shells in the log.
     background: crate::claude::background::Background,
+    /// The Claude compaction notice still waiting for the summary Claude
+    /// writes after it, by its index in the entries.
+    compacted: Option<usize>,
     /// The tool each call ran, by call id.
     names: HashMap<String, String>,
     transcript: Transcript,
@@ -277,7 +281,11 @@ impl Projection {
             return;
         }
         let kind = match role {
-            Role::User => EntryKind::User { text, files: 0 },
+            Role::User => EntryKind::User {
+                text: crate::project::shown(&text).to_owned(),
+                files: 0,
+                note: None,
+            },
             Role::Agent => EntryKind::Agent { text },
             Role::Thought => EntryKind::Thought { text },
         };
@@ -420,6 +428,7 @@ impl Projection {
             return;
         }
         self.transcript.session = Some(SessionInfo {
+            continued: None,
             id: limited(id, MAX_ID),
             cwd: (!cwd.is_empty()).then(|| limited(cwd, MAX_CWD)),
             title: None,
@@ -454,12 +463,17 @@ impl Projection {
     }
 
     fn claude(&mut self, base: EntryId, record: &Value) {
-        let Some(role) = Role::of(string(record, "type")) else {
-            return;
-        };
         if record["isSidechain"] == true {
             return;
         }
+        if string(record, "type") == "system" && string(record, "subtype") == "compact_boundary" {
+            self.compacted = Some(self.transcript.entries.len());
+            self.push(base, notices::compacted(""));
+            return;
+        }
+        let Some(role) = Role::of(string(record, "type")) else {
+            return;
+        };
         self.session(string(record, "sessionId"), string(record, "cwd"));
         if role == Role::Agent {
             self.reported_option(
@@ -515,6 +529,19 @@ impl Projection {
         if role == Role::User {
             self.activity_notified(record, content);
         }
+        if role == Role::User && record["isCompactSummary"] == true {
+            self.compact_summary(id, content);
+            return;
+        }
+        if role == Role::User
+            && let Some(command) = commands::command(content)
+        {
+            self.transcript.truncated |= content.len() > TEXT;
+            if let commands::Command::Show(notice) = command {
+                self.push(id, notice);
+            }
+            return;
+        }
         if role == Role::User
             && let Some(notice) = notices::project(record, content)
         {
@@ -524,6 +551,32 @@ impl Projection {
             let content = self.clip(content, TEXT);
             self.message(id, role, content);
         }
+    }
+}
+
+impl Projection {
+    /// The summary Claude carries a compacted conversation on with. It is
+    /// written as the person's message, but they never typed it: it goes in
+    /// the details of the compaction notice before it, or of its own.
+    fn compact_summary(&mut self, id: EntryId, content: &str) {
+        self.transcript.truncated |= content.len() > TEXT;
+        let waiting = self
+            .compacted
+            .take()
+            .and_then(|index| self.transcript.entries.get_mut(index));
+        if let Some(Entry {
+            kind:
+                EntryKind::Notice {
+                    details: details @ None,
+                    ..
+                },
+            ..
+        }) = waiting
+        {
+            *details = Some(notices::details(content));
+            return;
+        }
+        self.push(id, notices::compacted(content));
     }
 }
 

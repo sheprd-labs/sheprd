@@ -73,19 +73,19 @@ fn a_file_that_cannot_run_is_not_the_program() {
 #[test]
 fn the_typed_line_names_only_the_agent() {
     for agent in Agent::ALL {
-        let line = command_line(*agent, AgentChoice::Open);
+        let line = command_line(*agent, AgentChoice::Open, None);
         assert!(line.contains(PROGRAM_ENV));
         assert!(line.ends_with(&format!("{agent}'")) || line.ends_with(agent.name()));
         assert!(!line.contains('/'), "{line}");
     }
     if cfg!(unix) {
         assert_eq!(
-            command_line(Agent::Claude, AgentChoice::Open),
+            command_line(Agent::Claude, AgentChoice::Open, None),
             r#" sh -c 'exec "$HERDR_ACP" --choose claude'"#
         );
     } else {
         assert_eq!(
-            command_line(Agent::Claude, AgentChoice::Open),
+            command_line(Agent::Claude, AgentChoice::Open, None),
             "& $env:HERDR_ACP --choose claude"
         );
     }
@@ -185,11 +185,11 @@ fn a_new_chat_opens_a_tab_and_types_the_fixed_line(cx: &mut gpui::TestAppContext
         view.update(cx, |view, cx| {
             local_window(view, &peer, cx);
             assert!(view.can_start_chat());
-            view.start_chat(Agent::Claude, None).unwrap();
+            view.start_chat(Agent::Claude, None, None).unwrap();
             // One tab opens at a time, a script's included.
             assert!(view.script_slot_busy());
             assert!(matches!(
-                view.start_chat(Agent::Codex, None),
+                view.start_chat(Agent::Codex, None, None),
                 Err(start::Error::SlotBusy)
             ));
         })
@@ -226,7 +226,11 @@ fn a_new_chat_opens_a_tab_and_types_the_fixed_line(cx: &mut gpui::TestAppContext
             pane_id: "w1:p9".into(),
             events: vec![
                 // The fixture's program was never asked for its help.
-                ClientPaneInputEvent::TextCommit(command_line(Agent::Claude, AgentChoice::Fixed)),
+                ClientPaneInputEvent::TextCommit(command_line(
+                    Agent::Claude,
+                    AgentChoice::Fixed,
+                    None
+                )),
                 crate::menu::enter_key(),
             ],
         }
@@ -243,12 +247,12 @@ fn a_chat_does_not_start_without_the_program_or_a_reachable_host(cx: &mut gpui::
             view.chats.program = Program::Missing;
             assert!(!view.can_start_chat());
             assert!(matches!(
-                view.start_chat(Agent::Claude, None),
+                view.start_chat(Agent::Claude, None, None),
                 Err(start::Error::ProgramMissing)
             ));
             view.chats.program = Program::Looking;
             assert!(matches!(
-                view.start_chat(Agent::Claude, None),
+                view.start_chat(Agent::Claude, None, None),
                 Err(start::Error::ProgramUnknown)
             ));
             view.chats.program = Program::Found(PathBuf::from("/opt/herdr-acp"));
@@ -263,7 +267,7 @@ fn a_chat_does_not_start_without_the_program_or_a_reachable_host(cx: &mut gpui::
                 sheprd_client::ConnectTarget::Socket(PathBuf::from("/tmp/herdr.sock"));
             assert!(!view.can_start_chat());
             assert!(matches!(
-                view.start_chat(Agent::Claude, None),
+                view.start_chat(Agent::Claude, None, None),
                 Err(start::Error::NotLocal)
             ));
             assert!(!view.chat_starting());
@@ -278,7 +282,7 @@ fn a_start_from_a_replaced_connection_types_nothing(cx: &mut gpui::TestAppContex
     cx.update(|_, cx| {
         view.update(cx, |view, cx| {
             local_window(view, &peer, cx);
-            view.start_chat(Agent::Gemini, None).unwrap();
+            view.start_chat(Agent::Gemini, None, None).unwrap();
             view.endpoints[0].generation += 1;
             view.poll_chat_start(cx);
             assert!(!view.chat_starting());
@@ -297,7 +301,7 @@ fn an_agent_the_host_lacks_does_not_start(cx: &mut gpui::TestAppContext) {
             let id = view.endpoints[0].id.clone();
             view.chats.agents.record(&id, vec![Agent::Opencode]);
             assert!(matches!(
-                view.start_chat(Agent::Claude, None),
+                view.start_chat(Agent::Claude, None, None),
                 Err(start::Error::AgentMissing(Agent::Claude))
             ));
             assert!(!view.chat_starting());
@@ -306,60 +310,11 @@ fn an_agent_the_host_lacks_does_not_start(cx: &mut gpui::TestAppContext) {
 }
 
 #[test]
-fn only_a_program_that_offers_the_choice_is_asked_for_it() {
-    let help = sheprd_help("  --choose       Let clients switch to another installed agent\n");
-    assert_eq!(AgentChoice::from_help(help.as_bytes()), AgentChoice::Open);
-    let older = sheprd_help("  --acp          Use the agent's ACP adapter\n");
-    assert_eq!(AgentChoice::from_help(older.as_bytes()), AgentChoice::Fixed);
-    assert_eq!(AgentChoice::from_help(b""), AgentChoice::Fixed);
+fn a_fixed_choice_starts_the_agent_alone() {
     if cfg!(unix) {
         assert_eq!(
-            command_line(Agent::Codex, AgentChoice::Fixed),
+            command_line(Agent::Codex, AgentChoice::Fixed, None),
             r#" sh -c 'exec "$HERDR_ACP" codex'"#
         );
     }
-}
-
-fn sheprd_help(options: &str) -> String {
-    format!("Usage:\n  sheprd-acp [OPTIONS] AGENT\n\nOptions:\n{options}")
-}
-
-#[cfg(unix)]
-#[test]
-fn a_program_that_cannot_run_offers_no_choice() {
-    assert_eq!(
-        AgentChoice::of(Path::new("/nonexistent/sheprd-acp")),
-        AgentChoice::Fixed
-    );
-}
-
-/// A wrapper whose child keeps the help's pipe open is given up on at the
-/// deadline, rather than leaving the program's lookup unanswered.
-#[cfg(unix)]
-#[test]
-fn a_program_whose_help_never_ends_offers_no_choice() {
-    use std::os::unix::fs::PermissionsExt;
-    let dir = tempfile::tempdir().unwrap();
-    let wrapper = dir.path().join("sheprd-acp");
-    std::fs::write(&wrapper, "#!/bin/sh\necho '  --choose'\nsleep 30 &\nwait\n").unwrap();
-    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
-    let started = Instant::now();
-    let deadline = Duration::from_millis(300);
-    assert_eq!(
-        AgentChoice::of_within(&wrapper, deadline),
-        AgentChoice::Fixed
-    );
-    assert!(started.elapsed() < Duration::from_secs(5));
-
-    let quick = dir.path().join("quick");
-    std::fs::write(
-        &quick,
-        "#!/bin/sh\necho '  --choose   Let clients switch'\n",
-    )
-    .unwrap();
-    std::fs::set_permissions(&quick, std::fs::Permissions::from_mode(0o755)).unwrap();
-    assert_eq!(
-        AgentChoice::of_within(&quick, Duration::from_secs(5)),
-        AgentChoice::Open
-    );
 }

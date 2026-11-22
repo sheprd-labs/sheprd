@@ -13,11 +13,16 @@ pub mod app_update;
 pub mod changes;
 pub mod desktop;
 pub mod edited;
+pub mod favorites;
+pub mod fleet;
 pub mod github;
 pub mod host_relay;
 pub mod hosts;
 pub mod layout;
+pub mod pairing_link;
 pub mod pull_requests;
+pub mod push;
+pub mod read;
 pub mod relays;
 pub mod shortcuts;
 pub mod tags;
@@ -66,6 +71,13 @@ pub fn address(state_dir: &Path) -> PathBuf {
 /// Removes what a daemon's listener left in `state_dir`.
 pub fn release(state_dir: &Path) {
     sheprd_client::private_endpoint::release(&address(state_dir));
+}
+
+/// Whether a daemon accepts connections at `address` within `limit`. Sends
+/// nothing, so a daemon that is exiting cannot hold the caller for a reply.
+/// Blocking.
+pub fn answers(address: &Path, limit: Duration) -> bool {
+    sheprd_client::private_endpoint::Connection::connect(address, limit).is_ok()
 }
 
 /// Sends one request and waits for its response. Blocking.
@@ -125,6 +137,19 @@ pub enum Request {
         /// says otherwise, as an older Sheprd's never does.
         #[serde(default = "yes", skip_serializing_if = "is_yes")]
         share_github: bool,
+        /// The fleet the dialog's fleet line agreed to, hex, when it was
+        /// shown ticked: a computer that claimed joins it, or this computer
+        /// joins the claimant's. One the fleet no longer matches is refused.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        fleet: Option<String>,
+    },
+    /// A pairing link for the open, unclaimed pairing `id`
+    /// (`pairing_link`): a second token, claimable for two minutes through
+    /// this computer's relays, which the dialog copies so another Sheprd
+    /// can pair from any network. Refused while no relay listens. A new
+    /// link replaces the previous one.
+    PairLink {
+        id: PairingId,
     },
     /// Closes the dialog's pairing; its token stops working.
     CancelPairing {
@@ -217,6 +242,19 @@ pub enum Request {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         offer: Option<tags::ComputerTags>,
     },
+    /// This computer's favorite agents: stars or unstars one pane, if
+    /// `change` says so, and answers with the favorites that stand
+    /// (`favorites`).
+    Favorites {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        change: Option<favorites::Change>,
+    },
+    /// Which agents' replies were read here: marks panes read or unread,
+    /// if `change` says so, and answers with the panes unread now (`read`).
+    Read {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        change: Option<read::Change>,
+    },
     /// This computer's text shortcuts: offers Sheprd's copy, if any, and
     /// answers with the ones that stand (`shortcuts`).
     Shortcuts {
@@ -236,6 +274,10 @@ pub enum Request {
     /// `herdr-remote-control enroll` asks. Sheprd never sends it to its
     /// own daemon.
     Enroll(hosts::Enroll),
+    /// The fleet (`fleet::sync::Ask`): its state, founding it, admitting
+    /// and removing members, sharing hosts, and operations carried from
+    /// another member.
+    Fleet(Box<fleet::sync::Ask>),
     /// Where the app's updater stands, sent with each poll while a window
     /// runs it. Answered with whether a phone asked to update. `instance`
     /// names this run of the app: a request is only for the run a phone saw.
@@ -287,6 +329,15 @@ pub enum Request {
         id: changes::AskId,
         answer: github::LeaseAnswer,
     },
+    /// How iPhone pushes leave this computer and how the last of each kind
+    /// went (`push`). Read-only, and it names no token, handle, or device.
+    /// An older daemon closes without answering.
+    PushStatus,
+    /// Sends each phone registered for alerts one sealed test alert now,
+    /// through the push relay, as the phone's own Send Test Push does, and
+    /// answers what came of each, within [`ASK_WAIT`]. An older daemon
+    /// closes without answering.
+    TestPush,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -295,6 +346,11 @@ pub enum Response {
     Status(Status),
     Offer(Offer),
     Pairing(PairingState),
+    /// A pairing link, and how long it may be claimed.
+    PairLink {
+        link: String,
+        expires_in_ms: u64,
+    },
     Devices {
         devices: Vec<Device>,
     },
@@ -329,7 +385,10 @@ pub enum Response {
         revokes: Vec<hosts::HostRevoke>,
     },
     Enrolled(hosts::Enrolled),
+    Fleet(Box<fleet::sync::Answer>),
     Tags(tags::ComputerTags),
+    Favorites(favorites::Favorites),
+    Read(read::Unread),
     Shortcuts(shortcuts::TextShortcuts),
     /// The relays the daemon listens on, its own and those shared with it.
     Relays {
@@ -354,6 +413,8 @@ pub enum Response {
     GitHubLeaseAsks {
         asks: Vec<github::LeaseAsk>,
     },
+    PushStatus(push::PushStatus),
+    TestPushed(push::TestPushes),
 }
 
 /// The daemon's answer to a nearby phone's first step, the same JSON over
@@ -394,6 +455,8 @@ pub enum ErrorCode {
     Unsupported,
     /// Nearby pairing needs the pairing dialog open on the computer.
     NoPairing,
+    /// A pairing link needs this computer to listen on a relay.
+    NoRelays,
     /// The daemon could not write its state; nothing changed, and the
     /// same request may succeed later.
     Unsaved,
@@ -548,6 +611,11 @@ pub enum PairingState {
         /// `~/.ssh/authorized_keys`, so the dialog says so.
         #[serde(default, skip_serializing_if = "is_no")]
         ssh: bool,
+        /// What that computer asked of the fleet beside pairing: to join
+        /// this computer's, or to bring this computer into its own
+        /// (`fleet::bluetooth`). The dialog says so, with a line to agree.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        fleet: Option<fleet::bluetooth::Asked>,
     },
     Approved {
         device: DeviceId,

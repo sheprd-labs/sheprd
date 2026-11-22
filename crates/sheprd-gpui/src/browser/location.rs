@@ -97,6 +97,10 @@ pub(crate) enum Location {
         #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
         names: std::collections::BTreeMap<sheprd_backend::TerminalId, String>,
     },
+    /// A virtual Mac, shown by its own view in a page's place.
+    Machine {
+        name: crate::machine::Name,
+    },
 }
 
 /// The checkout an orchestrator view lists the repository of, on the view's
@@ -246,7 +250,8 @@ impl Location {
             | Self::Code { .. }
             | Self::Orchestrator { .. }
             | Self::Devices
-            | Self::CoreTerminal { .. } => "about:blank".to_owned(),
+            | Self::CoreTerminal { .. }
+            | Self::Machine { .. } => "about:blank".to_owned(),
         }
     }
 
@@ -259,6 +264,7 @@ impl Location {
                 | Self::Orchestrator { .. }
                 | Self::Devices
                 | Self::CoreTerminal { .. }
+                | Self::Machine { .. }
         )
     }
 
@@ -278,6 +284,7 @@ impl Location {
                     panes.terminals().iter().map(ToString::to_string).collect();
                 format!("herdr-core terminal {}", terminals.join(", ")) // i18n: data
             }
+            Self::Machine { name } => format!("Virtual Mac {name}"), // i18n: data
         }
     }
 
@@ -294,6 +301,7 @@ impl Location {
             Self::Orchestrator { repo } => format!("Orchestrator \u{00b7} {}", repo.name()),
             Self::Devices => "Devices".to_owned(), // i18n: data
             Self::CoreTerminal { .. } => "Terminal".to_owned(), // i18n: data
+            Self::Machine { name } => name.to_string(),
         }
     }
 
@@ -309,6 +317,7 @@ impl Location {
             }
             Self::Devices => Some(fl!("browser-tab-devices")),
             Self::CoreTerminal { .. } => Some(fl!("browser-tab-terminal")),
+            Self::Machine { name } => Some(fl!("browser-tab-machine", name = name.as_str())),
             Self::Web { .. } | Self::Local { .. } | Self::Code { .. } => None,
         }
     }

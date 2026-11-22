@@ -24,6 +24,7 @@ fn caller(workspace: Option<&str>) -> Caller {
         daemon_socket: None,
         window: None,
         terminal_id: None,
+        via: None,
     }
 }
 

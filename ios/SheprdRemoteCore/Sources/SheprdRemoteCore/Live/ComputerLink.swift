@@ -87,6 +87,8 @@ public actor ComputerLink {
     private var watched: [LiveView: Cursor?] = [:]
     /// The size each watched terminal asked for, sent again on reconnect.
     private var sizes: [LiveView: TermSize] = [:]
+    /// The chats watched while no screen shows them, so again on reconnect.
+    private var background: Set<LiveView> = []
     private var connection: LiveConnection?
     /// The address `connection` is open at, and since when.
     private var connected: String?
@@ -125,11 +127,13 @@ public actor ComputerLink {
     }
 
     /// Watches `view`; for a chat, `since` is the cursor of the cached
-    /// transcript, so an unchanged chat costs no snapshot.
-    public func watch(_ view: LiveView, since: Cursor? = nil, size: TermSize? = nil) async {
+    /// transcript, so an unchanged chat costs no snapshot, and
+    /// `background` says no screen shows it (`LiveRequest.subscribe`).
+    public func watch(_ view: LiveView, since: Cursor? = nil, size: TermSize? = nil, background: Bool = false) async {
         watched[view] = .some(since)
         sizes[view] = size
-        try? await connection?.send(.subscribe(view, since: since, size: size))
+        if background { self.background.insert(view) } else { self.background.remove(view) }
+        try? await connection?.send(.subscribe(view, since: since, size: size, background: background))
     }
 
     /// Scrolls a watched terminal; dropped while the link is down, as a
@@ -142,6 +146,7 @@ public actor ComputerLink {
     public func unwatch(_ view: LiveView) async {
         guard watched.removeValue(forKey: view) != nil else { return }
         sizes[view] = nil
+        background.remove(view)
         try? await connection?.send(.unsubscribe(view))
     }
 
@@ -196,7 +201,7 @@ public actor ComputerLink {
                 reported = false
                 continuation.yield(.status(.online(origin: origin)))
                 for (view, since) in watched {
-                    try await opened.send(.subscribe(view, since: since, size: sizes[view]))
+                    try await opened.send(.subscribe(view, since: since, size: sizes[view], background: background.contains(view)))
                 }
                 let ending = try await follow(opened)
                 connection = nil
@@ -252,14 +257,14 @@ public actor ComputerLink {
                 if let held, let first = changes.first, !held.isFollowed(by: first.cursor) {
                     // A gap: what follows does not apply to what the phone
                     // holds. Ask again from where it is.
-                    try await opened.send(.subscribe(view, since: held))
+                    try await opened.send(.subscribe(view, since: held, background: background.contains(view)))
                     continue
                 }
                 watched[view] = .some(last.cursor)
             case let .reload(view):
                 if watched[view] != nil {
                     watched[view] = .some(nil)
-                    try await opened.send(.subscribe(view, since: nil, size: sizes[view]))
+                    try await opened.send(.subscribe(view, since: nil, size: sizes[view], background: background.contains(view)))
                 }
                 // Passed on as well, so the phone's log shows a view that
                 // keeps reloading.

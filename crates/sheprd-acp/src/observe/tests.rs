@@ -5,6 +5,8 @@ use crate::mirror::transcript::TranscriptAgent;
 use std::{fs, path::Path};
 
 mod codex_fallback;
+#[cfg(target_os = "macos")]
+mod darwin;
 mod errors;
 
 const SESSION: &str = "01234567-89ab-4cde-8123-456789abcdef";

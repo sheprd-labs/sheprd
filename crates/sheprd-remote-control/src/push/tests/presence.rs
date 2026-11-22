@@ -9,12 +9,14 @@ fn notification(pane: &str, body: &str) -> Notification {
     Notification {
         body: body.to_owned(),
         clear: false,
+        event: EventId::new(),
         kind: Kind::Question,
         pane: pane.to_owned(),
         permission: None,
         tag: format!("chat-{pane}"),
         title: "t".to_owned(),
         urgency: Urgency::High,
+        wizz: false,
     }
 }
 

@@ -38,6 +38,8 @@ struct NewWorkspaceSheet: View {
     @State private var worktree = false
     /// Proposed up front, as on the desktop, so Create needs no typing.
     @State private var branch = NewWorkspaceRequest.proposedBranch()
+    /// The workspace's name; empty, the computer names it.
+    @State private var title = ""
     @State private var agent = "claude"
     @State private var prompt = ""
     @State private var problem: String?
@@ -99,6 +101,7 @@ struct NewWorkspaceSheet: View {
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
                             .font(.body.monospaced())
                     }
+                    TextField("Title (optional)", text: $title)
                 }
                 Section("Agent") {
                     AgentGrid(agents: options?.agents ?? [], selection: $agent)
@@ -107,13 +110,14 @@ struct NewWorkspaceSheet: View {
                     }
                 }
                 Section {
-                    TextField("What should it do first? (optional)", text: $prompt, axis: .vertical).lineLimit(2...6)
+                    FirstPromptField(prompt: $prompt)
                 } header: {
                     Text("First prompt")
                 } footer: {
                     if let problem { Text(problem).foregroundStyle(.red) }
                 }
             }
+            .followsFirstPrompt(prompt)
             .navigationTitle("New Workspace")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -212,14 +216,17 @@ struct NewWorkspaceSheet: View {
 
     private func create() {
         guard let device, let folder else { return }
-        let title = options?.agents.first { $0.id == agent }?.name ?? "Chat"
+        let chatTitle = options?.agents.first { $0.id == agent }?.name ?? "Chat"
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let named = trimmed.isEmpty ? nil : trimmed
         let request = NewWorkspaceRequest(
             cwd: folder,
             branch: worktree ? branch.trimmingCharacters(in: .whitespaces) : "",
             agent: agent,
             prompt: prompt.trimmingCharacters(in: .whitespacesAndNewlines),
-            start: model.startChoice(for: title).start,
-            session: preset?.device == device && preset?.folder == folder ? session : nil
+            start: model.startChoice(for: chatTitle).start,
+            session: preset?.device == device && preset?.folder == folder ? session : nil,
+            title: named
         )
         creating = true
         Task {
@@ -230,7 +237,7 @@ struct NewWorkspaceSheet: View {
                 }
                 model.recentAgent = request.agent
                 dismiss()
-                model.opened(created, prompt: request.prompt, start: request.start, device: device, title: title)
+                model.opened(created, prompt: request.prompt, start: request.start, device: device, title: chatTitle)
             } catch {
                 problem = error.localizedDescription
             }
@@ -268,13 +275,14 @@ struct NewChatSheet: View {
                     }
                 }
                 Section {
-                    TextField("What should it do first? (optional)", text: $prompt, axis: .vertical).lineLimit(2...6)
+                    FirstPromptField(prompt: $prompt)
                 } header: {
                     Text("First prompt")
                 } footer: {
                     if let problem { Text(problem).foregroundStyle(.red) }
                 }
             }
+            .followsFirstPrompt(prompt)
             .navigationTitle("New Chat in \(label)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -350,7 +358,7 @@ struct AgentGrid: View {
             }
         }
         .padding(.vertical, 4)
-        .sensoryFeedback(.selection, trigger: selection)
+        .haptic(.selection, trigger: selection)
     }
 }
 
@@ -438,4 +446,32 @@ extension AppModel {
 
     /// Said when a chat may be in another mode than the one the person saw.
     static let startMissed = "The chat may not have the mode or auto-accept you picked. Check them in its Session sheet."
+}
+
+/// The first prompt of a new workspace or chat: the form's last row, which
+/// grows with what is typed.
+private struct FirstPromptField: View {
+    /// The row the form scrolls to as the field grows.
+    static let id = "first-prompt"
+
+    @Binding var prompt: String
+
+    var body: some View {
+        TextField("What should it do first? (optional)", text: $prompt, axis: .vertical)
+            .lineLimit(2...6)
+            .id(Self.id)
+    }
+}
+
+extension View {
+    /// Keeps the first prompt's row in view as it grows: a form does not
+    /// scroll a growing field out from under the keyboard by itself, so its
+    /// new lines were typed out of sight.
+    fileprivate func followsFirstPrompt(_ prompt: String) -> some View {
+        ScrollViewReader { proxy in
+            onChange(of: prompt) {
+                proxy.scrollTo(FirstPromptField.id, anchor: .bottom)
+            }
+        }
+    }
 }

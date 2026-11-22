@@ -19,8 +19,18 @@ pub struct ExecCommand {
 }
 
 pub(super) fn parse(args: &mut Args) -> Result<ExecCommand, CliError> {
+    parse_for(args, "cloud exec", "ID")
+}
+
+/// `COMMAND TARGET [--timeout S] [--cwd DIR] -- COMMAND...`, where `target`
+/// names what `TARGET` is.
+pub(super) fn parse_for(
+    args: &mut Args,
+    command: &'static str,
+    target: &'static str,
+) -> Result<ExecCommand, CliError> {
     let missing = || CliError::MissingArgument {
-        command: "cloud exec",
+        command,
         what: "-- COMMAND",
     };
     let command = args
@@ -37,7 +47,7 @@ pub(super) fn parse(args: &mut Args) -> Result<ExecCommand, CliError> {
             .number("--timeout", 1..=MAX_WAIT)?
             .unwrap_or(DEFAULT_TIMEOUT),
         cwd: args.text_option("--cwd")?,
-        device: args.required_text("ID")?,
+        device: args.required_text(target)?,
         command,
     })
 }

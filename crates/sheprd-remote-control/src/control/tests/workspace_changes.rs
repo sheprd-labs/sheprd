@@ -18,7 +18,10 @@ fn ask(op: Op) -> Ask {
 fn a_workspace_change_names_its_workspace_within_bounds() {
     for op in [
         |workspace: String| Op::CloseWorkspace { workspace },
-        |workspace: String| Op::RemoveWorktree { workspace },
+        |workspace: String| Op::RemoveWorktree {
+            workspace,
+            discard: false,
+        },
     ] {
         assert!(ask(op("space-2".into())).valid());
         assert!(!ask(op(String::new())).valid());
@@ -38,11 +41,35 @@ fn workspace_changes_read_on_the_wire_as_named() {
     );
     let wire = serde_json::to_value(Op::RemoveWorktree {
         workspace: "space-2".into(),
+        discard: false,
     })
     .unwrap();
     assert_eq!(
         wire,
         serde_json::json!({"remove_worktree": {"workspace": "space-2"}})
+    );
+}
+
+#[test]
+fn a_deletion_discards_changes_only_when_asked_and_an_older_ask_keeps_them() {
+    let wire = serde_json::to_value(Op::RemoveWorktree {
+        workspace: "space-2".into(),
+        discard: true,
+    })
+    .unwrap();
+    assert_eq!(
+        wire,
+        serde_json::json!({"remove_worktree": {"workspace": "space-2", "discard": true}})
+    );
+    let older: Op =
+        serde_json::from_value(serde_json::json!({"remove_worktree": {"workspace": "space-2"}}))
+            .unwrap();
+    assert_eq!(
+        older,
+        Op::RemoveWorktree {
+            workspace: "space-2".into(),
+            discard: false,
+        }
     );
 }
 

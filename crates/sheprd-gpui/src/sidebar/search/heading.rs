@@ -169,6 +169,44 @@ impl SheprdWindow {
                         ),
                 )
             });
+        let (foreground, surface) = (theme.foreground, theme.surface);
+        // Merged worktrees on the selected device: a broom that removes them
+        // all after one confirmation, beside the closed heading.
+        let sweep = (heading == Heading::Spaces && !open && !self.merged_worktrees().is_empty())
+            .then(|| {
+                div()
+                    .id("sidebar-merged-sweep")
+                    .debug_selector(|| "sidebar-merged-sweep".into())
+                    .role(Role::Button)
+                    .aria_label(fl!("merged-sweep-button"))
+                    .tooltip(move |_, cx| {
+                        cx.new(|_| crate::menu::SettingsHint {
+                            text: fl!("merged-sweep-button").into(),
+                            foreground,
+                            surface,
+                        })
+                        .into()
+                    })
+                    .flex_none()
+                    .size(px(clear))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(corners::SMALL))
+                    .cursor_pointer()
+                    .hover(|style| style.bg(rgb(theme.active)))
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        cx.stop_propagation();
+                        this.open_merged_sweep(window, cx);
+                    }))
+                    .child(
+                        svg()
+                            .path("icons/sparkles.svg")
+                            .size(px(icon))
+                            .text_color(rgb(theme.muted)),
+                    )
+            });
         Some(
             div()
                 .debug_selector(move || format!("header-{}", heading.key()))
@@ -177,7 +215,9 @@ impl SheprdWindow {
                 .px(px(look.inset()))
                 .flex()
                 .items_center()
-                .child(look.field_frame(field, open, theme)),
+                .gap(px(look.density.gap()))
+                .child(look.field_frame(field, open, theme))
+                .children(sweep),
         )
     }
 

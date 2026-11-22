@@ -22,6 +22,28 @@ pub(crate) const ENDPOINT: &str = "herdr-core";
 /// Untrusted titles are cut here, as a Herdr 1 row's are.
 const TITLE_LIMIT: usize = 200;
 
+/// The key the user's marks remember a herdr-core agent by: its folder, or
+/// its terminal without one, and its name. None for a terminal no agent
+/// runs in. The Dock badge finds an agent's row by it.
+#[cfg(any(target_os = "macos", windows, test))]
+pub(crate) fn core_agent_key(info: &sheprd_backend::TerminalInfo) -> Option<Key> {
+    let agent = sheprd_core_client::agent_name(info)?;
+    Some(key_named(info, agent))
+}
+
+/// The key of a herdr-core agent already named.
+fn key_named(info: &sheprd_backend::TerminalInfo, agent: String) -> Key {
+    let checkout = info
+        .cwd
+        .as_deref()
+        .map_or_else(|| info.id.to_string(), |cwd| cwd.display().to_string());
+    Key::Agent {
+        endpoint: ENDPOINT.to_owned(),
+        checkout,
+        agent,
+    }
+}
+
 impl SheprdWindow {
     /// The endpoint and label of this computer, which the core runs on.
     fn core_overview_host(&self) -> (String, String) {
@@ -106,8 +128,6 @@ impl SheprdWindow {
                     .and_then(|cwd| cwd.file_name())
                     .map(|name| name.to_string_lossy().into_owned())
                     .unwrap_or_default();
-                let checkout =
-                    folder.map_or_else(|| info.id.to_string(), |cwd| cwd.display().to_string());
                 let title = info
                     .title
                     .as_deref()
@@ -116,11 +136,7 @@ impl SheprdWindow {
                     .filter(|title| !title.is_empty() && *title != name)
                     .unwrap_or_else(|| name.clone());
                 Some(Row {
-                    key: Key::Agent {
-                        endpoint: ENDPOINT.to_owned(),
-                        checkout,
-                        agent: name.clone(),
-                    },
+                    key: key_named(info, name.clone()),
                     state: State::of(info.agent),
                     title,
                     detail: name.clone(),

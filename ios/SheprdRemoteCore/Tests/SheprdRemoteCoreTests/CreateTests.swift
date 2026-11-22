@@ -32,6 +32,9 @@ import Testing
         let inSession = try JSONEncoder().encode(NewWorkspaceRequest(cwd: "/a", agent: "codex", session: "pilots"))
         let named = try #require(JSONSerialization.jsonObject(with: inSession) as? [String: String])
         #expect(named["session"] == "pilots")
+        let titled = try JSONEncoder().encode(NewWorkspaceRequest(cwd: "/a", branch: "fix", agent: "codex", title: "Review"))
+        let withTitle = try #require(JSONSerialization.jsonObject(with: titled) as? [String: String])
+        #expect(withTitle["title"] == "Review")
     }
 
     /// The values `generated_branches_are_namespaced_and_reproducible`

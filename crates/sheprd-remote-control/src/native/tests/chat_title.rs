@@ -17,6 +17,7 @@ fn title(named: bool, first_prompt: Option<&str>) -> String {
         checkouts: &Default::default(),
         recognized: &Default::default(),
         computer: "Studio",
+        favorites: &Default::default(),
         fingerprint: "FP",
         layout: &layout,
         load: None,
@@ -25,6 +26,7 @@ fn title(named: bool, first_prompt: Option<&str>) -> String {
         shortcuts_ms: 0,
         tags: Default::default(),
         version: "20261115.1",
+        unread: &Default::default(),
         waiting: 0,
     });
     home.workspaces[0].chats[0].title.clone()

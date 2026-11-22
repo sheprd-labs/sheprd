@@ -13,15 +13,20 @@ pub(crate) enum RailSection {
     Monitors,
     Plan,
     Changed,
+    PullRequests,
 }
 
+/// How many sections there are, for the folds kept per section.
+const SECTIONS: usize = RailSection::ALL.len();
+
 impl RailSection {
-    const ALL: [Self; 5] = [
+    const ALL: &[Self] = &[
         Self::Subagents,
         Self::Shells,
         Self::Monitors,
         Self::Plan,
         Self::Changed,
+        Self::PullRequests,
     ];
 
     pub(crate) const fn index(self) -> usize {
@@ -32,7 +37,7 @@ impl RailSection {
     fn opens_by_itself(self, busy: bool) -> bool {
         match self {
             Self::Subagents | Self::Shells | Self::Monitors => true,
-            Self::Plan | Self::Changed => !busy,
+            Self::Plan | Self::Changed | Self::PullRequests => !busy,
         }
     }
 }
@@ -40,14 +45,14 @@ impl RailSection {
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct RailFolds {
     /// Each section nobody clicked, moving as the work starts and stops.
-    auto: [Toggle; 5],
+    auto: [Toggle; SECTIONS],
     /// Whether anything ran when [`Self::follow`] last looked; `None`
     /// before it first did.
     busy: Option<bool>,
     /// Whether a section lists what ended; it starts folded away.
-    ended: [Toggle; 5],
+    ended: [Toggle; SECTIONS],
     /// Each section the user opened or closed.
-    sections: [Option<Toggle>; 5],
+    sections: [Option<Toggle>; SECTIONS],
 }
 
 impl RailFolds {
@@ -74,7 +79,7 @@ impl RailFolds {
         }
         let first = self.busy.is_none();
         self.busy = Some(busy);
-        for section in RailSection::ALL {
+        for &section in RailSection::ALL {
             self.auto[section.index()].set(section.opens_by_itself(busy), now, first);
         }
     }

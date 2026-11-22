@@ -1,6 +1,6 @@
 //! Core owns terminal records; the desktop owns tab and split membership.
 
-use super::pane_id;
+use super::{kept::Kept, pane_id};
 use crate::hub::{Layout, Terminal, TerminalPane, Workspace, layout::TerminalAgent};
 use sheprd_client::protocol::AgentStatus;
 use sheprd_core_client::wire::{StatusState, Terminal as Record};
@@ -17,12 +17,21 @@ pub(super) fn read(path: &Path) -> Option<SavedTabs> {
     SavedTabs::parse(&bytes).ok()
 }
 
+/// [`project_kept`] with `scope`'s saved tabs, as while the shared
+/// document stands aside.
+#[cfg(test)]
 pub(super) fn project(
     boot: &str,
     records: &[Record],
     saved: Option<&SavedTabs>,
     scope: Option<&str>,
 ) -> Layout {
+    project_kept(boot, records, Kept::file(saved, scope))
+}
+
+/// The core's terminals in the workspaces and tabs `kept` names, and the
+/// rest where their labels say or with the terminals nothing holds.
+pub(super) fn project_kept(boot: &str, records: &[Record], kept: Option<Kept<'_>>) -> Layout {
     let mut layout = Layout {
         boot: format!("core:{boot}"),
         connected: true,
@@ -31,28 +40,20 @@ pub(super) fn project(
     };
     // The app's own Herdr 2 workspaces come first, in the user's order,
     // with their names and folders, even before they hold a tab.
-    for kept in saved
-        .zip(scope)
-        .into_iter()
-        .flat_map(|(saved, scope)| saved.workspaces(scope))
-    {
+    for workspace in kept.into_iter().flat_map(Kept::workspaces) {
         layout.workspaces.push(Workspace {
             branch: None,
             chats: Vec::new(),
-            cwd: kept.cwd.clone(),
-            id: kept.id.clone(),
-            label: kept.label.clone(),
+            cwd: workspace.cwd.to_owned(),
+            id: workspace.id.to_owned(),
+            label: workspace.label.to_owned(),
             session: None,
             terminals: Vec::new(),
             worktree: None,
         });
     }
     let mut assigned = HashSet::new();
-    let tabs = saved
-        .zip(scope)
-        .into_iter()
-        .flat_map(|(saved, scope)| saved.core_tabs(scope));
-    for tab in tabs {
+    for tab in kept.into_iter().flat_map(Kept::tabs) {
         let members: Vec<&Record> = tab
             .panes
             .terminals()
@@ -60,31 +61,19 @@ pub(super) fn project(
             .filter_map(|id| records.iter().find(|record| record.address == id.as_str()))
             .filter(|record| assigned.insert(record.address.as_str()))
             .collect();
-        let named = saved
-            .zip(scope)
-            .and_then(|(saved, scope)| saved.tab_name(scope, tab.id));
         if let Some(mut terminal) = terminal(
             boot,
-            &format!("{}{}", super::saved::SAVED_TAB, tab.id),
-            named.unwrap_or(tab.title),
+            &tab.target,
+            tab.name.unwrap_or(tab.title),
             &members,
             urgency,
         ) {
-            terminal.zoomed = saved
-                .zip(scope)
-                .and_then(|(saved, scope)| saved.tab_zoomed(scope, tab.id))
-                .is_some();
-            if let Some(active) = saved
-                .zip(scope)
-                .and_then(|(saved, scope)| saved.tab_active(scope, tab.id))
-            {
+            terminal.zoomed = tab.zoomed;
+            if let Some(active) = tab.active {
                 focus(&mut terminal, boot, active);
             }
             // A pane the user named shows that name, a chat's included.
-            let names = saved
-                .zip(scope)
-                .and_then(|(saved, scope)| saved.pane_names(scope, tab.id));
-            if let Some(names) = names {
+            if let Some(names) = tab.names {
                 for (pane, record) in terminal.panes.iter_mut().zip(&members) {
                     if let Some(name) = names.get(&record.address) {
                         pane.label = Some(name.clone());
@@ -160,12 +149,11 @@ fn distinguish_unlisted(layout: &mut Layout) {
 
 /// Puts the workspaces the app keeps first, in the user's order, ahead of
 /// a document's spaces too; the others keep their order.
-pub(super) fn lead_kept(layout: &mut Layout, saved: Option<&SavedTabs>, scope: Option<&str>) {
-    let kept: Vec<&str> = saved
-        .zip(scope)
+pub(super) fn lead_kept(layout: &mut Layout, kept: Option<Kept<'_>>) {
+    let kept: Vec<String> = kept
         .into_iter()
-        .flat_map(|(saved, scope)| saved.workspaces(scope))
-        .map(|workspace| workspace.id.as_str())
+        .flat_map(Kept::workspaces)
+        .map(|workspace| workspace.id.to_owned())
         .collect();
     layout.workspaces.sort_by_key(|workspace| {
         kept.iter()

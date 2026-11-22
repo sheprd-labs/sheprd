@@ -7,17 +7,20 @@ fn draw(cx: &mut VisualTestContext) {
     cx.update(|window, cx| crate::sidebar::layout_tests::full_draw(window, cx).clear(cx));
 }
 
-/// System leads, then every language with messages; a configured tag
-/// without any stays listed, so the picker shows the setting as it is.
+/// System leads, then the selectable languages; an unavailable configured
+/// tag stays listed so the picker shows the setting as it is.
 #[test]
 fn the_choices_are_system_then_each_language() {
-    let languages: Vec<_> = crate::i18n::available()
-        .into_iter()
+    let languages: Vec<_> = crate::i18n::selectable()
+        .iter()
+        .cloned()
         .map(Language::Locale)
         .collect();
     let choices = pages::language_choices(&Language::System);
     assert_eq!(choices[0], Language::System);
     assert_eq!(choices[1..], languages);
+    let chinese = Language::Locale("zh-Hans".parse().unwrap());
+    assert!(!choices.contains(&chinese));
     let missing = Language::Locale("tlh".parse().unwrap());
     let choices = pages::language_choices(&missing);
     assert_eq!(choices.last(), Some(&missing));

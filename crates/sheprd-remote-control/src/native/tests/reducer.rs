@@ -119,6 +119,7 @@ fn entries() -> Vector {
                 EntryKind::User {
                     text: "Look at this\n\u{1f4ce} shot.png".into(),
                     files: 1,
+                    note: None,
                 },
             ),
         },
@@ -298,6 +299,7 @@ fn session() -> Vector {
         Change::Clients { count: 2 },
         Change::Session {
             session: Some(SessionInfo {
+                continued: None,
                 cwd: Some("/work".into()),
                 id: "s1".into(),
                 title: Some("Equalize".into()),

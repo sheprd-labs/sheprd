@@ -35,7 +35,7 @@ struct EdgeIndexStrip: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
         }
         .frame(width: Self.width)
-        .sensoryFeedback(.selection, trigger: touched) { _, new in new != nil }
+        .haptic(.selection, trigger: touched) { _, new in new != nil }
         // VoiceOver moves by the section headers instead, as with the
         // system index.
         .accessibilityHidden(true)

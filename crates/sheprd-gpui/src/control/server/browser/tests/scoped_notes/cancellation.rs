@@ -27,6 +27,7 @@ fn a_cancelled_waiter_cannot_consume_the_next_send(cx: &mut gpui::TestAppContext
         pane_id: "p1".into(),
         daemon_socket: Some("/session.sock".into()),
         wait_seconds: 600,
+        via: None,
     };
     let mut client = UnixStream::connect(server.path()).unwrap();
     writeln!(

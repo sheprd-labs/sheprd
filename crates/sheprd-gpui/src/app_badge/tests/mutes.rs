@@ -21,14 +21,7 @@ fn muted_agents_leave_the_badge_and_unmuting_counts_them_again(cx: &mut gpui::Te
             let daemon = Daemon::of(&view.endpoints[0]);
             let set = |scope, target: &str, muted, cx: &mut App| {
                 assert!(Mutes::update(cx, |mutes| {
-                    mutes.set(
-                        &daemon,
-                        &state,
-                        scope,
-                        target,
-                        muted,
-                        std::time::SystemTime::now(),
-                    )
+                    mutes.set(&daemon, &state, scope, target, muted, SystemTime::now())
                 }));
             };
             // The same snapshot: only the mutes changed.
@@ -84,7 +77,7 @@ fn a_mute_on_one_host_does_not_quiet_the_same_ids_on_another(cx: &mut gpui::Test
                     Scope::Workspace,
                     "w0",
                     true,
-                    std::time::SystemTime::now(),
+                    SystemTime::now(),
                 )
             });
             sync(id, &view.endpoints, cx);
@@ -109,7 +102,7 @@ fn unmuting_the_last_mute_read_at_launch_counts_its_agents_again(cx: &mut gpui::
             view.endpoints[0].live.snapshot = Some(state.clone());
             view.endpoints[0].live.status = ConnectionStatus::Connected;
             let daemon = Daemon::of(&view.endpoints[0]);
-            let now = std::time::SystemTime::now();
+            let now = SystemTime::now();
             Mutes::update(cx, |mutes| {
                 mutes.set(&daemon, &state, Scope::Workspace, "w1", true, now)
             });

@@ -9,6 +9,7 @@ mod en_xa;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod moves;
 mod mute;
+mod naming;
 // Plugin actions run through POSIX host scripts.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod plugins;

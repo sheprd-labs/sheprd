@@ -108,3 +108,21 @@ fn without_events_the_wait_ends_at_once() {
     wait(&mut None, Duration::from_secs(30));
     assert!(started.elapsed() < Duration::from_secs(10));
 }
+
+#[test]
+fn a_preview_read_opens_no_screen_even_when_every_one_is_in_use() {
+    let (addresses, records) = numbered(MAX_SCREENS + 1);
+    let (source, fake) = fake_with_doc(false, Value::Null, records);
+    source.poll().unwrap();
+    for address in &addresses[..MAX_SCREENS] {
+        read(&source, address).unwrap();
+    }
+    let last = &addresses[MAX_SCREENS];
+    assert_eq!(
+        source.screen_text(&id(last)).unwrap(),
+        format!("screen of {last}")
+    );
+    assert!(!lock(&source.state).screens.contains_key(last.as_str()));
+    drop(source);
+    fake.server.join().unwrap();
+}

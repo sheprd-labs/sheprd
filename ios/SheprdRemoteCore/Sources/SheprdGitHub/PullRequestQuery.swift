@@ -64,7 +64,7 @@ struct PullRequestQuery: Sendable, Equatable {
 
     static let fragment = """
     fragment PullRequestFields on PullRequest {
-      number title url state isDraft reviewDecision mergeable mergeStateStatus headRefName headRefOid
+      number title url state isDraft reviewDecision mergeable mergeStateStatus isInMergeQueue headRefName headRefOid
       author { login }
       headRepositoryOwner { login }
       commits(last: 1) { nodes { commit { statusCheckRollup {

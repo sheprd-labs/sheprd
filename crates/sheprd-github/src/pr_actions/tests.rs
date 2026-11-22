@@ -7,8 +7,8 @@ fn target() -> Target {
     Target::try_from(&fixture().unwrap()).unwrap()
 }
 
-fn token() -> Arc<SecretString> {
-    Arc::new("fixture-token".into())
+fn token() -> ServerToken {
+    ServerToken::github(Arc::new("fixture-token".into()))
 }
 
 fn tracked() -> Actions {
@@ -24,6 +24,13 @@ fn a_target_comes_only_from_an_open_pull_request_with_its_identity() {
         (target.owner.as_str(), target.repo.as_str(), target.number),
         ("example", "project", 8)
     );
+    // A pull request on an Enterprise Server is addressed on that server.
+    let mut pr = fixture().unwrap();
+    pr.url = "https://ghe.example.com:8443/example/project/pull/8".into();
+    assert_eq!(
+        Target::try_from(&pr).unwrap().server,
+        Server::Enterprise("ghe.example.com:8443".into())
+    );
     let mut pr = fixture().unwrap();
     pr.state = State::Merged;
     assert!(matches!(
@@ -33,7 +40,7 @@ fn a_target_comes_only_from_an_open_pull_request_with_its_identity() {
     for strip in [
         |pr: &mut PullRequest| pr.id.clear(),
         |pr: &mut PullRequest| pr.head_ref_oid.clear(),
-        |pr: &mut PullRequest| pr.url = "https://example.com/example/project/pull/8".into(),
+        |pr: &mut PullRequest| pr.url = "https://api.github.com/example/project/pull/8".into(),
         |pr: &mut PullRequest| pr.url = "https://github.com/example/project/pull/9".into(),
         |pr: &mut PullRequest| pr.url = "https://github.com/example/project/pull/8/x".into(),
     ] {
@@ -57,6 +64,7 @@ fn a_merge_sends_one_mutation_naming_the_seen_head_and_is_not_retried() {
             sent.push((context, query.to_owned(), variables));
             Err(crate::Error::Rejected("Head branch was modified".into()))
         },
+        |_| unreachable!("a merge is a mutation"),
     );
     assert!(
         matches!(result, Err(crate::Error::Rejected(reason)) if reason == "Head branch was modified")
@@ -111,6 +119,7 @@ fn a_posted_comment_is_a_success_even_when_its_link_is_unexpected() {
             );
             Ok(reply(&format!("{}#issuecomment-42", target.url)))
         },
+        |_| unreachable!("a comment is a mutation"),
     )
     .unwrap();
     assert_eq!(sends, 1);

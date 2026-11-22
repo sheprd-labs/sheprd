@@ -66,10 +66,23 @@ public enum EffectScene {
         case .lasers: lasers(t, length, w, h, &marks)
         case .love: love(t, length, w, h, &marks)
         case .spotlight: spotlight(t, length, w, h, target, &marks)
+        case .wizz: marks.append(.veil(alpha: 0.15 * envelope(t, length, 0.05, 0.4), hole: nil))
         case .zap: Zap.marks(t, length, w, h, letters, &marks)
         }
         return marks
     }
+
+    /// How far a wizz moves the chat `t` seconds in: a shake that dies away,
+    /// wider than it is tall, and still once it ends.
+    public static func wizzShake(at t: Double) -> CGSize {
+        let k = t / ScreenEffect.wizz.length
+        guard t >= 0, k < 1 else { return .zero }
+        let amplitude = wizzAmplitude * (1 - k)
+        return CGSize(width: sin(t * 2 * .pi * 14) * amplitude, height: sin(t * 2 * .pi * 9 + 1) * amplitude * 0.4)
+    }
+
+    /// The widest a wizz shakes, in points.
+    public static let wizzAmplitude = 12.0
 
     /// The letters of `text` that are not spaces: the targets zap lines up.
     public static func letters(in text: String) -> Int {
@@ -140,13 +153,26 @@ public enum EffectScene {
         }
     }
 
+    /// Fireworks' rockets, and how long one takes to climb the screen.
+    static let rockets: UInt32 = 9
+    static let rocketTime = 1.1
+
+    /// How far down the screen `rocket` bursts, as a fraction of its height.
+    static func rocketTop(_ rocket: UInt32) -> Double {
+        between(rocket, 2, 0.15, 0.45)
+    }
+
+    /// When each rocket bursts, for the sound and the taps that go with it.
+    static func fireworkBursts() -> [Double] {
+        (0..<rockets).map { Double($0) * 0.33 + rocketTime * (1 - rocketTop($0)) }
+    }
+
     private static func fireworks(_ t: Double, _ length: Double, _ w: Double, _ h: Double, _ marks: inout [Mark]) {
         marks.append(.veil(alpha: 0.55 * envelope(t, length, 0.4, 0.5), hole: nil))
-        let rocketTime = 1.1
-        for rocket in UInt32(0)..<9 {
+        for rocket in UInt32(0)..<rockets {
             let launch = Double(rocket) * 0.33
             let x = w * between(rocket, 1, 0.2, 0.8)
-            let top = h * between(rocket, 2, 0.15, 0.45)
+            let top = h * rocketTop(rocket)
             let flight = rocketTime * (h - top) / h
             let since = t - launch
             if since < 0 { break }

@@ -142,6 +142,7 @@ orchestrator-standing-behind = behind
 orchestrator-standing-closed = closed
 orchestrator-standing-conflicts = conflicts
 orchestrator-standing-merged = merged
+orchestrator-standing-queued = queued
 orchestrator-standing-ready = ready
 orchestrator-standing-waiting = waiting
 orchestrator-review-yours = your review

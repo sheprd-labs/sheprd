@@ -1,14 +1,15 @@
 //! `tab`, `code`, `devices`, `orchestrator`, and `review`.
 mod items;
+mod machine_agent;
 
 use super::{Context, Output, unexpected};
 use crate::{
-    cli::control::{CodeCommand, FileAt, OrchestratorCommand, TabCommand},
+    cli::control::{CodeCommand, FileAt, MachineCommand, OrchestratorCommand, TabCommand},
     control::{
         ErrorCode,
         protocol::{
             Request, Response,
-            tabs::{Reply, TabInfo, TabOp},
+            tabs::{MachineImageInfo, MachineInfo, Reply, TabInfo, TabOp},
         },
     },
 };
@@ -145,6 +146,132 @@ pub(super) fn code(command: CodeCommand, context: &Context) -> crate::Result<Out
 pub(super) fn devices(context: &Context) -> crate::Result<Output> {
     let response = context.call(Request::Tab, TabOp::Devices)?;
     opened("the Devices overview", response)
+}
+
+pub(super) fn machine(command: MachineCommand, context: &Context) -> crate::Result<Output> {
+    match command {
+        MachineCommand::Open { name } => {
+            let response = context.call(Request::Tab, TabOp::Machine { name })?;
+            opened("the machine", response)
+        }
+        MachineCommand::Setup { name } => {
+            let response = context.call(Request::Tab, TabOp::MachineSetup { name })?;
+            opened("the machine and its setup guide", response)
+        }
+        MachineCommand::List => machines(context.call(Request::Tab, TabOp::MachineList)?),
+        MachineCommand::Set {
+            name,
+            cpus,
+            memory_gib,
+            display,
+        } => context.act(
+            Request::Tab,
+            TabOp::MachineSet {
+                name,
+                cpus,
+                memory_gib,
+                display,
+            },
+        ),
+        MachineCommand::Suspend { name } => {
+            context.act(Request::Tab, TabOp::MachineSuspend { name })
+        }
+        MachineCommand::Delete { name } => context.act(Request::Tab, TabOp::MachineDelete { name }),
+        MachineCommand::New { name, image } => {
+            context.act(Request::Tab, TabOp::MachineNew { name, image })
+        }
+        MachineCommand::ImageList => {
+            machine_images(context.call(Request::Tab, TabOp::MachineImageList)?)
+        }
+        MachineCommand::ImageSave { machine, image } => {
+            context.act(Request::Tab, TabOp::MachineImageSave { machine, image })
+        }
+        MachineCommand::ImageDelete { name } => {
+            context.act(Request::Tab, TabOp::MachineImageDelete { name })
+        }
+        MachineCommand::Agent { name } => machine_agent::agent(name, context),
+        MachineCommand::Exec(command) => machine_agent::exec(command, context),
+        MachineCommand::Screenshot { name, path } => {
+            machine_agent::screenshot(name, &path, context)
+        }
+        MachineCommand::Click {
+            name,
+            x,
+            y,
+            button,
+            count,
+        } => context.act(
+            Request::Tab,
+            TabOp::MachineClick {
+                name,
+                x,
+                y,
+                button,
+                count,
+            },
+        ),
+        MachineCommand::Type { name, text } => {
+            context.act(Request::Tab, TabOp::MachineType { name, text })
+        }
+        MachineCommand::Key {
+            name,
+            key,
+            modifiers,
+        } => context.act(
+            Request::Tab,
+            TabOp::MachineKey {
+                name,
+                key,
+                modifiers,
+            },
+        ),
+    }
+}
+
+fn machines(response: Response) -> crate::Result<Output> {
+    let Response::Tab {
+        reply: Reply::Machines { machines },
+    } = response
+    else {
+        return Err(unexpected(response));
+    };
+    let json = serde_json::json!({ "machines": machines });
+    if machines.is_empty() {
+        return Ok(Output::data("No virtual Macs", &json)?.nothing());
+    }
+    let lines: Vec<String> = machines.iter().map(machine_line).collect();
+    Output::data(lines.join("\n"), &json)
+}
+
+fn machine_images(response: Response) -> crate::Result<Output> {
+    let Response::Tab {
+        reply: Reply::MachineImages { images },
+    } = response
+    else {
+        return Err(unexpected(response));
+    };
+    let json = serde_json::json!({ "images": images });
+    if images.is_empty() {
+        return Ok(Output::data("No images", &json)?.nothing());
+    }
+    let lines: Vec<String> = images.iter().map(image_line).collect();
+    Output::data(lines.join("\n"), &json)
+}
+
+fn image_line(image: &MachineImageInfo) -> String {
+    format!("{}\t{:.1} GB", image.name, image.disk_bytes as f64 / 1e9) // i18n: data
+}
+
+fn machine_line(machine: &MachineInfo) -> String {
+    format!(
+        "{}\t{}\t{} CPUs\t{} GB\t{}\t{:.1} GB on disk",
+        machine.name,
+        machine.state.name(),
+        machine.cpus,
+        machine.memory_gib,
+        machine.display,
+        machine.disk_bytes as f64 / 1e9,
+    )
 }
 
 pub(super) fn px0(context: &Context) -> crate::Result<Output> {

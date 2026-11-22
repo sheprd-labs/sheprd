@@ -1,7 +1,8 @@
 //! A phone's rename or close of a workspace this app keeps for Herdr 2 on
 //! this computer, or deletion of its linked worktree, made as the
-//! workspace's menu makes them. A deletion is never forced: a checkout with
-//! changes stays, and the phone is told why.
+//! workspace's menu makes them. A checkout with changes stays, and the
+//! phone is told why, unless the person confirmed there that they are
+//! discarded, as the force delete dialog does.
 
 use crate::{SheprdWindow, browser::Scope, remote::supervisor::Supervisor};
 use gpui::{Context, Window};
@@ -65,13 +66,14 @@ impl SheprdWindow {
     }
 
     /// Deletes a kept workspace's linked checkout off the UI thread, then
-    /// closes the workspace, as its menu's Delete does without force. The
-    /// phone's answer follows the removal; `None` when this window keeps no
-    /// workspace by that id.
+    /// closes the workspace, as its menu's Delete does, forced only when
+    /// the phone confirmed `discard`. The phone's answer follows the
+    /// removal; `None` when this window keeps no workspace by that id.
     pub(super) fn phone_remove_worktree(
         &mut self,
         id: AskId,
         workspace: &str,
+        discard: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<Option<Answer>> {
@@ -94,7 +96,7 @@ impl SheprdWindow {
                 &target,
                 Some(identity),
                 &path,
-                false,
+                discard,
                 None,
                 &cancelled,
             )

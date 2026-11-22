@@ -9,6 +9,7 @@ fn caller(pane_id: Option<&str>) -> Caller {
         daemon_socket: None,
         window: None,
         terminal_id: None,
+        via: None,
     }
 }
 

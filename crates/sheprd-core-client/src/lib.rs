@@ -16,6 +16,7 @@ mod identity;
 mod method;
 pub mod reply;
 pub mod sessions;
+pub mod spaces;
 mod start;
 mod stream;
 pub mod wire;

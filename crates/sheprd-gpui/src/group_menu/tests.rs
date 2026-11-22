@@ -43,8 +43,16 @@ fn groups(view: &Entity<SheprdWindow>, cx: &mut VisualTestContext) -> Vec<GroupI
     })
 }
 
+/// The group's rows but its virtual Macs, which show on macOS alone and
+/// have tests of their own (`machines`).
 fn actions(view: &Entity<SheprdWindow>, cx: &mut VisualTestContext, group: GroupId) -> Vec<Action> {
-    cx.update(|_, cx| view.read(cx).group_actions(group, cx))
+    let actions = cx.update(|_, cx| view.read(cx).group_actions(group, cx));
+    #[cfg(target_os = "macos")]
+    let actions = actions
+        .into_iter()
+        .filter(|action| !matches!(action, Action::Machine(_) | Action::NewMachine))
+        .collect();
+    actions
 }
 
 fn run(view: &Entity<SheprdWindow>, cx: &mut VisualTestContext, group: GroupId, action: Action) {
@@ -259,6 +267,9 @@ mod chat;
 mod close_others;
 mod closed_elsewhere;
 mod en_xa;
+/// Virtual Macs, each by name, and a new one; machines run on macOS only.
+#[cfg(target_os = "macos")]
+mod machines;
 mod new_tabs;
 mod orchestrator;
 #[cfg(unix)]

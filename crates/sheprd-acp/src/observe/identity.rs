@@ -2,7 +2,7 @@
 //! Codex process can hold several child-agent rollouts: newest-file guessing
 //! would silently show the wrong conversation.
 
-use super::{Error, Result};
+use super::{Error, Result, process::Process};
 use crate::{
     cli::ObserveOptions,
     mirror::transcript::{Source, TranscriptAgent, codex_session},
@@ -16,16 +16,13 @@ use std::{
 };
 
 const HEADER: u64 = 512 * 1024;
-const MAX_FDS: usize = 2048;
 const MAX_PROJECTS: usize = 512;
 const MAX_DAY_ENTRIES: usize = 4096;
-/// Bytes of `/proc/PID/stat` read; the start time is its 22nd field.
-const MAX_STAT: u64 = 8192;
 
 pub(super) struct Identity {
     pub(super) path: PathBuf,
     pub(super) cwd: Option<String>,
-    process: PathBuf,
+    process: Process,
     started: u64,
     file: File,
     agent: TranscriptAgent,
@@ -34,35 +31,40 @@ pub(super) struct Identity {
 
 impl Identity {
     pub(super) fn open(options: &ObserveOptions) -> Result<Self> {
-        if !cfg!(target_os = "linux") {
-            return Err(Error::Unsupported);
-        }
-        Self::at(options, Path::new("/proc"), std::env::home_dir().as_deref())
+        Self::of(
+            options,
+            Process::local(options.pid)?,
+            std::env::home_dir().as_deref(),
+        )
     }
 
+    /// [`Self::open`] against a `/proc`-style directory, for tests.
+    #[cfg(test)]
     pub(super) fn at(
         options: &ObserveOptions,
         proc_root: &Path,
         home: Option<&Path>,
     ) -> Result<Self> {
-        let process = proc_root.join(options.pid.to_string());
-        if start_ticks(&process)? != options.started {
+        let process = Process::Proc(proc_root.join(options.pid.to_string()));
+        Self::of(options, process, home)
+    }
+
+    pub(super) fn of(
+        options: &ObserveOptions,
+        process: Process,
+        home: Option<&Path>,
+    ) -> Result<Self> {
+        if process.started()? != options.started {
             return Err(Error::ProcessChanged);
         }
-        let cwd = fs::read_link(process.join("cwd")).ok();
+        let cwd = process.cwd();
         // A path the process opened twice, or that a search finds again, is
         // still one candidate.
-        let mut candidates = BTreeSet::new();
-        if let Ok(entries) = fs::read_dir(process.join("fd")) {
-            for entry in entries.take(MAX_FDS).flatten() {
-                let Ok(path) = fs::read_link(entry.path()) else {
-                    continue;
-                };
-                if candidate_name(&path, options.agent, &options.session) {
-                    candidates.insert(path);
-                }
-            }
-        }
+        let mut candidates: BTreeSet<_> = process
+            .open_files()
+            .into_iter()
+            .filter(|path| candidate_name(path, options.agent, &options.session))
+            .collect();
         // Claude opens its log only while writing. Search exact UUID names
         // within its private projects directory; never recurse over histories.
         if options.agent == TranscriptAgent::Claude
@@ -120,7 +122,7 @@ impl Identity {
     }
 
     pub(super) fn process_matches(&self) -> Result<bool> {
-        match start_ticks(&self.process) {
+        match self.process.started() {
             Ok(ticks) => Ok(ticks == self.started),
             Err(Error::Io(error)) if error.kind() == io::ErrorKind::NotFound => Ok(false),
             Err(error) => Err(error),
@@ -139,26 +141,15 @@ impl Identity {
 /// Read only the known config-directory override from the verified process.
 /// Other environment variables never leave this bounded buffer or get logged.
 fn config_directory(
-    process: &Path,
+    process: &Process,
     home: Option<&Path>,
     agent: TranscriptAgent,
 ) -> Result<Option<PathBuf>> {
-    const MAX_ENVIRONMENT: u64 = 128 * 1024;
     let (variable, default): (&[u8], &str) = match agent {
         TranscriptAgent::Claude => (b"CLAUDE_CONFIG_DIR=", ".claude"),
         TranscriptAgent::Codex => (b"CODEX_HOME=", ".codex"),
     };
-    let mut bytes = Vec::new();
-    match File::open(process.join("environ")) {
-        Ok(file) => {
-            file.take(MAX_ENVIRONMENT + 1).read_to_end(&mut bytes)?;
-            if bytes.len() > MAX_ENVIRONMENT as usize {
-                return Err(Error::EnvironmentTooLarge);
-            }
-        }
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-        Err(error) => return Err(error.into()),
-    }
+    let bytes = process.environment()?;
     let custom = bytes
         .split(|byte| *byte == 0)
         .find_map(|entry| entry.strip_prefix(variable))
@@ -171,13 +162,16 @@ fn config_directory(
     let path = if path.is_absolute() {
         path
     } else {
-        fs::read_link(process.join("cwd"))?.join(path)
+        process
+            .cwd()
+            .ok_or_else(|| io::Error::from(io::ErrorKind::NotFound))?
+            .join(path)
     };
     Ok(Some(path))
 }
 
 fn codex_rollouts(
-    process: &Path,
+    process: &Process,
     home: Option<&Path>,
     options: &ObserveOptions,
 ) -> Result<Vec<PathBuf>> {
@@ -256,20 +250,6 @@ fn rollouts_around(base: &Path, date: chrono::NaiveDate, session: &str) -> Resul
         }
     }
     Ok(candidates)
-}
-
-fn start_ticks(process: &Path) -> Result<u64> {
-    let mut stat = String::new();
-    File::open(process.join("stat"))?
-        .take(MAX_STAT)
-        .read_to_string(&mut stat)?;
-    // comm may contain spaces and parentheses; fields resume after its last ')'.
-    let rest = stat.rsplit_once(')').ok_or(Error::InvalidStat)?.1;
-    rest.split_whitespace()
-        .nth(19)
-        .ok_or(Error::MissingStartTime)?
-        .parse()
-        .map_err(Error::InvalidStartTime)
 }
 
 fn candidate_name(path: &Path, agent: TranscriptAgent, session: &str) -> bool {

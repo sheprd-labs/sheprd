@@ -115,6 +115,12 @@ agent and writes no Herdr lifecycle metadata. The GUI retains the original
 terminal editor and approval interface directly below the rich conversation.
 No separate conversation, prompt injection or terminal/view round trip is needed.
 
+The remote control daemon runs the same observer for the iPhone app, on Linux
+and macOS, when a phone opens a terminal Claude agent's conversation. On macOS
+`START_TICKS` is the process's birth in microseconds since the epoch
+(`sheprd_client::herdr::processes::local_identity`), and the config directory
+is always the default, as macOS shows no other process's environment.
+
 The manual, read-only historical mirror remains available separately:
 
 `mirror` watches one existing Codex rollout or Claude Code JSONL transcript.

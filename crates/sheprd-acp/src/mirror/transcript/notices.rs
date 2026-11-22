@@ -65,7 +65,7 @@ fn notice(text: String, content: Option<&str>, answers: Vec<QuestionAnswer>) -> 
     }
 }
 
-fn details(content: &str) -> String {
+pub(super) fn details(content: &str) -> String {
     if content.len() > TEXT {
         format!("{}{CUT}", limited(content, TEXT - CUT.len()))
     } else {
@@ -92,7 +92,7 @@ fn task_summary(content: &str) -> Option<&str> {
     (!summary.contains(['<', '>'])).then_some(summary)
 }
 
-fn compact(text: &str) -> String {
+pub(super) fn compact(text: &str) -> String {
     let mut summary = text.split_whitespace().collect::<Vec<_>>().join(" ");
     summary.retain(|ch| !ch.is_control());
     if summary.len() > SUMMARY {

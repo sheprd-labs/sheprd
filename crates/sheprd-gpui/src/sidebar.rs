@@ -8,6 +8,7 @@ mod agents;
 mod animated;
 mod cell;
 mod device_drag;
+mod front_watch;
 mod host_row;
 pub(crate) mod hosted;
 mod hover;
@@ -54,6 +55,7 @@ pub(crate) use {
     workspaces::{label_of, workspace_entries, workspace_label},
 };
 
+pub(crate) use front_watch::FrontWatch;
 pub(crate) use layout::SidebarMetrics;
 pub(crate) use order::step as sidebar_step;
 

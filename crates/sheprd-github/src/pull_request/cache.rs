@@ -530,6 +530,20 @@ impl Cache {
     /// Pure cache read of exactly `input`'s pull request, as `peek` is for a
     /// row named by daemon metadata. A local space without that metadata is
     /// looked up by its directory, which only its own input matches.
+    /// The pull request at `url` that any window's lookup found, whichever
+    /// checkout and account asked: what a pull request known only by its
+    /// address, such as one an agent worked on, can show of itself.
+    pub fn by_url(&self, url: &str) -> Option<Ref<'_, PullRequest>> {
+        Ref::filter_map(self.store.borrow(), |store| {
+            store
+                .entries
+                .iter()
+                .filter_map(|entry| entry.value.as_ref())
+                .find(|pr| pr.url.eq_ignore_ascii_case(url))
+        })
+        .ok()
+    }
+
     pub fn peek_input(&self, view: &View, input: &Input) -> Option<Ref<'_, PullRequest>> {
         let store = self.store.try_borrow().ok()?;
         Ref::filter_map(store, |store| {

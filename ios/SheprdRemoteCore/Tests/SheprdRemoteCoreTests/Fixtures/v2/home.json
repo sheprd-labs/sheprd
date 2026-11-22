@@ -38,6 +38,8 @@
             "title": "Equalize splits",
             "agent": "Claude",
             "status": "working",
+            "favorite": true,
+            "unread": true,
             "summary": {
               "connected": true,
               "status": {
@@ -96,9 +98,13 @@
             "agent": {
               "name": "claude",
               "status": "done",
+              "favorite": true,
+              "unread": true,
               "pane": "p2",
               "title": "Fix the build",
-              "changed_ms": 1770000000000
+              "changed_ms": 1770000000000,
+              "preview": "Fixed the build.\nPushed it.",
+              "transcript": true
             },
             "convert": {
               "agent": "claude",
@@ -128,6 +134,7 @@
         },
         "session": "default",
         "unopened_commits": 3,
+        "uncommitted": true,
         "chats": [],
         "terminals": []
       }

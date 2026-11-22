@@ -20,6 +20,7 @@ fn pending_deletion(
         workspace: "w4".into(),
         pending: Some("remove".into()),
         force: false,
+        started: std::time::Instant::now(),
     });
     cx.notify();
 }
@@ -41,7 +42,11 @@ fn dirty_removal_offers_force_in_the_same_dialog(cx: &mut gpui::TestAppContext) 
         })
     });
     cx.run_until_parked();
-    assert!(cx.debug_bounds("dialog-waiting").is_some());
+    // A removal shows a sliding bar and the time waited, not a creation's
+    // waiting line.
+    assert!(cx.debug_bounds("dialog-removing-progress").is_some());
+    assert!(cx.debug_bounds("dialog-removing-elapsed").is_some());
+    assert!(cx.debug_bounds("dialog-waiting").is_none());
 
     cx.update(|window, cx| view.update(cx, |view, cx| {
         view.live.dialog_response = Some(("remove".into(), Some(Ok(serde_json::json!({
@@ -60,7 +65,7 @@ fn dirty_removal_offers_force_in_the_same_dialog(cx: &mut gpui::TestAppContext) 
         assert!(view.menu.deletion.as_ref().unwrap().force);
     }));
     cx.run_until_parked();
-    assert!(cx.debug_bounds("dialog-waiting").is_none());
+    assert!(cx.debug_bounds("dialog-removing").is_none());
     assert!(cx.debug_bounds("dialog-error").is_some());
     assert!(cx.debug_bounds("dialog-submit").is_some());
 }

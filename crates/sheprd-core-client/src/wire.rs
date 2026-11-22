@@ -213,6 +213,12 @@ pub struct Sent {
     pub turn: u64,
 }
 
+/// What `terminal.read` answered: the screen as text.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Read {
+    pub text: String,
+}
+
 /// What `terminal.wait` saw: the program stopped working or ended, or the
 /// wait checked in.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

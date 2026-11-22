@@ -1,0 +1,290 @@
+{
+  "id": "themes",
+  "feature": "Hundreds of themes",
+  "title": {
+    "en": "Themes with live preview",
+    "fr": "Thèmes avec aperçu en direct",
+    "es": "Temas con vista previa en vivo",
+    "de": "Themes mit Live-Vorschau",
+    "pt-BR": "Temas com pré-visualização ao vivo",
+    "ja": "ライブプレビュー付きのテーマ",
+    "zh-CN": "实时预览的主题"
+  },
+  "setup": [
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "click",
+      1600,
+      700
+    ],
+    [
+      "key",
+      "ctrl+c"
+    ],
+    [
+      "key",
+      "cmd+shift+p"
+    ],
+    [
+      "wait",
+      0.6
+    ],
+    [
+      "type",
+      "themes"
+    ],
+    [
+      "wait",
+      0.6
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      0.8
+    ],
+    [
+      "type",
+      "default"
+    ],
+    [
+      "wait",
+      0.8
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      0.8
+    ],
+    [
+      "click",
+      1600,
+      700
+    ],
+    [
+      "type",
+      "clear; cd /System/Library; ls -G"
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      1.5
+    ]
+  ],
+  "segments": [
+    {
+      "say": {
+        "en": "Sheprd lets you change its whole look in seconds.",
+        "fr": "Sheprd change entièrement d'apparence en quelques secondes.",
+        "es": "Sheprd cambia todo su aspecto en segundos.",
+        "de": "Sheprd ändert sein ganzes Aussehen in Sekunden.",
+        "pt-BR": "O Sheprd muda todo o visual em segundos.",
+        "ja": "Sheprd の見た目は、数秒でまるごと変えられます。",
+        "zh-CN": "几秒钟就能改变 Sheprd 的整体外观。"
+      },
+      "actions": []
+    },
+    {
+      "say": {
+        "en": "Open the command palette with Command Shift P, and search for themes.",
+        "fr": "Ouvrez la palette de commandes avec Commande Majuscule P, puis cherchez « thèmes ».",
+        "es": "Abre la paleta de comandos con Comando Mayúsculas P y busca «temas».",
+        "de": "Öffnen Sie die Befehlspalette mit Befehl Umschalt P und suchen Sie nach Themes.",
+        "pt-BR": "Abra a paleta de comandos com Command Shift P e procure por temas.",
+        "ja": "Command Shift P でコマンドパレットを開き、テーマを検索します。",
+        "zh-CN": "按 Command Shift P 打开命令面板，搜索“主题”。"
+      },
+      "actions": [
+        [
+          "wait",
+          0.8
+        ],
+        [
+          "key",
+          "cmd+shift+p"
+        ],
+        [
+          "wait",
+          0.7
+        ],
+        [
+          "slowtype",
+          "themes",
+          0.05
+        ],
+        [
+          "wait",
+          0.5
+        ],
+        [
+          "key",
+          "return"
+        ]
+      ]
+    },
+    {
+      "say": {
+        "en": "Move through the list: every theme previews live, across the whole window.",
+        "fr": "Parcourez la liste : chaque thème s'applique en direct à toute la fenêtre.",
+        "es": "Recorre la lista: cada tema se previsualiza en vivo en toda la ventana.",
+        "de": "Gehen Sie die Liste durch: Jedes Theme erscheint sofort im ganzen Fenster.",
+        "pt-BR": "Percorra a lista: cada tema aparece ao vivo na janela inteira.",
+        "ja": "リストを移動すると、各テーマがウィンドウ全体にすぐ反映されます。",
+        "zh-CN": "在列表中移动，每个主题都会实时应用到整个窗口。"
+      },
+      "actions": [
+        [
+          "wait",
+          0.2
+        ],
+        [
+          "key",
+          "up"
+        ],
+        [
+          "wait",
+          0.25
+        ],
+        [
+          "key",
+          "up"
+        ],
+        [
+          "wait",
+          0.25
+        ],
+        [
+          "key",
+          "up"
+        ],
+        [
+          "wait",
+          1.3
+        ],
+        [
+          "key",
+          "up"
+        ],
+        [
+          "wait",
+          0.2
+        ],
+        [
+          "key",
+          "up"
+        ],
+        [
+          "wait",
+          0.2
+        ],
+        [
+          "key",
+          "up"
+        ],
+        [
+          "wait",
+          0.8
+        ]
+      ]
+    },
+    {
+      "say": {
+        "en": "Type to filter, then press Return to keep the one you like.",
+        "fr": "Tapez pour filtrer, puis appuyez sur Entrée pour garder celui qui vous plaît.",
+        "es": "Escribe para filtrar y pulsa Intro para quedarte con el que te guste.",
+        "de": "Tippen Sie zum Filtern und drücken Sie Return, um Ihr Lieblings-Theme zu behalten.",
+        "pt-BR": "Digite para filtrar e pressione Return para ficar com o que você gostou.",
+        "ja": "入力して絞り込み、Return キーで気に入ったテーマを保存します。",
+        "zh-CN": "输入文字进行筛选，按回车键保留你喜欢的主题。"
+      },
+      "actions": [
+        [
+          "wait",
+          0.4
+        ],
+        [
+          "slowtype",
+          "github l",
+          0.02
+        ],
+        [
+          "wait",
+          0.9
+        ],
+        [
+          "key",
+          "return"
+        ]
+      ]
+    },
+    {
+      "say": {
+        "en": "It's saved, and you can change it again anytime.",
+        "fr": "C'est enregistré, et vous pouvez en changer à tout moment.",
+        "es": "Queda guardado, y puedes cambiarlo cuando quieras.",
+        "de": "Es ist gespeichert, und Sie können es jederzeit wieder ändern.",
+        "pt-BR": "Fica salvo, e você pode mudar quando quiser.",
+        "ja": "設定は保存され、いつでも変更できます。",
+        "zh-CN": "设置会被保存，你随时都可以再次更改。"
+      },
+      "actions": []
+    }
+  ],
+  "teardown": [
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "key",
+      "cmd+shift+p"
+    ],
+    [
+      "wait",
+      0.6
+    ],
+    [
+      "type",
+      "themes"
+    ],
+    [
+      "wait",
+      0.6
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      0.8
+    ],
+    [
+      "type",
+      "default"
+    ],
+    [
+      "wait",
+      0.8
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      0.8
+    ]
+  ]
+}

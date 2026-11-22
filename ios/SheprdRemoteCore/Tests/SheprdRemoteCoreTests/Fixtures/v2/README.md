@@ -14,6 +14,7 @@ HERDR_UPDATE_FIXTURES=1 cargo test -p sheprd-remote-control --locked native::tes
 | --- | --- |
 | `home.json`, `chat_snapshot.json`, `chat_resumed.json`, `chat_changes.json`, `chat_connection.json`, `term_screen.json`, `reload.json`, `error.json`, `bye.json` | Live socket messages from the daemon |
 | `subscribe_home.json`, `subscribe_chat.json`, `subscribe_term.json`, `unsubscribe_chat.json` | Live socket messages from the phone |
+| `term_prompt.json`, `term_prompt_none.json` | `GET /api/term/{pane}/prompt`: a terminal agent's question read from its screen, and none |
 | `chat.json` | `GET /api/v2/chat/{pane}`: a `chat_snapshot` without its `type` |
 | `hosts.json`, `host_state.json` | `GET /api/v2/hosts` with one host in each state, and the bare state `POST /api/v2/hosts/{host}/pair` answers |
 | `reducer/*.json` | Reducer vectors |

@@ -66,6 +66,11 @@ final class Dictation {
             }
             guard mine == attempt else { return }
             let session = AVAudioSession.sharedInstance()
+            Feedback.shared.holdAudio(self)
+            // Effect sounds come back if dictation fails to start; once it
+            // runs, `finish` lets go.
+            var listening = false
+            defer { if !listening { Feedback.shared.releaseAudio(self) } }
             try session.setCategory(.record, mode: .measurement, options: .duckOthers)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             let (input, feeding) = AsyncStream.makeStream(of: AnalyzerInput.self)
@@ -96,6 +101,7 @@ final class Dictation {
             let feed = AudioFeed(format: format, into: feeding)
             try feed.start()
             self.feed = feed
+            listening = true
             phase = .listening
         } catch {
             guard mine == attempt else { return }
@@ -131,6 +137,7 @@ final class Dictation {
         settled += guess
         guess = ""
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        Feedback.shared.releaseAudio(self)
     }
 }
 

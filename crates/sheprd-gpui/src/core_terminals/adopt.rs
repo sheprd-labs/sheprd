@@ -5,7 +5,9 @@
 //! its own there, once, as if it had started it. A terminal some tab on
 //! this computer already holds is left where it is. Once in a tab, those
 //! labels are removed from the terminal, so a tab the user closes while
-//! the terminal runs on is not opened again after a restart.
+//! the terminal runs on is not opened again after a restart. A terminal a
+//! tab of the core's shared document holds is never adopted: that tab
+//! shows it, and a workspace adoption keeps is written to the document.
 
 use super::hosts::Host;
 use crate::{
@@ -37,8 +39,9 @@ const SAVE_CHECKS: u32 = 20;
 enum Workspace {
     /// A workspace that exists, by its id.
     Known(String),
-    /// A new one in this folder, as a phone's new workspace asks.
-    New(String),
+    /// A new one in this folder, as a phone's new workspace asks, named
+    /// as the phone asked, else for its folder.
+    New { cwd: String, title: Option<String> },
 }
 
 impl SheprdWindow {
@@ -74,13 +77,21 @@ impl SheprdWindow {
                 !held.contains(&info.id)
                     && !self.core_terminals.adopted.contains(&info.id)
                     && !retired.contains_key(&info.id)
+                    // A tab of the core's shared document holds it, whoever
+                    // put it there, and it shows here once that tab is read;
+                    // until the document is read, any tab may.
+                    && !super::spaces::Shared::may_hold(cx, &Host::Local, &info.id)
             })
             .filter_map(|info| {
                 // A phone's new workspace: kept in its folder, once a tab
                 // can open there.
                 if let Some(cwd) = sheprd_session::new_workspace(&info.labels) {
                     let scope = local.clone()?;
-                    return Some((info.id.clone(), scope, Workspace::New(cwd.to_owned())));
+                    let workspace = Workspace::New {
+                        cwd: cwd.to_owned(),
+                        title: sheprd_session::new_workspace_title(&info.labels).map(str::to_owned),
+                    };
+                    return Some((info.id.clone(), scope, workspace));
                 }
                 let labelled = sheprd_session::labelled_workspace(&info.labels)?;
                 let index = self.endpoint_of_session(labelled.session)?;
@@ -140,9 +151,9 @@ impl SheprdWindow {
         workspace: Workspace,
         cx: &mut Context<Self>,
     ) -> Option<String> {
-        let cwd = match workspace {
+        let (cwd, title) = match workspace {
             Workspace::Known(id) => return Some(id),
-            Workspace::New(cwd) => cwd,
+            Workspace::New { cwd, title } => (cwd, title),
         };
         // In `scope`, not the shown host's: the desktop may show another.
         let kept = cx
@@ -153,14 +164,26 @@ impl SheprdWindow {
                     && std::path::Path::new(&kept.cwd) == std::path::Path::new(&cwd)
             })
             .map(|kept| kept.id.clone());
-        if kept.is_some() {
-            return kept;
+        if let Some(id) = kept {
+            // A title the phone gave names the workspace it joins, as a
+            // rename there would.
+            if let Some(title) = title
+                && Store::update(cx, |store| store.rename_kept(scope, &id, &title))
+            {
+                self.refresh_core_session(cx);
+            }
+            return Some(id);
         }
-        let label = std::path::Path::new(&cwd)
-            .file_name()
-            .map_or_else(|| cwd.clone(), |name| name.to_string_lossy().into_owned());
-        // Named for its folder, not by the user.
-        let id = Store::update(cx, |store| store.keep_workspace(scope, &label, &cwd, false));
+        // Named as the phone asked, else for its folder.
+        let custom = title.is_some();
+        let label = title.unwrap_or_else(|| {
+            std::path::Path::new(&cwd)
+                .file_name()
+                .map_or_else(|| cwd.clone(), |name| name.to_string_lossy().into_owned())
+        });
+        let id = Store::update(cx, |store| {
+            store.keep_workspace(scope, &label, &cwd, custom)
+        });
         if id.is_some() {
             self.refresh_core_session(cx);
         }
@@ -251,6 +274,7 @@ pub(super) fn saved_holds(bytes: &[u8], scope: &str, terminal: &TerminalId) -> b
 pub(super) fn released_labels() -> std::collections::BTreeMap<&'static str, &'static str> {
     [
         sheprd_session::NEW_WORKSPACE_LABEL,
+        sheprd_session::NEW_WORKSPACE_TITLE_LABEL,
         sheprd_session::SESSION_LABEL,
         sheprd_session::WORKSPACE_LABEL,
     ]

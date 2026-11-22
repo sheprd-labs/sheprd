@@ -10,7 +10,7 @@ use super::{ApiError, Device, Shared, render, render::now_ms};
 use crate::hub::{ApiMethod, Layout};
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     response::Html,
 };
 use serde::Deserialize;
@@ -65,7 +65,7 @@ pub(crate) fn valid_key(key: &str) -> bool {
 }
 
 /// The terminal pane `pane` names in `layout`, or not found.
-fn known(layout: &Layout, pane: &str) -> Result<(), ApiError> {
+pub(super) fn known(layout: &Layout, pane: &str) -> Result<(), ApiError> {
     layout.terminal(pane).map(|_| ()).ok_or(ApiError::NotFound)
 }
 
@@ -237,15 +237,53 @@ pub(super) async fn upload(
 ) -> Result<Json<Value>, ApiError> {
     known(&state.hub.layout(), &pane)?;
     let id = crate::auth::random_id()?;
+    drop_stored(&state, &device, &pane, move |uploads, now| {
+        uploads.store(id, &bytes, now)
+    })
+    .await
+}
+
+#[derive(Deserialize)]
+pub(super) struct FileName {
+    name: String,
+}
+
+/// Any file dropped on a terminal, as [`upload`] drops a picture: stored
+/// under its name made safe, so the program reading it sees its kind.
+pub(super) async fn file(
+    State(state): State<Shared>,
+    device: Device,
+    Path(pane): Path<String>,
+    Query(query): Query<FileName>,
+    bytes: axum::body::Bytes,
+) -> Result<Json<Value>, ApiError> {
+    known(&state.hub.layout(), &pane)?;
+    let id = crate::auth::random_id()?;
+    drop_stored(&state, &device, &pane, move |uploads, now| {
+        uploads.store_file(id, &query.name, &bytes, now)
+    })
+    .await
+}
+
+/// Stores an upload off the async threads, then types its path into
+/// `pane` as a dropped file.
+async fn drop_stored(
+    state: &Shared,
+    device: &Device,
+    pane: &str,
+    store: impl FnOnce(&super::uploads::Uploads, u64) -> Result<String, super::uploads::Error>
+    + Send
+    + 'static,
+) -> Result<Json<Value>, ApiError> {
     let stored = state.clone();
     let path = tokio::task::spawn_blocking(move || {
         let now = now_ms();
-        let id = stored.uploads.store(id, &bytes, now)?;
+        let id = store(&stored.uploads, now)?;
         stored.uploads.path(&id, now)
     })
     .await
     .map_err(|_| ApiError::Invalid("the upload was interrupted"))??;
-    let text = match state.hub.wsl_path(&pane, &path).await? {
+    let text = match state.hub.wsl_path(pane, &path).await? {
         Some(path) => dropped_unix_path(&path),
         None => dropped_path(&path),
     };
@@ -256,7 +294,7 @@ pub(super) async fn upload(
             json!({"pane_id": pane, "text": text}),
         )
         .await?;
-    state.typed.typed_by(&pane, &device.0);
+    state.typed.typed_by(pane, &device.0);
     Ok(Json(json!({})))
 }
 
@@ -545,7 +583,7 @@ pub(super) async fn rename_workspace(
             name: name.to_owned(),
         };
         let keeper = crate::hub::Keeper::Saved {
-            tab: 0,
+            tab: crate::hub::TabRef::File(0),
             terminal: String::new(),
         };
         crate::native::changes::arrange(&state, keeper, op).await?;

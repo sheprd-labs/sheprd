@@ -10,6 +10,7 @@ fn home(layout: &Layout) -> Home {
         checkouts: &Default::default(),
         recognized: &Default::default(),
         computer: "Studio",
+        favorites: &Default::default(),
         fingerprint: "FP",
         layout,
         load: None,
@@ -18,6 +19,7 @@ fn home(layout: &Layout) -> Home {
         shortcuts_ms: 0,
         tags: Default::default(),
         version: "20261109.1",
+        unread: &Default::default(),
         waiting: 0,
     })
 }

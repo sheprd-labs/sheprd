@@ -20,6 +20,12 @@ pub const TOKEN: &str = "acp";
 /// on, so the client that starts it knows the endpoint before it runs.
 pub const ENDPOINT_ENV: &str = "HERDR_ACP_ENDPOINT";
 
+/// The environment variable a program gives the agent it runs: the
+/// `EndpointId` of the chat it is the agent of, so a command the agent runs,
+/// such as `sheprd chat pr add`, reaches that chat. Apart from
+/// [`ENDPOINT_ENV`], so a program the agent starts does not listen there.
+pub const AGENT_CHAT_ENV: &str = "SHEPRD_CHAT_ENDPOINT";
+
 /// A program's socket name: 32 lowercase hexadecimal digits.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct EndpointId(String);

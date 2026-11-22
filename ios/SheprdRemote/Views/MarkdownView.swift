@@ -122,7 +122,7 @@ struct CodeBlock: View {
                 }
                 .font(.caption)
                 .labelStyle(.titleAndIcon)
-                .sensoryFeedback(.success, trigger: copied) { _, now in now }
+                .haptic(.success, trigger: copied) { _, now in now }
             }
             .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 4)
             ScrollView(.horizontal, showsIndicators: false) {
