@@ -10,6 +10,8 @@ mod catalog_rows;
 mod host_context;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod hosts;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod sessions;
 
 /// The catalog Herdr's `plugin.action.list` and `plugin.list` answers make
 /// on a macOS host.
@@ -29,14 +31,23 @@ pub(crate) mod fake {
     pub(crate) use super::catalog;
     use super::{Bridge, Catalogs, Error, Result, bridge::Invocation, catalog::Catalog};
     use crate::{SheprdWindow, teleport::Host};
-    use std::{cell::RefCell, path::PathBuf, sync::atomic::AtomicBool};
+    use sheprd_client::ConnectTarget;
+    use std::{cell::RefCell, collections::HashMap, path::PathBuf, sync::atomic::AtomicBool};
 
     #[derive(Default)]
     struct State {
         /// The next list's answer; `None` fails the read.
         catalog: Option<Catalog>,
+        /// The list's answer for one host, by [`Host::identity`], which wins
+        /// over `catalog`: a host a test named answers with its own actions,
+        /// and any other host with `catalog`.
+        by_host: HashMap<String, Catalog>,
         fetches: usize,
+        /// The host of each list read so far.
+        fetched: Vec<String>,
         invocations: Vec<Invocation>,
+        /// The host of each action run so far.
+        invoked_on: Vec<String>,
         /// Herdr's refusal of the next actions, as `(code, message)`.
         refusal: Option<(String, String)>,
         /// Runs actions through the real bridge against a stand-in `herdr`
@@ -48,16 +59,24 @@ pub(crate) mod fake {
         static STATE: RefCell<State> = RefCell::default();
     }
 
-    fn fetch(_: &Host, _: &AtomicBool) -> Result<Catalog> {
+    fn fetch(host: &Host, _: &AtomicBool) -> Result<Catalog> {
         STATE.with_borrow_mut(|state| {
             state.fetches += 1;
-            state.catalog.clone().ok_or(Error::Unanswered)
+            let id = host.identity();
+            state.fetched.push(id.clone());
+            state
+                .by_host
+                .get(&id)
+                .or(state.catalog.as_ref())
+                .cloned()
+                .ok_or(Error::Unanswered)
         })
     }
 
     fn invoke(host: &Host, invocation: &Invocation, cancelled: &AtomicBool) -> Result<()> {
         let (home, refusal) = STATE.with_borrow_mut(|state| {
             state.invocations.push(invocation.clone());
+            state.invoked_on.push(host.identity());
             (state.script_home.clone(), state.refusal.clone())
         });
         if let Some(home) = home {
@@ -78,8 +97,7 @@ pub(crate) mod fake {
     /// and its plugin actions at the stand-in host, with a fresh state.
     pub(crate) fn install(view: &mut SheprdWindow) {
         STATE.with_borrow_mut(|state| *state = State::default());
-        view.endpoints[view.selected_endpoint].connection.target =
-            sheprd_client::ConnectTarget::Local;
+        view.endpoints[view.selected_endpoint].connection.target = ConnectTarget::Local;
         view.plugin_actions = Catalogs::with_bridge(Bridge { fetch, invoke });
     }
 
@@ -105,6 +123,30 @@ pub(crate) mod fake {
 
     pub(crate) fn answer(catalog: Catalog) {
         STATE.with_borrow_mut(|state| state.catalog = Some(catalog));
+    }
+
+    /// What `target`'s session answers to a list from now on, whichever
+    /// session the window is on. A session no test named answers as
+    /// [`answer`] says, or fails the read if none did.
+    pub(crate) fn answer_on(target: &ConnectTarget, catalog: Catalog) {
+        let host = host_of(target);
+        STATE.with_borrow_mut(|state| state.by_host.insert(host, catalog));
+    }
+
+    /// The host `target`'s session runs on, as [`take_fetched_hosts`] and
+    /// [`take_run_hosts`] name it.
+    pub(crate) fn host_of(target: &ConnectTarget) -> String {
+        crate::teleport::host_for(target).unwrap().identity()
+    }
+
+    /// The host of each list read so far, which a call clears.
+    pub(crate) fn take_fetched_hosts() -> Vec<String> {
+        STATE.with_borrow_mut(|state| std::mem::take(&mut state.fetched))
+    }
+
+    /// The host of each action run so far, which a call clears.
+    pub(crate) fn take_run_hosts() -> Vec<String> {
+        STATE.with_borrow_mut(|state| std::mem::take(&mut state.invoked_on))
     }
 
     /// Fails every list read from now on, as a host without Herdr does.

@@ -30,14 +30,17 @@ use gpui::{prelude::*, *};
 use sheprd_client::scrollback::SelectionReadParams;
 use std::{collections::HashMap, sync::atomic::AtomicBool};
 
-/// The last actions each endpoint's host offered, by endpoint id.
+/// The last actions each host offered, by [`crate::teleport::Host::identity`]:
+/// its route, session, and installation. An endpoint keeps its id when the
+/// user picks another session behind it, so the id alone would show one
+/// session's actions in another's menus.
 ///
 /// The default reaches no host: it reads no actions and runs none, so a
 /// window built without [`Catalogs::with_bridge`], as headless tests build
 /// theirs, never touches a real daemon.
 #[derive(Debug, Default)]
 pub(crate) struct Catalogs {
-    by_endpoint: HashMap<String, Entry>,
+    by_host: HashMap<String, Entry>,
     bridge: Option<Bridge>,
 }
 
@@ -68,43 +71,44 @@ impl Catalogs {
     /// Catalogs that ask hosts through `bridge`.
     pub(crate) fn with_bridge(bridge: Bridge) -> Self {
         Self {
-            by_endpoint: HashMap::new(),
+            by_host: HashMap::new(),
             bridge: Some(bridge),
         }
     }
 
-    fn rows(&self, endpoint: &str, scope: Scope) -> Vec<Row> {
-        self.by_endpoint
-            .get(endpoint)
+    fn rows(&self, host: &str, scope: Scope) -> Vec<Row> {
+        self.by_host
+            .get(host)
             .map(|entry| entry.catalog.rows(scope))
             .unwrap_or_default()
     }
 }
 
 impl SheprdWindow {
-    /// The rows a menu on the selected endpoint shows for `scope`, from its
-    /// host's last answer.
-    pub(crate) fn plugin_rows(&self, scope: Scope) -> Vec<Row> {
-        self.plugin_actions
-            .rows(&self.endpoints[self.selected_endpoint].id, scope)
+    /// The host the selected endpoint's session runs on.
+    fn plugin_host(&self) -> Result<crate::teleport::Host> {
+        bridge::host_for(&self.endpoints[self.selected_endpoint].connection.target)
     }
 
-    /// Reads the selected endpoint's actions again in the background. A
+    /// The rows a menu on the selected session shows for `scope`, from its
+    /// host's last answer. A host no script reaches has none.
+    pub(crate) fn plugin_rows(&self, scope: Scope) -> Vec<Row> {
+        self.plugin_host()
+            .map(|host| self.plugin_actions.rows(&host.identity(), scope))
+            .unwrap_or_default()
+    }
+
+    /// Reads the selected session's actions again in the background. A
     /// host no script reaches has none, so it is not asked.
     pub(crate) fn refresh_plugin_actions(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(Bridge { fetch, .. }) = self.plugin_actions.bridge else {
             return;
         };
-        let endpoint = &self.endpoints[self.selected_endpoint];
-        let Ok(host) = bridge::host_for(&endpoint.connection.target) else {
+        let Ok(host) = self.plugin_host() else {
             return;
         };
-        let id = endpoint.id.clone();
-        let entry = self
-            .plugin_actions
-            .by_endpoint
-            .entry(id.clone())
-            .or_default();
+        let id = host.identity();
+        let entry = self.plugin_actions.by_host.entry(id.clone()).or_default();
         if entry.fetching {
             return;
         }
@@ -121,15 +125,16 @@ impl SheprdWindow {
     }
 
     /// Keeps a host's new answer, and updates the open menu's rows if it
-    /// changed them. A failed read keeps the last answer: the menu's own rows
-    /// never depend on it, and the action itself reports what is wrong.
+    /// changed them and the menu is still on that host. A failed read keeps
+    /// the last answer: the menu's own rows never depend on it, and the
+    /// action itself reports what is wrong.
     fn plugin_actions_read(
         &mut self,
-        endpoint: &str,
+        host: &str,
         result: Result<catalog::Catalog>,
         cx: &mut Context<Self>,
     ) {
-        let Some(entry) = self.plugin_actions.by_endpoint.get_mut(endpoint) else {
+        let Some(entry) = self.plugin_actions.by_host.get_mut(host) else {
             return;
         };
         entry.fetching = false;
@@ -141,7 +146,7 @@ impl SheprdWindow {
                 return;
             }
         }
-        if self.endpoints[self.selected_endpoint].id != endpoint {
+        if self.plugin_host().ok().map(|now| now.identity()).as_deref() != Some(host) {
             return;
         }
         self.sync_pane_plugin_rows();
@@ -162,7 +167,7 @@ impl SheprdWindow {
         cx: &mut Context<Self>,
     ) -> crate::Result<()> {
         let Bridge { invoke, .. } = self.plugin_actions.bridge.ok_or(Error::UnsupportedHost)?;
-        let host = bridge::host_for(&self.endpoints[self.selected_endpoint].connection.target)?;
+        let host = self.plugin_host()?;
         let invocation = bridge::Invocation {
             plugin_id: row.plugin_id.clone(),
             action_id: row.action_id.clone(),

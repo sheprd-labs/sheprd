@@ -211,6 +211,13 @@ fn the_menu_shows_the_last_answer_and_reads_once_at_a_time(cx: &mut TestAppConte
 #[gpui::test]
 fn keys_and_hover_walk_built_in_then_plugin_rows(cx: &mut TestAppContext) {
     let (view, cx) = window(cx);
+    // No agents: the Favorite row, which only an agent's pane has, would
+    // make up for the focused pane's missing Swap and even out the counts.
+    view.update(cx, |v, _| {
+        let mut snapshot = v.live.snapshot.as_deref().cloned().unwrap();
+        snapshot.agents.clear();
+        v.live.snapshot = Some(Arc::new(snapshot));
+    });
     fake::answer(fake::hunk_and_notes());
     let mut own_counts = Vec::new();
     for pane in ["inactive", "w1:p1"] {
@@ -466,6 +473,73 @@ fn keyboard_selection_scrolls_plugin_rows_into_view(cx: &mut TestAppContext) {
     inside(cx, "plugin-action-notes/second");
     cx.simulate_keystrokes("down down down down down");
     inside(cx, "pane-menu-0");
+}
+
+/// Two sessions of one saved device: the same endpoint, another target.
+fn session(name: &str) -> sheprd_client::ConnectTarget {
+    sheprd_client::ConnectTarget::Ssh {
+        target: "dev@box".into(),
+        session: name.into(),
+    }
+}
+
+/// The pane menu lists the actions of the session it is on, not of the
+/// endpoint, which keeps its id when the user picks another of the device's
+/// sessions: a session's actions never show in another's menu, they show at
+/// once when the window returns, and a read started for a session the window
+/// left changes nothing in the menu it is on.
+#[gpui::test]
+fn the_pane_menu_lists_the_actions_of_the_session_it_is_on(cx: &mut TestAppContext) {
+    let (default, review, scratch) = (session("default"), session("review"), session("scratch"));
+    let (view, cx) = window(cx);
+    fake::answer_on(&default, fake::hunk_and_notes());
+    fake::answer_on(
+        &review,
+        fake::catalog(
+            json!([{"plugin_id": "aider", "action_id": "ask", "title": "Ask aider", "contexts": ["pane"]}]),
+            json!([{"plugin_id": "aider", "name": "Aider", "enabled": true}]),
+        ),
+    );
+    let switch = |cx: &mut VisualTestContext, target: &sheprd_client::ConnectTarget| {
+        view.update(cx, |v, _| v.endpoints[0].connection.target = target.clone());
+    };
+    let (hunk, aider) = (["hunk/review-pane", "notes/append"], ["aider/ask"]);
+
+    switch(cx, &default);
+    open(&view, cx, "inactive");
+    cx.run_until_parked();
+    assert_eq!(rows(&view, cx), hunk, "default");
+
+    switch(cx, &review);
+    open(&view, cx, "inactive");
+    assert!(
+        rows(&view, cx).is_empty(),
+        "review, before it answers, lists {:?}",
+        rows(&view, cx)
+    );
+    cx.run_until_parked();
+    assert_eq!(rows(&view, cx), aider, "review");
+
+    switch(cx, &default);
+    open(&view, cx, "inactive");
+    assert_eq!(
+        rows(&view, cx),
+        hunk,
+        "default again, before it is read again"
+    );
+    cx.run_until_parked();
+
+    // The read for default is still in flight when the window moves to a
+    // session that cannot list its actions.
+    open(&view, cx, "inactive");
+    switch(cx, &scratch);
+    open(&view, cx, "inactive");
+    cx.run_until_parked();
+    assert!(
+        rows(&view, cx).is_empty(),
+        "default's late answer shows in scratch's menu: {:?}",
+        rows(&view, cx)
+    );
 }
 
 /// A long title or plugin name ends with "…" rather than widening the menu.
