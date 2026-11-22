@@ -116,16 +116,19 @@ pub(super) fn agent_rows(
     machine: Option<&str>,
 ) -> Option<Vec<Vec<ResolvedToken>>> {
     let (workspace, tab) = agent_place(agent, snapshot)?;
-    let pane = agent
-        .title
-        .as_deref()
+    // A pane's Rename label wins over the agent's title, as in
+    // `agents::pane_name`, so Rename on the row changes what `pane` shows.
+    let pane = snapshot
+        .panes
+        .iter()
+        .find(|pane| pane.pane_id == agent.pane_id)
+        .and_then(|pane| pane.label.as_deref())
         .and_then(sheprd_client::text::caption)
         .or_else(|| {
-            snapshot
-                .panes
-                .iter()
-                .find(|pane| pane.pane_id == agent.pane_id)
-                .and_then(|pane| pane.label.as_deref())
+            agent
+                .title
+                .as_deref()
+                .and_then(sheprd_client::text::caption)
         });
     let context = AgentContext {
         identity: agent.agent.as_deref(),

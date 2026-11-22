@@ -86,6 +86,29 @@ fn agent_tokens_resolve_state_pane_titles_and_custom_values() {
 }
 
 #[test]
+fn pane_token_prefers_the_rename_label_over_the_agent_title() {
+    let mut snapshot = layout_tests::snapshot(1);
+    snapshot.agents[0].title = Some("Fix sidebar".into());
+    let layout = agent_layout(r#"rows = [["pane"]]"#);
+    let pane_text = |snapshot: &ClientShellSnapshot| {
+        texts(&agent_rows(&layout, &snapshot.agents[0], snapshot, None).unwrap())
+    };
+    // A pane that was not renamed shows the agent's title.
+    assert_eq!(pane_text(&snapshot), [vec!["Fix sidebar"]]);
+    // After Rename, the row shows the new name, not the title.
+    snapshot.panes = serde_json::from_value(serde_json::json!([{
+        "pane_id": "p0", "workspace_id": "w0", "tab_id": "t0",
+        "label": "frontend v2", "cwd": null, "foreground_cwd": null,
+        "focused": false, "right_click_passthrough": false
+    }]))
+    .unwrap();
+    assert_eq!(pane_text(&snapshot), [vec!["frontend v2"]]);
+    // A blank label is no name, so the title shows again.
+    snapshot.panes[0].label = Some("  ".into());
+    assert_eq!(pane_text(&snapshot), [vec!["Fix sidebar"]]);
+}
+
+#[test]
 fn rules_style_hide_and_replace_rows_per_agent() {
     let mut snapshot = layout_tests::snapshot(1);
     snapshot.agents[0].tokens = vec![("pct".into(), "85".into())];
