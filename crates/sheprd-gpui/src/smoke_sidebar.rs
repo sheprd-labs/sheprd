@@ -209,17 +209,18 @@ pub fn start_sidebar(handle: WindowHandle<SheprdWindow>, cx: &mut App) {
                         .downcast::<SheprdWindow>()
                         .map_err(|_| anyhow!("unexpected root"))?;
                     let title = view.read(cx).activity_title_height();
-                    // Repository groups stand apart by a gap; the deepest
-                    // probed row, w2's branch, sits below the two before it.
-                    let gaps = {
+                    // The workspace section gets half the added height while
+                    // the agents section is shown. Leave room for both gaps
+                    // above w2 and its full 16 px branch line in that half.
+                    let workspace_clearance = {
                         let mut config = view.read(cx).config.clone();
                         config.layout.mode = mode;
-                        2. * sidebar::repository_gap(&config)
+                        2. * sidebar::repository_gap(&config) + 16.
                     };
                     let h = h
                         + sidebar::DEVICE_FOOTER_HEIGHT
                         + title
-                        + gaps
+                        + 2. * workspace_clearance
                         + if style == Style::Rounded { 160. } else { 0. };
                     let compact = density == Density::Compact;
                     if frame % 3 == 0 {
