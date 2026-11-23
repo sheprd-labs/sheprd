@@ -66,6 +66,10 @@ pub(crate) use metrics::LABEL_WIDTH;
 #[cfg(test)]
 pub(crate) use repository::initials as repository_initials;
 
+// The native sidebar fixture sizes its window around the repository gaps.
+#[cfg(feature = "integration-test")]
+pub(crate) use repository::gap as repository_gap;
+
 pub(crate) use view::cached as cached_view;
 
 use agents::agents_sort;

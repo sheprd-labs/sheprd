@@ -203,17 +203,24 @@ pub fn start_sidebar(handle: WindowHandle<SheprdWindow>, cx: &mut App) {
                     // rows stay inside their lists at the smallest size too.
                     // The activity bar's Workspaces title sits over the
                     // sidebar, so its height is added back too.
-                    let title = root
+                    let mode = LayoutMode::new(density, style);
+                    let view = root
                         .clone()
                         .downcast::<SheprdWindow>()
-                        .map_err(|_| anyhow!("unexpected root"))?
-                        .read(cx)
-                        .activity_title_height();
+                        .map_err(|_| anyhow!("unexpected root"))?;
+                    let title = view.read(cx).activity_title_height();
+                    // Repository groups stand apart by a gap; the deepest
+                    // probed row, w2's branch, sits below the two before it.
+                    let gaps = {
+                        let mut config = view.read(cx).config.clone();
+                        config.layout.mode = mode;
+                        2. * sidebar::repository_gap(&config)
+                    };
                     let h = h
                         + sidebar::DEVICE_FOOTER_HEIGHT
                         + title
+                        + gaps
                         + if style == Style::Rounded { 160. } else { 0. };
-                    let mode = LayoutMode::new(density, style);
                     let compact = density == Density::Compact;
                     if frame % 3 == 0 {
                         window.resize(fixture_size(w, h));

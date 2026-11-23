@@ -69,7 +69,7 @@ pub(super) fn name(workspace: &sheprd_session::Workspace) -> Option<&str> {
     )
 }
 
-pub(super) fn gap(config: &Config) -> f32 {
+pub(crate) fn gap(config: &Config) -> f32 {
     if config.usage.inline && config.sidebar_layout.spaces != SpaceLayout::default() {
         return f32::from(config.sidebar_layout.spaces.row_gap) * line_height(&config.sidebar);
     }
