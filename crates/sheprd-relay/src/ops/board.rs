@@ -3,11 +3,11 @@
 //!
 //! - `GET /dashboard`: the page, or a redirect to the login.
 //! - `GET`/`POST /dashboard/login`, `POST /dashboard/logout`. Three wrong
-//!   tokens block the address for 15 minutes ([`lockout`](crate::lockout)).
+//!   tokens block the address for 15 minutes ([`lockout`](crate::ops::lockout)).
 //! - `GET /dashboard/api/live`: a snapshot a second, as Server-Sent Events.
 //! - `GET /dashboard/api/stats`: one snapshot.
 
-use crate::{
+use crate::ops::{
     auth::{self, Account},
     limit::{Limiter, Rate},
     live::{self, Streams},
@@ -291,7 +291,7 @@ async fn live_stats<S: Site>(State(board): State<Board<S>>, headers: HeaderMap) 
 /// Whether a request comes from the relay's own pages, or from no page at
 /// all. Browsers send `Sec-Fetch-Site`, or at least `Origin`, on every
 /// cross-site form post and WebSocket; a client that sends neither, such
-/// as `curl` or Sheprd, is not a browser being used against its owner.
+/// as `curl` or a native app, is not a browser being used against its owner.
 #[must_use]
 pub fn same_origin(headers: &HeaderMap) -> bool {
     let text = |name| {

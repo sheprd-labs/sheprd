@@ -1,5 +1,7 @@
-//! What Sheprd's two hosted relays share for their operators: the relay
-//! (`sheprd-relay`) and the push relay (`sheprd-push-relay`).
+//! What a relay needs for its operator, beside the relay itself: rate
+//! limits, secrets, Prometheus text, and a read-only dashboard behind one
+//! access token. Any service can build its own dashboard from it (a
+//! [`Site`]); the relay's is [`crate::dashboard`].
 //!
 //! - [`board`]: the read-only dashboard's routes, for any relay that is a
 //!   [`Site`], and the bearer check for a `/metrics` scrape.

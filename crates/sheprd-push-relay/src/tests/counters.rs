@@ -11,7 +11,7 @@ use crate::{
     metrics::Metrics,
     relay::{AttestRequest, Reply, RevokeRequest},
 };
-use sheprd_dashboard::metrics::Login;
+use sheprd_relay::ops::metrics::Login;
 
 /// The value of the series `line` names (`family{label="value"}`).
 fn value(metrics: &Metrics, now_s: u64, series: &str) -> u64 {

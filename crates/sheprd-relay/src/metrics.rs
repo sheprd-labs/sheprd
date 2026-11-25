@@ -1,12 +1,16 @@
 //! Counters for Prometheus and the dashboard. No metric carries a per-user
 //! label: no address, route, or session appears in a series.
+//!
+//! Every family is served under two names: `relay_*`, and the older
+//! `sheprd_relay_*`, a deprecated alias kept so existing scrapes and
+//! dashboards keep working ([`with_neutral_names`]).
 
-use serde::Serialize;
-pub use sheprd_dashboard::metrics::Login;
-use sheprd_dashboard::{
+pub use crate::ops::metrics::Login;
+use crate::{
     labels,
-    metrics::{family, labelled, series, single},
+    ops::metrics::{family, labelled, series, single},
 };
+use serde::Serialize;
 use std::{
     fmt::Write as _,
     sync::atomic::{AtomicU64, Ordering::Relaxed},
@@ -469,4 +473,27 @@ pub struct Totals {
     pub sessions_ended: u64,
     pub throttled_ms: u64,
     pub uptime_secs: u64,
+}
+
+/// The prefix families are rendered with, kept for existing scrapes.
+const LEGACY_PREFIX: &str = "sheprd_relay_";
+/// The prefix every family is also served under.
+const NEUTRAL_PREFIX: &str = "relay_";
+
+/// `legacy`, an exposition whose families start `sheprd_relay_`, followed
+/// by the same families named `relay_*`. Only metric names change: help
+/// texts, labels, and values are the same.
+#[must_use]
+pub fn with_neutral_names(legacy: &str) -> String {
+    let mut out = String::with_capacity(legacy.len() * 2);
+    out.push_str(legacy);
+    for line in legacy.lines() {
+        let renamed = ["# HELP ", "# TYPE ", ""].iter().find_map(|head| {
+            let name = line.strip_prefix(head)?.strip_prefix(LEGACY_PREFIX)?;
+            Some(format!("{head}{NEUTRAL_PREFIX}{name}"))
+        });
+        out.push_str(renamed.as_deref().unwrap_or(line));
+        out.push('\n');
+    }
+    out
 }

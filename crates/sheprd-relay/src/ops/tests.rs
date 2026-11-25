@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use crate::{Page, Site, auth::Account, metrics::Login};
+use crate::ops::{Page, Site, auth::Account, metrics::Login};
 use axum::{
     Router,
     body::Body,
@@ -55,7 +55,7 @@ const PAGE: Page = Page {
 
 fn app() -> (Router, Fake) {
     let site = Fake::default();
-    let router = crate::router(site.clone(), Arc::new(Account::new(TOKEN).unwrap()), PAGE)
+    let router = crate::ops::router(site.clone(), Arc::new(Account::new(TOKEN).unwrap()), PAGE)
         .layer(MockConnectInfo(SocketAddr::from(([198, 51, 100, 7], 1))));
     (router, site)
 }

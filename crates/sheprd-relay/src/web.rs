@@ -13,6 +13,7 @@
 //!
 //! The dashboard is merged in from [`crate::dashboard`].
 
+pub use crate::ops::same_origin;
 use crate::{
     RouteId, SessionId, broker,
     endpoint::{Info, PROTOCOL},
@@ -34,7 +35,6 @@ use axum::{
     routing::get,
 };
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-pub use sheprd_dashboard::same_origin;
 use std::{
     net::{IpAddr, SocketAddr},
     sync::Arc,
@@ -180,6 +180,7 @@ fn refused(reason: Refused) -> Response {
             StatusCode::FORBIDDEN,
             [
                 (crate::endpoint::BAN_HEADER, "1"),
+                (crate::endpoint::NEUTRAL_BAN_HEADER, "1"),
                 ("cache-control", "no-store"),
             ],
         )

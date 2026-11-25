@@ -1,7 +1,7 @@
 //! What the operator sees: the read-only dashboard and `GET /metrics`,
 //! both served only when the secrets hold a `dashboard-token`, and both
 //! behind it. The dashboard's routes, login, and lockout are
-//! `sheprd-dashboard`'s, shared with the relay; this is the push relay's
+//! `sheprd_relay::ops`'s, shared with the relay; this is the push relay's
 //! page and the numbers it draws, which are counts alone ([`crate::metrics`]).
 //!
 //! `/metrics` takes the same token as `Authorization: Bearer TOKEN`, and
@@ -20,7 +20,7 @@ use axum::{
 };
 use serde::Serialize;
 use sheprd_apns::Host;
-use sheprd_dashboard::{
+use sheprd_relay::ops::{
     Page, Site, auth::Account, bearer, lockout::Lockout, metrics::CONTENT_TYPE,
 };
 use std::{
@@ -103,7 +103,7 @@ pub fn router(
             board: board.clone(),
             lockout: Arc::default(),
         });
-    sheprd_dashboard::router(board, account, PAGE).merge(scrape)
+    sheprd_relay::ops::router(board, account, PAGE).merge(scrape)
 }
 
 async fn scrape(

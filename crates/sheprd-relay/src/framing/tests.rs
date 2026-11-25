@@ -16,7 +16,7 @@ fn messages_round_trip_through_any_split() {
             if let Some(message) = deframer.push(piece).unwrap() {
                 read.push(message);
             }
-            while let Some(message) = deframer.next().unwrap() {
+            while let Some(message) = deframer.next_message().unwrap() {
                 read.push(message);
             }
         }

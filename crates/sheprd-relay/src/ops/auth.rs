@@ -11,7 +11,7 @@
 //! `deploy/push-relay` 32 as hex. The lockout in `lockout` then stops an
 //! address after three wrong tries.
 
-use crate::secret::Secret;
+use crate::ops::secret::Secret;
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use percent_encoding::percent_decode_str;
 use sha2::{Digest, Sha256};
@@ -45,9 +45,9 @@ impl fmt::Debug for Account {
 
 impl Account {
     /// An account for `token`, refusing a short one.
-    pub fn new(token: &str) -> crate::Result<Self> {
+    pub fn new(token: &str) -> crate::ops::Result<Self> {
         if token.chars().count() < MIN_TOKEN {
-            return Err(crate::Error::WeakSecret {
+            return Err(crate::ops::Error::WeakSecret {
                 min: MIN_TOKEN,
                 name: "the dashboard token",
             });
@@ -72,9 +72,9 @@ impl Account {
     }
 
     /// A new session cookie good until `now_secs` plus [`SESSION`].
-    pub fn issue(&self, now_secs: u64) -> crate::Result<String> {
+    pub fn issue(&self, now_secs: u64) -> crate::ops::Result<String> {
         let mut value = [0; 32];
-        getrandom::fill(&mut value).map_err(crate::Error::Random)?;
+        getrandom::fill(&mut value).map_err(crate::ops::Error::Random)?;
         let value = URL_SAFE_NO_PAD.encode(value);
         let expires = now_secs.saturating_add(SESSION.as_secs());
         let mut sessions = self.sessions();

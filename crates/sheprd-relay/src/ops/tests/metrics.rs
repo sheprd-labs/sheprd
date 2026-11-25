@@ -2,7 +2,7 @@
 
 use crate::{
     labels,
-    metrics::{labelled, series, single},
+    ops::metrics::{labelled, series, single},
 };
 
 labels! {

@@ -4,7 +4,7 @@
 //! nothing. Addresses are keyed as the rate limits key them (an IPv4
 //! address, or an IPv6 /64) and live only in memory.
 
-use crate::limit::{Limiter, Rate, source_key, wide_key};
+use crate::ops::limit::{Limiter, Rate, source_key, wide_key};
 use std::sync::atomic::Ordering::Relaxed;
 use std::{
     collections::HashMap,

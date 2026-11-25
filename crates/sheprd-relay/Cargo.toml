@@ -11,30 +11,52 @@ version.workspace      = true
 workspace = true
 
 [features]
-# The relay service. Clients depend on this crate without it, for relay
-# endpoints, routes, and the listener's proof alone, so Tokio and axum
-# never reach them.
+# The relay service and its binary. Clients depend on this crate without
+# it, for relay endpoints, routes, proofs, and framing alone.
 default = ["server"]
-# Checking that Sheprd's relay list is genuine (`directory::signed`): the
-# maintainer's OpenPGP signature or the site workflow's Ed25519 one. For
-# clients that fetch the list; the relay itself never reads it.
-signed-directory = ["dep:ed25519-dalek", "dep:pgp"]
 # Reaching a relay over QUIC as a listener or a dialer (`client`), its
-# `/v1/info` read with ureq, for the daemon, the SSH agent, and tests; no
-# axum or server limits.
+# `/v1/info` read with ureq; no axum or server limits.
 client = ["dep:quinn", "dep:rustls", "dep:tokio", "dep:ureq"]
-server = [
+# Reaching a relay over its WebSocket API as a listener or a dialer
+# (`client_ws`): TLS with the platform's verifier, Tokio only.
+client-ws = [
+  "dep:futures-util",
+  "dep:rustls",
+  "dep:rustls-platform-verifier",
+  "dep:tokio",
+  "dep:tokio-rustls",
+  "dep:tokio-tungstenite",
+]
+# The operator's read-only dashboard at /dashboard.
+dashboard = ["websocket-server"]
+# What a relay keeps for its operator (`ops`): rate limits, secrets,
+# Prometheus text, and the dashboard kit other services can build on.
+ops = [
   "dep:axum",
   "dep:futures-util",
-  "dep:quinn",
-  "dep:rcgen",
-  "dep:rustls",
-  "dep:secrecy",
-  "dep:sheprd-dashboard",
+  "dep:hmac",
+  "dep:percent-encoding",
   "dep:tokio",
   "dep:tracing",
-  "dep:tracing-subscriber",
 ]
+# The QUIC transport beside the WebSocket one.
+quic-server = ["dep:quinn", "dep:rcgen", "dep:rustls", "websocket-server"]
+# The whole relay as it is deployed: both transports, the dashboard,
+# /metrics, settings, and the binary.
+server = [
+  "dashboard",
+  "dep:secrecy",
+  "dep:tracing-subscriber",
+  "quic-server",
+  "websocket-server",
+]
+# A relay to run inside other projects' tests (`testing`): WebSockets on a
+# loopback port, small limits, no bans, no dashboard, QUIC, or metrics port.
+testing = ["websocket-server"]
+# Checking that Sheprd's relay list is genuine (`directory::signed`).
+signed-directory = ["dep:ed25519-dalek", "dep:pgp"]
+# The relay itself over WebSockets: who listens, limits, bans, splicing.
+websocket-server = ["dep:axum", "dep:futures-util", "dep:tokio", "dep:tracing", "ops"]
 
 [[bin]]
 name              = "sheprd-relay"
@@ -62,16 +84,20 @@ axum          = { optional = true, workspace = true }
 ed25519-dalek = { optional = true, workspace = true }
 pgp           = { optional = true, workspace = true }
 # `split` lets each direction of a spliced pair wait on its own throttle.
-futures-util       = { features = ["std"], optional = true, workspace = true }
-quinn              = { optional = true, workspace = true }
-rcgen              = { optional = true, workspace = true }
-rustls             = { optional = true, workspace = true }
-secrecy            = { optional = true, workspace = true }
-sheprd-dashboard   = { optional = true, workspace = true }
-tokio              = { optional = true, workspace = true }
-tracing            = { optional = true, workspace = true }
-tracing-subscriber = { features = ["fmt"], optional = true, workspace = true }
-ureq               = { optional = true, workspace = true }
+futures-util             = { features = ["std"], optional = true, workspace = true }
+hmac                     = { optional = true, workspace = true }
+percent-encoding         = { optional = true, workspace = true }
+quinn                    = { optional = true, workspace = true }
+rcgen                    = { optional = true, workspace = true }
+rustls                   = { optional = true, workspace = true }
+rustls-platform-verifier = { optional = true, workspace = true }
+secrecy                  = { optional = true, workspace = true }
+tokio                    = { optional = true, workspace = true }
+tokio-rustls             = { optional = true, workspace = true }
+tokio-tungstenite        = { optional = true, workspace = true }
+tracing                  = { optional = true, workspace = true }
+tracing-subscriber       = { features = ["fmt"], optional = true, workspace = true }
+ureq                     = { optional = true, workspace = true }
 
 [dev-dependencies]
 anyhow.workspace            = true

@@ -2,7 +2,7 @@
 //! and the bearer check for scrapes.
 
 use super::*;
-use crate::{bearer, lockout::Lockout, same_origin};
+use crate::ops::{bearer, lockout::Lockout, same_origin};
 use axum::http::StatusCode;
 
 #[tokio::test]

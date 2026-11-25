@@ -25,9 +25,9 @@ mod cidr;
 
 pub use cidr::{Cidr, parse_list};
 
+pub use crate::ops::limit::wide_key;
 use crate::{bucket::source_key, metrics::Offense};
 use serde::Serialize;
-pub use sheprd_dashboard::limit::wide_key;
 use std::{
     collections::HashMap,
     net::IpAddr,

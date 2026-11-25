@@ -40,47 +40,51 @@
 //! [`route`], [`socket`], and [`wire`] are built:
 //! what a client needs to reach a relay.
 
-#[cfg(feature = "server")]
+#[cfg(feature = "websocket-server")]
 mod broker;
-#[cfg(feature = "server")]
+#[cfg(feature = "websocket-server")]
 pub mod bucket;
 #[cfg(feature = "client")]
 pub mod client;
-#[cfg(feature = "server")]
+#[cfg(feature = "dashboard")]
 pub mod dashboard;
 pub mod directory;
 pub mod endpoint;
 mod error;
 pub mod framing;
-#[cfg(feature = "server")]
+#[cfg(feature = "websocket-server")]
 pub mod guard;
-#[cfg(feature = "server")]
+#[cfg(feature = "websocket-server")]
 pub mod hub;
-#[cfg(feature = "server")]
+#[cfg(feature = "websocket-server")]
 pub mod limits;
-#[cfg(feature = "server")]
+#[cfg(feature = "websocket-server")]
 pub mod metrics;
+#[cfg(feature = "ops")]
+pub mod ops;
 #[cfg(feature = "server")]
 pub mod options;
-#[cfg(any(feature = "server", feature = "client"))]
+#[cfg(any(feature = "quic-server", feature = "client"))]
 pub mod pin;
-#[cfg(feature = "server")]
+#[cfg(feature = "quic-server")]
 pub mod quic;
 pub mod route;
-#[cfg(feature = "server")]
-pub use sheprd_dashboard::secret;
+#[cfg(feature = "ops")]
+pub use ops::secret;
 #[cfg(feature = "server")]
 mod serve;
 pub mod socket;
-#[cfg(feature = "server")]
+#[cfg(feature = "websocket-server")]
 pub mod splice;
-#[cfg(feature = "server")]
+#[cfg(feature = "testing")]
+pub mod testing;
+#[cfg(feature = "websocket-server")]
 pub mod web;
 pub mod wire;
 
 pub use endpoint::Endpoint;
 pub use error::{Error, Result};
-#[cfg(feature = "server")]
+#[cfg(feature = "websocket-server")]
 pub use limits::Limits;
 #[cfg(feature = "server")]
 pub use options::{Options, USAGE};

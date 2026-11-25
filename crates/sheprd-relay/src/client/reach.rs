@@ -81,11 +81,9 @@ fn info(url: &str) -> Result<Info> {
         .into();
     let mut response = agent.get(url).call().map_err(Box::new)?;
     let status = response.status();
+    let headers = response.headers();
     if status.as_u16() == 403
-        && response
-            .headers()
-            .get(crate::endpoint::BAN_HEADER)
-            .is_some_and(|value| value == "1")
+        && crate::endpoint::is_ban(|name| headers.get(name).and_then(|value| value.to_str().ok()))
     {
         return Err(Error::Banned);
     }

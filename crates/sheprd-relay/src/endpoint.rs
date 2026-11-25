@@ -316,4 +316,18 @@ pub struct QuicInfo {
 pub const PROTOCOL: u8 = 1;
 
 /// On HTTP 403, distinguishes an address ban from a proxy or origin policy.
+/// The relay sends it beside [`NEUTRAL_BAN_HEADER`]; it is the deprecated
+/// alias, kept because existing clients look for it alone.
 pub const BAN_HEADER: &str = "sheprd-relay-banned";
+/// The ban marker new clients look for. Relays older than it send only
+/// [`BAN_HEADER`], so a client checks both ([`is_ban`]).
+pub const NEUTRAL_BAN_HEADER: &str = "relay-banned";
+
+/// Whether an HTTP 403's headers mark an address ban: either header set
+/// to `1`. `header` looks a header up by its lowercase name.
+#[must_use]
+pub fn is_ban<'a>(header: impl Fn(&str) -> Option<&'a str>) -> bool {
+    [NEUTRAL_BAN_HEADER, BAN_HEADER]
+        .into_iter()
+        .any(|name| header(name).is_some_and(|value| value.trim() == "1"))
+}

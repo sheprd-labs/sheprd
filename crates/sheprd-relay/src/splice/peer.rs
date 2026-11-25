@@ -1,7 +1,7 @@
 //! One side of a session, over either transport: a QUIC stream, or a
 //! WebSocket for networks without UDP. A session may mix them.
 
-use crate::{metrics::End, wire};
+use crate::metrics::End;
 use axum::{
     body::Bytes,
     extract::ws::{CloseFrame, Message, WebSocket},
@@ -10,6 +10,7 @@ use futures_util::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
+#[cfg(feature = "quic-server")]
 use quinn::{RecvStream, SendStream, VarInt};
 
 /// A dialer or listener, ready to be spliced.
@@ -18,10 +19,8 @@ pub enum Peer {
     /// Boxed: a WebSocket is several times a stream pair's size, and only
     /// the fallback uses it.
     Socket(Box<WebSocket>),
-    Stream {
-        recv: RecvStream,
-        send: SendStream,
-    },
+    #[cfg(feature = "quic-server")]
+    Stream { recv: RecvStream, send: SendStream },
 }
 
 impl Peer {
@@ -32,6 +31,7 @@ impl Peer {
                 let (sink, source) = (*socket).split();
                 (Source::Socket(source), Sink::Socket(sink))
             }
+            #[cfg(feature = "quic-server")]
             Self::Stream { recv, send } => (Source::Stream(recv), Sink::Stream(send)),
         }
     }
@@ -51,12 +51,14 @@ pub(crate) enum Next {
 
 pub(crate) enum Source {
     Socket(SplitStream<WebSocket>),
+    #[cfg(feature = "quic-server")]
     Stream(RecvStream),
 }
 
 impl Source {
     /// The next bytes, at most `max` of them from a stream; a WebSocket's
     /// frames are already bounded by its upgrade.
+    #[cfg_attr(not(feature = "quic-server"), allow(unused_variables))]
     pub(crate) async fn next(&mut self, max: usize) -> Next {
         match self {
             Self::Socket(socket) => match socket.next().await {
@@ -65,6 +67,7 @@ impl Source {
                 Some(Ok(Message::Text(_))) => Next::Violation,
                 Some(Ok(Message::Close(_)) | Err(_)) | None => Next::End,
             },
+            #[cfg(feature = "quic-server")]
             Self::Stream(recv) => match recv.read_chunk(max, true).await {
                 Ok(Some(chunk)) => Next::Data(chunk.bytes),
                 Ok(None) | Err(_) => Next::End,
@@ -75,6 +78,7 @@ impl Source {
 
 pub(crate) enum Sink {
     Socket(SplitSink<WebSocket, Message>),
+    #[cfg(feature = "quic-server")]
     Stream(SendStream),
 }
 
@@ -83,6 +87,7 @@ impl Sink {
     pub(crate) async fn send(&mut self, bytes: Bytes) -> bool {
         match self {
             Self::Socket(socket) => socket.send(Message::Binary(bytes)).await.is_ok(),
+            #[cfg(feature = "quic-server")]
             Self::Stream(send) => send.write_chunk(bytes).await.is_ok(),
         }
     }
@@ -98,6 +103,7 @@ impl Sink {
                 };
                 let _ = socket.send(Message::Close(Some(frame))).await;
             }
+            #[cfg(feature = "quic-server")]
             Self::Stream(send) => {
                 let _ = match end {
                     End::Closed => send.finish(),
@@ -120,13 +126,14 @@ fn socket_code(end: End) -> u16 {
     }
 }
 
+#[cfg(feature = "quic-server")]
 fn stream_code(end: End) -> u32 {
     match end {
-        End::Closed => wire::code::PEER_GONE,
-        End::Expired => wire::code::EXPIRED,
-        End::Idle => wire::code::IDLE,
-        End::Protocol => wire::code::PROTOCOL,
-        End::Revoked => wire::code::REVOKED,
-        End::Banned => wire::code::BANNED,
+        End::Closed => crate::wire::code::PEER_GONE,
+        End::Expired => crate::wire::code::EXPIRED,
+        End::Idle => crate::wire::code::IDLE,
+        End::Protocol => crate::wire::code::PROTOCOL,
+        End::Revoked => crate::wire::code::REVOKED,
+        End::Banned => crate::wire::code::BANNED,
     }
 }

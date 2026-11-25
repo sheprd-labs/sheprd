@@ -37,7 +37,7 @@ pub fn encode(message: &[u8]) -> Result<Vec<u8>, Error> {
 /// Reads framed messages from bytes pushed in any pieces. It refuses a
 /// message longer than its cap as soon as the prefix says so, before
 /// waiting for its body, so a reader that pushes bounded chunks and drains
-/// [`Deframer::next`] holds at most a message, its prefix, and one chunk.
+/// [`Deframer::next_message`] holds at most a message, its prefix, and one chunk.
 ///
 /// It does no I/O, so it is cancel-safe by construction: bytes pushed stay
 /// pushed, whatever happens to the task that read them.
@@ -77,7 +77,7 @@ impl Deframer {
     }
 
     /// How many more bytes the next message needs before
-    /// [`Deframer::next`] can give it: at least one when it is not whole.
+    /// [`Deframer::next_message`] can give it: at least one when it is not whole.
     #[must_use]
     pub fn wanted(&self) -> usize {
         match self.length() {
@@ -87,14 +87,14 @@ impl Deframer {
     }
 
     /// Adds bytes that arrived, then gives the first whole message, if one
-    /// is. Call [`Deframer::next`] until it gives `None` to drain the rest.
+    /// is. Call [`Deframer::next_message`] until it gives `None` to drain the rest.
     pub fn push(&mut self, bytes: &[u8]) -> Result<Option<Vec<u8>>, Error> {
         self.buffer.extend_from_slice(bytes);
-        self.next()
+        self.next_message()
     }
 
     /// The next whole message from what was pushed, if one is.
-    pub fn next(&mut self) -> Result<Option<Vec<u8>>, Error> {
+    pub fn next_message(&mut self) -> Result<Option<Vec<u8>>, Error> {
         let Some(length) = self.length() else {
             return Ok(None);
         };

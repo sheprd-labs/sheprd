@@ -10,7 +10,7 @@ use axum::{
     http::{Request, StatusCode, header},
 };
 use http_body_util::BodyExt as _;
-use sheprd_dashboard::auth::Account;
+use sheprd_relay::ops::auth::Account;
 use std::net::SocketAddr;
 use tower::ServiceExt as _;
 
@@ -155,7 +155,7 @@ fn the_token_file_is_optional_but_must_be_private_and_long() {
     assert!(matches!(
         read_dashboard_token(&path),
         Err(crate::Error::Dashboard(
-            sheprd_dashboard::Error::WeakSecret { .. }
+            sheprd_relay::ops::Error::WeakSecret { .. }
         ))
     ));
     std::fs::write(&path, TOKEN).unwrap();

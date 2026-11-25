@@ -16,9 +16,9 @@ pub struct Secret {
 }
 
 impl Secret {
-    pub fn new(secret: &[u8]) -> crate::Result<Self> {
+    pub fn new(secret: &[u8]) -> crate::ops::Result<Self> {
         let mut key = [0; 64];
-        getrandom::fill(&mut key).map_err(crate::Error::Random)?;
+        getrandom::fill(&mut key).map_err(crate::ops::Error::Random)?;
         let mac = keyed(&key, secret).finalize().into_bytes().to_vec();
         Ok(Self { key, mac })
     }
