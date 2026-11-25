@@ -1,0 +1,38 @@
+{
+  "id": "repository-memory",
+  "feature": "Repository memory",
+  "setup": [
+    ["exec", "root=$(mktemp -d /tmp/forecast-memory.XXXXXX) && git clone -q ~/code/forecast \"$root/forecast\" && git -C \"$root/forecast\" worktree add -qb json-output ../forecast-json && printf '%s' \"$root\" > /tmp/screencast-memory-root"],
+    ["click", 1300, 700, "quiet"],
+    ["type", "cd \"$(cat /tmp/screencast-memory-root)/forecast\" && export PATH=\"$HOME/Apps/Sheprd.app/Contents/MacOS:$PATH\" && PS1='%1~ % ' && clear"],
+    ["key", "return"]
+  ],
+  "segments": [
+    {"actions": [
+      ["type", "ls"],
+      ["key", "return"]
+    ]},
+    {"actions": [
+      ["type", "sheprd memory add 'Sample forecast data lives in days.json.'"],
+      ["key", "return"]
+    ]},
+    {"actions": [
+      ["type", "cd ../forecast-json"],
+      ["key", "return"],
+      ["wait", 0.7],
+      ["type", "sheprd memory search forecast"],
+      ["key", "return"]
+    ]},
+    {"actions": [
+      ["type", "sheprd memory get 1"],
+      ["key", "return"]
+    ]}
+  ],
+  "teardown": [
+    ["type", "cd ~ && exec zsh -l"],
+    ["key", "return"],
+    ["wait", 0.5],
+    ["type", "clear"],
+    ["key", "return"]
+  ]
+}
