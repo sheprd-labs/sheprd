@@ -1,7 +1,7 @@
 //! A relay and a computer behind it that echoes what crosses its tunnel,
 //! for checking another client (the iOS app's Swift dialer) against the
-//! real thing: `cargo run -p sheprd-relay --example echo_computer
-//! --features client,server`. It prints one JSON line (the relay's
+//! real thing: `cargo run -p sheprd-remote-control --example
+//! relay_echo_computer`. It prints one JSON line (the relay's
 //! endpoint, the computer's route and tunnel identity) and serves until
 //! killed. The phone's keys are fixed: dial key scalar `[0x61; 32]`,
 //! tunnel secret `[0x62; 32]`.

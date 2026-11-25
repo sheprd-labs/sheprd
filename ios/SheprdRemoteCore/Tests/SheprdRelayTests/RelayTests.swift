@@ -115,8 +115,8 @@ struct RelayRecordTests {
 }
 
 /// Against the real relay and a computer behind it, when one runs:
-/// `cargo run -p sheprd-relay --example echo_computer --features
-/// client,server` prints the line to put in `SHEPRD_RELAY_ECHO`.
+/// `cargo run -p sheprd-remote-control --example relay_echo_computer`
+/// prints the line to put in `SHEPRD_RELAY_ECHO`.
 struct RelayLiveTests {
     struct Echo: Decodable {
         let endpoint: String

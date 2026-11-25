@@ -4,7 +4,6 @@
 
 mod endpoint;
 mod ids;
-mod ios_vectors;
 mod route;
 #[cfg(feature = "server")]
 mod server;

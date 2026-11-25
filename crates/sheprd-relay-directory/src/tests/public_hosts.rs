@@ -2,7 +2,6 @@
 //! their own machine or network, and pins that are pins.
 
 use crate::{Directory, Error};
-use sheprd_relay::Endpoint;
 
 fn list(endpoint: &str) -> Result<Directory, Error> {
     Directory::parse(
@@ -64,15 +63,4 @@ fn a_relay_may_carry_its_quic_pin() {
         Directory::parse(short.as_bytes()),
         Err(Error::Pin { index: 0 })
     ));
-}
-
-#[test]
-fn proofs_name_the_relays_path_prefix_too() {
-    let plain = Endpoint::parse("relay.example.org").unwrap();
-    assert_eq!(plain.proof_name(), "relay.example.org");
-    let prefixed = Endpoint::parse("https://relay.example.org:8443/sheprd/").unwrap();
-    assert_eq!(prefixed.proof_name(), "relay.example.org:8443/sheprd");
-    assert_eq!(prefixed.host(), "relay.example.org:8443");
-    let other = Endpoint::parse("https://relay.example.org:8443/other").unwrap();
-    assert_ne!(prefixed.proof_name(), other.proof_name());
 }

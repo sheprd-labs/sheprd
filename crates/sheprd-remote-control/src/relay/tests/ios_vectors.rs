@@ -1,9 +1,12 @@
 //! The vectors the iOS app's relay dialer is checked against: the name a
 //! WebSocket proof covers for each endpoint form, and the exact bytes a
-//! dialer signs. `HERDR_UPDATE_FIXTURES=1` rewrites them.
+//! dialer signs, as `sheprd-relay` makes them. They live with the app, so
+//! they are checked here rather than in the relay crate, which also
+//! publishes its own (`crates/sheprd-relay/vectors`).
+//! `HERDR_UPDATE_FIXTURES=1` rewrites them.
 
-use crate::{Endpoint, RouteId, socket};
 use serde_json::{Value, json};
+use sheprd_relay::{Endpoint, RouteId, socket};
 use std::path::PathBuf;
 
 fn hex(bytes: &[u8]) -> String {
@@ -69,7 +72,7 @@ fn dial_vectors() {
 #[test]
 fn pairing_dial_vectors() {
     let secret = [0x5e; 32];
-    let key = crate::route::pairing_dial_key(&secret);
+    let key = sheprd_relay::route::pairing_dial_key(&secret);
     check(
         "pairing",
         &json!({
