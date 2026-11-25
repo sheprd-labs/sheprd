@@ -45,6 +45,8 @@ mod broker;
 pub mod bucket;
 #[cfg(feature = "client")]
 pub mod client;
+#[cfg(feature = "client-ws")]
+pub mod client_ws;
 #[cfg(feature = "dashboard")]
 pub mod dashboard;
 pub mod endpoint;

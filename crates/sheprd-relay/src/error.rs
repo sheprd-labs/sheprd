@@ -11,6 +11,9 @@ pub enum Error {
         #[source]
         source: io::Error,
     },
+    #[cfg(feature = "client-ws")]
+    #[error(transparent)]
+    ClientWs(#[from] crate::client_ws::Error),
     #[cfg(feature = "ops")]
     #[error(transparent)]
     Dashboard(#[from] crate::ops::Error),
