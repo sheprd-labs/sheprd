@@ -40,6 +40,9 @@ impl Peer {
 /// What a source gave.
 pub(crate) enum Next {
     Data(Bytes),
+    /// A WebSocket ping or pong: the peer is there, though it sent no
+    /// data. It is answered by the socket itself and never forwarded.
+    Alive,
     /// The peer finished or went away.
     End,
     /// The peer sent something the protocol forbids: a text frame.
@@ -56,13 +59,11 @@ impl Source {
     /// frames are already bounded by its upgrade.
     pub(crate) async fn next(&mut self, max: usize) -> Next {
         match self {
-            Self::Socket(socket) => loop {
-                return match socket.next().await {
-                    Some(Ok(Message::Binary(bytes))) => Next::Data(bytes),
-                    Some(Ok(Message::Ping(_) | Message::Pong(_))) => continue,
-                    Some(Ok(Message::Text(_))) => Next::Violation,
-                    Some(Ok(Message::Close(_)) | Err(_)) | None => Next::End,
-                };
+            Self::Socket(socket) => match socket.next().await {
+                Some(Ok(Message::Binary(bytes))) => Next::Data(bytes),
+                Some(Ok(Message::Ping(_) | Message::Pong(_))) => Next::Alive,
+                Some(Ok(Message::Text(_))) => Next::Violation,
+                Some(Ok(Message::Close(_)) | Err(_)) | None => Next::End,
             },
             Self::Stream(recv) => match recv.read_chunk(max, true).await {
                 Ok(Some(chunk)) => Next::Data(chunk.bytes),

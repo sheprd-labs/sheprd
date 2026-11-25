@@ -4,6 +4,13 @@
 //!
 //! When either side ends, the session ends: a WebSocket has no half-close,
 //! and the peers' own protocol says goodbye before closing.
+//!
+//! A session idles out when nothing crosses it for the idle timeout. A
+//! WebSocket ping or pong from either peer counts as something: the relay
+//! answers it as any WebSocket does, never forwards it, and charges it to
+//! no bandwidth budget. QUIC has no ping a stream carries (its PINGs keep
+//! the connection, not one stream), so a QUIC peer keeps a quiet session
+//! with bytes of its own.
 
 mod peer;
 
@@ -27,30 +34,8 @@ const CLOSE_TIMEOUT: Duration = Duration::from_secs(1);
 /// How often the watchdog checks for idleness.
 const WATCH: Duration = Duration::from_secs(1);
 
-/// WebSocket close codes a peer may see from the relay, in the private
-/// range. QUIC peers get [`crate::wire::code`] instead.
-pub mod code {
-    /// The other side closed or broke.
-    pub const PEER_GONE: u16 = 4000;
-    /// No route by that name, or no listener on it.
-    pub const OFFLINE: u16 = 4404;
-    /// Nothing crossed the session for the idle timeout.
-    pub const IDLE: u16 = 4408;
-    /// Another socket proved the same key and took over the route.
-    pub const REPLACED: u16 = 4409;
-    /// The session reached its longest allowed length.
-    pub const EXPIRED: u16 = 4410;
-    /// A text frame, or a frame larger than allowed.
-    pub const PROTOCOL: u16 = 4400;
-    /// The listener's proof or token was refused.
-    pub const REFUSED: u16 = 4401;
-    /// The relay holds as many listeners as it may.
-    pub const FULL: u16 = 4503;
-    /// The listener stopped allowing the dial key this session used.
-    pub const REVOKED: u16 = 4403;
-    /// One side's address was banned for misbehaving.
-    pub const BANNED: u16 = 4429;
-}
+/// WebSocket close codes a peer may see from the relay.
+pub use crate::socket::code;
 
 /// Bounds one session runs under.
 #[derive(Clone, Copy, Debug)]
@@ -162,9 +147,20 @@ async fn pump(
         Direction::FromListener => &session.traffic.from_listener,
     };
     let metrics = session.metrics();
+    let heard = || {
+        let since = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+        last.store(since, Relaxed);
+    };
     loop {
         let bytes = match from.next(chunk).await {
             Next::Data(bytes) => bytes,
+            // A ping keeps the session from idling, so peers need no
+            // keepalive of their own inside it. It carries nothing, so no
+            // throttle or budget is charged for it.
+            Next::Alive => {
+                heard();
+                continue;
+            }
             Next::Violation => {
                 // Only the side that broke the protocol is counted.
                 let culprit = match direction {
@@ -200,8 +196,7 @@ async fn pump(
         }
         counter.fetch_add(length as u64, Relaxed);
         metrics.carried(direction, length);
-        let since = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-        last.store(since, Relaxed);
+        heard();
     }
 }
 

@@ -51,6 +51,7 @@ pub mod dashboard;
 pub mod directory;
 pub mod endpoint;
 mod error;
+pub mod framing;
 #[cfg(feature = "server")]
 pub mod guard;
 #[cfg(feature = "server")]

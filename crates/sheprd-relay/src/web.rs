@@ -309,13 +309,13 @@ async fn serve_listener(mut socket: WebSocket, hub: Arc<Hub>, address: IpAddr, h
                     heard = tokio::time::Instant::now();
                     let message = serde_json::from_str::<FromListener>(&text)
                         .ok()
-                        .and_then(|message| message.decode());
-                    let Some(message) = message else {
+                        .and_then(|message| Some((message.decode()?, message.id().cloned())));
+                    let Some((message, id)) = message else {
                         hub.offend(address, Offense::Malformed);
                         return close_within(socket, code::PROTOCOL, silence).await;
                     };
                     let status = broker::apply(&hub, &registration, message);
-                    if !send_within(&mut socket, &ToPeer::Status { status }, silence).await {
+                    if !send_within(&mut socket, &ToPeer::Status { id, status }, silence).await {
                         return;
                     }
                 }
@@ -391,7 +391,15 @@ async fn serve_dialer(
             Ok(dialed) => dialed,
             Err(status) => return answer(socket, status).await,
         };
-    if !send(&mut socket, &ToPeer::Status { status: Status::Ok }).await {
+    if !send(
+        &mut socket,
+        &ToPeer::Status {
+            id: None,
+            status: Status::Ok,
+        },
+    )
+    .await
+    {
         return;
     }
     let _held = (accepted.permit, accepted.window);
@@ -400,7 +408,7 @@ async fn serve_dialer(
 
 /// Answers a dial that will not go through, then closes.
 async fn answer(mut socket: WebSocket, status: Status) {
-    let _ = send(&mut socket, &ToPeer::Status { status }).await;
+    let _ = send(&mut socket, &ToPeer::Status { id: None, status }).await;
     let code = match status {
         Status::Offline => code::OFFLINE,
         _ => code::PEER_GONE,

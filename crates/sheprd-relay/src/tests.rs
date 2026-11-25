@@ -4,6 +4,7 @@
 
 mod directory;
 mod endpoint;
+mod ids;
 mod ios_vectors;
 mod public_hosts;
 mod route;
@@ -12,6 +13,7 @@ mod server;
 #[cfg(feature = "signed-directory")]
 mod signed_directory;
 mod socket;
+mod vectors;
 mod wire;
 
 use crate::{socket::Hello, wire::Key};

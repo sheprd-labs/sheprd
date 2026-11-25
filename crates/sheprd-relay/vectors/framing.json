@@ -1,0 +1,25 @@
+{
+  "cases": [
+    {
+      "encoded": "0000",
+      "messages": [
+        ""
+      ]
+    },
+    {
+      "encoded": "000568656c6c6f",
+      "messages": [
+        "68656c6c6f"
+      ]
+    },
+    {
+      "encoded": "00036f6e650102abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab",
+      "messages": [
+        "6f6e65",
+        "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab"
+      ]
+    }
+  ],
+  "comment": "each message is a big-endian u16 length, then the message; transport frames may split or join messages anywhere",
+  "max_message": 65535
+}

@@ -71,6 +71,10 @@ Every option is optional, and each can also be set as a RELAY_* variable
   --idle-timeout DURATION        Close a silent session (default 5m)
   --max-session-duration DURATION  Close any session after (default 24h)
   --accept-timeout DURATION      Wait for a listener to accept (default 10s)
+  --listener-silence DURATION    Drop a listener that sends nothing, not even a
+                                 pong, for this long (default 60s); the relay
+                                 pings it every 25 s or a third of this. For
+                                 tests and private relays.
   --connections-per-minute N     New QUIC connections per address (default 60)
   --dials-per-minute N           Per address (default 120)
   --listens-per-minute N         Per address (default 30)
@@ -88,7 +92,8 @@ Every option is optional, and each can also be set as a RELAY_* variable
   --auto-ban on|off              Ban addresses that misbehave: limits hit,
                                  forged proofs, malformed messages, probing
                                  (default on). Private and loopback addresses
-                                 are never auto-banned.
+                                 are never auto-banned. Off is for tests and
+                                 private relays.
   --max-transfer-per-hour BYTES  Slow an address sending more than this in an
                                  hour through its sessions, and ban one sending
                                  four times it; 0 is no budget (default 20GiB)
@@ -128,6 +133,7 @@ pub const SETTINGS: &[(&str, Kind)] = &[
     ("idle-timeout", Kind::Duration),
     ("listen", Kind::Address),
     ("listen-token-file", Kind::File),
+    ("listener-silence", Kind::Duration),
     ("listens-per-minute", Kind::Count),
     ("max-buffer", Kind::Bytes),
     ("max-connections", Kind::Count),
@@ -364,6 +370,7 @@ impl Options {
                 self.listen_token = Some(read(name, text)?);
                 self.listen_token_file = Some(PathBuf::from(text));
             }
+            "listener-silence" => limits.listener_silence = duration()?,
             "listens-per-minute" => limits.listens_per_minute = per_minute()?,
             "max-buffer" => limits.max_buffer = bytes()?,
             "max-connections" => limits.max_connections = count()?,

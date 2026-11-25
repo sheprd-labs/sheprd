@@ -32,6 +32,7 @@ fn proofs_bind_host_nonce_and_route() {
 fn listener_messages_decode_within_bounds() {
     let key = URL_SAFE_NO_PAD.encode(public(&signing_key(9)));
     let keys = FromListener::DialKeys {
+        id: None,
         keys: vec![key.clone()],
     };
     assert_eq!(
@@ -39,15 +40,18 @@ fn listener_messages_decode_within_bounds() {
         Some(Message::DialKeys(vec![public(&signing_key(9))]))
     );
     let too_many = FromListener::DialKeys {
+        id: None,
         keys: vec![key.clone(); MAX_DIAL_KEYS + 1],
     };
     assert_eq!(too_many.decode(), None);
     let bad_key = FromListener::DialKeys {
+        id: None,
         keys: vec!["AAAA".into()],
     };
     assert_eq!(bad_key.decode(), None);
     for seconds in [0, MAX_PAIRING_SECS + 1] {
         let pairing = FromListener::PairingKey {
+            id: None,
             key: key.clone(),
             seconds,
         };
@@ -61,9 +65,16 @@ fn messages_read_as_documented() {
     assert_eq!(
         status,
         ToPeer::Status {
+            id: None,
             status: Status::Offline
         }
     );
     let keys: FromListener = serde_json::from_str(r#"{"t":"dial_keys","keys":[]}"#).unwrap();
-    assert_eq!(keys, FromListener::DialKeys { keys: Vec::new() });
+    assert_eq!(
+        keys,
+        FromListener::DialKeys {
+            id: None,
+            keys: Vec::new()
+        }
+    );
 }
