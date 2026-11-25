@@ -477,23 +477,29 @@ impl Task {
         command: Command,
         owed: &mut VecDeque<(Id, Option<oneshot::Sender<Applied>>)>,
     ) -> Result<()> {
+        // What is kept changes before anything is sent: if the send fails,
+        // the next connection names the new set, never the old one, so a
+        // key just revoked does not get back in.
         let id = self.id();
-        let reply = match command {
+        let (message, reply) = match command {
             Command::DialKeys(keys, reply) => {
-                connect::send(socket, &dial_keys(&keys, id.clone())).await?;
+                let message = dial_keys(&keys, id.clone());
                 self.dial_keys = Some(keys);
-                reply
+                (message, reply)
             }
             Command::PairingKey(key, seconds, reply) => {
-                connect::send(socket, &pairing_key(&key, seconds, id.clone())).await?;
                 self.remember_pairing(key, seconds);
-                reply
+                (pairing_key(&key, seconds, id.clone()), reply)
             }
             Command::Close(done) => {
                 let _ = done.send(());
                 return Ok(());
             }
         };
+        if let Err(error) = connect::send(socket, &message).await {
+            let _ = reply.send(Applied::Queued);
+            return Err(error);
+        }
         owed.push_back((id, Some(reply)));
         Ok(())
     }
