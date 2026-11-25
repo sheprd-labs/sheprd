@@ -117,10 +117,19 @@ def publish():
     features = catalog() + ([tour()] if tour() else [])
     rendered = {f["id"]: rendered_clips(f["id"]) for f in features}
     CLIPS.mkdir(parents=True, exist_ok=True)
+    manifest_path = CLIPS / "manifest.json"
+    previous = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
     manifest = {}
     for feature in features:
         fid = feature["id"]
         clips = rendered[fid]
+        if not clips:
+            if fid in previous:
+                manifest[fid] = previous[fid]
+                print(f"kept published {fid}: no local renders")
+            else:
+                print(f"skipped {fid}: no clips in {RENDERS}", file=sys.stderr)
+            continue
         windows = list(clips)
         starts, length = None, 0.0
         for window, variants in clips.items():
@@ -132,14 +141,11 @@ def publish():
                 if starts is None and lang == "en":
                     starts = srt_starts(srt)
                     length = probe(mp4)
-        if not windows:
-            print(f"skipped {fid}: no clips in {RENDERS}", file=sys.stderr)
-            continue
         poster(fid, windows[0], feature.get("poster"), starts)
         manifest[fid] = {"windows": windows, "langs": [lang for lang in LANG_LABELS if lang in clips[windows[0]]],
                          "length": round(length, 1), "starts": [round(s, 2) for s in starts]}
         print(f"published {fid}: {', '.join(windows)}, {length:.0f}s")
-    (CLIPS / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
 
 
 def esc(text):

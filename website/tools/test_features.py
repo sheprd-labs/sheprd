@@ -106,6 +106,16 @@ class Build(unittest.TestCase):
             features.publish()
         self.assertFalse(list(features.CLIPS.glob("*.mp4")))
 
+    def test_publish_without_local_renders_keeps_existing_guides(self):
+        manifest = features.CLIPS / "manifest.json"
+        previous = json.loads(manifest.read_text())
+        with unittest.mock.patch.object(features, "RENDERS", self.site.parent / "empty"):
+            features.publish()
+        self.assertEqual(json.loads(manifest.read_text()), previous)
+        features.build()
+        self.assertIn('href="/features/alpha/"', self.read("index.html"))
+        self.assertIn('href="/features/beta/"', self.read("alpha/index.html"))
+
     def test_feature_page_chapters_switches_and_pager(self):
         alpha = self.read("alpha/index.html")
         self.assertIn('data-seek="5.25"', alpha)
