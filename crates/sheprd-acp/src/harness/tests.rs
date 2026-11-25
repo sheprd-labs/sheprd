@@ -166,6 +166,27 @@ fn a_translator_sits_between_the_session_and_the_harness() {
 }
 
 #[test]
+fn a_harness_line_too_long_to_buffer_still_reaches_the_translator() {
+    let mut wired = wire(Box::new(Translated(Relay::default())));
+    wired.read();
+    wired
+        .outbox
+        .request(7, "session/prompt", &json!({}))
+        .unwrap();
+    wired.read();
+    let picture = "A".repeat(2 * rpc::BUFFERED_LINE);
+    wired.write(&"x".repeat(2 * rpc::BUFFERED_LINE));
+    wired.write(&json!({"picture": picture}).to_string());
+    match wired.next() {
+        Inbound::Response {
+            id: wire::RequestId::Number(7),
+            result: Ok(answer),
+        } => assert_eq!(answer["picture"], picture.as_str()),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
 fn file_links_name_their_path_and_long_commands_say_so() {
     assert_eq!(
         out::file_path(&file_uri("My%20File.md")),

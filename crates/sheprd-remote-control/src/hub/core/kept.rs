@@ -4,7 +4,7 @@
 //! them for every client; until then, Sheprd's saved tabs on this computer
 //! do, for this computer's scope.
 
-use super::saved::SAVED_TAB;
+use super::saved::{LOCAL_TAB, SAVED_TAB};
 use sheprd_backend::TerminalId;
 use sheprd_session::{
     SavedTabs,
@@ -15,15 +15,11 @@ use std::collections::{BTreeMap, HashSet};
 
 /// Where the kept workspaces and tabs are read from.
 #[derive(Clone, Copy)]
-pub(super) enum Kept<'a> {
-    /// The core's shared document, with its tabs as the poller remapped
-    /// them for recovered chats.
-    Doc { spaces: &'a Spaces, tabs: &'a [Tab] },
-    /// Sheprd's saved tabs of `scope`, while the document was never written.
-    File {
-        saved: &'a SavedTabs,
-        scope: &'a str,
-    },
+pub(super) struct Kept<'a> {
+    pub(super) doc: Option<(&'a Spaces, &'a [Tab])>,
+    pub(super) file: Option<&'a SavedTabs>,
+    pub(super) primary: Option<&'a str>,
+    pub(super) named: &'a BTreeMap<String, String>,
 }
 
 /// A kept workspace.
@@ -46,38 +42,33 @@ pub(super) struct KeptTab<'a> {
     /// Its id in the layout: [`SAVED_TAB`] and the id its keeper gave it.
     pub(super) target: String,
     pub(super) title: &'a str,
-    pub(super) workspace_id: &'a str,
+    pub(super) workspace_id: std::borrow::Cow<'a, str>,
     pub(super) zoomed: bool,
 }
 
 impl<'a> Kept<'a> {
-    /// The saved tabs of `scope`, when there are both.
-    pub(super) fn file(saved: Option<&'a SavedTabs>, scope: Option<&'a str>) -> Option<Self> {
-        saved
-            .zip(scope)
-            .map(|(saved, scope)| Self::File { saved, scope })
-    }
-
     pub(super) fn workspaces(self) -> Vec<KeptWorkspace<'a>> {
-        match self {
-            Self::Doc { spaces, .. } => spaces
+        if let Some((spaces, _)) = self.doc {
+            return spaces
                 .workspaces()
                 .iter()
-                .map(|workspace| KeptWorkspace {
-                    cwd: &workspace.cwd,
-                    id: &workspace.id,
-                    label: &workspace.label,
+                .map(|w| KeptWorkspace {
+                    cwd: &w.cwd,
+                    id: &w.id,
+                    label: &w.label,
                 })
-                .collect(),
-            Self::File { saved, scope } => saved
-                .workspaces(scope)
-                .map(|workspace| KeptWorkspace {
-                    cwd: &workspace.cwd,
-                    id: &workspace.id,
-                    label: &workspace.label,
-                })
-                .collect(),
+                .collect();
         }
+        self.file
+            .zip(self.primary)
+            .into_iter()
+            .flat_map(|(saved, scope)| saved.workspaces(scope))
+            .map(|w| KeptWorkspace {
+                cwd: &w.cwd,
+                id: &w.id,
+                label: &w.label,
+            })
+            .collect()
     }
 
     /// Whether workspace `id` is kept.
@@ -88,34 +79,60 @@ impl<'a> Kept<'a> {
     /// Every tab, in the order kept. Mirrors are left out: the terminal
     /// they watch is listed where it types.
     pub(super) fn tabs(self) -> Vec<KeptTab<'a>> {
-        match self {
-            Self::Doc { tabs, .. } => tabs
+        let shared = self.doc.map_or(&[][..], |(_, tabs)| tabs);
+        let mut kept: Vec<_> = shared
+            .iter()
+            .map(|tab| KeptTab {
+                active: None,
+                name: tab.name.as_deref().filter(|name| !name.trim().is_empty()),
+                names: Some(&tab.names),
+                panes: &tab.panes,
+                target: format!("{SAVED_TAB}{}", tab.id),
+                title: &tab.title,
+                workspace_id: std::borrow::Cow::Borrowed(&tab.workspace_id),
+                zoomed: tab.zoomed.is_some(),
+            })
+            .collect();
+
+        let Some(saved) = self.file else {
+            return kept;
+        };
+        let mut held: HashSet<_> = shared
+            .iter()
+            .flat_map(|tab| tab.panes.terminals())
+            .collect();
+        for (name, scope) in self.primary.into_iter().map(|scope| (None, scope)).chain(
+            self.named
                 .iter()
-                .map(|tab| KeptTab {
-                    active: None,
-                    name: tab.name.as_deref().filter(|name| !name.trim().is_empty()),
-                    names: Some(&tab.names),
-                    panes: &tab.panes,
-                    target: format!("{SAVED_TAB}{}", tab.id),
-                    title: &tab.title,
-                    workspace_id: &tab.workspace_id,
-                    zoomed: tab.zoomed.is_some(),
-                })
-                .collect(),
-            Self::File { saved, scope } => saved
-                .core_tabs(scope)
-                .map(|tab| KeptTab {
-                    active: saved.tab_active(scope, tab.id),
-                    name: saved.tab_name(scope, tab.id),
-                    names: saved.pane_names(scope, tab.id),
-                    panes: tab.panes,
-                    target: format!("{SAVED_TAB}{}", tab.id),
-                    title: tab.title,
-                    workspace_id: tab.workspace_id,
-                    zoomed: saved.tab_zoomed(scope, tab.id).is_some(),
-                })
-                .collect(),
+                .map(|(name, scope)| (Some(name.as_str()), scope.as_str())),
+        ) {
+            let legacy = self.doc.is_none() && name.is_none();
+            let prefix = if legacy { SAVED_TAB } else { LOCAL_TAB };
+            let kept_ids: HashSet<_> = saved.workspaces(scope).map(|w| w.id.as_str()).collect();
+            for mut tab in file_tabs(saved, scope, prefix, name) {
+                let id = tab.workspace_id.as_ref();
+                if !legacy
+                    && (id == sheprd_session::DEFAULT_WORKSPACE
+                        || id.starts_with(sheprd_session::spaces::ID_PREFIX)
+                        || kept_ids.contains(id)
+                        || self
+                            .doc
+                            .is_some_and(|(spaces, _)| spaces.workspace(id).is_some()))
+                {
+                    continue;
+                }
+                let panes = tab.panes.terminals();
+                if panes.iter().any(|pane| held.contains(pane)) {
+                    continue;
+                }
+                held.extend(panes);
+                if name.is_some() {
+                    tab.workspace_id = crate::hub::sessions::join_id(name, id).into();
+                }
+                kept.push(tab);
+            }
         }
+        kept
     }
 
     /// Every terminal a kept tab holds.
@@ -126,6 +143,27 @@ impl<'a> Kept<'a> {
             .map(|terminal| terminal.as_str().to_owned())
             .collect()
     }
+}
+
+fn file_tabs<'a>(
+    saved: &'a SavedTabs,
+    scope: &'a str,
+    prefix: &'static str,
+    session: Option<&'a str>,
+) -> impl Iterator<Item = KeptTab<'a>> {
+    saved.core_tabs(scope).map(move |tab| KeptTab {
+        active: saved.tab_active(scope, tab.id),
+        name: saved.tab_name(scope, tab.id),
+        names: saved.pane_names(scope, tab.id),
+        panes: tab.panes,
+        target: format!(
+            "{prefix}{}",
+            crate::hub::sessions::join_id(session, &tab.id.to_string())
+        ),
+        title: tab.title,
+        workspace_id: tab.workspace_id.into(),
+        zoomed: saved.tab_zoomed(scope, tab.id).is_some(),
+    })
 }
 
 /// `tab` with each recovered chat's terminal replaced by the one that took

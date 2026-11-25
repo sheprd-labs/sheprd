@@ -287,6 +287,17 @@ impl SheprdWindow {
                 if &super::scope(endpoint) != scope {
                     return None;
                 }
+                if self
+                    .core_terminals
+                    .session_of(scope)
+                    .is_some_and(|session| session.workspace(workspace).is_some())
+                    || self
+                        .browser_key()
+                        .as_ref()
+                        .is_some_and(|(here, id)| here == scope && id == workspace)
+                {
+                    return Some(index);
+                }
                 let live = if index == self.selected_endpoint {
                     &self.live
                 } else {
@@ -308,7 +319,7 @@ impl SheprdWindow {
 #[cfg(any(target_os = "macos", windows))]
 // i18n: data
 const PAGE_TEXT_SCRIPT: &str = "(function () {\
-  if (document.readyState !== 'complete') { return null; }\
+  if (location.href === 'about:blank' || document.readyState !== 'complete') { return null; }\
   var body = document.body;\
   return body ? String(body.innerText).slice(0, 65536) : '';\
 })()";
@@ -316,6 +327,27 @@ const PAGE_TEXT_SCRIPT: &str = "(function () {\
 /// A control request's view of this window's native pages.
 #[cfg(any(target_os = "macos", windows))]
 impl SheprdWindow {
+    pub(crate) fn prepare_page_for_inspection(
+        &mut self,
+        tab: &crate::browser::Tab,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> crate::Result<()> {
+        self.browser.pages.ensure(tab, window, cx)?;
+        #[cfg(target_os = "macos")]
+        if let Some(page) = self.browser.pages.page(tab.id) {
+            // A newly built view has never been laid out. Give the parked
+            // view a viewport without moving its offscreen origin.
+            let size = window.viewport_size();
+            page.native().setFrameSize(objc2_foundation::NSSize::new(
+                f64::from(size.width).clamp(1., 2000.),
+                f64::from(size.height).clamp(1., 2000.),
+            ));
+        }
+        self.apply_page_zoom(tab.id, tab.zoom);
+        Ok(())
+    }
+
     /// Whether this window has made the page of tab `id`.
     pub(crate) fn has_page(&self, id: TabId) -> bool {
         self.browser.pages.contains(id)
@@ -371,9 +403,7 @@ impl SheprdWindow {
 
 #[cfg(target_os = "macos")]
 impl SheprdWindow {
-    /// Takes a picture of tab `id`'s page as it shows now, handed to `done`
-    /// as TIFF bytes. Whether one was asked for: the page must be on
-    /// screen, where it was laid out last frame.
+    /// Captures the page at its native size once WebKit has loaded it.
     pub(crate) fn page_screenshot(
         &self,
         id: TabId,
@@ -382,22 +412,23 @@ impl SheprdWindow {
         let Some(page) = self.browser.pages.page(id) else {
             return false;
         };
-        if !self.browser.pages.is_shown(id) {
+        let size = page.native().bounds().size;
+        if size.width <= 0. || size.height <= 0. {
             return false;
         }
-        let Some(bounds) = self.browser.pages.drawn_at(id) else {
-            return false;
-        };
         let rect = crate::browser::annotate::Rect {
             x: 0.,
             y: 0.,
-            width: f64::from(f32::from(bounds.size.width)),
-            height: f64::from(f32::from(bounds.size.height)),
+            width: size.width,
+            height: size.height,
         };
         let Some(view) = page.web() else {
             return false;
         };
-        crate::browser::snapshot::capture(view, rect, done);
+        if !crate::browser::snapshot::ready(view) {
+            return false;
+        }
+        crate::browser::snapshot::capture(view, rect, self.browser.pages.is_shown(id), done);
         true
     }
 }

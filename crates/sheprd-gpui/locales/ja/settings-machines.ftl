@@ -31,6 +31,7 @@ settings-machines-gb = { $size } GB
 settings-machines-guide = エージェント向けにセットアップ
 settings-machines-memory = メモリ
 settings-machines-open = 開く
+settings-machines-review-deletion = { $name } の削除を確認…
 settings-machines-running = 実行中
 settings-machines-saving = 保存中…
 settings-machines-shut-down = シャットダウン

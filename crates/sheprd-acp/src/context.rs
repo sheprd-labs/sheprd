@@ -1,6 +1,6 @@
 //! What the agent is told besides the person's words: the user's chat
 //! instructions, once per conversation, and where the person is typing
-//! whenever they switch devices, so the agent answers in a form they can
+//! with each prompt, so the agent answers in a form they can
 //! see. A phone cannot open a path on this computer, so there the agent is
 //! told to put pictures in the chat instead.
 //!
@@ -101,6 +101,8 @@ fn quoted(path: &Path) -> String {
 /// What the agent has been told in this conversation.
 #[derive(Debug, Default)]
 pub(crate) struct Context {
+    /// Antigravity receives each prompt directly, without Sheprd annotations.
+    direct: bool,
     facts: Facts,
     /// The `sheprd` command the agent starts a chat like this one with;
     /// `None` leaves what it runs as out of the note.
@@ -125,9 +127,25 @@ pub(crate) struct Context {
 }
 
 impl Context {
+    /// A chat that passes each prompt through without annotation.
+    #[cfg(test)]
+    pub(crate) fn direct() -> Self {
+        Self {
+            direct: true,
+            ..Self::default()
+        }
+    }
+
+    /// Toggles pass-through mode when switching to or from an agent (such as
+    /// Antigravity) that receives each prompt directly without Sheprd notes.
+    pub(crate) fn set_direct(&mut self, direct: bool) {
+        self.direct = direct;
+    }
+
     /// A conversation in which earlier notes told the agent `told`.
     pub(crate) fn new(prompts: Prompts, facts: Facts, told: Told) -> Self {
         Self {
+            direct: false,
             facts,
             launch: None,
             last: None,
@@ -188,11 +206,22 @@ impl Context {
     /// The note to send ahead of `prompt` typed at `origin`: the
     /// instructions unless the agent last heard these very ones, how to use
     /// memory unless it heard that, the entries of memory that bear on
-    /// `prompt` and were not offered yet, and where the person is when that
-    /// changes what they can see. None when there is nothing new.
+    /// `prompt` and were not offered yet, and the current device on every
+    /// identified prompt. Only the new turn changes; cached history stays put.
     pub(crate) fn before_prompt(&mut self, origin: Option<Origin>, prompt: &str) -> Option<String> {
+        if self.direct {
+            return None;
+        }
+        // An older client cannot identify a phone. Clear a previous target
+        // rather than letting its next message inherit another device's id.
+        let origin = origin.or_else(|| {
+            self.told
+                .place
+                .filter(|place| place.device == Device::PhoneApp)
+                .map(|_| Origin::new(Device::Other, Via::Other))
+        });
         if origin.is_some() {
-            self.last = origin;
+            self.last = origin.clone();
         }
         let instructions = self
             .prompts
@@ -220,16 +249,18 @@ impl Context {
             .as_mut()
             .and_then(|recall| recall.recall(prompt))
             .map(|lines| note::escape(&lines));
-        let moved = origin.filter(|origin| self.told.place != Some(Place::from(*origin)));
+        let moved = origin
+            .as_ref()
+            .filter(|origin| self.told.place != Some(Place::from((*origin).clone())));
         if instructions.is_none()
             && chat.is_none()
             && memory.is_none()
             && recalled.is_none()
-            && moved.is_none()
+            && origin.is_none()
         {
             return None;
         }
-        let mut body = self.part(Kind::Intro, self.last);
+        let mut body = self.part(Kind::Intro, self.last.clone());
         if let Some(instructions) = instructions {
             body.push_str("\nThe person's instructions for every chat:\n");
             body.push_str(&note::instructions(&instructions));
@@ -253,14 +284,18 @@ impl Context {
             body.push('\n');
             body.push_str(&note::recalled(&recalled));
         }
-        let place = moved.map(Place::from);
+        let place = origin.clone().map(Place::from);
         if let Some(origin) = moved {
             self.told.place = place;
             body.push('\n');
-            body.push_str(&self.part(Kind::of(origin), Some(origin)));
-            if let Some(kind) = Kind::after(origin) {
-                body.push_str(&self.part(kind, Some(origin)));
+            body.push_str(&self.part(Kind::of(origin.clone()), Some(origin.clone())));
+            if let Some(kind) = Kind::after(origin.clone()) {
+                body.push_str(&self.part(kind, Some(origin.clone())));
             }
+        }
+        if let Some(origin) = &origin {
+            body.push('\n');
+            body.push_str(&note::current_device(origin));
         }
         Some(note::wrap(place, &body))
     }
@@ -298,7 +333,7 @@ fn connection_name(via: Via) -> &'static str {
 
 /// What `{{ where }}` says: the device and how it reaches this computer,
 /// to follow "The person is typing".
-fn place_phrase(origin: Origin) -> String {
+fn place_phrase(origin: &Origin) -> String {
     let device = match origin.device {
         Device::Desktop => "in Sheprd's desktop app",
         Device::PhoneApp => "on their phone or tablet, in Sheprd's iPhone and iPad app",

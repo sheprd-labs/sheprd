@@ -1,13 +1,13 @@
-use super::*;
+use crate::context::prompts::tests::*;
 
 const HARDWARE_KEYS: &str = "They cannot touch this computer: a YubiKey";
 
 /// Every template a person at `origin` is sent, rendered and joined.
 fn note(origin: Origin) -> String {
     let prompts = Prompts::default();
-    std::iter::once(Kind::of(origin))
-        .chain(Kind::after(origin))
-        .map(|kind| prompts.render(kind, &facts(), Some(origin)))
+    std::iter::once(Kind::of(origin.clone()))
+        .chain(Kind::after(origin.clone()))
+        .map(|kind| prompts.render(kind, &facts(), Some(origin.clone())))
         .collect::<Vec<_>>()
         .join("\n")
 }

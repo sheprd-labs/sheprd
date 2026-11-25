@@ -72,13 +72,11 @@
           nearby = pkgs.callPackage ./macos/sheprd-nearby/package.nix { };
           # The Moonframe checkout Cargo.lock pins; its hash is the one Cargo's
           # vendoring checks too.
-          moonframeRev = lib.last (
-            lib.splitString "#"
-              (lib.findFirst (crate: crate.name == "moonframe") null
-                (lib.importTOML ./Cargo.lock).package
-              ).source
-          );
-          moonframeHash = "sha256-Pe7WMPgnEXCXldIHjls9e22H3r1arkEsVhSNCTNoQ5I=";
+          moonframePackage = lib.findFirst (crate: crate.name == "moonframe") null (
+            lib.importTOML ./Cargo.lock
+          ).package;
+          moonframeRev = lib.last (lib.splitString "#" moonframePackage.source);
+          moonframeHash = "sha256-MF0ZAOKvEMjs/vEmQhjD/CxMMcKO/IZRIUCCqrVwjmE=";
           moonframeSrc = pkgs.fetchgit {
             url = "https://github.com/moonframehq/moonframe";
             rev = moonframeRev;
@@ -111,7 +109,7 @@
             lockFile = ./Cargo.lock;
             # All Moonframe crates share this pinned Git checkout, including
             # when the optional feature is off and Cargo only vendors it.
-            outputHashes."moonframe-1.4.0" = moonframeHash;
+            outputHashes."moonframe-${moonframePackage.version}" = moonframeHash;
             # Sheprd's AccessKit fork, pinned in Cargo.toml's [patch.crates-io].
             outputHashes."accesskit_macos-0.26.3" = "sha256-aBhgu63Zq/jiEEW/Tu0iiQr3srZfTjLMnAgohTMqUUk=";
           };

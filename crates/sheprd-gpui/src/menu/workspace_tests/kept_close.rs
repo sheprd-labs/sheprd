@@ -111,6 +111,7 @@ fn clean_repository() -> (tempfile::TempDir, Identity) {
         ),
         label: "test".into(),
         linked: false,
+        root: String::new(),
     };
     (folder, identity)
 }
@@ -307,6 +308,7 @@ fn kept_close_accepts_the_cache_learning_an_unchanged_checkout(cx: &mut TestAppC
                     key,
                     label: "test".into(),
                     linked: false,
+                    root: String::new(),
                 }),
             );
             view.refresh_core_session(cx);
@@ -431,6 +433,7 @@ fn kept_close_revalidates_host_and_checkout_before_submission(cx: &mut TestAppCo
                     key: folder.path().join(".git").to_str().unwrap().into(),
                     label: "replacement".into(),
                     linked: false,
+                    root: String::new(),
                 }),
             );
             view.refresh_core_session(cx);

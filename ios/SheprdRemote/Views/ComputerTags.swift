@@ -70,7 +70,7 @@ struct TagFilterMenu: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let computers = model.computers
+        let computers = model.shownComputers
         let tags = ComputerTags.all(in: computers)
         let active = ComputerTags.active(model.tagFilter.tag, among: computers)
         let device = ComputerTags.active(device: model.tagFilter.device, tag: active, among: computers)

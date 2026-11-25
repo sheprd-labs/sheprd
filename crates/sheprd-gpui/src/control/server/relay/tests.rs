@@ -94,3 +94,57 @@ fn a_dialog_an_mcp_client_opened_names_it_and_a_direct_one_does_not(cx: &mut Tes
     view.update(cx, |view, cx| announce(view, &nameless, cx));
     assert!(flash(&view, cx).unwrap().contains("An MCP client"));
 }
+
+fn lent(op: TabOp) -> Request {
+    Request::Tab(crate::control::protocol::Call {
+        caller: Caller {
+            via: Some(Via::Lend {
+                borrower: "studio".to_owned(),
+                owner: "pane:1".to_owned(),
+            }),
+            ..Caller::default()
+        },
+        op,
+    })
+}
+
+#[gpui::test]
+fn another_computer_asks_only_for_virtual_mac_work(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        assert_eq!(
+            code(super::lent(&lent(TabOp::Devices), cx)),
+            Some(ErrorCode::InvalidRequest)
+        );
+        let open = TabOp::Machine {
+            name: "default".to_owned(),
+        };
+        assert_eq!(
+            code(super::lent(&lent(open), cx)),
+            Some(ErrorCode::InvalidRequest)
+        );
+        assert_eq!(code(super::lent(&lent(TabOp::MachineList), cx)), None);
+        let start = TabOp::MachineStart {
+            name: "default".to_owned(),
+        };
+        assert_eq!(code(super::lent(&lent(start), cx)), None);
+    });
+}
+
+#[gpui::test]
+fn lending_off_leaves_only_listing_and_releasing(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(fixture_window);
+    view.update(cx, |view, _| view.config.machine.lend = false);
+    cx.cx.update(|cx| {
+        let start = TabOp::MachineStart {
+            name: "default".to_owned(),
+        };
+        assert_eq!(
+            code(super::lent(&lent(start), cx)),
+            Some(ErrorCode::Unsupported)
+        );
+        let release = TabOp::MachineRelease {
+            name: "default".to_owned(),
+        };
+        assert_eq!(code(super::lent(&lent(release), cx)), None);
+    });
+}

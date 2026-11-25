@@ -27,6 +27,7 @@ fn the_agent_is_told_it_is_a_chat_and_how_to_start_another() {
         "{note}"
     );
     assert!(note.contains("model Opus, thinking High, permission mode Plan"));
+    assert!(note.contains("--no-focus"));
     assert!(note.contains("/Apps/Sheprd.app/sheprd chat new --pane PANE"));
     assert_eq!(context.before(None), None);
 }

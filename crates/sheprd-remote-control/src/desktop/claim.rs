@@ -280,7 +280,7 @@ async fn pairing_dial(
     route: RouteId,
     dial: &p256::ecdsa::SigningKey,
 ) -> Result<(quinn::Connection, (quinn::SendStream, quinn::RecvStream))> {
-    let mut last = None;
+    let mut failure = Error::NoRelays;
     for relay in relays {
         let Ok(endpoint) = Endpoint::parse(relay) else {
             continue;
@@ -288,7 +288,7 @@ async fn pairing_dial(
         let connection = match timeout(client::reach(&endpoint)).await {
             Ok(Ok(connection)) => connection,
             Ok(Err(error)) => {
-                last = Some(error);
+                failure.record_relay(&endpoint, error);
                 continue;
             }
             Err(_) => continue,
@@ -302,13 +302,13 @@ async fn pairing_dial(
                     tokio::time::sleep(Duration::from_millis(200)).await;
                 }
                 Err(error) => {
-                    last = Some(error);
+                    failure.record_relay(&endpoint, error);
                     break;
                 }
             }
         }
     }
-    Err(last.map_or(Error::NoRelays, Error::Relay))
+    Err(failure)
 }
 
 async fn timeout<T>(step: impl Future<Output = T>) -> Result<T> {

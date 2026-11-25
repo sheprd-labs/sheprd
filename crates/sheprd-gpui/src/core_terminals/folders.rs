@@ -148,6 +148,7 @@ impl SheprdWindow {
             .and_then(|terminal| self.core_terminals.listed(&host, terminal))
             .and_then(|info| info.cwd.as_deref())
             .and_then(std::path::Path::to_str)
+            .filter(|cwd| !cwd.is_empty())
             .or_else(|| {
                 store
                     .kept_workspace(scope, workspace)
@@ -234,16 +235,5 @@ impl SheprdWindow {
     /// Whether the active group showed a herdr-core tab at the last tick.
     pub(crate) fn shows_core_tab(&self) -> bool {
         self.core_terminals.shown.is_some()
-    }
-
-    /// The folder the focused workspace's herdr-core tabs started in, for a
-    /// workspace with no Herdr pane to name one.
-    pub(crate) fn core_launch_root(&self) -> Option<String> {
-        let (scope, workspace) = self.browser_key()?;
-        self.core_terminals
-            .launch_root(&scope, &workspace)?
-            .into_os_string()
-            .into_string()
-            .ok()
     }
 }

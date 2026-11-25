@@ -248,6 +248,7 @@ impl SheprdWindow {
         let workspace = source.workspace_id.clone();
         self.start_core_program(
             Purpose::Tab {
+                focus: true,
                 group: None,
                 scope,
                 workspace,

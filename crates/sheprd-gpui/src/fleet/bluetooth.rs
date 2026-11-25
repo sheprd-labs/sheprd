@@ -1,91 +1,23 @@
 //! The fleet around a Bluetooth pairing (`docs/relay-plan.md`, Adding a
 //! nearby Sheprd from another network): what Add Device > Nearby Sheprd
-//! asks this computer's daemon before the claim, and what it does once
-//! the other computer is paired and saved. The `desktop-pair` child
-//! checked everything the other computer answered; the daemon signs only
-//! what a person here chose on that page.
+//! does once the other computer is paired and saved, when that computer's
+//! Allow brought a fleet along. The page itself only pairs; joining a
+//! fleet is Settings > Fleet's. The `desktop-pair` child checked
+//! everything the other computer answered.
 
 use super::{Error, Fleet, flows, remote};
 use crate::remote::Supervisor;
 use gpui::App;
 use sheprd_client::ConnectTarget;
 use sheprd_remote_control::control::fleet::{
-    HostKind, Kind, Method, View,
-    bluetooth::{ApprovedFleet, Hint, Joining},
+    Method,
+    bluetooth::ApprovedFleet,
     sync::{Answer, Apply, Ask},
 };
 use std::{sync::atomic::AtomicBool, time::Duration};
 
 /// The session saved devices use.
 const SESSION: &str = "default";
-
-/// `view`'s fleet as a claim names it.
-pub(crate) fn hint(view: &View) -> Hint {
-    let computers = view
-        .members
-        .iter()
-        .filter(|member| member.kind == Kind::Computer)
-        .count();
-    let hosts = view
-        .hosts
-        .iter()
-        .filter(|host| host.kind != HostKind::Member)
-        .count();
-    Hint {
-        fleet: view.fleet.clone(),
-        computers: u16::try_from(computers).unwrap_or(u16::MAX),
-        hosts: u16::try_from(hosts).unwrap_or(u16::MAX),
-    }
-}
-
-/// This computer's bundle for `fleet`, signed by its daemon and bound to
-/// the pairing whose token hashes to `pairing`: the person here chose to
-/// join the other computer's fleet.
-pub(crate) fn joining(
-    cx: &mut App,
-    fleet: String,
-    pairing: String,
-    done: impl FnOnce(Result<Joining, Error>, &mut App) + 'static,
-) {
-    let Some(client) = Supervisor::client(cx) else {
-        done(Err(Error::NoDaemon), cx);
-        return;
-    };
-    cx.spawn(async move |cx| {
-        let answer = flows::daemon(&client, Ask::Joining { fleet, pairing }).await;
-        let joining = match answer {
-            Ok(Answer::Joining(joining)) => Ok(joining),
-            Ok(_) => Err(Error::Unexpected),
-            Err(error) => Err(error),
-        };
-        cx.update(|cx| done(joining, cx));
-    })
-    .detach();
-}
-
-/// Founds a fleet with this computer as its only member, as the person
-/// here chose, and answers it as a claim's invitation names it.
-pub(crate) fn found(cx: &mut App, done: impl FnOnce(Result<Hint, Error>, &mut App) + 'static) {
-    let Some(client) = Supervisor::client(cx) else {
-        done(Err(Error::NoDaemon), cx);
-        return;
-    };
-    cx.spawn(async move |cx| {
-        let founded = async {
-            flows::daemon(&client, Ask::Found).await?;
-            match flows::daemon(&client, Ask::Status).await? {
-                Answer::Status { view: Some(view) } => Ok(hint(&view)),
-                _ => Err(Error::Unexpected),
-            }
-        }
-        .await;
-        cx.update(|cx| {
-            Fleet::refresh(cx);
-            done(founded, cx);
-        });
-    })
-    .detach();
-}
 
 /// Finishes what the pairing left for the fleet, over the SSH it opened to
 /// `target`: admits the other computer's bundle and hands it the log, or

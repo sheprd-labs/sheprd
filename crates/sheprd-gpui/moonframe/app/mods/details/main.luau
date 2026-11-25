@@ -1,5 +1,5 @@
 -- The right pane: the focused worktree and the agents in it. Open it from
--- Details in the status bar.
+-- Details in the title bar.
 return mod {
 	init = function(previous)
 		return previous or {}

@@ -1,10 +1,9 @@
-//! `browser screenshot`: WebKit pictures the page as it shows on screen, so
-//! the tab is shown first; the picture becomes a PNG and is written off the
-//! UI thread, replacing the file at the path in one step.
-use super::{holder, page_tab};
+//! WebKit captures a tab at its viewport size, including when it is hidden.
+//! The resulting PNG is written atomically off the UI thread.
+use super::{inspection_window, page_tab};
 use crate::control::{
     protocol::{Caller, ErrorCode, Response, tabs::PAGE_WAIT_SECONDS},
-    server::{Watches, socket, tabs::reveal},
+    server::{Watches, socket},
 };
 use gpui::App;
 use std::{
@@ -18,8 +17,8 @@ use std::{
 
 /// Where a screenshot request is.
 enum Phase {
-    /// Waiting for the page to be on screen.
-    Showing,
+    /// Waiting for the page to finish loading.
+    Loading,
     /// WebKit was asked; its TIFF, or `None` for no picture, lands here.
     Capturing(Rc<RefCell<Option<Option<Vec<u8>>>>>),
     /// The background thread writes the PNG and reports here.
@@ -72,18 +71,17 @@ pub(in crate::control::server::tabs) fn screenshot(
         Ok(tab) => tab,
         Err(response) => return incoming.respond(response),
     };
-    // Only a page on screen can be pictured.
-    if let Err(response) = reveal(&caller, &tab, cx) {
-        return incoming.respond(response);
-    }
+    let handle = match inspection_window(&caller, &tab, cx) {
+        Ok(handle) => handle,
+        Err(response) => return incoming.respond(response),
+    };
     let tab_id = tab.id;
-    let mut phase = Phase::Showing;
+    let mut phase = Phase::Loading;
     watches.add(
         incoming,
         Duration::from_secs(PAGE_WAIT_SECONDS),
         move |cx| match &phase {
-            Phase::Showing => {
-                let handle = holder(&caller, tab_id, cx)?;
+            Phase::Loading => {
                 let landed = Rc::new(RefCell::new(None));
                 let slot = landed.clone();
                 let asked = handle
@@ -131,7 +129,7 @@ pub(in crate::control::server::tabs) fn screenshot(
         },
         Response::error(
             ErrorCode::Timeout,
-            format!("Tab {id}'s page was not on screen to picture in time"),
+            format!("Tab {id}'s page did not finish loading in time"),
         ),
         cx,
     );

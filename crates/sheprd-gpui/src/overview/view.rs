@@ -652,7 +652,7 @@ impl SheprdWindow {
                 );
             }
             return actions.child(
-                action("forget", "icons/x.svg", fl!("overview-forget")).on_click(cx.listener(
+                action("forget", "icons/close.svg", fl!("overview-forget")).on_click(cx.listener(
                     move |this, _, _, cx| {
                         cx.stop_propagation();
                         this.overview.closed.forget(id);

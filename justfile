@@ -9,7 +9,7 @@ default:
 # the helpers the app finds beside itself (`sheprd-acp`, `sheprd-automate`) too.
 run-moonframe *args:
     cargo build --locked --release -p sheprd-acp -p sheprd-automate --target-dir target/moonframe
-    cargo run --locked --release -p sheprd-gpui --features moonframe-studio --target-dir target/moonframe -- {{args}}
+    SHEPRD_MOONFRAME=1 cargo run --locked --release -p sheprd-gpui --features moonframe-studio --target-dir target/moonframe -- {{args}}
 
 # Launch the bundle so macOS reads Sheprd's identity and privacy declarations.
 run *args:
@@ -118,7 +118,7 @@ test-perf budget="30":
 # --help` for more.
 bench-moonframe herdr rounds="3":
     cargo build --locked --release -p sheprd-gpui
-    scripts/bench_frames.py --herdr "{{herdr}}" --rounds "{{rounds}}" "classic=target/release/sheprd --classic" moonframe=target/release/sheprd
+    scripts/bench_frames.py --herdr "{{herdr}}" --rounds "{{rounds}}" "classic=target/release/sheprd --classic" "moonframe=/usr/bin/env SHEPRD_MOONFRAME=1 target/release/sheprd"
 
 # Compare UI variants written as GPUI code in `file` (the built-in demo when
 # empty) in a native window. "Send to agent" types the notes into the calling

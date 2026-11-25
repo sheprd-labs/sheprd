@@ -24,7 +24,9 @@ extension Repository {
     /// Its own checkout, where a new worktree of it branches from, in that
     /// checkout's Herdr session whether or not a header names it.
     public var ownCheckout: Home.Workspace? {
-        workspaces.first { $0.worktree?.linked != true }
+        // The catch-all group can inherit a terminal's cwd and a custom
+        // display name, but has no checkout of its own.
+        workspaces.first { $0.id != "core:terminals" && !$0.cwd.isEmpty && $0.worktree?.linked != true }
     }
 }
 
@@ -79,6 +81,12 @@ extension Home {
 }
 
 extension Home.Workspace {
+    /// The branch or workspace label shown below the project when it adds detail.
+    public var checkoutSubtitle: String? {
+        let checkout = branch ?? label
+        return checkout == repositoryName ? nil : checkout
+    }
+
     /// The most pressing status among its chats and the agents in its
     /// terminal tabs, or nil when it runs none.
     public var status: Home.AgentStatus? {

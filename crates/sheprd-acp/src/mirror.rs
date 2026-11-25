@@ -15,7 +15,7 @@ use std::{
 use anyhow::Context as _;
 use crossbeam_channel::{Sender, bounded};
 use sheprd_chat_protocol::{
-    Change, Cursor, EndpointId, Rejection, ServerMessage, Transcript, VERSION,
+    Change, CommandId, Cursor, EndpointId, Rejection, ServerMessage, Transcript, VERSION,
 };
 
 use crate::{
@@ -110,18 +110,20 @@ impl Mirror {
             Input::Command { conn, id, .. } | Input::Unsupported { conn, id } => {
                 // This applies to every command, including Cancel and Answer:
                 // old log records never become actionable permission requests.
-                if let Some(client) = self.clients.get(&conn)
-                    && client
-                        .try_send(ServerMessage::Ack {
-                            id,
-                            rejected: Some(Rejection::NotReady),
-                        })
-                        .is_err()
-                {
-                    self.clients.remove(&conn);
-                }
+                self.ack(conn, id, Some(Rejection::NotReady));
             }
             Input::Agent(..) | Input::AgentExited { .. } | Input::Shutdown => {}
+        }
+    }
+
+    /// Tells client `conn` its command `id` was taken, or why not.
+    pub(crate) fn ack(&mut self, conn: ConnId, id: CommandId, rejected: Option<Rejection>) {
+        if let Some(client) = self.clients.get(&conn)
+            && client
+                .try_send(ServerMessage::Ack { id, rejected })
+                .is_err()
+        {
+            self.clients.remove(&conn);
         }
     }
 
@@ -200,6 +202,33 @@ fn changes(previous: &Transcript, next: &Transcript) -> Option<Vec<Change>> {
         changes.push(Change::Options {
             options: next.options.clone(),
         });
+    }
+    // A view's composer follows `read_only` from its snapshot alone.
+    if previous.read_only != next.read_only {
+        return None;
+    }
+    for asked in &previous.permissions {
+        match next
+            .permissions
+            .iter()
+            .find(|permission| permission.id == asked.id)
+        {
+            None => changes.push(Change::PermissionResolved { id: asked.id }),
+            // The reducer only adds and removes requests.
+            Some(permission) if permission != asked => return None,
+            Some(_) => {}
+        }
+    }
+    for permission in &next.permissions {
+        if !previous
+            .permissions
+            .iter()
+            .any(|asked| asked.id == permission.id)
+        {
+            changes.push(Change::PermissionAsked {
+                permission: permission.clone(),
+            });
+        }
     }
     if previous.usage != next.usage {
         changes.push(Change::Usage {

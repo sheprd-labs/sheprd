@@ -85,6 +85,7 @@ fn rows_show_the_daemons_status_dot_and_no_path() {
     let mut terminal = crate::hub::layout_terminal("t2", "zsh");
     terminal.cwd = Some("/srv/code/app/src".into());
     terminal.agent = Some(crate::hub::TerminalAgent {
+        boot: "b".into(),
         name: Some("codex".into()),
         status: AgentStatus::Blocked,
         pane: "t2".into(),

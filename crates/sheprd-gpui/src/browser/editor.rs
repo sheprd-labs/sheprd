@@ -59,16 +59,28 @@ impl SheprdWindow {
     /// tab's on this computer.
     fn workspace_root(&self) -> Option<Cow<'_, str>> {
         let (_, workspace) = self.browser_key()?;
-        let herdr = self
-            .live
+        self.workspace_root_at(self.selected_endpoint, &workspace)
+    }
+
+    pub(super) fn workspace_root_at(&self, index: usize, workspace: &str) -> Option<Cow<'_, str>> {
+        let endpoint = self.endpoints.get(index)?;
+        let root = self
+            .live_at(index)
             .snapshot
             .as_deref()
-            .and_then(|snapshot| crate::palette::launch_root(snapshot, &workspace));
-        match herdr {
-            Some(root) => Some(Cow::Borrowed(root)),
-            None if !self.selected_is_remote() => self.core_launch_root().map(Cow::Owned),
-            None => None,
+            .and_then(|snapshot| crate::palette::launch_root(snapshot, workspace));
+        if let Some(root) = root {
+            return Some(Cow::Borrowed(root));
         }
+        if endpoint.connection.target.is_remote() {
+            return None;
+        }
+        self.core_terminals
+            .launch_root(&super::scope(endpoint), workspace)?
+            .into_os_string()
+            .into_string()
+            .ok()
+            .map(Cow::Owned)
     }
 
     pub(super) fn editor_tab_id(&self, editor: Editor, cx: &App) -> Option<TabId> {

@@ -91,7 +91,7 @@ pub fn connect_with_connector<T: Into<Transport>>(
     let (tx, events) = bounded(EVENT_CAPACITY);
     let stop = Arc::new(AtomicBool::new(false));
     let worker_stop = stop.clone();
-    let liveness = Arc::new(AtomicBool::new(false));
+    let liveness = Arc::new(crate::liveness::Request::default());
     let worker_liveness = liveness.clone();
     thread::Builder::new()
         .name("herdr-client-io".into())

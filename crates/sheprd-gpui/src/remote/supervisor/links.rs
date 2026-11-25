@@ -141,6 +141,11 @@ impl Supervisor {
         }
     }
 
+    /// How to reach `host`, while a window still connects to it.
+    pub(crate) fn host_target(cx: &App, host: &HostId) -> Option<ConnectTarget> {
+        cx.try_global::<Self>()?.links.target(host)
+    }
+
     /// The hosts a phone may be paired with, for the pairing dialog.
     pub(crate) fn hosts(cx: &App) -> Vec<Host> {
         cx.try_global::<Self>()

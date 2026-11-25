@@ -57,6 +57,12 @@ pub(crate) fn load(dir: &Path) -> Known {
 }
 
 fn read(path: &Path) -> Option<Settings> {
+    read_json::<Settings>(path).filter(|settings| !settings.is_empty())
+}
+
+/// The value `path` holds, or `None` when it is missing, too large, or no
+/// longer decodes.
+fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
     let mut bytes = Vec::new();
     fs::File::open(path)
         .ok()?
@@ -66,9 +72,7 @@ fn read(path: &Path) -> Option<Settings> {
     if bytes.len() as u64 > MAX_FILE {
         return None;
     }
-    serde_json::from_slice::<Settings>(&bytes)
-        .ok()
-        .filter(|settings| !settings.is_empty())
+    serde_json::from_slice(&bytes).ok()
 }
 
 /// Keeps `settings` as `agent`'s, replacing the file whole so a reader
@@ -82,12 +86,42 @@ pub(crate) fn save(dir: &Path, agent: Agent, settings: &Settings) -> crate::Resu
             _ => Ok(()),
         };
     }
+    write(dir, &path(dir, agent), &bytes)
+}
+
+/// The model and thinking the person last picked for `agent`, in any chat
+/// on this host ([`save_picked`]).
+pub(crate) fn picked(dir: &Path, agent: Agent) -> Option<sheprd_chat_protocol::Settings> {
+    read_json::<sheprd_chat_protocol::Settings>(&picked_path(dir, agent))
+        .filter(|settings| settings.is_for(agent) && !settings.options.is_empty())
+}
+
+/// Keeps `settings` as the person's last picks for `agent`, which a chat
+/// starting or switching to it applies once its new session opens.
+pub(crate) fn save_picked(
+    dir: &Path,
+    agent: Agent,
+    settings: &sheprd_chat_protocol::Settings,
+) -> crate::Result<()> {
+    let bytes = serde_json::to_vec(settings).map_err(crate::Error::Encode)?;
+    if bytes.len() as u64 > MAX_FILE {
+        return Ok(());
+    }
+    write(dir, &picked_path(dir, agent), &bytes)
+}
+
+fn picked_path(dir: &Path, agent: Agent) -> PathBuf {
+    dir.join(format!("{}.picked.json", agent.name()))
+}
+
+/// Replaces `target` in `dir` whole with `bytes`, so a reader never sees
+/// half of it.
+fn write(dir: &Path, target: &Path, bytes: &[u8]) -> crate::Result<()> {
     let mut builder = fs::DirBuilder::new();
     builder.recursive(true);
     #[cfg(unix)]
     std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
     builder.create(dir)?;
-    let target = path(dir, agent);
     let temporary = target.with_extension(format!("tmp-{}", std::process::id()));
     let mut options = fs::OpenOptions::new();
     options.write(true).create(true).truncate(true);
@@ -95,8 +129,8 @@ pub(crate) fn save(dir: &Path, agent: Agent, settings: &Settings) -> crate::Resu
     std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
     let written = options
         .open(&temporary)
-        .and_then(|mut file| file.write_all(&bytes))
-        .and_then(|()| fs::rename(&temporary, &target));
+        .and_then(|mut file| file.write_all(bytes))
+        .and_then(|()| fs::rename(&temporary, target));
     if written.is_err() {
         let _ = fs::remove_file(&temporary);
     }

@@ -76,9 +76,24 @@ fn info(url: &str) -> Result<Info> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(INFO_TIMEOUT))
         .max_redirects(0)
+        .http_status_as_error(false)
         .build()
         .into();
     let mut response = agent.get(url).call().map_err(Box::new)?;
+    let status = response.status();
+    if status.as_u16() == 403
+        && response
+            .headers()
+            .get(crate::endpoint::BAN_HEADER)
+            .is_some_and(|value| value == "1")
+    {
+        return Err(Error::Banned);
+    }
+    if !status.is_success() {
+        return Err(Error::Info(Box::new(ureq::Error::StatusCode(
+            status.as_u16(),
+        ))));
+    }
     let body = response
         .body_mut()
         .with_config()

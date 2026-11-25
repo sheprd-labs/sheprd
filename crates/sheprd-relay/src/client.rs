@@ -20,12 +20,14 @@ pub use reach::{first_reachable, reach};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     // keep-sorted start
+    #[error("This relay has banned your network address")]
+    Banned,
     #[error("could not open a UDP socket for QUIC")]
     Bind(#[source] std::io::Error),
     #[error("could not start a QUIC connection")]
     Connect(#[from] quinn::ConnectError),
     #[error("the QUIC connection failed or closed")]
-    Connection(#[from] quinn::ConnectionError),
+    Connection(#[source] quinn::ConnectionError),
     #[error("the connection offers no TLS exporter to prove a key over")]
     Exporter,
     #[error("the relay's /v1/info could not be read")]
@@ -41,7 +43,7 @@ pub enum Error {
     #[error("could not trust the relay's certificate")]
     Pin(#[from] pin::Error),
     #[error("could not read from the relay")]
-    Read(#[from] quinn::ReadExactError),
+    Read(#[source] quinn::ReadExactError),
     #[error("the relay answered {0:?}")]
     Refused(Status),
     #[error("another listener with the same key took this route")]
@@ -49,8 +51,57 @@ pub enum Error {
     #[error("the relay's host name did not resolve")]
     Resolve(#[source] std::io::Error),
     #[error("could not write to the relay")]
-    Write(#[from] quinn::WriteError),
+    Write(#[source] quinn::WriteError),
     // keep-sorted end
+}
+
+fn is_banned_code(code: quinn::VarInt) -> bool {
+    code == quinn::VarInt::from_u32(wire::code::BANNED)
+}
+
+fn is_banned(error: &quinn::ConnectionError) -> bool {
+    matches!(
+        error,
+        quinn::ConnectionError::ApplicationClosed(close) if is_banned_code(close.error_code)
+    )
+}
+
+impl From<quinn::ConnectionError> for Error {
+    fn from(error: quinn::ConnectionError) -> Self {
+        if is_banned(&error) {
+            Self::Banned
+        } else {
+            Self::Connection(error)
+        }
+    }
+}
+
+impl From<quinn::ReadExactError> for Error {
+    fn from(error: quinn::ReadExactError) -> Self {
+        match &error {
+            quinn::ReadExactError::ReadError(quinn::ReadError::ConnectionLost(connection))
+                if is_banned(connection) =>
+            {
+                Self::Banned
+            }
+            quinn::ReadExactError::ReadError(quinn::ReadError::Reset(code))
+                if is_banned_code(*code) =>
+            {
+                Self::Banned
+            }
+            _ => Self::Read(error),
+        }
+    }
+}
+
+impl From<quinn::WriteError> for Error {
+    fn from(error: quinn::WriteError) -> Self {
+        match &error {
+            quinn::WriteError::ConnectionLost(connection) if is_banned(connection) => Self::Banned,
+            quinn::WriteError::Stopped(code) if is_banned_code(*code) => Self::Banned,
+            _ => Self::Write(error),
+        }
+    }
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -232,12 +283,13 @@ impl Listener {
     pub async fn closed(&self) -> Error {
         let mut recv = self.recv.lock().await;
         tokio::select! {
-            error = self.connection.closed() => Error::Connection(error),
+            error = self.connection.closed() => error.into(),
             reset = recv.received_reset() => match reset {
                 Ok(Some(code)) if code == quinn::VarInt::from_u32(wire::code::REPLACED) => {
                     Error::Replaced
                 }
-                Err(quinn::ResetError::ConnectionLost(error)) => Error::Connection(error),
+                Ok(Some(code)) if is_banned_code(code) => Error::Banned,
+                Err(quinn::ResetError::ConnectionLost(error)) => error.into(),
                 Ok(_) | Err(_) => Error::ListenEnded,
             },
         }

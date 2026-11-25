@@ -20,6 +20,7 @@ fn status(connected: usize) -> Status {
         connected,
         relays: Default::default(),
         github_asks: 0,
+        voice_asks: 0,
     }
 }
 

@@ -19,6 +19,8 @@ struct PushRelaySection: View {
 
     What the push relay sees: this phone's push token while it sends a push, the time and size of each push, and the IP addresses of your computer and phone.
 
+    With One for all hosts, it temporarily groups participating computers by anonymous identifiers and sees progress counts and whether a question is waiting.
+
     What it never sees: your prompts, chats, code, file names, or terminal output. Alerts and Live Activities are encrypted so that only this phone can read them.
 
     What it cannot do: connect to your computer, run anything, or answer for you. Tokens are not stored or logged.
@@ -39,10 +41,9 @@ struct PushRelaySection: View {
                     }
                 }
             ))
+            .agentHighlight(.pushRelay)
             if !model.computers.isEmpty {
-                NavigationLink {
-                    PushDeliveryView().makesRoomForConnectionToast()
-                } label: {
+                NavigationLink(value: AgentSettingsPage.delivery) {
                     LabeledContent("Delivery", value: "\(readyCount) of \(model.computers.count) ready")
                 }
             }

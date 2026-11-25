@@ -52,6 +52,7 @@ fn pr_create_cancels_when_the_focused_core_pane_changes_before_the_next_tick(
                     key: folder.join(".git").to_str().unwrap().into(),
                     label: "app".into(),
                     linked: false,
+                    root: String::new(),
                 }),
             );
             view.menu.github = crate::github::Auth::connected_fixture();

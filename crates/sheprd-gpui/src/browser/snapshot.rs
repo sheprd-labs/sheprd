@@ -23,6 +23,15 @@ use wry::WebViewExtMacOS as _;
 /// Longest side of a saved screenshot, in pixels.
 const MAX_SIDE: u32 = 2000;
 
+/// A navigation must have committed before its first screenshot.
+pub(crate) fn ready(view: &wry::WebView) -> bool {
+    // SAFETY: read-only property of the live web view on the main thread.
+    !unsafe { view.webview().isLoading() }
+        && view
+            .url()
+            .is_ok_and(|url| !url.is_empty() && url != "about:blank")
+}
+
 /// Asks WebKit for `rect`, in the web view's points (the viewport's CSS pixels
 /// scaled by the page's zoom), and calls `done` with the image's TIFF bytes,
 /// or `None` when WebKit has none. WebKit
@@ -31,6 +40,7 @@ const MAX_SIDE: u32 = 2000;
 pub(crate) fn capture(
     view: &wry::WebView,
     rect: Rect,
+    after_screen_updates: bool,
     done: impl FnOnce(Option<Vec<u8>>) + 'static,
 ) {
     let Some(mtm) = MainThreadMarker::new() else {
@@ -49,7 +59,7 @@ pub(crate) fn capture(
     // coordinates, which are the viewport's CSS pixels at the default zoom.
     unsafe {
         configuration.setRect(area);
-        configuration.setAfterScreenUpdates(true);
+        configuration.setAfterScreenUpdates(after_screen_updates);
     }
     // WebKit calls the handler once; the cell turns `done` into the `Fn` a
     // block must be.

@@ -27,7 +27,7 @@ Because the daemons own the terminals, closing Sheprd leaves your sessions and a
 ## What you can do
 
 - **Terminals and agents.** Native panes for the agent CLIs you already use, with agent status on every tab and sidebar row. See [Terminals](terminals.md).
-- **Native agent chat.** Run Claude, Codex, Copilot, Gemini, Kimi Code, OpenCode or Pi as a chat drawn by the app. See [Chat](chat.md).
+- **Native agent chat.** Run Antigravity, Claude, Codex, Copilot, Gemini, Kimi Code, Muse Code, OpenCode or Pi as a chat drawn by the app. See [Chat](chat.md).
 - **Worktrees.** One sidebar row per checkout, with pull request number, diff counts and agent status. See [Worktrees](worktrees.md).
 - **Review.** Read an agent's diff, leave notes, commit, push and open the pull request. See [Review](review.md).
 - **Issues and pull requests.** Dispatch an agent from an issue and track pull requests across repositories. See [Orchestrator](orchestrator.md).

@@ -503,7 +503,11 @@ impl SheprdWindow {
                             }),
                     ),
             )
-            .when(self.hosted, |end| end.child(self.details_toggle(cx)))
+            .when(
+                self.hosted
+                    && (self.hosted_full_header.is_none() || self.config.features.moonframe_tools),
+                |end| end.child(self.details_toggle(cx)),
+            )
             // The in-window menu bar carries the window controls instead,
             // until it is hidden and they would leave with it.
             .when(!self.menu_bar_shown(), |end| {

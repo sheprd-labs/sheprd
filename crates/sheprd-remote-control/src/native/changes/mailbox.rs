@@ -6,7 +6,7 @@
 use super::Error;
 use crate::control::{
     changes::{Answer, Ask, AskId, Failure, Wanted},
-    layout,
+    layout, voice,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -31,6 +31,7 @@ pub(crate) struct Mailbox {
 struct Inner {
     /// Layout changes queued for Sheprd.
     layout: VecDeque<layout::Ask>,
+    voice: VecDeque<voice::Ask>,
     next: u64,
     queued: VecDeque<Ask>,
     /// Sheprd was last heard from then.
@@ -40,6 +41,7 @@ struct Inner {
 
 /// Where an answer goes: the phone waiting for it.
 enum Waiter {
+    Voice(oneshot::Sender<Option<voice::Answer>>),
     Changes(oneshot::Sender<Answer>),
     Layout(oneshot::Sender<layout::Answer>),
 }
@@ -76,6 +78,7 @@ impl<T> Drop for Pending<'_, T> {
         inner.waiting.remove(&self.id);
         inner.queued.retain(|ask| ask.id != self.id);
         inner.layout.retain(|ask| ask.id != self.id);
+        inner.voice.retain(|ask| ask.id != self.id);
     }
 }
 
@@ -149,6 +152,41 @@ impl Mailbox {
             id,
             mailbox: self,
         })
+    }
+
+    /// The GUI owns its keyring entry. The daemon holds an account only
+    /// while the approved phone is exchanging it with the desktop.
+    pub(crate) fn ask_voice(
+        &self,
+        offer: voice::Offer,
+    ) -> Result<Pending<'_, Option<voice::Answer>>, Error> {
+        let mut inner = self.inner();
+        let id = inner.admit(Instant::now())?;
+        let (sender, answer) = oneshot::channel();
+        inner.waiting.insert(id, Waiter::Voice(sender));
+        inner.voice.push_back(voice::Ask { id, offer });
+        Ok(Pending {
+            answer,
+            id,
+            mailbox: self,
+        })
+    }
+
+    pub(crate) fn voice_count(&self) -> usize {
+        self.inner().voice.len()
+    }
+
+    pub(crate) fn take_voice(&self) -> Vec<voice::Ask> {
+        self.inner().voice.drain(..).collect()
+    }
+
+    pub(crate) fn answer_voice(&self, id: AskId, answer: Option<voice::Answer>) {
+        let mut inner = self.inner();
+        if matches!(inner.waiting.get(&id), Some(Waiter::Voice(_)))
+            && let Some(Waiter::Voice(waiter)) = inner.waiting.remove(&id)
+        {
+            let _ = waiter.send(answer);
+        }
     }
 
     /// Takes every queued question, waiting up to `wait` for one. Blocking:

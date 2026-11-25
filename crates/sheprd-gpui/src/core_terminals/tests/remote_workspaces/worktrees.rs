@@ -19,6 +19,7 @@ fn remote_git_metadata_never_uses_the_same_local_path(cx: &mut TestAppContext) {
                 key: "/local/.git".into(),
                 label: "local".into(),
                 linked: false,
+                root: String::new(),
             };
             view.core_terminals
                 .seed_checkout_for_test(folder, Some(local));
@@ -27,6 +28,7 @@ fn remote_git_metadata_never_uses_the_same_local_path(cx: &mut TestAppContext) {
                 key: "/remote/.git".into(),
                 label: "remote".into(),
                 linked: true,
+                root: String::new(),
             };
             view.core_terminals
                 .remote

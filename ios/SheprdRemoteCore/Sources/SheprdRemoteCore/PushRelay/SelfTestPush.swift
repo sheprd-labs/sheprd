@@ -34,6 +34,10 @@ public enum SelfTestPush {
         public let priority: String
         public let pushType: String
 
+        public static func bindSharedActivity(_ handle: String) -> Self {
+            Self(collapseId: nil, handle: handle, payload: "{}", priority: "high", pushType: "liveactivity")
+        }
+
         enum CodingKeys: String, CodingKey {
             case collapseId = "collapse_id"
             case handle, payload, priority

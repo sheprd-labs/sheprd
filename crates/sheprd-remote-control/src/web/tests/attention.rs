@@ -29,6 +29,7 @@ fn terminal(pane: &str, status: AgentStatus) -> Terminal {
         panes: Vec::new(),
         zoomed: false,
         agent: Some(TerminalAgent {
+            boot: "b".into(),
             name: None,
             status,
             pane: pane.to_owned(),

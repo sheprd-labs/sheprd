@@ -1,8 +1,7 @@
-#if DEBUG
 import Foundation
 import SheprdRemoteCore
 
-// A made-up chat for the simulator loop's `-sampleChat YES`, so screenshots
+// A made-up chat for the demo and the simulator loop's `-sampleChat YES`, so screenshots
 // of the chat screen show no one's real prompts. No computer sends it.
 
 extension PaneKey {
@@ -62,4 +61,3 @@ extension Transcript {
         return transcript
     }
 }
-#endif

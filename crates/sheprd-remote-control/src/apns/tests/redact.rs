@@ -5,6 +5,9 @@ use sheprd_chat_protocol::{PermissionKind, PermissionOption};
 fn state(phase: Phase) -> ContentState {
     ContentState {
         detail: Detail {
+            focus: None,
+            question_revision: None,
+            agents: None,
             activity: Some("Editing secret.rs".to_owned()),
             files: Some(3),
             icon: Some(crate::apns::payload::Icon::Edit),
@@ -57,6 +60,24 @@ fn update(phase: Phase, alert: Option<Alert>) -> Live {
         event: Event::Update { alert },
         pane: "w1-p3".to_owned(),
         state: state(phase),
+    }
+}
+
+#[test]
+fn private_progress_keeps_counts_and_hides_task_names() {
+    let mut live = start();
+    live.state.detail.agents = Some(AgentProgress {
+        done: 1,
+        total: 5,
+        latest: Some("secret task".into()),
+    });
+    for (privacy, detail) in [
+        (Privacy::Generic, ActivityDetail::Detailed),
+        (Privacy::Excerpt, ActivityDetail::Generic),
+    ] {
+        let shown = live.clone().redacted(privacy, detail);
+        let agents = shown.state.detail.agents.unwrap();
+        assert_eq!((agents.done, agents.total, agents.latest), (1, 5, None));
     }
 }
 

@@ -7,7 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
-use sheprd_chat_protocol::{Agent, EndpointId, restore};
+use sheprd_chat_protocol::{Agent, EndpointId, restore, thread::ThreadId};
 
 use crate::{cli::AgentChoice, herdr::Target};
 
@@ -34,6 +34,8 @@ pub(crate) struct Keeper {
     endpoint: EndpointId,
     pane: String,
     socket: PathBuf,
+    /// The thread the chat keeps, which a restore continues.
+    pub(super) thread: Option<ThreadId>,
 }
 
 impl Keeper {
@@ -110,7 +112,14 @@ impl Keeper {
             endpoint: endpoint?.clone(),
             pane: target.pane.clone(),
             socket: target.socket.clone(),
+            thread: None,
         })
+    }
+
+    /// The keeper of a chat that keeps thread `thread`.
+    pub(crate) fn with_thread(mut self, thread: Option<ThreadId>) -> Self {
+        self.thread = thread;
+        self
     }
 
     /// The record of the chat whose agent session is `session`.
@@ -123,6 +132,7 @@ impl Keeper {
             pane: self.pane.clone(),
             session: session.to_owned(),
             socket: self.socket.clone(),
+            thread: self.thread,
         }
     }
 

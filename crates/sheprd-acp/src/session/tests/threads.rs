@@ -1,10 +1,12 @@
 //! Switching agents in the middle of a conversation: the agent taking over
 //! is handed it with the next prompt, and one switched back to resumes its
 //! own session and hears only what happened since.
+use sheprd_chat_protocol::HandedOver;
+
 use super::harnesses::{choosing, launch, requests, set_agent};
 use super::*;
 
-fn respond_as(harness: &mut Harness, agent: u64, id: i64, result: Value) {
+pub(super) fn respond_as(harness: &mut Harness, agent: u64, id: i64, result: Value) {
     harness.input(Input::Agent(
         HarnessId(agent),
         Inbound::Response {
@@ -24,7 +26,7 @@ fn fail_as(harness: &mut Harness, agent: u64, id: i64, message: &str) {
     ));
 }
 
-fn say_as(harness: &mut Harness, agent: u64, session: &str, update: Value) {
+pub(super) fn say_as(harness: &mut Harness, agent: u64, session: &str, update: Value) {
     harness.input(Input::Agent(
         HarnessId(agent),
         Inbound::Notification {
@@ -34,14 +36,18 @@ fn say_as(harness: &mut Harness, agent: u64, session: &str, update: Value) {
     ));
 }
 
-fn reply(text: &str) -> Value {
+pub(super) fn reply(text: &str) -> Value {
     json!({"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": text}})
 }
 
 /// Starts the agent the last switch asked for as `agent`, answering its
 /// handshake with `capabilities`, and returns its outbox and the request
 /// opening its session.
-fn start(harness: &mut Harness, agent: u64, capabilities: Value) -> (Receiver<Vec<u8>>, Value) {
+pub(super) fn start(
+    harness: &mut Harness,
+    agent: u64,
+    capabilities: Value,
+) -> (Receiver<Vec<u8>>, Value) {
     let outbox = launch(harness);
     let initialize = requests(&outbox)[0]["id"].as_i64().unwrap();
     respond_as(
@@ -55,7 +61,7 @@ fn start(harness: &mut Harness, agent: u64, capabilities: Value) -> (Receiver<Ve
 }
 
 /// The prompt blocks the agent behind `outbox` received for `text`.
-fn sent_prompt(
+pub(super) fn sent_prompt(
     harness: &mut Harness,
     outbox: &Receiver<Vec<u8>>,
     text: &str,
@@ -83,7 +89,7 @@ fn sent_prompt(
 
 /// Claude answered "hello" with "Hi there", then the chat switched to Codex,
 /// which opened session `c1`; returns Codex's outbox.
-fn handed_to_codex(harness: &mut Harness) -> Receiver<Vec<u8>> {
+pub(super) fn handed_to_codex(harness: &mut Harness) -> Receiver<Vec<u8>> {
     let turn = prompt(harness, 1, "hello");
     harness.agent_says("Hi there");
     harness.respond(turn, json!({"stopReason": "end_turn"}));
@@ -118,8 +124,16 @@ fn the_agent_taking_over_gets_the_conversation_with_the_next_prompt_only() {
     )));
     let notices = harness.notices();
     assert!(notices.iter().any(|(_, text)| text == "Switched to Codex."));
-    assert!(notices.iter().any(|(_, text)| text
-        == "Codex continues this conversation and gets the conversation so far with your next prompt."));
+    assert_eq!(
+        harness.handoffs(),
+        [HandedOver {
+            from: Some(Agent::Claude),
+            kept: 2,
+            omitted: 0,
+            resumed: false,
+            to: Agent::Codex,
+        }]
+    );
 
     let (turn, blocks) = sent_prompt(&mut harness, &codex, "next");
     assert_eq!(blocks.len(), 2);
@@ -161,8 +175,16 @@ fn an_agent_switched_back_to_resumes_its_session_and_hears_only_what_followed() 
     say_as(&mut harness, 2, "s1", reply("Hi there"));
     assert_eq!(harness.transcript().entries.len(), entries);
     respond_as(&mut harness, 2, open["id"].as_i64().unwrap(), json!({}));
-    assert!(harness.notices().iter().any(|(_, text)| text
-        == "Claude continues this conversation and gets what happened since it last took part with your next prompt."));
+    assert_eq!(
+        harness.handoffs().last(),
+        Some(&HandedOver {
+            from: Some(Agent::Codex),
+            kept: 2,
+            omitted: 0,
+            resumed: true,
+            to: Agent::Claude,
+        })
+    );
 
     let (_, blocks) = sent_prompt(&mut harness, &claude, "back to you");
     assert!(blocks[0].contains("your earlier session"));

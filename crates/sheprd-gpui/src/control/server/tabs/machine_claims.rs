@@ -36,17 +36,23 @@ pub(super) fn serve(caller: Caller, op: TabOp, incoming: socket::Incoming, cx: &
             ));
         }
     };
-    let read = cx.background_executor().spawn(async { machine::list() });
+    let read = cx
+        .background_executor()
+        .spawn(async { (machine::list(), machine::lend::Survey::read()) });
     cx.spawn(async move |cx: &mut gpui::AsyncApp| {
-        let listed = read.await;
+        let (listed, survey) = read.await;
         let response = cx.update(|cx| match listed {
             Ok(listed) if listed.iter().any(|item| item.name == name) => {
+                if !release && let Some(refusal) = not_lending(&caller, survey, cx) {
+                    return refusal;
+                }
+                let capacity = survey.capacity(machine::capacity().in_use);
                 cx.default_global::<Reservations>().change(
                     &caller,
                     name.as_str(),
                     release,
                     Instant::now(),
-                    machine::check_capacity(&name),
+                    machine::check_capacity_in(&name, capacity),
                 )
             }
             Ok(_) => Response::error(ErrorCode::NotFound, "No such virtual Mac"),
@@ -55,6 +61,25 @@ pub(super) fn serve(caller: Caller, op: TabOp, incoming: socket::Incoming, cx: &
         incoming.respond(response);
     })
     .detach();
+}
+
+/// The refusal of another computer's claim or start while this Mac does
+/// not lend, from what `survey` read; `None` for local callers.
+#[cfg(target_os = "macos")]
+pub(super) fn not_lending(
+    caller: &Caller,
+    survey: crate::machine::lend::Survey,
+    cx: &App,
+) -> Option<Response> {
+    caller.via.as_ref()?.lend()?;
+    let sheprd = crate::machine::capacity().in_use;
+    let reason = survey
+        .lending(crate::control::server::relay::lends(cx), sheprd)
+        .reason()?;
+    Some(Response::error(
+        ErrorCode::Unsupported,
+        format!("This computer does not lend its virtual Macs: {reason}"),
+    ))
 }
 
 /// Normalize on a worker before checking the app-thread reservation and
@@ -128,10 +153,21 @@ struct Owner {
     daemon: Option<String>,
     pane: Option<String>,
     terminal: Option<String>,
+    /// The computer and the pane there that borrowed the machine through
+    /// `machine lend`; never set with the fields above.
+    borrower: Option<String>,
 }
 
 #[cfg(any(target_os = "macos", test))]
 fn owner(caller: &Caller) -> Option<Owner> {
+    if let Some((borrower, owner)) = caller.via.as_ref().and_then(|via| via.lend()) {
+        return Some(Owner {
+            daemon: None,
+            pane: None,
+            terminal: None,
+            borrower: Some(format!("{borrower} ({owner})")),
+        });
+    }
     if caller.pane_id.is_none() && caller.terminal_id.is_none() {
         return None;
     }
@@ -139,6 +175,7 @@ fn owner(caller: &Caller) -> Option<Owner> {
         daemon: caller.daemon_socket.clone(),
         pane: caller.pane_id.clone(),
         terminal: caller.terminal_id.clone(),
+        borrower: None,
     })
 }
 
@@ -151,6 +188,12 @@ struct Reservation {
 #[cfg(any(target_os = "macos", test))]
 impl Reservation {
     fn describe(&self, now: Instant) -> String {
+        if let Some(borrower) = &self.owner.borrower {
+            return format!(
+                "busy: borrowed by {borrower} ({}s remaining)",
+                self.until.saturating_duration_since(now).as_secs()
+            );
+        }
         format!(
             "busy: pane {}, terminal {} ({}s remaining)",
             self.owner.pane.as_deref().unwrap_or("-"),

@@ -27,7 +27,8 @@ pub const ENDPOINT_ENV: &str = "HERDR_ACP_ENDPOINT";
 pub const AGENT_CHAT_ENV: &str = "SHEPRD_CHAT_ENDPOINT";
 
 /// A program's socket name: 32 lowercase hexadecimal digits.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(try_from = "String")]
 pub struct EndpointId(String);
 
 impl EndpointId {
@@ -45,6 +46,14 @@ impl EndpointId {
 impl From<Uuid> for EndpointId {
     fn from(id: Uuid) -> Self {
         Self(id.simple().to_string())
+    }
+}
+
+impl TryFrom<String> for EndpointId {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Error> {
+        value.parse()
     }
 }
 

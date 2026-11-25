@@ -1,4 +1,4 @@
-use super::*;
+use crate::repo_items::branches::tests::*;
 use std::{os::unix::fs::PermissionsExt, sync::atomic::AtomicBool};
 
 #[test]
@@ -11,7 +11,7 @@ fn branches_come_from_the_supplied_host_and_require_its_repository_identity() {
         &git,
         r#"#!/bin/sh
 case "$*" in
-*rev-parse*) printf '/remote/repo/.git\n/remote/repo/.git\n' ;;
+*rev-parse*) printf '/remote/repo/.git\n/remote/repo/.git\n/remote/repo\n' ;;
 *symbolic-ref*) printf 'main\n' ;;
 *for-each-ref*) printf 'refs/heads/remote-only\000\n' ;;
 *) exit 1 ;;

@@ -29,6 +29,15 @@ impl SheprdWindow {
             return None;
         }
         let mut cards = self.config_diagnostic_cards(cx);
+        cards.extend(self.borrow_notice(cx).map(|card| Notice {
+            card,
+            shrinks: false,
+        }));
+        #[cfg(target_os = "macos")]
+        cards.extend(self.machine_settings_notice(cx).map(|card| Notice {
+            card,
+            shrinks: false,
+        }));
         cards.extend(self.announcement_card(cx));
         if cards.is_empty() {
             return None;
@@ -73,6 +82,9 @@ pub(crate) enum NoticeCard {
     IconFont,
     DaemonConfig,
     Announcement,
+    BorrowMachine,
+    #[cfg(target_os = "macos")]
+    MachineSettings,
 }
 
 /// One card in the notice stack, and whether it scrolls, so it can give up
@@ -91,9 +103,17 @@ impl SheprdWindow {
     /// reach the cards as a region of their own.
     pub(super) fn notices_shown(&self) -> bool {
         use NoticeCard::*;
-        [AppConfig, IconFont, DaemonConfig, Announcement]
-            .into_iter()
-            .any(|card| self.notice_shown(card))
+        [
+            AppConfig,
+            IconFont,
+            DaemonConfig,
+            Announcement,
+            BorrowMachine,
+            #[cfg(target_os = "macos")]
+            MachineSettings,
+        ]
+        .into_iter()
+        .any(|card| self.notice_shown(card))
     }
 
     /// Whether [`Self::render_notices`] draws `card`.
@@ -106,6 +126,9 @@ impl SheprdWindow {
                     .endpoints
                     .get(self.selected_endpoint)
                     .is_some_and(|endpoint| endpoint.config_diagnostic.visible().is_some()),
+                #[cfg(target_os = "macos")]
+                NoticeCard::MachineSettings => self.menu.machine_settings_request.is_some(),
+                NoticeCard::BorrowMachine => self.menu.machine_borrow.is_some(),
                 NoticeCard::Announcement => self.live.product_announcement().is_some(),
             }
     }
@@ -760,6 +783,13 @@ impl Render for SheprdWindow {
         // Zen mode keeps toasts and menus: they carry errors and what the
         // user asked for, not chrome.
         let zen = self.zen_layout();
+        let standalone_header = !merged && !zen;
+        if let Some(last) = &mut self.hosted_full_header
+            && *last != standalone_header
+        {
+            *last = standalone_header;
+            cx.notify();
+        }
         let mut root = div()
             .capture_key_down(cx.listener(Self::application_menu_shortcut))
             .capture_key_down(cx.listener(Self::chrome_focus_key))
@@ -903,9 +933,10 @@ impl Render for SheprdWindow {
             .when(crate::menus::IN_WINDOW && !zen, |root| {
                 root.child(self.render_application_bar(window, cx))
             })
-            .when(!merged && !zen, |root| {
-                root.child(self.render_titlebar(window, cx))
-            })
+            .when(
+                standalone_header && self.hosted_full_header.is_none(),
+                |root| root.child(self.render_titlebar(window, cx)),
+            )
             .when(zen, |root| {
                 root.children(crate::titlebar::zen_inset(fill.ground(), window))
             })
@@ -955,6 +986,10 @@ impl Render for SheprdWindow {
             // After every chat, which record where they are as they paint.
             root.extend([self.chat_turns_sweep(cx).into_any_element()]);
         }
+        root.extend(
+            crate::agent_guidance::banner(&self.agent_guidance, &self.theme, window, cx)
+                .map(IntoElement::into_any_element),
+        );
         crate::titlebar::frame(window, self.theme.active, root)
     }
 }

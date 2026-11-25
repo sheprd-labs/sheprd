@@ -92,7 +92,7 @@ sheprd browser --help
 The tab joins the agent's own workspace, and notes on the page go back to that agent's pane.
 
 - A local file opens in a split beside the agent's terminal, which keeps the keyboard so you can keep talking to the agent. A web address opens as a tab. `--beside` and `--tab` choose the other way.
-- `--no-focus` adds the tab without switching to it.
+- Command-opened tabs stay in the background until you select them. `--no-focus` is still accepted for compatibility. Tabs you create manually in the app take focus.
 - Opening the same file again from the same pane reuses its tab.
 
 Other `sheprd browser` commands list tabs, navigate, zoom, read a page's text, or save a screenshot (macOS); see [CLI](cli.md). The command exits with 3 when Sheprd is not running.

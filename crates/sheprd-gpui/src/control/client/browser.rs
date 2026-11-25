@@ -32,23 +32,11 @@ fn page(target: &str) -> crate::Result<(Page, String)> {
     Ok((Page::Url(url.as_str().to_owned()), url.as_str().to_owned()))
 }
 
-/// Where a page goes unless the caller said: a local file, usually a mockup
-/// or an explainer the agent wrote, sits beside the terminal that opened it,
-/// so the user reads it and the agent's replies together. Web addresses, and
-/// files opened from outside a Herdr pane, take a tab.
-pub(super) fn default_placement(page: &Page, caller: &Caller) -> Placement {
-    let in_pane = caller.pane_id.is_some() || caller.terminal_id.is_some();
-    match page {
-        Page::File(_) if in_pane => Placement::Beside,
-        _ => Placement::Tab,
-    }
-}
-
 fn open(
     target: &str,
     workspace: Option<String>,
     focus: bool,
-    placement: Option<Placement>,
+    placement: Placement,
     context: &Context,
 ) -> crate::Result<Output> {
     let (page, shown) = page(target)?;
@@ -56,7 +44,6 @@ fn open(
         window: context.window,
         ..caller(workspace)?
     };
-    let placement = placement.unwrap_or_else(|| default_placement(&page, &caller));
     let request = Request::Open(BrowserOpen {
         page,
         caller,

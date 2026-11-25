@@ -87,7 +87,11 @@ jobs:
           xcodegen -q
           python3 tools/test_branding.py
           python3 tools/test_testflight_notes.py
+          python3 tools/test_app_store_connect.py
+          python3 tools/test_testflight_distribution.py
           python3 tools/test_signing.py
+          python3 tools/test_privacy.py
+          python3 tools/test_app_store.py
           xcodebuild -project SheprdRemote.xcodeproj -scheme SheprdRemote \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO -quiet build
@@ -100,8 +104,8 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: xcode-27
-    # The archive, then up to 30 minutes for App Store Connect to take the notes.
-    timeout-minutes: 75
+    # The archive, notes processing, and build processing for group assignment.
+    timeout-minutes: 90
     environment: testflight
     permissions:
       contents: read

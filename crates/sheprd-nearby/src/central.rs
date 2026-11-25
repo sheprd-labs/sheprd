@@ -241,12 +241,11 @@ impl Central {
         if on {
             return;
         }
-        let gone: Vec<String> = self
-            .peers
-            .keys()
-            .filter(|device| !self.wanted.contains(*device))
-            .cloned()
-            .collect();
+        // Every computer goes, the one being paired with too: Sheprd stops
+        // scanning only once no Add Device page is open, and a page closed
+        // mid-pairing sends no `disconnect`. One kept would never be
+        // listed again.
+        let gone: Vec<String> = self.peers.keys().cloned().collect();
         for device in gone {
             steps.push(Step::Act(Action::Disconnect(device.clone())));
             self.left(&device, steps);

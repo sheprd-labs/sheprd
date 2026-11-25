@@ -153,6 +153,8 @@ error-updater-cancel-unacknowledged = Update worker could not acknowledge cancel
 error-updater-disabled-local-build = In-app updates require a release build with an embedded update verification key. Local builds and test fixtures never check automatically.
 error-updater-disabled-platform = No standalone updater is available for this platform. Use your package manager or download a supported release.
 # Starts lowercase, as it follows a colon.
+error-updater-disabled-app-store = this copy came from the Mac App Store, which installs its updates.
+# Starts lowercase, as it follows a colon.
 error-updater-disabled-secondary = another window owns app updates in this process. Use the window that was open first.
 
 # Windows only: why the update installer could not be checked or started.

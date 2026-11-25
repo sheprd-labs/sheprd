@@ -265,9 +265,15 @@ impl Fleet {
             .is_some_and(|fleet| fleet.acting.contains(machine))
     }
 
-    /// Tells which devices `window` reaches, as `relay_sharing` hears it;
-    /// this computer's own daemon is asked directly, not over SSH.
-    pub(crate) fn reach(cx: &mut App, window: EntityId, reachable: &BTreeMap<String, Daemon>) {
+    /// Tells which devices `window` reaches, as `relay_sharing` hears it,
+    /// and the names Devices shows them by (`names`, by id); this
+    /// computer's own daemon is asked directly, not over SSH.
+    pub(crate) fn reach(
+        cx: &mut App,
+        window: EntityId,
+        reachable: &BTreeMap<String, Daemon>,
+        names: &BTreeMap<String, String>,
+    ) {
         if !cx.has_global::<Self>() {
             return;
         }
@@ -279,7 +285,7 @@ impl Fleet {
                     id.clone(),
                     Machine {
                         target: target.clone(),
-                        label: label(id, target),
+                        label: named(id, target, names),
                     },
                 )),
             })
@@ -511,6 +517,16 @@ impl Fleet {
 }
 
 /// The name a machine shows: its SSH target, or a cloud machine's name.
+/// The name Devices gives `id`, else its target: a computer paired nearby
+/// is reached through a relay address nobody would recognise.
+fn named(id: &str, target: &ConnectTarget, names: &BTreeMap<String, String>) -> String {
+    names
+        .get(id)
+        .map(|name| name.trim())
+        .filter(|name| !name.is_empty())
+        .map_or_else(|| label(id, target), str::to_owned)
+}
+
 fn label(id: &str, target: &ConnectTarget) -> String {
     match target {
         ConnectTarget::Ssh { target, .. } => target.clone(),

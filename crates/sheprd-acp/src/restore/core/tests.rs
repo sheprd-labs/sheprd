@@ -43,6 +43,7 @@ fn recovery_requires_every_part_of_the_original_context() {
         pane: "t9".to_owned(),
         session: "exact-session".to_owned(),
         socket: cwd.join("core.sock"),
+        thread: None,
     };
     let env = std::collections::BTreeMap::from([
         (ENDPOINT_ENV, std::ffi::OsString::from(ID)),

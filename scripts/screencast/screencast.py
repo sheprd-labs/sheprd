@@ -66,8 +66,8 @@ HOVER = "/Users/admin/.local/bin/screencast-hover"  # where the machine keeps th
 # rest is desktop). A video is recorded once per window asked for, so people
 # can pick the one they use. Rune is to come.
 WINDOWS = {
-    "moonframe": ([], 1.0),
-    "classic": (["--classic"], 1.0),
+    "moonframe": (["--env", "SHEPRD_MOONFRAME=1"], 1.0),
+    "classic": (["--args", "--classic"], 1.0),
 }
 
 
@@ -189,7 +189,7 @@ def launch(name, window, work):
         sys.exit("Sheprd did not quit in the machine")
     args = " ".join(WINDOWS[window][0])
     machine(name, "exec", "--", "sh", "-c",
-            f"open {APP}" + (f" --args {args}" if args else ""))
+            f"open {APP} {args}")
     for _ in range(40):
         time.sleep(0.5)
         if machine(name, "exec", "--", "sh", "-c", "pgrep -x sheprd || true").strip():
@@ -527,7 +527,7 @@ def main():
     p.add_argument("--machine", default="screencast")
     p.add_argument("--out", type=Path, default=Path("target/screencasts"))
     p.add_argument("--langs", default=",".join(LANGS))
-    # Moonframe is the window Sheprd opens; classic stays available on demand.
+    # Feature guides use Moonframe by default.
     p.add_argument("--window", default="moonframe",
                    help=f"comma-separated windows to record: {', '.join(WINDOWS)}")
     p.add_argument("--tts", default="elevenlabs:river",

@@ -19,6 +19,7 @@ fn record(endpoint: &str) -> Record {
         pane: "w1:p3".to_owned(),
         session: "0c6f0c39-3c1e-4b7e-9a51-6d1b8e2d7f10".to_owned(),
         socket: abs("/home/me/.config/herdr/herdr.sock"),
+        thread: None,
     }
 }
 
@@ -296,4 +297,19 @@ fn concurrent_stamps_of_one_chat_never_leave_a_partial_file() {
     });
     // No temporary file is left behind.
     assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 2);
+}
+
+#[test]
+fn a_record_keeps_its_thread_and_reads_without_one() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut written = record(ONE);
+    written.thread = Some(crate::thread::ThreadId::random());
+    written.write(dir.path()).unwrap();
+    let path = record_path(dir.path(), &written.endpoint);
+    assert_eq!(Record::read(&path).unwrap(), written);
+    // A record from before threads has no thread field at all.
+    let mut stored: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    stored.as_object_mut().unwrap().remove("thread");
+    fs::write(&path, serde_json::to_vec(&stored).unwrap()).unwrap();
+    assert_eq!(Record::read(&path).unwrap().thread, None);
 }

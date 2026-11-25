@@ -1838,9 +1838,9 @@ dependencies = [
 
 [[package]]
 name = "cookie"
-version = "0.18.2"
+version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a373e3602691c3cdea496d2f0ee5935151e6168fe87739483c463db1b2f2f87"
+checksum = "d55f2d6c30eeec7d5c6f98bd4395d4abb1895629eab97ee6522d340623615f8a"
 dependencies = [
  "time",
  "version_check",
@@ -2333,7 +2333,22 @@ dependencies = [
  "cpufeatures 0.2.17",
  "curve25519-dalek-derive",
  "digest 0.10.7",
- "fiat-crypto",
+ "fiat-crypto 0.2.9",
+ "rustc_version",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5eed333089e2e1c1ac8c6c0398e5e2497b4c9926ca6d0365ed1e099afa5bc23"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.3.1",
+ "curve25519-dalek-derive",
+ "fiat-crypto 0.3.0",
  "rustc_version",
  "subtle",
  "zeroize",
@@ -2880,7 +2895,7 @@ version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70e796c081cee67dc755e1a36a0a172b897fab85fc3f6bc48307991f64e4eca9"
 dependencies = [
- "curve25519-dalek",
+ "curve25519-dalek 4.1.3",
  "ed25519",
  "rand_core 0.6.4",
  "serde",
@@ -3225,6 +3240,12 @@ name = "fiat-crypto"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
+
+[[package]]
+name = "fiat-crypto"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64cd1e32ddd350061ae6edb1b082d7c54915b5c672c389143b9a63403a109f24"
 
 [[package]]
 name = "field-offset"
@@ -7426,8 +7447,8 @@ dependencies = [
 
 [[package]]
 name = "moonframe"
-version = "1.5.0"
-source = "git+https://github.com/moonframehq/moonframe?rev=3f838ceb5a0d99c0228e3456dac1fe064a161416#3f838ceb5a0d99c0228e3456dac1fe064a161416"
+version = "1.6.0"
+source = "git+https://github.com/moonframehq/moonframe?rev=bd9bd9e4f522caf0c41744e11a8098f77f04e12f#bd9bd9e4f522caf0c41744e11a8098f77f04e12f"
 dependencies = [
  "anstream",
  "anstyle",
@@ -7464,8 +7485,8 @@ dependencies = [
 
 [[package]]
 name = "moonframe-acp"
-version = "1.5.0"
-source = "git+https://github.com/moonframehq/moonframe?rev=3f838ceb5a0d99c0228e3456dac1fe064a161416#3f838ceb5a0d99c0228e3456dac1fe064a161416"
+version = "1.6.0"
+source = "git+https://github.com/moonframehq/moonframe?rev=bd9bd9e4f522caf0c41744e11a8098f77f04e12f#bd9bd9e4f522caf0c41744e11a8098f77f04e12f"
 dependencies = [
  "agent-client-protocol-schema",
  "libc",
@@ -7478,8 +7499,8 @@ dependencies = [
 
 [[package]]
 name = "moonframe-core"
-version = "1.5.0"
-source = "git+https://github.com/moonframehq/moonframe?rev=3f838ceb5a0d99c0228e3456dac1fe064a161416#3f838ceb5a0d99c0228e3456dac1fe064a161416"
+version = "1.6.0"
+source = "git+https://github.com/moonframehq/moonframe?rev=bd9bd9e4f522caf0c41744e11a8098f77f04e12f#bd9bd9e4f522caf0c41744e11a8098f77f04e12f"
 dependencies = [
  "chrono",
  "fluent-bundle",
@@ -7499,16 +7520,16 @@ dependencies = [
 
 [[package]]
 name = "moonframe-history"
-version = "1.5.0"
-source = "git+https://github.com/moonframehq/moonframe?rev=3f838ceb5a0d99c0228e3456dac1fe064a161416#3f838ceb5a0d99c0228e3456dac1fe064a161416"
+version = "1.6.0"
+source = "git+https://github.com/moonframehq/moonframe?rev=bd9bd9e4f522caf0c41744e11a8098f77f04e12f#bd9bd9e4f522caf0c41744e11a8098f77f04e12f"
 dependencies = [
  "tracing",
 ]
 
 [[package]]
 name = "moonframe-packages"
-version = "1.5.0"
-source = "git+https://github.com/moonframehq/moonframe?rev=3f838ceb5a0d99c0228e3456dac1fe064a161416#3f838ceb5a0d99c0228e3456dac1fe064a161416"
+version = "1.6.0"
+source = "git+https://github.com/moonframehq/moonframe?rev=bd9bd9e4f522caf0c41744e11a8098f77f04e12f#bd9bd9e4f522caf0c41744e11a8098f77f04e12f"
 dependencies = [
  "moonframe-core",
  "moonframe-providers",
@@ -7522,7 +7543,7 @@ dependencies = [
 [[package]]
 name = "moonframe-provider"
 version = "0.4.0"
-source = "git+https://github.com/moonframehq/moonframe?rev=3f838ceb5a0d99c0228e3456dac1fe064a161416#3f838ceb5a0d99c0228e3456dac1fe064a161416"
+source = "git+https://github.com/moonframehq/moonframe?rev=bd9bd9e4f522caf0c41744e11a8098f77f04e12f#bd9bd9e4f522caf0c41744e11a8098f77f04e12f"
 dependencies = [
  "serde",
  "serde_json",
@@ -7531,8 +7552,8 @@ dependencies = [
 
 [[package]]
 name = "moonframe-providers"
-version = "1.5.0"
-source = "git+https://github.com/moonframehq/moonframe?rev=3f838ceb5a0d99c0228e3456dac1fe064a161416#3f838ceb5a0d99c0228e3456dac1fe064a161416"
+version = "1.6.0"
+source = "git+https://github.com/moonframehq/moonframe?rev=bd9bd9e4f522caf0c41744e11a8098f77f04e12f#bd9bd9e4f522caf0c41744e11a8098f77f04e12f"
 dependencies = [
  "libc",
  "moonframe-core",
@@ -7546,8 +7567,8 @@ dependencies = [
 
 [[package]]
 name = "moonframe-store"
-version = "1.5.0"
-source = "git+https://github.com/moonframehq/moonframe?rev=3f838ceb5a0d99c0228e3456dac1fe064a161416#3f838ceb5a0d99c0228e3456dac1fe064a161416"
+version = "1.6.0"
+source = "git+https://github.com/moonframehq/moonframe?rev=bd9bd9e4f522caf0c41744e11a8098f77f04e12f#bd9bd9e4f522caf0c41744e11a8098f77f04e12f"
 dependencies = [
  "moonframe-core",
  "rusqlite",
@@ -7678,9 +7699,21 @@ checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
 name = "nix"
-version = "0.31.3"
+version = "0.31.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
+checksum = "2bc81ce8148d3b4f3274da811f11cdd824ae661ee4ef732cdb229825cf5be7f7"
+dependencies = [
+ "bitflags 2.13.2",
+ "cfg-if",
+ "cfg_aliases",
+ "libc",
+]
+
+[[package]]
+name = "nix"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77730ed34f01f4990cb2ea67fec715ecebc6fab9a6396cf83c5529b13f581bdc"
 dependencies = [
  "bitflags 2.13.2",
  "cfg-if",
@@ -7971,7 +8004,7 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "680998035259dcfcafe653688bf2aa6d3e2dc05e98be6ab46afb089dc84f1df8"
 dependencies = [
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate 3.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -8901,7 +8934,7 @@ dependencies = [
  "cipher 0.4.4",
  "const-oid 0.9.6",
  "crc24",
- "curve25519-dalek",
+ "curve25519-dalek 4.1.3",
  "cx448",
  "derive_builder",
  "derive_more 2.1.1",
@@ -8942,7 +8975,7 @@ dependencies = [
  "snafu",
  "subtle",
  "twofish",
- "x25519-dalek",
+ "x25519-dalek 2.0.1",
  "zeroize",
 ]
 
@@ -9594,7 +9627,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f21b97672d2dc848e7b25701ab4535618b92f4861c13cc3f7f7bed52ad3c8da"
 dependencies = [
  "indexmap 2.14.2",
- "nix",
+ "nix 0.31.4",
  "windows 0.62.2",
 ]
 
@@ -10783,7 +10816,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -11490,7 +11523,7 @@ dependencies = [
  "interprocess",
  "libc",
  "libproc",
- "nix",
+ "nix 0.32.0",
  "process-wrap",
  "rustix",
  "serde",
@@ -11669,7 +11702,7 @@ dependencies = [
  "mdns-sd",
  "mermaid-rs-renderer",
  "moonframe",
- "nix",
+ "nix 0.32.0",
  "nucleo-matcher",
  "objc",
  "objc2 0.6.5",
@@ -11956,7 +11989,7 @@ dependencies = [
  "chrono",
  "getrandom 0.4.3",
  "httparse",
- "nix",
+ "nix 0.32.0",
  "percent-encoding",
  "rustix",
  "rustls",
@@ -12019,6 +12052,7 @@ dependencies = [
  "sheprd-chat-protocol",
  "sheprd-client",
  "sheprd-core-client",
+ "sheprd-credentials",
  "sheprd-github",
  "sheprd-relay",
  "sheprd-relay-agent",
@@ -12112,7 +12146,7 @@ dependencies = [
  "snow",
  "thiserror 2.0.21",
  "tokio",
- "x25519-dalek",
+ "x25519-dalek 3.0.0",
 ]
 
 [[package]]
@@ -12405,7 +12439,7 @@ checksum = "599b506ccc4aff8cf7844bc42cf783009a434c1e26c964432560fb6d6ad02d82"
 dependencies = [
  "blake2",
  "chacha20poly1305",
- "curve25519-dalek",
+ "curve25519-dalek 4.1.3",
  "getrandom 0.3.4",
  "ring",
  "rustc_version",
@@ -15640,9 +15674,20 @@ version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7e468321c81fb07fa7f4c636c3972b9100f0346e5b6a9f2bd0603a52f7ed277"
 dependencies = [
- "curve25519-dalek",
+ "curve25519-dalek 4.1.3",
  "rand_core 0.6.4",
  "serde",
+ "zeroize",
+]
+
+[[package]]
+name = "x25519-dalek"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7e8131a03190127fb2263afc72b322ecadae46b6ff8c6f399ff5d02f5559af6"
+dependencies = [
+ "curve25519-dalek 5.0.0",
+ "rand_core 0.10.1",
  "zeroize",
 ]
 

@@ -90,6 +90,7 @@ fn a_tab_in_a_herdr_workspace_starts_where_the_workspace_did(cx: &mut TestAppCon
         &view,
         cx,
         Purpose::Tab {
+            focus: true,
             group: None,
             scope,
             workspace: "w0".into(),
@@ -157,6 +158,7 @@ fn without_herdr_a_tab_starts_where_the_shown_core_pane_is(cx: &mut TestAppConte
         scope
     });
     let purpose = || Purpose::Tab {
+        focus: true,
         group: None,
         scope: scope.clone(),
         workspace: WORKSPACE.into(),
@@ -181,6 +183,7 @@ fn a_tab_on_a_saved_host_takes_nothing_from_this_computer(cx: &mut TestAppContex
     let mut spawn = Spawn::default();
     view.update(cx, |view, cx| {
         let purpose = Purpose::Tab {
+            focus: true,
             group: None,
             scope: crate::browser::Scope::endpoint("box"),
             workspace: "w0".into(),

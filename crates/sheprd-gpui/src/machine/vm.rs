@@ -217,6 +217,15 @@ pub(crate) fn check_capacity(name: &Name) -> Result<()> {
     check_capacity_for(status(name), capacity())
 }
 
+/// [`check_capacity`] against `capacity`, which also counts other
+/// programs' VMs ([`super::lend::Survey`]).
+pub(crate) fn check_capacity_in(
+    name: &Name,
+    capacity: crate::control::protocol::tabs::MachineCapacity,
+) -> Result<()> {
+    check_capacity_for(status(name), capacity)
+}
+
 fn check_capacity_for(
     status: Status,
     capacity: crate::control::protocol::tabs::MachineCapacity,
@@ -336,8 +345,8 @@ pub(crate) fn start(name: &Name, cx: &mut App) {
             if !startable(&name) {
                 return set_phase(&name, Phase::Stopped, cx);
             }
-            if bundle.as_ref().is_ok_and(|bundle| bundle.guide) {
-                super::guide::begin(&name, cx);
+            if let Some(opening) = bundle.as_ref().ok().and_then(|bundle| bundle.guide) {
+                super::guide::begin(&name, opening, cx);
             }
             if let Err(error) = bundle.and_then(|bundle| build(&name, &bundle, cx)) {
                 fail(&name, &error, cx);

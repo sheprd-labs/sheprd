@@ -133,8 +133,8 @@ image                = { default-features = false, features = ["gif", "jpeg", "p
 # The sandboxed Luau interpreter behind automation scripts, built from source.
 mlua                 = { features = ["error-send", "luau"], version = "0.12.2" }
 # The `moonframe` feature of `sheprd-gpui` lays out the window in Luau; pinned to
-# the merged hosted redraw and placement fixes (moonframehq/moonframe#215).
-moonframe            = { default-features = false, git = "https://github.com/moonframehq/moonframe", rev = "3f838ceb5a0d99c0228e3456dac1fe064a161416" }
+# Moonframe 1.6.0.
+moonframe            = { default-features = false, git = "https://github.com/moonframehq/moonframe", rev = "bd9bd9e4f522caf0c41744e11a8098f77f04e12f" }
 # Mermaid fences in chat answers become diagrams: parse, lay out, and write
 # SVG in pure Rust; GPUI rasterizes the SVG. No CLI and no PNG writer.
 mermaid-rs-renderer  = { default-features = false, version = "0.3.1" }
@@ -143,7 +143,7 @@ nucleo-matcher       = "0.3.1"
 # Bonjour browsing for SSH hosts in the Add Device dialog; it runs its own
 # thread and needs no async runtime.
 mdns-sd              = { default-features = false, version = "0.21.5" }
-nix                  = { default-features = false, features = ["fs", "socket", "term", "user"], version = "=0.31.3" }
+nix                  = { default-features = false, features = ["fs", "socket", "term", "user"], version = "=0.32.0" }
 notify               = "8.2"
 objc                 = "0.2"
 # The Secret Service client GPUI's Linux platform links, with its async-io backend.
@@ -267,7 +267,7 @@ windows-sys          = { features = ["Win32_Foundation", "Win32_System_Pipes"], 
 # dependency, so it runs on the host.
 winresource          = "0.1.34"
 zbus                 = { default-features = false, version = "5.19" }
-x25519-dalek         = { default-features = false, features = ["static_secrets", "zeroize"], version = "2" }
+x25519-dalek         = { default-features = false, features = ["static_secrets", "zeroize"], version = "3" }
 zeroize              = "=1.9.1"
 
 # Line tables keep file:line in backtraces and crash reports while cutting most

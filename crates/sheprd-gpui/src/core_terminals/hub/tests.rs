@@ -77,3 +77,24 @@ fn a_failed_join_waits_before_joining_again_but_a_start_does_not() {
         [Start::Join, Start::IfMissing]
     );
 }
+
+static RESTORE_CALLS: Mutex<Vec<Start>> = Mutex::new(Vec::new());
+
+fn restore_join(start: Start) -> Result<CoreBackend, Error> {
+    RESTORE_CALLS.lock().unwrap().push(start);
+    Err(Error::NotBundled)
+}
+
+#[test]
+fn a_restored_tab_starts_a_missing_core_but_waits_after_a_failure() {
+    let mut hub = Hub::with_join(restore_join);
+    // After a reboot no core runs; a restored tab may start one.
+    hub.connect_restored();
+    settle(&mut hub);
+    // It asks again on every tick; none of these may dial while cooling.
+    for _ in 0..50 {
+        hub.connect_restored();
+        hub.poll();
+    }
+    assert_eq!(*RESTORE_CALLS.lock().unwrap(), [Start::IfMissing]);
+}

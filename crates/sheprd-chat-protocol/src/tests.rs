@@ -22,6 +22,7 @@ mod questions;
 mod revisions;
 mod sent_notes;
 mod settings;
+mod threads;
 mod wire;
 
 fn text(id: u64, kind: fn(String) -> EntryKind, value: &str) -> Entry {

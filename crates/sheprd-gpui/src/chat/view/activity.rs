@@ -77,7 +77,7 @@ impl State {
         match self {
             Self::Completed => Some("icons/check.svg"),
             Self::Exited | Self::Failed => Some("icons/error.svg"),
-            Self::Stopped => Some("icons/x.svg"),
+            Self::Stopped => Some("icons/close.svg"),
             Self::Waiting => Some(super::working::WAITING_ICON),
             Self::Idle | Self::Starting | Self::Working => None,
         }

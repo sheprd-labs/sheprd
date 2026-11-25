@@ -247,7 +247,7 @@ pub fn parse(target: &ConnectTarget, output: &str) -> Result<RepoInfo> {
 /// shell or `git`, so every client platform reads its own checkouts.
 fn detect_local(target: &ConnectTarget, checkout: &str) -> Result<RepoInfo> {
     let Some(found) = super::git::checkout(Path::new(checkout))? else {
-        if !Path::new(checkout).join(".beads").is_dir() {
+        if !holds_beads(Path::new(checkout))? {
             return Err(Error::NotARepository);
         }
         let root = Path::new(checkout)
@@ -267,7 +267,7 @@ fn detect_local(target: &ConnectTarget, checkout: &str) -> Result<RepoInfo> {
         );
     };
     let main = found.main.to_string_lossy().into_owned();
-    let beads = found.main.join(".beads").is_dir();
+    let beads = holds_beads(&found.main)?;
     let remotes: Vec<_> = found
         .remotes
         .iter()
@@ -281,6 +281,39 @@ fn detect_local(target: &ConnectTarget, checkout: &str) -> Result<RepoInfo> {
         beads.then(|| redirected_root(&found.main)).flatten(),
         &remotes,
     )
+}
+
+/// Whether `root/.beads` is a Beads project rather than `bd`'s own state,
+/// such as the `~/.beads` it keeps beside a home folder. A redirect, or what
+/// `bd`'s `hasBeadsProjectFiles` looks for, makes it one; `discover.sh`'s
+/// `holds_beads` reads the same. A `.beads` folder whose contents cannot be
+/// read is a discovery failure, never a skipped project.
+fn holds_beads(root: &Path) -> Result<bool> {
+    let beads = root.join(".beads");
+    if !beads.is_dir() {
+        return Ok(false);
+    }
+    if ["redirect", "metadata.json", "config.yaml"]
+        .iter()
+        .any(|name| beads.join(name).exists())
+        || ["dolt", "embeddeddolt"]
+            .iter()
+            .any(|name| beads.join(name).is_dir())
+    {
+        return Ok(true);
+    }
+    let unreadable = |source: std::io::Error| Error::Git {
+        operation: "Reading the Beads folder",
+        source: Box::new(source),
+    };
+    for entry in std::fs::read_dir(&beads).map_err(unreadable)? {
+        let name = entry.map_err(unreadable)?.file_name();
+        let name = name.to_string_lossy();
+        if name.ends_with(".db") && !name.contains(".backup") && name != "vc.db" {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// The folder holding the `.beads` that `root/.beads/redirect` names, as

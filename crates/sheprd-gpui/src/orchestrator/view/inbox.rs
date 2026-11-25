@@ -710,7 +710,10 @@ impl OrchestratorView {
                 ));
             }
             if let Some(error) = &snapshot.error {
-                banners.push((banner(look, RED, "icons/x.svg", of(error.localize())), None));
+                banners.push((
+                    banner(look, RED, "icons/error.svg", of(error.localize())),
+                    None,
+                ));
             }
             for status in &snapshot.sources {
                 // Azure DevOps has no sign-in of its own in the title bar

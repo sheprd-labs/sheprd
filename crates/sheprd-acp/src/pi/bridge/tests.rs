@@ -195,6 +195,32 @@ fn a_turn_streams_and_ends_from_how_pi_stopped() {
 }
 
 #[test]
+fn a_run_too_long_to_buffer_ends_the_turn_as_the_whole_line_would() {
+    let picture = "A".repeat(2 * crate::rpc::BUFFERED_LINE);
+    let usage = json!({"input": 100, "output": 20, "cacheRead": 50, "cacheWrite": 10});
+    for last in [
+        json!({"role": "assistant", "stopReason": "stop", "usage": usage}),
+        json!({"role": "assistant", "stopReason": "aborted", "usage": usage}),
+        json!({"role": "assistant", "stopReason": "error", "errorMessage": "overloaded", "usage": usage}),
+    ] {
+        let line = json!({"type": "agent_end", "messages": [
+            {"role": "user", "content": [{"type": "text", "text": "Record it"}]},
+            {"role": "toolResult", "content": [{"type": "image", "data": picture, "mimeType": "image/png"}]},
+            {"role": "assistant", "stopReason": "toolUse", "usage": usage, "content": [{"type": "text", "text": "Taking a screenshot"}]},
+            last,
+        ]});
+        let ends = |message: &Value| {
+            let mut bridge = opened();
+            prompt(&mut bridge, 2);
+            format!("{:?}", bridge.on_harness(message))
+        };
+        let read =
+            crate::pi::long::read(&mut serde_json::to_vec(&line).unwrap().as_slice()).unwrap();
+        assert_eq!(ends(&read), ends(&line));
+    }
+}
+
+#[test]
 fn cancelling_aborts_and_the_turn_ends_cancelled() {
     let mut bridge = opened();
     let idle = bridge.on_session(Inbound::Notification {

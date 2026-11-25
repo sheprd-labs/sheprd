@@ -68,6 +68,7 @@ fn an_offer_shows_a_qr_and_is_polled_every_second() {
         &ticket,
         Ok(Response::Pairing(PairingState::Waiting {
             expires_in_ms: 30_000,
+            nearby_code: None,
         })),
         now + POLL,
     );
@@ -75,6 +76,25 @@ fn an_offer_shows_a_qr_and_is_polled_every_second() {
     let (left, share) = pairing.countdown(now + POLL).unwrap();
     assert_eq!(left, Duration::from_secs(30));
     assert!((share - 0.5).abs() < 1e-6);
+}
+
+#[test]
+fn a_nearby_code_shows_while_the_qr_waits_for_the_claim() {
+    let now = Instant::now();
+    let mut pairing = showing(now);
+    let ticket = pairing.next(now + POLL).unwrap();
+    pairing.receive(
+        &ticket,
+        Ok(Response::Pairing(PairingState::Waiting {
+            expires_in_ms: 30_000,
+            nearby_code: Some("906492".into()),
+        })),
+        now + POLL,
+    );
+    assert!(matches!(
+        pairing.phase(),
+        Phase::Showing { nearby_code: Some(code), .. } if code == "906492"
+    ));
 }
 
 #[test]

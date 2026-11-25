@@ -241,7 +241,7 @@ fn with_no_fleet_a_machine_still_offers_to_remove_fleet_access(cx: &mut TestAppC
             session: "default".into(),
         }),
     )]);
-    cx.update(|_, cx| Fleet::reach(cx, EntityId::from(1_u64), &reachable));
+    cx.update(|_, cx| Fleet::reach(cx, EntityId::from(1_u64), &reachable, &Default::default()));
     cx.run_until_parked();
     draw(cx);
     assert!(cx.debug_bounds("fleet-create").is_some());

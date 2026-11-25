@@ -21,6 +21,7 @@ fn scripts_and_listing_accept_an_app_kept_checkout_without_herdr(cx: &mut gpui::
                     key: format!("{folder}/.git"),
                     label: "tools".into(),
                     linked: true,
+                    root: String::new(),
                 }),
             );
             let terminal = TerminalId::new("t1").unwrap();

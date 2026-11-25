@@ -39,6 +39,7 @@ fn a_remote_branch_input_keeps_its_posix_checkout_on_every_client_platform(
                     key: "/same/path/.git".into(),
                     label: "app".into(),
                     linked: true,
+                    root: String::new(),
                 }),
             );
             let location =

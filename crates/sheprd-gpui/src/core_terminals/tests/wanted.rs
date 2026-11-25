@@ -6,6 +6,7 @@ use sheprd_backend::Spawn;
 
 fn tab(scope: &Scope) -> Purpose {
     Purpose::Tab {
+        focus: true,
         group: None,
         scope: scope.clone(),
         workspace: "w1".into(),

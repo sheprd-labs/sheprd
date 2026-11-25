@@ -1,0 +1,2344 @@
+[
+ {"dir": "client", "_tag": "Request", "id": "1", "tag": "orchestration.subscribeShell", "payload": {}, "headers": []},
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "snapshot",
+    "snapshot": {
+     "schemaVersion": 2,
+     "snapshotSequence": 329,
+     "threads": [
+      {"createdBy": "agent", "creationSource": "mcp", "id": "mcp:eb9f3ddf-7ad9-4a13-9f10-c819e59959c5", "projectId": "4b4bb756-3a53-4e82-83e0-716fe1357f27", "title": "Steer test", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "full-access", "interactionMode": "default", "branch": null, "worktreePath": null, "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "mcp:eb9f3ddf-7ad9-4a13-9f10-c819e59959c5"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253Aeb9f3ddf-7ad9-4a13-9f10-c819e59959c5%3Aordinal%3A1", "latestRunId": "run:thread:mcp%3Aeb9f3ddf-7ad9-4a13-9f10-c819e59959c5:ordinal:1", "latestRunRequestedAt": "2026-11-22T02:12:30.681Z", "latestRunStartedAt": "2026-11-22T02:12:31.318Z", "latestRunCompletedAt": "2026-11-22T02:12:31.739Z", "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": null, "activityRunStartedAt": null, "activityRunStatus": null, "blockedOnThreadWait": false, "status": "completed", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:12:30.681Z", "latestUserAuthoredMessageAt": null, "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 4, "visibleItemCount": 4, "createdAt": "2026-11-22T02:12:30.628Z", "updatedAt": "2026-11-22T02:16:12.424Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:12:30.679Z", "opens": null, "titleRegeneration": null, "deletedAt": null},
+      {"createdBy": "agent", "creationSource": "mcp", "id": "mcp:64f9c619-0ba4-44fc-a92e-31512b4e0c15", "projectId": "4b4bb756-3a53-4e82-83e0-716fe1357f27", "title": "Steer test", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "full-access", "interactionMode": "default", "branch": null, "worktreePath": null, "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "mcp:64f9c619-0ba4-44fc-a92e-31512b4e0c15"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A64f9c619-0ba4-44fc-a92e-31512b4e0c15%3Aordinal%3A1", "latestRunId": "run:thread:mcp%3A64f9c619-0ba4-44fc-a92e-31512b4e0c15:ordinal:2", "latestRunRequestedAt": "2026-11-22T02:12:50.802Z", "latestRunStartedAt": "2026-11-22T02:12:50.813Z", "latestRunCompletedAt": "2026-11-22T02:12:50.856Z", "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": null, "activityRunStartedAt": null, "activityRunStatus": null, "blockedOnThreadWait": false, "status": "completed", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:12:50.802Z", "latestUserAuthoredMessageAt": "2026-11-22T02:12:50.802Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 8, "visibleItemCount": 8, "createdAt": "2026-11-22T02:12:45.035Z", "updatedAt": "2026-11-22T02:16:12.427Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:12:45.042Z", "opens": null, "titleRegeneration": null, "deletedAt": null},
+      {"createdBy": "agent", "creationSource": "mcp", "id": "mcp:33b4063f-ce79-4648-88ae-0fcec7039b06", "projectId": "4b4bb756-3a53-4e82-83e0-716fe1357f27", "title": "Steer test", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": null, "worktreePath": null, "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "mcp:33b4063f-ce79-4648-88ae-0fcec7039b06"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A33b4063f-ce79-4648-88ae-0fcec7039b06%3Aordinal%3A1", "latestRunId": "run:thread:mcp%3A33b4063f-ce79-4648-88ae-0fcec7039b06:ordinal:2", "latestRunRequestedAt": "2026-11-22T02:13:47.926Z", "latestRunStartedAt": null, "latestRunCompletedAt": "2026-11-22T02:13:49.644Z", "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": null, "activityRunStartedAt": null, "activityRunStatus": null, "blockedOnThreadWait": false, "status": "failed", "lastError": "Failed to open acpRegistry provider session provider-session:provider-instance:fakeacp:thread:mcp%3A33b4063f-ce79-4648-88ae-0fcec7039b06:cf0a5d9e-8778-401b-b0cd-ddd845db758e.", "lastErrorClass": "provider_error", "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:13:47.926Z", "latestUserAuthoredMessageAt": "2026-11-22T02:13:47.926Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 6, "visibleItemCount": 6, "createdAt": "2026-11-22T02:13:44.460Z", "updatedAt": "2026-11-22T02:16:12.432Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:13:44.464Z", "opens": null, "titleRegeneration": null, "deletedAt": null},
+      {"createdBy": "agent", "creationSource": "mcp", "id": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "projectId": "4b4bb756-3a53-4e82-83e0-716fe1357f27", "title": "Steer test", "providerInstanceId": "fakeacp2", "modelSelection": {"instanceId": "fakeacp2", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": null, "worktreePath": null, "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A5", "latestRunId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:5", "latestRunRequestedAt": "2026-11-22T02:21:34.631Z", "latestRunStartedAt": "2026-11-22T02:21:34.701Z", "latestRunCompletedAt": "2026-11-22T02:21:36.725Z", "latestRunStopRequested": true, "latestRunBackgroundWake": false, "activeRunId": null, "activityRunStartedAt": null, "activityRunStatus": null, "blockedOnThreadWait": false, "status": "interrupted", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:21:34.631Z", "latestUserAuthoredMessageAt": "2026-11-22T02:21:34.631Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp", "fakeacp2"], "goal": null, "itemCount": 22, "visibleItemCount": 22, "createdAt": "2026-11-22T02:14:29.679Z", "updatedAt": "2026-11-22T02:21:43.782Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:14:29.684Z", "opens": null, "titleRegeneration": null, "deletedAt": null}
+     ],
+     "archivedThreads": [],
+     "projects": [
+      {
+       "id": "4b4bb756-3a53-4e82-83e0-716fe1357f27",
+       "title": "Sandbox",
+       "workspaceRoot": "/tmp/t3rec/work",
+       "repositoryIdentity": null,
+       "defaultModelSelection": null,
+       "defaultThreadEnvMode": null,
+       "autoPull": false,
+       "faviconPath": null,
+       "projectIcon": null,
+       "scripts": [],
+       "pinnedAt": null,
+       "archivedAt": null,
+       "createdAt": "2026-11-22T02:12:27.042Z",
+       "updatedAt": "2026-11-22T02:12:27.042Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "snapshot",
+    "snapshot": {
+     "schemaVersion": 2,
+     "snapshotSequence": 329,
+     "threads": [],
+     "archivedThreads": [],
+     "projects": [
+      {
+       "id": "4b4bb756-3a53-4e82-83e0-716fe1357f27",
+       "title": "Sandbox",
+       "workspaceRoot": "/tmp/t3rec/work",
+       "repositoryIdentity": null,
+       "defaultModelSelection": null,
+       "defaultThreadEnvMode": null,
+       "autoPull": false,
+       "faviconPath": null,
+       "projectIcon": null,
+       "scripts": [],
+       "pinnedAt": null,
+       "archivedAt": null,
+       "createdAt": "2026-11-22T02:12:27.042Z",
+       "updatedAt": "2026-11-22T02:12:27.042Z"
+      }
+     ]
+    },
+    "resolvedRepositoryIdentityRoots": ["/tmp/t3rec/work"]
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "2",
+  "tag": "projects.mutate",
+  "payload": {
+   "type": "project.create",
+   "commandId": "sheprd:5a242b5c-3da2-412d-838c-968e7252ee3d",
+   "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+   "title": "repo",
+   "workspaceRoot": "/tmp/t3rec/work/repo"
+  },
+  "headers": []
+ },
+ {
+  "dir": "server",
+  "_tag": "Exit",
+  "requestId": "2",
+  "exit": {
+   "_tag": "Success",
+   "value": {
+    "id": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+    "title": "repo",
+    "workspaceRoot": "/tmp/t3rec/work/repo",
+    "repositoryIdentity": null,
+    "faviconPath": null,
+    "projectIcon": null,
+    "defaultModelSelection": null,
+    "defaultThreadEnvMode": null,
+    "autoPull": false,
+    "scripts": [],
+    "pinnedAt": null,
+    "archivedAt": null,
+    "createdAt": "2026-11-22T02:24:31.121Z",
+    "updatedAt": "2026-11-22T02:24:31.121Z",
+    "deletedAt": null
+   }
+  }
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "snapshot",
+    "snapshot": {
+     "schemaVersion": 2,
+     "snapshotSequence": 330,
+     "threads": [],
+     "archivedThreads": [],
+     "projects": [
+      {
+       "id": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+       "title": "repo",
+       "workspaceRoot": "/tmp/t3rec/work/repo",
+       "repositoryIdentity": null,
+       "defaultModelSelection": null,
+       "defaultThreadEnvMode": null,
+       "autoPull": false,
+       "faviconPath": null,
+       "projectIcon": null,
+       "scripts": [],
+       "pinnedAt": null,
+       "archivedAt": null,
+       "createdAt": "2026-11-22T02:24:31.121Z",
+       "updatedAt": "2026-11-22T02:24:31.121Z"
+      }
+     ]
+    },
+    "resolvedRepositoryIdentityRoots": ["/tmp/t3rec/work/repo"]
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "project.updated",
+    "sequence": 330,
+    "project": {"id": "2603d1f5-162c-463b-a960-64ddc3ec905d", "title": "repo", "workspaceRoot": "/tmp/t3rec/work/repo", "repositoryIdentity": null, "defaultModelSelection": null, "defaultThreadEnvMode": null, "autoPull": false, "faviconPath": null, "projectIcon": null, "scripts": [], "pinnedAt": null, "archivedAt": null, "createdAt": "2026-11-22T02:24:31.121Z", "updatedAt": "2026-11-22T02:24:31.121Z"}
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "3",
+  "tag": "projects.mutate",
+  "payload": {
+   "type": "project.create",
+   "commandId": "sheprd:5a242b5c-3da2-412d-838c-968e7252ee3d",
+   "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+   "title": "repo",
+   "workspaceRoot": "/tmp/t3rec/work/repo"
+  },
+  "headers": []
+ },
+ {
+  "dir": "server",
+  "_tag": "Exit",
+  "requestId": "3",
+  "exit": {
+   "_tag": "Success",
+   "value": {
+    "id": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+    "title": "repo",
+    "workspaceRoot": "/tmp/t3rec/work/repo",
+    "repositoryIdentity": null,
+    "faviconPath": null,
+    "projectIcon": null,
+    "defaultModelSelection": null,
+    "defaultThreadEnvMode": null,
+    "autoPull": false,
+    "scripts": [],
+    "pinnedAt": null,
+    "archivedAt": null,
+    "createdAt": "2026-11-22T02:24:31.121Z",
+    "updatedAt": "2026-11-22T02:24:31.121Z",
+    "deletedAt": null
+   }
+  }
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "snapshot",
+    "snapshot": {
+     "schemaVersion": 2,
+     "snapshotSequence": 330,
+     "threads": [],
+     "archivedThreads": [],
+     "projects": [
+      {
+       "id": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+       "title": "repo",
+       "workspaceRoot": "/tmp/t3rec/work/repo",
+       "repositoryIdentity": null,
+       "defaultModelSelection": null,
+       "defaultThreadEnvMode": null,
+       "autoPull": false,
+       "faviconPath": null,
+       "projectIcon": null,
+       "scripts": [],
+       "pinnedAt": null,
+       "archivedAt": null,
+       "createdAt": "2026-11-22T02:24:31.121Z",
+       "updatedAt": "2026-11-22T02:24:31.121Z"
+      }
+     ]
+    },
+    "resolvedRepositoryIdentityRoots": ["/tmp/t3rec/work/repo"]
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "4",
+  "tag": "projects.mutate",
+  "payload": {
+   "type": "project.create",
+   "commandId": "sheprd:c5d4591b-4139-49ff-8471-bac6b0a298fa",
+   "projectId": "abe30e06-5d52-4b38-901f-4b46a19bd1c0",
+   "title": "repo",
+   "workspaceRoot": "/tmp/t3rec/work/repo"
+  },
+  "headers": []
+ },
+ {
+  "dir": "server",
+  "_tag": "Exit",
+  "requestId": "4",
+  "exit": {
+   "_tag": "Failure",
+   "cause": [
+    {
+     "_tag": "Fail",
+     "error": {
+      "_tag": "ProjectMutationError",
+      "commandId": "sheprd:c5d4591b-4139-49ff-8471-bac6b0a298fa",
+      "message": "Failed to mutate project.",
+      "cause": {"name": "ProjectConflictError", "message": "Workspace /tmp/t3rec/work/repo already belongs to project 2603d1f5-162c-463b-a960-64ddc3ec905d."}
+     }
+    }
+   ]
+  }
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "5",
+  "tag": "orchestration.launchThread",
+  "payload": {
+   "commandId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7",
+   "creationSource": "web",
+   "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+   "title": "Say hello",
+   "generateTitle": true,
+   "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+   "runtimeMode": "approval-required",
+   "interactionMode": "default",
+   "workspaceStrategy": {"type": "root"},
+   "initialMessage": {"messageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message", "text": "hello from sheprd", "attachments": []}
+  },
+  "headers": []
+ },
+ {
+  "dir": "server",
+  "_tag": "Exit",
+  "requestId": "5",
+  "exit": {
+   "_tag": "Success",
+   "value": {
+    "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+    "projection": {
+     "thread": {
+      "createdBy": "user",
+      "creationSource": "web",
+      "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+      "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+      "title": "Say hello",
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "runtimeMode": "approval-required",
+      "interactionMode": "default",
+      "branch": null,
+      "worktreePath": null,
+      "pullRequests": [],
+      "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+      "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1"},
+      "forkedFrom": null,
+      "createdAt": "2026-11-22T02:24:32.650Z",
+      "updatedAt": "2026-11-22T02:24:32.660Z",
+      "archivedAt": null,
+      "settledOverride": null,
+      "settledAt": null,
+      "snoozedUntil": null,
+      "snoozedAt": null,
+      "lastVisitedAt": "2026-11-22T02:24:32.659Z",
+      "titleRegeneration": {"requestId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:initial-message", "startedAt": "2026-11-22T02:24:32.660Z"},
+      "deletedAt": null
+     },
+     "runs": [
+      {
+       "id": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "ordinal": 1,
+       "providerInstanceId": "fakeacp",
+       "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "userMessageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "activeAttemptId": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1",
+       "status": "preparing",
+       "queuePosition": null,
+       "requestedAt": "2026-11-22T02:24:32.660Z",
+       "startedAt": null,
+       "completedAt": null,
+       "checkpointId": null,
+       "contextHandoffId": null,
+       "workspacePreparation": {"type": "root"}
+      }
+     ],
+     "attempts": [
+      {
+       "id": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "attemptOrdinal": 1,
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "providerInstanceId": "fakeacp",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "reason": "initial",
+       "status": "pending",
+       "startedAt": null,
+       "completedAt": null
+      }
+     ],
+     "nodes": [
+      {
+       "id": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "parentNodeId": null,
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "kind": "root_turn",
+       "status": "pending",
+       "countsForRun": true,
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "runtimeRequestId": null,
+       "checkpointScopeId": null,
+       "startedAt": null,
+       "completedAt": null
+      }
+     ],
+     "subagents": [],
+     "providerSessions": [],
+     "providerThreads": [
+      {
+       "id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "driver": "acpRegistry",
+       "providerInstanceId": "fakeacp",
+       "providerSessionId": "provider-session:provider-instance:fakeacp:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:8a247244-1fe0-4e44-8c17-3eddb7293c22",
+       "appThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "ownerNodeId": null,
+       "nativeThreadRef": null,
+       "nativeConversationHeadRef": null,
+       "status": "not_loaded",
+       "firstRunOrdinal": 1,
+       "lastRunOrdinal": 1,
+       "handoffIds": [],
+       "forkedFrom": null,
+       "pendingBackgroundTasks": [],
+       "contextUsage": null,
+       "nativeMetadata": null,
+       "goal": null,
+       "createdAt": "2026-11-22T02:24:32.660Z",
+       "updatedAt": "2026-11-22T02:24:32.660Z"
+      }
+     ],
+     "providerTurns": [],
+     "runtimeRequests": [],
+     "messages": [
+      {
+       "createdBy": "user",
+       "creationSource": "web",
+       "id": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "role": "user",
+       "text": "hello from sheprd",
+       "attachments": [],
+       "streaming": false,
+       "createdAt": "2026-11-22T02:24:32.660Z",
+       "updatedAt": "2026-11-22T02:24:32.660Z"
+      }
+     ],
+     "plans": [],
+     "turnItems": [
+      {
+       "id": "turn-item:message:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Amessage",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000001,
+       "status": "completed",
+       "title": null,
+       "startedAt": "2026-11-22T02:24:32.660Z",
+       "completedAt": "2026-11-22T02:24:32.660Z",
+       "updatedAt": "2026-11-22T02:24:32.660Z",
+       "createdBy": "user",
+       "creationSource": "web",
+       "type": "user_message",
+       "messageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+       "inputIntent": "turn_start",
+       "text": "hello from sheprd",
+       "attachments": []
+      },
+      {
+       "id": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000002,
+       "status": "running",
+       "title": "Preparing workspace",
+       "startedAt": "2026-11-22T02:24:32.660Z",
+       "completedAt": null,
+       "updatedAt": "2026-11-22T02:24:32.660Z",
+       "type": "command_execution",
+       "input": "Preparing workspace"
+      }
+     ],
+     "checkpointScopes": [],
+     "checkpoints": [],
+     "contextHandoffs": [],
+     "contextTransfers": [],
+     "visibleTurnItems": [
+      {
+       "position": 0,
+       "visibility": "local",
+       "sourceThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "sourceItemId": "turn-item:message:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Amessage",
+       "item": {
+        "id": "turn-item:message:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Amessage",
+        "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+        "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000001,
+        "status": "completed",
+        "title": null,
+        "startedAt": "2026-11-22T02:24:32.660Z",
+        "completedAt": "2026-11-22T02:24:32.660Z",
+        "updatedAt": "2026-11-22T02:24:32.660Z",
+        "createdBy": "user",
+        "creationSource": "web",
+        "type": "user_message",
+        "messageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+        "inputIntent": "turn_start",
+        "text": "hello from sheprd",
+        "attachments": []
+       }
+      },
+      {
+       "position": 1,
+       "visibility": "local",
+       "sourceThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "sourceItemId": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "item": {
+        "id": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+        "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+        "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000002,
+        "status": "running",
+        "title": "Preparing workspace",
+        "startedAt": "2026-11-22T02:24:32.660Z",
+        "completedAt": null,
+        "updatedAt": "2026-11-22T02:24:32.660Z",
+        "type": "command_execution",
+        "input": "Preparing workspace"
+       }
+      }
+     ],
+     "updatedAt": "2026-11-22T02:24:32.660Z"
+    },
+    "resumed": false,
+    "sequence": 340
+   }
+  }
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "6",
+  "tag": "orchestration.subscribeThread",
+  "payload": {"threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1"},
+  "headers": []
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "snapshot",
+    "snapshotSequence": 341,
+    "projection": {
+     "thread": {
+      "createdBy": "user",
+      "creationSource": "web",
+      "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+      "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+      "title": "Say hello",
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "runtimeMode": "approval-required",
+      "interactionMode": "default",
+      "branch": null,
+      "worktreePath": null,
+      "pullRequests": [],
+      "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+      "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1"},
+      "forkedFrom": null,
+      "createdAt": "2026-11-22T02:24:32.650Z",
+      "updatedAt": "2026-11-22T02:24:32.680Z",
+      "archivedAt": null,
+      "settledOverride": null,
+      "settledAt": null,
+      "snoozedUntil": null,
+      "snoozedAt": null,
+      "lastVisitedAt": "2026-11-22T02:24:32.659Z",
+      "titleRegeneration": {"requestId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:initial-message", "startedAt": "2026-11-22T02:24:32.660Z"},
+      "deletedAt": null
+     },
+     "runs": [
+      {
+       "id": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "ordinal": 1,
+       "providerInstanceId": "fakeacp",
+       "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "userMessageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "activeAttemptId": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1",
+       "status": "preparing",
+       "queuePosition": null,
+       "requestedAt": "2026-11-22T02:24:32.660Z",
+       "startedAt": null,
+       "completedAt": null,
+       "checkpointId": null,
+       "contextHandoffId": null,
+       "workspacePreparation": {"type": "root"}
+      }
+     ],
+     "attempts": [
+      {
+       "id": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "attemptOrdinal": 1,
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "providerInstanceId": "fakeacp",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "reason": "initial",
+       "status": "pending",
+       "startedAt": null,
+       "completedAt": null
+      }
+     ],
+     "nodes": [
+      {
+       "id": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "parentNodeId": null,
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "kind": "root_turn",
+       "status": "pending",
+       "countsForRun": true,
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "runtimeRequestId": null,
+       "checkpointScopeId": null,
+       "startedAt": null,
+       "completedAt": null
+      }
+     ],
+     "subagents": [],
+     "providerSessions": [],
+     "providerThreads": [
+      {
+       "id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "driver": "acpRegistry",
+       "providerInstanceId": "fakeacp",
+       "providerSessionId": "provider-session:provider-instance:fakeacp:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:8a247244-1fe0-4e44-8c17-3eddb7293c22",
+       "appThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "ownerNodeId": null,
+       "nativeThreadRef": null,
+       "nativeConversationHeadRef": null,
+       "status": "not_loaded",
+       "firstRunOrdinal": 1,
+       "lastRunOrdinal": 1,
+       "handoffIds": [],
+       "forkedFrom": null,
+       "pendingBackgroundTasks": [],
+       "contextUsage": null,
+       "nativeMetadata": null,
+       "goal": null,
+       "createdAt": "2026-11-22T02:24:32.660Z",
+       "updatedAt": "2026-11-22T02:24:32.660Z"
+      }
+     ],
+     "providerTurns": [],
+     "runtimeRequests": [],
+     "messages": [
+      {
+       "createdBy": "user",
+       "creationSource": "web",
+       "id": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "role": "user",
+       "text": "hello from sheprd",
+       "attachments": [],
+       "streaming": false,
+       "createdAt": "2026-11-22T02:24:32.660Z",
+       "updatedAt": "2026-11-22T02:24:32.660Z"
+      }
+     ],
+     "plans": [],
+     "turnItems": [
+      {
+       "id": "turn-item:message:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Amessage",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000001,
+       "status": "completed",
+       "title": null,
+       "startedAt": "2026-11-22T02:24:32.660Z",
+       "completedAt": "2026-11-22T02:24:32.660Z",
+       "updatedAt": "2026-11-22T02:24:32.660Z",
+       "createdBy": "user",
+       "creationSource": "web",
+       "type": "user_message",
+       "messageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+       "inputIntent": "turn_start",
+       "text": "hello from sheprd",
+       "attachments": []
+      },
+      {
+       "id": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000002,
+       "status": "running",
+       "title": "Preparing workspace",
+       "startedAt": "2026-11-22T02:24:32.660Z",
+       "completedAt": null,
+       "updatedAt": "2026-11-22T02:24:32.660Z",
+       "type": "command_execution",
+       "input": "Preparing workspace"
+      }
+     ],
+     "checkpointScopes": [],
+     "checkpoints": [],
+     "contextHandoffs": [],
+     "contextTransfers": [],
+     "visibleTurnItems": [
+      {
+       "position": 0,
+       "visibility": "local",
+       "sourceThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "sourceItemId": "turn-item:message:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Amessage",
+       "item": {
+        "id": "turn-item:message:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Amessage",
+        "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+        "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000001,
+        "status": "completed",
+        "title": null,
+        "startedAt": "2026-11-22T02:24:32.660Z",
+        "completedAt": "2026-11-22T02:24:32.660Z",
+        "updatedAt": "2026-11-22T02:24:32.660Z",
+        "createdBy": "user",
+        "creationSource": "web",
+        "type": "user_message",
+        "messageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+        "inputIntent": "turn_start",
+        "text": "hello from sheprd",
+        "attachments": []
+       }
+      },
+      {
+       "position": 1,
+       "visibility": "local",
+       "sourceThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "sourceItemId": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "item": {
+        "id": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+        "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+        "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000002,
+        "status": "running",
+        "title": "Preparing workspace",
+        "startedAt": "2026-11-22T02:24:32.660Z",
+        "completedAt": null,
+        "updatedAt": "2026-11-22T02:24:32.660Z",
+        "type": "command_execution",
+        "input": "Preparing workspace"
+       }
+      }
+     ],
+     "updatedAt": "2026-11-22T02:24:32.680Z"
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 342,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:command:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Arelease:9abb7105-5d4f-42c1-b0f6-32e34172199e",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.685Z",
+     "type": "checkpoint-scope.created",
+     "payload": {"id": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root", "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "parentScopeId": null, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "kind": "root_run", "ordinalWithinParent": 0, "advancesAppRunCount": true, "cwd": "/tmp/t3rec/work/repo", "createdAt": "2026-11-22T02:24:32.685Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 343,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:command:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Arelease:a50309cd-9dee-4242-b5d4-4519d2a02867",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.685Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "kind": "root_turn", "status": "pending", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root", "startedAt": null, "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 344,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:command:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Arelease:34223b49-7aae-4ec5-b491-7a10b47ed0db",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.685Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+      "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+      "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+      "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+      "providerTurnId": null,
+      "nativeItemRef": null,
+      "parentItemId": null,
+      "ordinal": 1000002,
+      "status": "completed",
+      "title": "Workspace ready",
+      "startedAt": "2026-11-22T02:24:32.660Z",
+      "completedAt": "2026-11-22T02:24:32.685Z",
+      "updatedAt": "2026-11-22T02:24:32.685Z",
+      "type": "command_execution",
+      "input": "Preparing workspace",
+      "outputOmitted": true,
+      "exitCode": 0
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 345,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:command:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Arelease:8bda5d56-0733-495b-ad91-87cf0433f97f",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.685Z",
+     "type": "run.updated",
+     "payload": {
+      "id": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+      "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+      "ordinal": 1,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+      "userMessageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+      "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1",
+      "status": "starting",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:24:32.660Z",
+      "startedAt": null,
+      "completedAt": null,
+      "checkpointId": null,
+      "contextHandoffId": null,
+      "workspacePreparation": {"type": "root"}
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "thread.updated",
+    "sequence": 345,
+    "location": "active",
+    "thread": {"createdBy": "user", "creationSource": "web", "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d", "title": "Say hello", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": null, "worktreePath": null, "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "latestRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "latestRunRequestedAt": "2026-11-22T02:24:32.660Z", "latestRunStartedAt": null, "latestRunCompletedAt": null, "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "activityRunStartedAt": "2026-11-22T02:24:32.660Z", "activityRunStatus": "starting", "blockedOnThreadWait": false, "status": "starting", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:24:32.660Z", "latestUserAuthoredMessageAt": "2026-11-22T02:24:32.660Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 2, "visibleItemCount": 2, "createdAt": "2026-11-22T02:24:32.650Z", "updatedAt": "2026-11-22T02:24:32.685Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:24:32.659Z", "opens": null, "titleRegeneration": {"requestId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:initial-message", "startedAt": "2026-11-22T02:24:32.660Z"}, "deletedAt": null}
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 346,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3A8a247244-1fe0-4e44-8c17-3eddb7293c22:4dc1519b-df0c-439d-b027-81b804b9357a",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.738Z",
+     "type": "provider-session.attached",
+     "payload": {"id": "provider-session:provider-instance:fakeacp:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:8a247244-1fe0-4e44-8c17-3eddb7293c22", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "status": "ready", "cwd": "/tmp/t3rec/work/repo", "model": "fast", "capabilities": {"sessions": {"supportsMultipleProviderThreadsPerSession": false, "supportsModelSwitchInSession": true, "supportsProviderSwitchingViaHandoff": true, "supportsRuntimeModeSwitchInSession": false, "pendingRequestsSurviveRestart": false}, "threads": {"canCreateEmptyThread": true, "canReadThreadSnapshot": true, "canRollbackThread": true, "canForkThread": false, "canForkFromTurn": false, "canForkFromSubagentThread": false, "exposesNativeThreadId": true}, "turns": {"exposesNativeTurnId": false, "emitsTurnStarted": true, "emitsTurnCompleted": true, "supportsInterrupt": true, "supportsActiveSteering": false, "supportsSteeringByInterruptRestart": true, "supportsQueuedMessages": true, "terminalStatusQuality": "strong"}, "streaming": {"streamsAssistantText": true, "streamsReasoning": true, "streamsToolOutput": true, "streamsPlanText": false, "emitsMessageCompleted": true}, "tools": {"exposesToolItemIds": true, "emitsToolStarted": true, "emitsToolCompleted": true, "emitsToolOutput": true, "supportsMcpTools": true, "supportsDynamicToolCallbacks": false}, "approvals": {"supportsCommandApproval": true, "supportsFileReadApproval": true, "supportsFileChangeApproval": true, "supportsApplyPatchApproval": false, "approvalsHaveNativeRequestIds": false, "approvalCallbacksAreLiveOnly": true, "approvalsCanOriginateFromSubagents": false}, "planning": {"emitsPlanUpdated": true, "emitsTodoList": true, "emitsProposedPlan": false, "supportsStructuredQuestions": true, "planDeltasHaveItemIds": false}, "subagents": {"supportsSubagents": false, "exposesSubagentThreadIds": false, "emitsSubagentLifecycle": false, "canWaitForSubagents": false, "canCloseSubagents": false, "canForkSubagentThread": false}, "context": {"acceptsSystemContext": false, "acceptsDeveloperContext": false, "acceptsSyntheticUserContext": true, "canGenerateSummaries": true, "canConsumeHandoffSummaries": true, "supportsDeltaHandoff": true, "supportsFullThreadHandoff": true, "maxRecommendedHandoffChars": null}, "checkpointing": {"appCanCheckpointFilesystem": true, "supportsNestedCheckpointScopes": true, "providerCanRollbackConversation": true, "providerRollbackReturnsSnapshot": true, "providerCanReadConversationSnapshot": true}, "identity": {"nativeThreadIds": "strong", "nativeTurnIds": "weak", "nativeItemIds": "weak", "nativeRequestIds": "weak"}, "runtimePolicy": {"enforcement": "client-boundary"}}, "extensionStatuses": [], "createdAt": "2026-11-22T02:24:32.738Z", "updatedAt": "2026-11-22T02:24:32.738Z", "lastError": null}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 347,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3A8a247244-1fe0-4e44-8c17-3eddb7293c22:7e45ce83-e742-4764-a71a-47bba920a583",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.742Z",
+     "type": "provider-session.updated",
+     "payload": {"id": "provider-session:provider-instance:fakeacp:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:8a247244-1fe0-4e44-8c17-3eddb7293c22", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "status": "ready", "cwd": "/tmp/t3rec/work/repo", "model": "fast", "capabilities": {"sessions": {"supportsMultipleProviderThreadsPerSession": false, "supportsModelSwitchInSession": true, "supportsProviderSwitchingViaHandoff": true, "supportsRuntimeModeSwitchInSession": false, "pendingRequestsSurviveRestart": false}, "threads": {"canCreateEmptyThread": true, "canReadThreadSnapshot": true, "canRollbackThread": true, "canForkThread": false, "canForkFromTurn": false, "canForkFromSubagentThread": false, "exposesNativeThreadId": true}, "turns": {"exposesNativeTurnId": false, "emitsTurnStarted": true, "emitsTurnCompleted": true, "supportsInterrupt": true, "supportsActiveSteering": false, "supportsSteeringByInterruptRestart": true, "supportsQueuedMessages": true, "terminalStatusQuality": "strong"}, "streaming": {"streamsAssistantText": true, "streamsReasoning": true, "streamsToolOutput": true, "streamsPlanText": false, "emitsMessageCompleted": true}, "tools": {"exposesToolItemIds": true, "emitsToolStarted": true, "emitsToolCompleted": true, "emitsToolOutput": true, "supportsMcpTools": true, "supportsDynamicToolCallbacks": false}, "approvals": {"supportsCommandApproval": true, "supportsFileReadApproval": true, "supportsFileChangeApproval": true, "supportsApplyPatchApproval": false, "approvalsHaveNativeRequestIds": false, "approvalCallbacksAreLiveOnly": true, "approvalsCanOriginateFromSubagents": false}, "planning": {"emitsPlanUpdated": true, "emitsTodoList": true, "emitsProposedPlan": false, "supportsStructuredQuestions": true, "planDeltasHaveItemIds": false}, "subagents": {"supportsSubagents": false, "exposesSubagentThreadIds": false, "emitsSubagentLifecycle": false, "canWaitForSubagents": false, "canCloseSubagents": false, "canForkSubagentThread": false}, "context": {"acceptsSystemContext": false, "acceptsDeveloperContext": false, "acceptsSyntheticUserContext": true, "canGenerateSummaries": true, "canConsumeHandoffSummaries": true, "supportsDeltaHandoff": true, "supportsFullThreadHandoff": true, "maxRecommendedHandoffChars": null}, "checkpointing": {"appCanCheckpointFilesystem": true, "supportsNestedCheckpointScopes": true, "providerCanRollbackConversation": true, "providerRollbackReturnsSnapshot": true, "providerCanReadConversationSnapshot": true}, "identity": {"nativeThreadIds": "strong", "nativeTurnIds": "weak", "nativeItemIds": "weak", "nativeRequestIds": "weak"}, "runtimePolicy": {"enforcement": "client-boundary"}}, "extensionStatuses": [], "createdAt": "2026-11-22T02:24:32.738Z", "updatedAt": "2026-11-22T02:24:32.738Z", "lastError": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 348,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:eafc8c90-7e23-420f-9ef4-5887a4cff858",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.742Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:8a247244-1fe0-4e44-8c17-3eddb7293c22", "appThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "active", "firstRunOrdinal": 1, "lastRunOrdinal": 1, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:24:32.660Z", "updatedAt": "2026-11-22T02:24:32.742Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 349,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:0069021e-67fe-4d6e-b0b0-e01af86163ee",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.742Z",
+     "type": "run.updated",
+     "payload": {
+      "id": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+      "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+      "ordinal": 1,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+      "userMessageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+      "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1",
+      "status": "running",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:24:32.660Z",
+      "startedAt": "2026-11-22T02:24:32.742Z",
+      "completedAt": null,
+      "checkpointId": null,
+      "contextHandoffId": null,
+      "workspacePreparation": {"type": "root"}
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 350,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:04db7406-f306-4ced-b0fb-8033255dee63",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.742Z",
+     "type": "run-attempt.updated",
+     "payload": {"id": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1", "nativeThreadId": "sess-856278219717", "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "attemptOrdinal": 1, "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "providerInstanceId": "fakeacp", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "providerTurnId": null, "reason": "initial", "status": "running", "startedAt": "2026-11-22T02:24:32.742Z", "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 351,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:fce22d3a-18bc-46df-a966-6f4c9a24ae07",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.742Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "kind": "root_turn", "status": "running", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root", "startedAt": "2026-11-22T02:24:32.742Z", "completedAt": null}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "thread.updated",
+    "sequence": 351,
+    "location": "active",
+    "thread": {"createdBy": "user", "creationSource": "web", "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d", "title": "Say hello", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": null, "worktreePath": null, "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "latestRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "latestRunRequestedAt": "2026-11-22T02:24:32.660Z", "latestRunStartedAt": "2026-11-22T02:24:32.742Z", "latestRunCompletedAt": null, "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "activityRunStartedAt": "2026-11-22T02:24:32.742Z", "activityRunStatus": "running", "blockedOnThreadWait": false, "status": "running", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:24:32.660Z", "latestUserAuthoredMessageAt": "2026-11-22T02:24:32.660Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 2, "visibleItemCount": 2, "createdAt": "2026-11-22T02:24:32.650Z", "updatedAt": "2026-11-22T02:24:32.742Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:24:32.659Z", "opens": null, "titleRegeneration": {"requestId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:initial-message", "startedAt": "2026-11-22T02:24:32.660Z"}, "deletedAt": null}
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 352,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3A8a247244-1fe0-4e44-8c17-3eddb7293c22:7dfdbde3-3600-464b-b8d9-eed48a0c99af",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.834Z",
+     "type": "provider-turn.updated",
+     "payload": {"id": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "runAttemptId": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1", "nativeTurnRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717:turn:1", "strength": "weak"}, "ordinal": 1, "status": "running", "startedAt": "2026-11-22T02:24:32.831Z", "completedAt": null}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 353,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3A8a247244-1fe0-4e44-8c17-3eddb7293c22:28839d03-d9b9-4630-b1f0-15abdcb9252f",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.836Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:8a247244-1fe0-4e44-8c17-3eddb7293c22", "appThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "active", "firstRunOrdinal": 1, "lastRunOrdinal": 1, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:24:32.660Z", "updatedAt": "2026-11-22T02:24:32.831Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 354,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3A8a247244-1fe0-4e44-8c17-3eddb7293c22:1a817eda-7fb6-4da5-932a-e3621f75b508",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.842Z",
+     "type": "node.updated",
+     "payload": {"id": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0", "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "parentNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "kind": "assistant_message", "status": "completed", "countsForRun": false, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1", "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717:turn:1:assistant:0", "strength": "weak"}, "runtimeRequestId": null, "checkpointScopeId": null, "startedAt": "2026-11-22T02:24:32.838Z", "completedAt": "2026-11-22T02:24:32.840Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 355,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3A8a247244-1fe0-4e44-8c17-3eddb7293c22:f1e3bd67-3a70-4449-9f6d-21893c9f7315",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.843Z",
+     "type": "message.updated",
+     "payload": {
+      "createdBy": "agent",
+      "creationSource": "provider",
+      "id": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+      "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+      "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+      "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+      "role": "assistant",
+      "text": "Echo (fast): hello from sheprd",
+      "attachments": [],
+      "streaming": false,
+      "createdAt": "2026-11-22T02:24:32.838Z",
+      "updatedAt": "2026-11-22T02:24:32.840Z"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 356,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3A8a247244-1fe0-4e44-8c17-3eddb7293c22:4f871430-97e3-404f-b5e4-9a0569ccef82",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.845Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+      "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+      "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+      "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+      "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1",
+      "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717:turn:1:assistant:0", "strength": "weak"},
+      "parentItemId": null,
+      "ordinal": 1000003,
+      "status": "completed",
+      "title": null,
+      "startedAt": "2026-11-22T02:24:32.838Z",
+      "completedAt": "2026-11-22T02:24:32.840Z",
+      "updatedAt": "2026-11-22T02:24:32.840Z",
+      "type": "assistant_message",
+      "messageId": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+      "text": "Echo (fast): hello from sheprd",
+      "streaming": false
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 357,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3A8a247244-1fe0-4e44-8c17-3eddb7293c22:784ac27c-547c-488c-8f57-38921de5065a",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.847Z",
+     "type": "provider-turn.updated",
+     "payload": {"id": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "runAttemptId": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1", "nativeTurnRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717:turn:1", "strength": "weak"}, "ordinal": 1, "status": "completed", "startedAt": "2026-11-22T02:24:32.831Z", "completedAt": "2026-11-22T02:24:32.840Z", "turnTokenUsage": {"usageScope": "main_agent", "hasSubagents": false, "usageStatus": "unavailable"}}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 358,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3A8a247244-1fe0-4e44-8c17-3eddb7293c22:cc93cf7e-cdc7-4fc5-a19b-2b5537f8df88",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.848Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:8a247244-1fe0-4e44-8c17-3eddb7293c22", "appThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "active", "firstRunOrdinal": 1, "lastRunOrdinal": 1, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:24:32.660Z", "updatedAt": "2026-11-22T02:24:32.840Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 359,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:0cba9080-886a-4d78-b91c-9f3f74488ebf",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.851Z",
+     "type": "run-attempt.updated",
+     "payload": {"id": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1", "nativeThreadId": "sess-856278219717", "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "attemptOrdinal": 1, "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "providerInstanceId": "fakeacp", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "providerTurnId": null, "reason": "initial", "status": "completed", "startedAt": "2026-11-22T02:24:32.742Z", "completedAt": "2026-11-22T02:24:32.851Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 360,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:59bc8501-149f-4924-80fb-e256b10933f7",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.851Z",
+     "type": "run.updated",
+     "payload": {
+      "id": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+      "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+      "ordinal": 1,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+      "userMessageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+      "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1",
+      "status": "waiting",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:24:32.660Z",
+      "startedAt": "2026-11-22T02:24:32.742Z",
+      "completedAt": null,
+      "checkpointId": null,
+      "contextHandoffId": null,
+      "workspacePreparation": {"type": "root"}
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 361,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:98486545-91f2-40e4-a584-e7d49e14b3d4",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.851Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "kind": "root_turn", "status": "waiting", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root", "startedAt": "2026-11-22T02:24:32.742Z", "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 362,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:8785e457-ac88-4d33-b21b-560b41d65352",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.851Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:8a247244-1fe0-4e44-8c17-3eddb7293c22", "appThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "idle", "firstRunOrdinal": 1, "lastRunOrdinal": 1, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:24:32.660Z", "updatedAt": "2026-11-22T02:24:32.851Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "thread.updated",
+    "sequence": 362,
+    "location": "active",
+    "thread": {"createdBy": "user", "creationSource": "web", "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d", "title": "Say hello", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": null, "worktreePath": null, "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "latestRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "latestRunRequestedAt": "2026-11-22T02:24:32.660Z", "latestRunStartedAt": "2026-11-22T02:24:32.742Z", "latestRunCompletedAt": null, "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": null, "activityRunStartedAt": "2026-11-22T02:24:32.742Z", "activityRunStatus": "waiting", "blockedOnThreadWait": false, "status": "waiting", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:24:32.660Z", "latestUserAuthoredMessageAt": "2026-11-22T02:24:32.660Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 3, "visibleItemCount": 3, "createdAt": "2026-11-22T02:24:32.650Z", "updatedAt": "2026-11-22T02:24:32.851Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:24:32.659Z", "opens": null, "titleRegeneration": {"requestId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:initial-message", "startedAt": "2026-11-22T02:24:32.660Z"}, "deletedAt": null}
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "6",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 363,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:57d509ea-6525-4270-b24c-93e2e11885c8",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.857Z",
+     "type": "checkpoint.captured",
+     "payload": {"id": "checkpoint:scope:checkpoint-scope%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aname%3Aroot:name:0", "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "scopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root", "runId": null, "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "parentCheckpointId": null, "ordinalWithinScope": 0, "appRunOrdinal": null, "ref": "refs/t3/orchestration-v2/checkpoints/NjFmYTgyYjdhZDAxNDNkNWVhMDQ5ODIzOTNkZjE3ZDM/ordinal/0", "status": "ready", "files": [], "capturedAt": "2026-11-22T02:24:32.660Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 364,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:614d5a52-3bcf-45cd-a823-c001b0c7cd20",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.857Z",
+     "type": "checkpoint.captured",
+     "payload": {"id": "checkpoint:scope:checkpoint-scope%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aname%3Aroot:name:1", "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "scopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root", "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "parentCheckpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aname%3Aroot:name:0", "ordinalWithinScope": 1, "appRunOrdinal": 1, "ref": "refs/t3/orchestration-v2/checkpoints/NjFmYTgyYjdhZDAxNDNkNWVhMDQ5ODIzOTNkZjE3ZDM/ordinal/1", "status": "ready", "files": [], "capturedAt": "2026-11-22T02:24:32.857Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 365,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:0260ee52-64b0-45a6-8707-24811a081017",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.857Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:provider:acpRegistry:native-item:checkpoint%3Acheckpoint%3Ascope%3Acheckpoint-scope%253Athread%253Athread%25253Aproject%25253A2603d1f5-162c-463b-a960-64ddc3ec905d%25253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%253Aname%253Aroot%3Aname%3A1",
+      "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+      "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+      "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+      "providerTurnId": null,
+      "nativeItemRef": null,
+      "parentItemId": null,
+      "ordinal": 1000004,
+      "status": "completed",
+      "title": null,
+      "startedAt": "2026-11-22T02:24:32.857Z",
+      "completedAt": "2026-11-22T02:24:32.857Z",
+      "updatedAt": "2026-11-22T02:24:32.857Z",
+      "type": "checkpoint",
+      "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aname%3Aroot:name:1",
+      "scopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root",
+      "files": []
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 366,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:03cd41f1-9bf4-437d-a82c-9cefdc81e195",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.857Z",
+     "type": "run.updated",
+     "payload": {
+      "id": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+      "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+      "ordinal": 1,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+      "userMessageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+      "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1",
+      "status": "completed",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:24:32.660Z",
+      "startedAt": "2026-11-22T02:24:32.742Z",
+      "completedAt": "2026-11-22T02:24:32.857Z",
+      "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aname%3Aroot:name:1",
+      "contextHandoffId": null,
+      "workspacePreparation": {"type": "root"}
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 367,
+    "event": {
+     "id": "event:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:49b4e072-80c3-48b4-9f4b-552b3eab2076",
+     "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+     "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+     "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:24:32.857Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root", "kind": "root_turn", "status": "completed", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root", "startedAt": "2026-11-22T02:24:32.742Z", "completedAt": "2026-11-22T02:24:32.857Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "thread.updated",
+    "sequence": 367,
+    "location": "active",
+    "thread": {"createdBy": "user", "creationSource": "web", "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d", "title": "Say hello", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": null, "worktreePath": null, "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "latestRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "latestRunRequestedAt": "2026-11-22T02:24:32.660Z", "latestRunStartedAt": "2026-11-22T02:24:32.742Z", "latestRunCompletedAt": "2026-11-22T02:24:32.857Z", "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": null, "activityRunStartedAt": null, "activityRunStatus": null, "blockedOnThreadWait": false, "status": "completed", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:24:32.660Z", "latestUserAuthoredMessageAt": "2026-11-22T02:24:32.660Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 4, "visibleItemCount": 4, "createdAt": "2026-11-22T02:24:32.650Z", "updatedAt": "2026-11-22T02:24:32.857Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:24:32.659Z", "opens": null, "titleRegeneration": {"requestId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:initial-message", "startedAt": "2026-11-22T02:24:32.660Z"}, "deletedAt": null}
+   }
+  ]
+ },
+ {"dir": "client", "_tag": "Interrupt", "requestId": "6"},
+ {"dir": "server", "_tag": "Exit", "requestId": "6", "exit": {"_tag": "Failure", "cause": [{"_tag": "Interrupt", "fiberId": 1313}]}},
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "7",
+  "tag": "orchestration.launchThread",
+  "payload": {
+   "commandId": "sheprd:83822a91-3950-431d-b4f8-323ad11ee829",
+   "creationSource": "web",
+   "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+   "title": "Existing worktree",
+   "generateTitle": false,
+   "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+   "runtimeMode": "approval-required",
+   "interactionMode": "default",
+   "workspaceStrategy": {"type": "existing_worktree", "worktreePath": "/tmp/t3rec/work/repo-wt"}
+  },
+  "headers": []
+ },
+ {
+  "dir": "server",
+  "_tag": "Exit",
+  "requestId": "7",
+  "exit": {
+   "_tag": "Success",
+   "value": {
+    "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:730eb4a5-d1ba-4cfe-9e68-ab9a04b333fd",
+    "projection": {
+     "thread": {
+      "createdBy": "user",
+      "creationSource": "web",
+      "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:730eb4a5-d1ba-4cfe-9e68-ab9a04b333fd",
+      "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+      "title": "Existing worktree",
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "runtimeMode": "approval-required",
+      "interactionMode": "default",
+      "branch": null,
+      "worktreePath": "/tmp/t3rec/work/repo-wt",
+      "pullRequests": [],
+      "activeProviderThreadId": null,
+      "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:730eb4a5-d1ba-4cfe-9e68-ab9a04b333fd"},
+      "forkedFrom": null,
+      "createdAt": "2026-11-22T02:24:34.590Z",
+      "updatedAt": "2026-11-22T02:24:34.590Z",
+      "archivedAt": null,
+      "settledOverride": null,
+      "settledAt": null,
+      "snoozedUntil": null,
+      "snoozedAt": null,
+      "lastVisitedAt": null,
+      "deletedAt": null
+     },
+     "runs": [],
+     "attempts": [],
+     "nodes": [],
+     "subagents": [],
+     "providerSessions": [],
+     "providerThreads": [],
+     "providerTurns": [],
+     "runtimeRequests": [],
+     "messages": [],
+     "plans": [],
+     "turnItems": [],
+     "checkpointScopes": [],
+     "checkpoints": [],
+     "contextHandoffs": [],
+     "contextTransfers": [],
+     "visibleTurnItems": [],
+     "updatedAt": "2026-11-22T02:24:34.590Z"
+    },
+    "resumed": false
+   }
+  }
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "thread.updated",
+    "sequence": 369,
+    "location": "active",
+    "thread": {"createdBy": "user", "creationSource": "web", "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:730eb4a5-d1ba-4cfe-9e68-ab9a04b333fd", "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d", "title": "Existing worktree", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": null, "worktreePath": "/tmp/t3rec/work/repo-wt", "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:730eb4a5-d1ba-4cfe-9e68-ab9a04b333fd"}, "forkedFrom": null, "activeProviderThreadId": null, "latestRunId": null, "latestRunRequestedAt": null, "latestRunStartedAt": null, "latestRunCompletedAt": null, "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": null, "activityRunStartedAt": null, "activityRunStatus": null, "blockedOnThreadWait": false, "status": "idle", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": null, "latestUserAuthoredMessageAt": null, "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": [], "goal": null, "itemCount": 0, "visibleItemCount": 0, "createdAt": "2026-11-22T02:24:34.590Z", "updatedAt": "2026-11-22T02:24:34.595Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": null, "opens": null, "titleRegeneration": null, "deletedAt": null}
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "8",
+  "tag": "orchestration.launchThread",
+  "payload": {
+   "commandId": "sheprd:f4a1ed18-1791-4cda-b339-79a9d20f926c",
+   "creationSource": "web",
+   "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+   "title": "New worktree",
+   "generateTitle": false,
+   "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+   "runtimeMode": "approval-required",
+   "interactionMode": "default",
+   "workspaceStrategy": {"type": "worktree", "baseRef": "main", "branch": "t3-new"},
+   "initialMessage": {"messageId": "sheprd:f4a1ed18-1791-4cda-b339-79a9d20f926c:message", "text": "hello from a worktree", "attachments": []}
+  },
+  "headers": []
+ },
+ {
+  "dir": "server",
+  "_tag": "Exit",
+  "requestId": "8",
+  "exit": {
+   "_tag": "Success",
+   "value": {
+    "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+    "projection": {
+     "thread": {
+      "createdBy": "user",
+      "creationSource": "web",
+      "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+      "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+      "title": "New worktree",
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "runtimeMode": "approval-required",
+      "interactionMode": "default",
+      "branch": "t3-new",
+      "worktreePath": null,
+      "pullRequests": [],
+      "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+      "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90"},
+      "forkedFrom": null,
+      "createdAt": "2026-11-22T02:24:35.599Z",
+      "updatedAt": "2026-11-22T02:24:35.603Z",
+      "archivedAt": null,
+      "settledOverride": null,
+      "settledAt": null,
+      "snoozedUntil": null,
+      "snoozedAt": null,
+      "lastVisitedAt": "2026-11-22T02:24:35.602Z",
+      "deletedAt": null
+     },
+     "runs": [
+      {
+       "id": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+       "ordinal": 1,
+       "providerInstanceId": "fakeacp",
+       "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+       "userMessageId": "sheprd:f4a1ed18-1791-4cda-b339-79a9d20f926c:message",
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1:root",
+       "activeAttemptId": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1:attempt:1",
+       "status": "preparing",
+       "queuePosition": null,
+       "requestedAt": "2026-11-22T02:24:35.603Z",
+       "startedAt": null,
+       "completedAt": null,
+       "checkpointId": null,
+       "contextHandoffId": null,
+       "workspacePreparation": {"type": "worktree", "baseRef": "main", "branch": "t3-new"}
+      }
+     ],
+     "attempts": [
+      {
+       "id": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1:attempt:1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1",
+       "attemptOrdinal": 1,
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1:root",
+       "providerInstanceId": "fakeacp",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+       "providerTurnId": null,
+       "reason": "initial",
+       "status": "pending",
+       "startedAt": null,
+       "completedAt": null
+      }
+     ],
+     "nodes": [
+      {
+       "id": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1:root",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1",
+       "parentNodeId": null,
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1:root",
+       "kind": "root_turn",
+       "status": "pending",
+       "countsForRun": true,
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "runtimeRequestId": null,
+       "checkpointScopeId": null,
+       "startedAt": null,
+       "completedAt": null
+      }
+     ],
+     "subagents": [],
+     "providerSessions": [],
+     "providerThreads": [
+      {
+       "id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+       "driver": "acpRegistry",
+       "providerInstanceId": "fakeacp",
+       "providerSessionId": "provider-session:provider-instance:fakeacp:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:98c8cec6-ca64-4582-8c69-b7d0082ac0d7",
+       "appThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+       "ownerNodeId": null,
+       "nativeThreadRef": null,
+       "nativeConversationHeadRef": null,
+       "status": "not_loaded",
+       "firstRunOrdinal": 1,
+       "lastRunOrdinal": 1,
+       "handoffIds": [],
+       "forkedFrom": null,
+       "pendingBackgroundTasks": [],
+       "contextUsage": null,
+       "nativeMetadata": null,
+       "goal": null,
+       "createdAt": "2026-11-22T02:24:35.603Z",
+       "updatedAt": "2026-11-22T02:24:35.603Z"
+      }
+     ],
+     "providerTurns": [],
+     "runtimeRequests": [],
+     "messages": [
+      {
+       "createdBy": "user",
+       "creationSource": "web",
+       "id": "sheprd:f4a1ed18-1791-4cda-b339-79a9d20f926c:message",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1:root",
+       "role": "user",
+       "text": "hello from a worktree",
+       "attachments": [],
+       "streaming": false,
+       "createdAt": "2026-11-22T02:24:35.603Z",
+       "updatedAt": "2026-11-22T02:24:35.603Z"
+      }
+     ],
+     "plans": [],
+     "turnItems": [
+      {
+       "id": "turn-item:message:sheprd%3Af4a1ed18-1791-4cda-b339-79a9d20f926c%3Amessage",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000001,
+       "status": "completed",
+       "title": null,
+       "startedAt": "2026-11-22T02:24:35.603Z",
+       "completedAt": "2026-11-22T02:24:35.603Z",
+       "updatedAt": "2026-11-22T02:24:35.603Z",
+       "createdBy": "user",
+       "creationSource": "web",
+       "type": "user_message",
+       "messageId": "sheprd:f4a1ed18-1791-4cda-b339-79a9d20f926c:message",
+       "inputIntent": "turn_start",
+       "text": "hello from a worktree",
+       "attachments": []
+      },
+      {
+       "id": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000002,
+       "status": "running",
+       "title": "Preparing workspace",
+       "startedAt": "2026-11-22T02:24:35.603Z",
+       "completedAt": null,
+       "updatedAt": "2026-11-22T02:24:35.603Z",
+       "type": "command_execution",
+       "input": "Preparing workspace"
+      }
+     ],
+     "checkpointScopes": [],
+     "checkpoints": [],
+     "contextHandoffs": [],
+     "contextTransfers": [],
+     "visibleTurnItems": [
+      {
+       "position": 0,
+       "visibility": "local",
+       "sourceThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+       "sourceItemId": "turn-item:message:sheprd%3Af4a1ed18-1791-4cda-b339-79a9d20f926c%3Amessage",
+       "item": {
+        "id": "turn-item:message:sheprd%3Af4a1ed18-1791-4cda-b339-79a9d20f926c%3Amessage",
+        "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+        "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000001,
+        "status": "completed",
+        "title": null,
+        "startedAt": "2026-11-22T02:24:35.603Z",
+        "completedAt": "2026-11-22T02:24:35.603Z",
+        "updatedAt": "2026-11-22T02:24:35.603Z",
+        "createdBy": "user",
+        "creationSource": "web",
+        "type": "user_message",
+        "messageId": "sheprd:f4a1ed18-1791-4cda-b339-79a9d20f926c:message",
+        "inputIntent": "turn_start",
+        "text": "hello from a worktree",
+        "attachments": []
+       }
+      },
+      {
+       "position": 1,
+       "visibility": "local",
+       "sourceThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+       "sourceItemId": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+       "item": {
+        "id": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+        "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90",
+        "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000002,
+        "status": "running",
+        "title": "Preparing workspace",
+        "startedAt": "2026-11-22T02:24:35.603Z",
+        "completedAt": null,
+        "updatedAt": "2026-11-22T02:24:35.603Z",
+        "type": "command_execution",
+        "input": "Preparing workspace"
+       }
+      }
+     ],
+     "updatedAt": "2026-11-22T02:24:35.603Z"
+    },
+    "resumed": false,
+    "sequence": 378
+   }
+  }
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "thread.updated",
+    "sequence": 379,
+    "location": "active",
+    "thread": {"createdBy": "user", "creationSource": "web", "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90", "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d", "title": "New worktree", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": "t3-new", "worktreePath": null, "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1", "latestRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1", "latestRunRequestedAt": "2026-11-22T02:24:35.603Z", "latestRunStartedAt": null, "latestRunCompletedAt": null, "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1", "activityRunStartedAt": "2026-11-22T02:24:35.603Z", "activityRunStatus": "preparing", "blockedOnThreadWait": false, "status": "preparing", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:24:35.603Z", "latestUserAuthoredMessageAt": "2026-11-22T02:24:35.603Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 2, "visibleItemCount": 2, "createdAt": "2026-11-22T02:24:35.599Z", "updatedAt": "2026-11-22T02:24:35.612Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:24:35.602Z", "opens": null, "titleRegeneration": null, "deletedAt": null}
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "thread.updated",
+    "sequence": 391,
+    "location": "active",
+    "thread": {"createdBy": "user", "creationSource": "web", "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90", "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d", "title": "New worktree", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": "t3-new", "worktreePath": "/tmp/t3rec/home/worktrees/repo/t3-new-f93c7049c4b6d15e", "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1", "latestRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1", "latestRunRequestedAt": "2026-11-22T02:24:35.603Z", "latestRunStartedAt": "2026-11-22T02:24:35.908Z", "latestRunCompletedAt": null, "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1", "activityRunStartedAt": "2026-11-22T02:24:35.908Z", "activityRunStatus": "running", "blockedOnThreadWait": false, "status": "running", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:24:35.603Z", "latestUserAuthoredMessageAt": "2026-11-22T02:24:35.603Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 2, "visibleItemCount": 2, "createdAt": "2026-11-22T02:24:35.599Z", "updatedAt": "2026-11-22T02:24:35.908Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:24:35.602Z", "opens": null, "titleRegeneration": null, "deletedAt": null}
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "thread.updated",
+    "sequence": 402,
+    "location": "active",
+    "thread": {"createdBy": "user", "creationSource": "web", "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90", "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d", "title": "New worktree", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": "t3-new", "worktreePath": "/tmp/t3rec/home/worktrees/repo/t3-new-f93c7049c4b6d15e", "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1", "latestRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1", "latestRunRequestedAt": "2026-11-22T02:24:35.603Z", "latestRunStartedAt": "2026-11-22T02:24:35.908Z", "latestRunCompletedAt": null, "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": null, "activityRunStartedAt": "2026-11-22T02:24:35.908Z", "activityRunStatus": "waiting", "blockedOnThreadWait": false, "status": "waiting", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:24:35.603Z", "latestUserAuthoredMessageAt": "2026-11-22T02:24:35.603Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 3, "visibleItemCount": 3, "createdAt": "2026-11-22T02:24:35.599Z", "updatedAt": "2026-11-22T02:24:36.012Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:24:35.602Z", "opens": null, "titleRegeneration": null, "deletedAt": null}
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "thread.updated",
+    "sequence": 407,
+    "location": "active",
+    "thread": {"createdBy": "user", "creationSource": "web", "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90", "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d", "title": "New worktree", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": "t3-new", "worktreePath": "/tmp/t3rec/home/worktrees/repo/t3-new-f93c7049c4b6d15e", "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:3f72d091-6ba0-4534-9700-3b0f8b8d2f90"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253A3f72d091-6ba0-4534-9700-3b0f8b8d2f90%3Aordinal%3A1", "latestRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3A3f72d091-6ba0-4534-9700-3b0f8b8d2f90:ordinal:1", "latestRunRequestedAt": "2026-11-22T02:24:35.603Z", "latestRunStartedAt": "2026-11-22T02:24:35.908Z", "latestRunCompletedAt": "2026-11-22T02:24:36.018Z", "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": null, "activityRunStartedAt": null, "activityRunStatus": null, "blockedOnThreadWait": false, "status": "completed", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:24:35.603Z", "latestUserAuthoredMessageAt": "2026-11-22T02:24:35.603Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 4, "visibleItemCount": 4, "createdAt": "2026-11-22T02:24:35.599Z", "updatedAt": "2026-11-22T02:24:36.018Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:24:35.602Z", "opens": null, "titleRegeneration": null, "deletedAt": null}
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "1",
+  "values": [
+   {
+    "kind": "thread.updated",
+    "sequence": 408,
+    "location": "active",
+    "thread": {"createdBy": "user", "creationSource": "web", "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1", "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d", "title": "Say hello", "providerInstanceId": "fakeacp", "modelSelection": {"instanceId": "fakeacp", "model": "fast"}, "runtimeMode": "approval-required", "interactionMode": "default", "branch": null, "worktreePath": null, "pullRequests": [], "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1"}, "forkedFrom": null, "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1", "latestRunId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1", "latestRunRequestedAt": "2026-11-22T02:24:32.660Z", "latestRunStartedAt": "2026-11-22T02:24:32.742Z", "latestRunCompletedAt": "2026-11-22T02:24:32.857Z", "latestRunStopRequested": false, "latestRunBackgroundWake": false, "activeRunId": null, "activityRunStartedAt": null, "activityRunStatus": null, "blockedOnThreadWait": false, "status": "completed", "lastError": null, "lastErrorClass": null, "lastErrorCode": null, "usageLimitResetAt": null, "pendingRuntimeRequest": null, "pendingGuestMessageCount": 0, "latestVisibleMessage": null, "latestUserMessageAt": "2026-11-22T02:24:32.660Z", "latestUserAuthoredMessageAt": "2026-11-22T02:24:32.660Z", "hasActionableProposedPlan": false, "pendingBackgroundTasks": [], "providerInstanceHistory": ["fakeacp"], "goal": null, "itemCount": 4, "visibleItemCount": 4, "createdAt": "2026-11-22T02:24:32.650Z", "updatedAt": "2026-11-22T02:24:38.694Z", "archivedAt": null, "settledOverride": null, "settledAt": null, "unsettledAt": null, "snoozedUntil": null, "snoozedAt": null, "limitRecovery": null, "pinnedAt": null, "autoSettleDisabledAt": null, "pinOrderKey": null, "lastVisitedAt": "2026-11-22T02:24:32.659Z", "opens": null, "titleRegeneration": null, "deletedAt": null}
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "9",
+  "tag": "orchestration.launchThread",
+  "payload": {
+   "commandId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7",
+   "creationSource": "web",
+   "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+   "title": "Say hello",
+   "generateTitle": true,
+   "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+   "runtimeMode": "approval-required",
+   "interactionMode": "default",
+   "workspaceStrategy": {"type": "root"},
+   "initialMessage": {"messageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message", "text": "hello from sheprd", "attachments": []}
+  },
+  "headers": []
+ },
+ {
+  "dir": "server",
+  "_tag": "Exit",
+  "requestId": "9",
+  "exit": {
+   "_tag": "Success",
+   "value": {
+    "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+    "projection": {
+     "thread": {
+      "createdBy": "user",
+      "creationSource": "web",
+      "id": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+      "projectId": "2603d1f5-162c-463b-a960-64ddc3ec905d",
+      "title": "Say hello",
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "runtimeMode": "approval-required",
+      "interactionMode": "default",
+      "branch": null,
+      "worktreePath": null,
+      "pullRequests": [],
+      "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+      "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1"},
+      "forkedFrom": null,
+      "createdAt": "2026-11-22T02:24:32.650Z",
+      "updatedAt": "2026-11-22T02:24:38.694Z",
+      "archivedAt": null,
+      "settledOverride": null,
+      "settledAt": null,
+      "snoozedUntil": null,
+      "snoozedAt": null,
+      "lastVisitedAt": "2026-11-22T02:24:32.659Z",
+      "titleRegeneration": null,
+      "deletedAt": null
+     },
+     "runs": [
+      {
+       "id": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "ordinal": 1,
+       "providerInstanceId": "fakeacp",
+       "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "userMessageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "activeAttemptId": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1",
+       "status": "completed",
+       "queuePosition": null,
+       "requestedAt": "2026-11-22T02:24:32.660Z",
+       "startedAt": "2026-11-22T02:24:32.742Z",
+       "completedAt": "2026-11-22T02:24:32.857Z",
+       "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aname%3Aroot:name:1",
+       "contextHandoffId": null,
+       "workspacePreparation": {"type": "root"}
+      }
+     ],
+     "attempts": [
+      {
+       "id": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1",
+       "nativeThreadId": "sess-856278219717",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "attemptOrdinal": 1,
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "providerInstanceId": "fakeacp",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "reason": "initial",
+       "status": "completed",
+       "startedAt": "2026-11-22T02:24:32.742Z",
+       "completedAt": "2026-11-22T02:24:32.851Z"
+      }
+     ],
+     "nodes": [
+      {
+       "id": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "parentNodeId": null,
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "kind": "root_turn",
+       "status": "completed",
+       "countsForRun": true,
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "runtimeRequestId": null,
+       "checkpointScopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root",
+       "startedAt": "2026-11-22T02:24:32.742Z",
+       "completedAt": "2026-11-22T02:24:32.857Z"
+      },
+      {
+       "id": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "parentNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "rootNodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "kind": "assistant_message",
+       "status": "completed",
+       "countsForRun": false,
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1",
+       "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717:turn:1:assistant:0", "strength": "weak"},
+       "runtimeRequestId": null,
+       "checkpointScopeId": null,
+       "startedAt": "2026-11-22T02:24:32.838Z",
+       "completedAt": "2026-11-22T02:24:32.840Z"
+      }
+     ],
+     "subagents": [],
+     "providerSessions": [
+      {
+       "id": "provider-session:provider-instance:fakeacp:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:8a247244-1fe0-4e44-8c17-3eddb7293c22",
+       "driver": "acpRegistry",
+       "providerInstanceId": "fakeacp",
+       "status": "ready",
+       "cwd": "/tmp/t3rec/work/repo",
+       "model": "fast",
+       "capabilities": {"sessions": {"supportsMultipleProviderThreadsPerSession": false, "supportsModelSwitchInSession": true, "supportsProviderSwitchingViaHandoff": true, "supportsRuntimeModeSwitchInSession": false, "pendingRequestsSurviveRestart": false}, "threads": {"canCreateEmptyThread": true, "canReadThreadSnapshot": true, "canRollbackThread": true, "canForkThread": false, "canForkFromTurn": false, "canForkFromSubagentThread": false, "exposesNativeThreadId": true}, "turns": {"exposesNativeTurnId": false, "emitsTurnStarted": true, "emitsTurnCompleted": true, "supportsInterrupt": true, "supportsActiveSteering": false, "supportsSteeringByInterruptRestart": true, "supportsQueuedMessages": true, "terminalStatusQuality": "strong"}, "streaming": {"streamsAssistantText": true, "streamsReasoning": true, "streamsToolOutput": true, "streamsPlanText": false, "emitsMessageCompleted": true}, "tools": {"exposesToolItemIds": true, "emitsToolStarted": true, "emitsToolCompleted": true, "emitsToolOutput": true, "supportsMcpTools": true, "supportsDynamicToolCallbacks": false}, "approvals": {"supportsCommandApproval": true, "supportsFileReadApproval": true, "supportsFileChangeApproval": true, "supportsApplyPatchApproval": false, "approvalsHaveNativeRequestIds": false, "approvalCallbacksAreLiveOnly": true, "approvalsCanOriginateFromSubagents": false}, "planning": {"emitsPlanUpdated": true, "emitsTodoList": true, "emitsProposedPlan": false, "supportsStructuredQuestions": true, "planDeltasHaveItemIds": false}, "subagents": {"supportsSubagents": false, "exposesSubagentThreadIds": false, "emitsSubagentLifecycle": false, "canWaitForSubagents": false, "canCloseSubagents": false, "canForkSubagentThread": false}, "context": {"acceptsSystemContext": false, "acceptsDeveloperContext": false, "acceptsSyntheticUserContext": true, "canGenerateSummaries": true, "canConsumeHandoffSummaries": true, "supportsDeltaHandoff": true, "supportsFullThreadHandoff": true, "maxRecommendedHandoffChars": null}, "checkpointing": {"appCanCheckpointFilesystem": true, "supportsNestedCheckpointScopes": true, "providerCanRollbackConversation": true, "providerRollbackReturnsSnapshot": true, "providerCanReadConversationSnapshot": true}, "identity": {"nativeThreadIds": "strong", "nativeTurnIds": "weak", "nativeItemIds": "weak", "nativeRequestIds": "weak"}, "runtimePolicy": {"enforcement": "client-boundary"}},
+       "extensionStatuses": [],
+       "createdAt": "2026-11-22T02:24:32.738Z",
+       "updatedAt": "2026-11-22T02:24:32.738Z",
+       "lastError": null
+      }
+     ],
+     "providerThreads": [
+      {
+       "id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "driver": "acpRegistry",
+       "providerInstanceId": "fakeacp",
+       "providerSessionId": "provider-session:provider-instance:fakeacp:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:8a247244-1fe0-4e44-8c17-3eddb7293c22",
+       "appThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "ownerNodeId": null,
+       "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717", "strength": "strong"},
+       "nativeConversationHeadRef": null,
+       "status": "idle",
+       "firstRunOrdinal": 1,
+       "lastRunOrdinal": 1,
+       "handoffIds": [],
+       "forkedFrom": null,
+       "pendingBackgroundTasks": [],
+       "contextUsage": null,
+       "nativeMetadata": {"itemIdentityVersion": 2},
+       "goal": null,
+       "createdAt": "2026-11-22T02:24:32.660Z",
+       "updatedAt": "2026-11-22T02:24:32.851Z"
+      }
+     ],
+     "providerTurns": [
+      {
+       "id": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "runAttemptId": "run-attempt:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:attempt:1",
+       "nativeTurnRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717:turn:1", "strength": "weak"},
+       "ordinal": 1,
+       "status": "completed",
+       "startedAt": "2026-11-22T02:24:32.831Z",
+       "completedAt": "2026-11-22T02:24:32.840Z",
+       "turnTokenUsage": {"usageScope": "main_agent", "hasSubagents": false, "usageStatus": "unavailable"}
+      }
+     ],
+     "runtimeRequests": [],
+     "messages": [
+      {
+       "createdBy": "user",
+       "creationSource": "web",
+       "id": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "role": "user",
+       "text": "hello from sheprd",
+       "attachments": [],
+       "streaming": false,
+       "createdAt": "2026-11-22T02:24:32.660Z",
+       "updatedAt": "2026-11-22T02:24:32.660Z"
+      },
+      {
+       "createdBy": "agent",
+       "creationSource": "provider",
+       "id": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+       "role": "assistant",
+       "text": "Echo (fast): hello from sheprd",
+       "attachments": [],
+       "streaming": false,
+       "createdAt": "2026-11-22T02:24:32.838Z",
+       "updatedAt": "2026-11-22T02:24:32.840Z"
+      }
+     ],
+     "plans": [],
+     "turnItems": [
+      {
+       "id": "turn-item:message:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Amessage",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000001,
+       "status": "completed",
+       "title": null,
+       "startedAt": "2026-11-22T02:24:32.660Z",
+       "completedAt": "2026-11-22T02:24:32.660Z",
+       "updatedAt": "2026-11-22T02:24:32.660Z",
+       "createdBy": "user",
+       "creationSource": "web",
+       "type": "user_message",
+       "messageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+       "inputIntent": "turn_start",
+       "text": "hello from sheprd",
+       "attachments": []
+      },
+      {
+       "id": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000002,
+       "status": "completed",
+       "title": "Workspace ready",
+       "startedAt": "2026-11-22T02:24:32.660Z",
+       "completedAt": "2026-11-22T02:24:32.685Z",
+       "updatedAt": "2026-11-22T02:24:32.685Z",
+       "type": "command_execution",
+       "input": "Preparing workspace",
+       "outputOmitted": true,
+       "exitCode": 0
+      },
+      {
+       "id": "turn-item:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1",
+       "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717:turn:1:assistant:0", "strength": "weak"},
+       "parentItemId": null,
+       "ordinal": 1000003,
+       "status": "completed",
+       "title": null,
+       "startedAt": "2026-11-22T02:24:32.838Z",
+       "completedAt": "2026-11-22T02:24:32.840Z",
+       "updatedAt": "2026-11-22T02:24:32.840Z",
+       "type": "assistant_message",
+       "messageId": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+       "text": "Echo (fast): hello from sheprd",
+       "streaming": false
+      },
+      {
+       "id": "turn-item:provider:acpRegistry:native-item:checkpoint%3Acheckpoint%3Ascope%3Acheckpoint-scope%253Athread%253Athread%25253Aproject%25253A2603d1f5-162c-463b-a960-64ddc3ec905d%25253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%253Aname%253Aroot%3Aname%3A1",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000004,
+       "status": "completed",
+       "title": null,
+       "startedAt": "2026-11-22T02:24:32.857Z",
+       "completedAt": "2026-11-22T02:24:32.857Z",
+       "updatedAt": "2026-11-22T02:24:32.857Z",
+       "type": "checkpoint",
+       "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aname%3Aroot:name:1",
+       "scopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root",
+       "files": []
+      }
+     ],
+     "checkpointScopes": [
+      {
+       "id": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "parentScopeId": null,
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "kind": "root_run",
+       "ordinalWithinParent": 0,
+       "advancesAppRunCount": true,
+       "cwd": "/tmp/t3rec/work/repo",
+       "createdAt": "2026-11-22T02:24:32.685Z"
+      }
+     ],
+     "checkpoints": [
+      {
+       "id": "checkpoint:scope:checkpoint-scope%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aname%3Aroot:name:0",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "scopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root",
+       "runId": null,
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "parentCheckpointId": null,
+       "ordinalWithinScope": 0,
+       "appRunOrdinal": null,
+       "ref": "refs/t3/orchestration-v2/checkpoints/NjFmYTgyYjdhZDAxNDNkNWVhMDQ5ODIzOTNkZjE3ZDM/ordinal/0",
+       "status": "ready",
+       "files": [],
+       "capturedAt": "2026-11-22T02:24:32.660Z"
+      },
+      {
+       "id": "checkpoint:scope:checkpoint-scope%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aname%3Aroot:name:1",
+       "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "scopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root",
+       "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+       "parentCheckpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aname%3Aroot:name:0",
+       "ordinalWithinScope": 1,
+       "appRunOrdinal": 1,
+       "ref": "refs/t3/orchestration-v2/checkpoints/NjFmYTgyYjdhZDAxNDNkNWVhMDQ5ODIzOTNkZjE3ZDM/ordinal/1",
+       "status": "ready",
+       "files": [],
+       "capturedAt": "2026-11-22T02:24:32.857Z"
+      }
+     ],
+     "contextHandoffs": [],
+     "contextTransfers": [],
+     "visibleTurnItems": [
+      {
+       "position": 0,
+       "visibility": "local",
+       "sourceThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "sourceItemId": "turn-item:message:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Amessage",
+       "item": {
+        "id": "turn-item:message:sheprd%3A0af96eb7-3356-4708-ab91-a2ace1fb40c7%3Amessage",
+        "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+        "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000001,
+        "status": "completed",
+        "title": null,
+        "startedAt": "2026-11-22T02:24:32.660Z",
+        "completedAt": "2026-11-22T02:24:32.660Z",
+        "updatedAt": "2026-11-22T02:24:32.660Z",
+        "createdBy": "user",
+        "creationSource": "web",
+        "type": "user_message",
+        "messageId": "sheprd:0af96eb7-3356-4708-ab91-a2ace1fb40c7:message",
+        "inputIntent": "turn_start",
+        "text": "hello from sheprd",
+        "attachments": []
+       }
+      },
+      {
+       "position": 1,
+       "visibility": "local",
+       "sourceThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "sourceItemId": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+       "item": {
+        "id": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+        "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+        "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000002,
+        "status": "completed",
+        "title": "Workspace ready",
+        "startedAt": "2026-11-22T02:24:32.660Z",
+        "completedAt": "2026-11-22T02:24:32.685Z",
+        "updatedAt": "2026-11-22T02:24:32.685Z",
+        "type": "command_execution",
+        "input": "Preparing workspace",
+        "outputOmitted": true,
+        "exitCode": 0
+       }
+      },
+      {
+       "position": 2,
+       "visibility": "local",
+       "sourceThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "sourceItemId": "turn-item:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+       "item": {
+        "id": "turn-item:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+        "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+        "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+        "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+        "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1",
+        "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-856278219717:turn:1:assistant:0", "strength": "weak"},
+        "parentItemId": null,
+        "ordinal": 1000003,
+        "status": "completed",
+        "title": null,
+        "startedAt": "2026-11-22T02:24:32.838Z",
+        "completedAt": "2026-11-22T02:24:32.840Z",
+        "updatedAt": "2026-11-22T02:24:32.840Z",
+        "type": "assistant_message",
+        "messageId": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-856278219717%3Aturn%3A1%3Aassistant%3A0",
+        "text": "Echo (fast): hello from sheprd",
+        "streaming": false
+       }
+      },
+      {
+       "position": 3,
+       "visibility": "local",
+       "sourceThreadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+       "sourceItemId": "turn-item:provider:acpRegistry:native-item:checkpoint%3Acheckpoint%3Ascope%3Acheckpoint-scope%253Athread%253Athread%25253Aproject%25253A2603d1f5-162c-463b-a960-64ddc3ec905d%25253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%253Aname%253Aroot%3Aname%3A1",
+       "item": {
+        "id": "turn-item:provider:acpRegistry:native-item:checkpoint%3Acheckpoint%3Ascope%3Acheckpoint-scope%253Athread%253Athread%25253Aproject%25253A2603d1f5-162c-463b-a960-64ddc3ec905d%25253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%253Aname%253Aroot%3Aname%3A1",
+        "threadId": "thread:project:2603d1f5-162c-463b-a960-64ddc3ec905d:aec8b272-e187-4785-9dfe-0aa0f119d0e1",
+        "runId": "run:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000004,
+        "status": "completed",
+        "title": null,
+        "startedAt": "2026-11-22T02:24:32.857Z",
+        "completedAt": "2026-11-22T02:24:32.857Z",
+        "updatedAt": "2026-11-22T02:24:32.857Z",
+        "type": "checkpoint",
+        "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Athread%253Aproject%253A2603d1f5-162c-463b-a960-64ddc3ec905d%253Aaec8b272-e187-4785-9dfe-0aa0f119d0e1%3Aname%3Aroot:name:1",
+        "scopeId": "checkpoint-scope:thread:thread%3Aproject%3A2603d1f5-162c-463b-a960-64ddc3ec905d%3Aaec8b272-e187-4785-9dfe-0aa0f119d0e1:name:root",
+        "files": []
+       }
+      }
+     ],
+     "updatedAt": "2026-11-22T02:24:38.694Z"
+    },
+    "resumed": true,
+    "sequence": 340
+   }
+  }
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "10",
+  "tag": "orchestration.launchThread",
+  "payload": {
+   "commandId": "sheprd:b2f3ce64-d58c-4244-a429-8c0086c36039",
+   "creationSource": "web",
+   "projectId": "14490953-8604-4903-9993-5f7db5bea305",
+   "title": "Say hello",
+   "generateTitle": true,
+   "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+   "runtimeMode": "approval-required",
+   "interactionMode": "default",
+   "workspaceStrategy": {"type": "root"}
+  },
+  "headers": []
+ },
+ {
+  "dir": "server",
+  "_tag": "Exit",
+  "requestId": "10",
+  "exit": {
+   "_tag": "Failure",
+   "cause": [
+    {
+     "_tag": "Fail",
+     "error": {
+      "_tag": "OrchestrationV2ThreadLaunchError",
+      "commandId": "sheprd:b2f3ce64-d58c-4244-a429-8c0086c36039",
+      "projectId": "14490953-8604-4903-9993-5f7db5bea305",
+      "message": "Failed to launch thread",
+      "cause": {
+       "name": "ThreadLaunchError",
+       "message": "Thread launch sheprd:b2f3ce64-d58c-4244-a429-8c0086c36039 failed during resolve-project.",
+       "cause": "Project not found."
+      }
+     }
+    }
+   ]
+  }
+ },
+ {"dir": "client", "_tag": "Interrupt", "requestId": "1"},
+ {"dir": "server", "_tag": "Exit", "requestId": "1", "exit": {"_tag": "Failure", "cause": [{"_tag": "Interrupt", "fiberId": 1313}]}}
+]

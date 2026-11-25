@@ -134,6 +134,7 @@ pub struct Relay<G, S = Memory> {
     limits: Mutex<Limits>,
     metrics: Arc<Metrics>,
     store: S,
+    shared: super::shared::Groups,
 }
 
 impl<G: Gateway, S: Store> Relay<G, S> {
@@ -162,6 +163,7 @@ impl<G: Gateway, S: Store> Relay<G, S> {
                 spent: Spent::default(),
             }),
             metrics: Arc::default(),
+            shared: Default::default(),
             store,
         }
     }
@@ -355,7 +357,7 @@ impl<G: Gateway, S: Store> Relay<G, S> {
             let mut limits = self.limits();
             if !limits.device.allow(credential.device, now_ms) {
                 Some(Limit::Device)
-            } else if !limits.handle.allow(handle.id, now_ms) {
+            } else if !limits.handle.allow(handle.id.clone(), now_ms) {
                 Some(Limit::Handle)
             } else {
                 None
@@ -365,6 +367,9 @@ impl<G: Gateway, S: Store> Relay<G, S> {
             return Reply::Limited;
         }
         self.metrics.pushed(&credential.device, now_s);
+        if let (Some(group), Some(slot)) = (&handle.group, &handle.slot) {
+            return self.shared_push(group, slot, &handle, request, now_s).await;
+        }
         let push = Push {
             body: request.payload.into_bytes(),
             collapse_id: request.collapse_id,
@@ -382,6 +387,69 @@ impl<G: Gateway, S: Store> Relay<G, S> {
                 Reply::Unavailable
             }
         }
+    }
+
+    async fn shared_push(
+        &self,
+        group: &str,
+        slot: &str,
+        handle: &Handle,
+        request: PushRequest,
+        now: u64,
+    ) -> Reply {
+        let Some(entry) = self.shared.entry(group, now) else {
+            return Reply::Limited;
+        };
+        let mut card = entry.lock().await;
+        let action = match handle.kind {
+            crate::Kind::PushToStart => card.report(slot, &request.payload),
+            crate::Kind::Activity => card.bind(slot, request.handle),
+            crate::Kind::Alert => return Reply::Refused,
+        };
+        let start = match action {
+            Ok(Some(start)) => start,
+            Ok(None) => return Reply::Delivered,
+            Err(reply) => return reply,
+        };
+        let bound;
+        let target = if start {
+            &handle.token
+        } else {
+            let Some(text) = &card.token else {
+                return Reply::Delivered;
+            };
+            let Ok((opened, credential)) = self.opened(text.expose_secret()) else {
+                return Reply::Refused;
+            };
+            if credential.expires_s <= now {
+                return Reply::Expired;
+            }
+            match self.store.is_revoked(credential.device, &opened.id).await {
+                Ok(false) => {}
+                Ok(true) => return Reply::Refused,
+                Err(_) => return Reply::Unavailable,
+            }
+            bound = opened;
+            &bound.token
+        };
+        let push = match card.push(group, start, now) {
+            Ok(push) => push,
+            Err(reply) => return reply,
+        };
+        let result = self
+            .gateway
+            .post(target, &push, now)
+            .await
+            .map_or(Reply::Unavailable, reply);
+        if result == Reply::Delivered {
+            card.delivered(start);
+        }
+        // A gone activity token must never retire a host's start capability.
+        if result == Reply::Gone && !start {
+            card.lost_token();
+            return Reply::Delivered;
+        }
+        result
     }
 
     /// Revokes one handle, for its daemon when a phone unpairs. Holding the

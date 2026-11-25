@@ -24,7 +24,7 @@ public struct Brief: Codable, Hashable, Sendable {
 
     private static let names = [
         "claude": "Claude", "codex": "Codex", "copilot": "Copilot", "gemini": "Gemini",
-        "kimi": "Kimi Code", "opencode": "OpenCode", "pi": "Pi",
+        "kimi": "Kimi Code", "muse": "Muse Code", "opencode": "OpenCode", "pi": "Pi",
     ]
 }
 

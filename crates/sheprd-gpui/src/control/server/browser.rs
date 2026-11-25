@@ -43,12 +43,14 @@ pub(super) fn open_browser(request: &BrowserOpen, cx: &mut App) -> Response {
                 "Local pages need browser tabs, which this platform's build does not have",
             );
         };
-        cx.open_url(url.as_str());
-        return Response::Opened {
-            opened_in: OpenedIn::SystemBrowser,
-            workspace_id: None,
-            placement: Placement::Tab,
-        };
+        if request.focus {
+            cx.open_url(url.as_str());
+            return Response::Opened {
+                opened_in: OpenedIn::SystemBrowser,
+                workspace_id: None,
+                placement: Placement::Tab,
+            };
+        }
     }
     let mut windows = main_windows(cx);
     if windows.is_empty() {

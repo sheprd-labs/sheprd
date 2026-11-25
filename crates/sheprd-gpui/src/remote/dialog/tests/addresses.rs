@@ -5,6 +5,7 @@ fn daemon(_: &Path, request: &Request) -> Result<Response, control::Error> {
         Request::Pair => Response::Offer(offer()),
         Request::Pairing { .. } => Response::Pairing(PairingState::Waiting {
             expires_in_ms: 60_000,
+            nearby_code: None,
         }),
         _ => Response::Done,
     })

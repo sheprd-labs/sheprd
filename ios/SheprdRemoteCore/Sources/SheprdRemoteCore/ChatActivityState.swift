@@ -35,6 +35,17 @@ public struct ChatActivityState: Codable, Hashable, Sendable {
         case failed
     }
 
+    public struct AgentProgress: Codable, Hashable, Sendable {
+        public var done: Int
+        public var total: Int
+        public var latest: String?
+
+        public var fraction: Double { total > 0 ? min(1, max(0, Double(done) / Double(total))) : 0 }
+        public var label: String { "\(done) of \(total) agents done" }
+    }
+
+    public var focus: ChatActivityFacts?
+    public var agents: AgentProgress?
     public var phase: Phase
     public var step: String
     public var startedAt: Date
@@ -107,11 +118,13 @@ public struct ChatActivityState: Codable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey {
         case phase, step, startedAt, question, summary, planDone, planTotal, working, waiting
         case permission, options, previous
-        case activity, icon, previousActivities, steps, files
+        case activity, icon, previousActivities, steps, files, agents, focus
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        focus = try container.decodeIfPresent(ChatActivityFacts.self, forKey: .focus)
+        agents = try container.decodeIfPresent(AgentProgress.self, forKey: .agents)
         phase = try container.decode(Phase.self, forKey: .phase)
         step = try container.decode(String.self, forKey: .step)
         let seconds = try container.decode(Double.self, forKey: .startedAt)
@@ -135,6 +148,8 @@ public struct ChatActivityState: Codable, Hashable, Sendable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(focus, forKey: .focus)
+        try container.encodeIfPresent(agents, forKey: .agents)
         try container.encode(phase, forKey: .phase)
         try container.encode(step, forKey: .step)
         try container.encode(startedAt.timeIntervalSince1970.rounded(.down), forKey: .startedAt)

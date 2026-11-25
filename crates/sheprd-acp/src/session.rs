@@ -9,7 +9,9 @@ mod briefs;
 mod carry;
 mod commands;
 mod harness;
+mod keep;
 mod known;
+mod picks;
 mod pictures;
 mod pull_requests;
 mod thread;
@@ -28,6 +30,8 @@ use sheprd_chat_protocol::{
 use uuid::Uuid;
 
 use crate::{context::Context, project::Projector, rpc};
+
+pub(crate) use keep::Start as ThreadStart;
 
 /// Changes kept for clients that reconnect with a cursor.
 const LOG: usize = 8192;
@@ -130,6 +134,7 @@ pub(crate) enum Update {
 }
 
 pub(crate) struct Config {
+    pub antigravity_auth_method: Option<String>,
     pub agent: String,
     /// The agents a client may switch to while the agent is idle, as
     /// `--choose` asks; `None` keeps the agent the chat started with.
@@ -137,6 +142,8 @@ pub(crate) struct Config {
     pub cwd: PathBuf,
     /// Exit when the agent does, rather than leave its last words on screen.
     pub exit_with_agent: bool,
+    /// The ACP auth method Gemini tries when `session/new` asks for sign-in.
+    pub gemini_auth_method: Option<String>,
     /// The built-in agent running, or `None` for a custom command.
     pub harness: Option<Agent>,
     /// The conversation so far, for a continued session whose agent does
@@ -162,15 +169,20 @@ pub(crate) struct Config {
     /// The `sheprd` command the first note tells the agent to keep the
     /// repository's memory with; `None` leaves memory out of it.
     pub sheprd: Option<PathBuf>,
+    /// The thread the chat keeps; `None` keeps none, as for a custom
+    /// command, which no segment can name.
+    pub thread: Option<keep::Start>,
 }
 
 #[derive(Debug)]
 enum Pending {
+    Authenticate { load_session: bool },
     Initialize,
     NewSession,
     LoadSession,
     Prompt,
     SetMode(String),
+    SetModel(String),
     SetOption,
 }
 
@@ -191,7 +203,13 @@ pub(crate) struct Session<R: FnMut(Update)> {
     acp_session: Option<wire::SessionId>,
     activity: Option<Activity>,
     asked: HashMap<PermissionId, Asked>,
+    /// Whether this harness already sent ACP `authenticate`.
+    auth_attempted: bool,
+    /// ACP authentication methods advertised in `initialize`.
+    auth_methods: Vec<wire::AuthMethod>,
     briefs: briefs::Briefs,
+    /// Whether this harness advertised `loadSession` in `initialize`.
+    can_load_session: bool,
     /// The whole commands of shell calls, which their titles cut short.
     commands: pull_requests::Commands,
     config: Config,
@@ -207,8 +225,15 @@ pub(crate) struct Session<R: FnMut(Update)> {
     handled: VecDeque<(CommandId, Option<Rejection>)>,
     /// The agent process heard now.
     harness: HarnessId,
+    /// The thread kept on disk, while it can be.
+    keep: Option<keep::Keep>,
+    /// Why the thread stopped being kept, until the chat says so.
+    keep_failure: Option<String>,
     /// An agent to start once the input that chose it is handled.
     launch: Option<Agent>,
+    /// Whether the `model` config option came from legacy `models` and uses
+    /// `session/set_model` rather than `session/set_config_option`.
+    legacy_model_option: bool,
     log: VecDeque<(u64, Change)>,
     /// What the logged changes weigh, by [`change_size`].
     log_bytes: usize,
@@ -216,6 +241,7 @@ pub(crate) struct Session<R: FnMut(Update)> {
     next_request: i64,
     outbox: rpc::Outbox,
     pending: HashMap<i64, Pending>,
+    picks: picks::Picks,
     pictures: pictures::Pictures,
     projector: Projector,
     /// Where each queued prompt was typed, by its command; the transcript's
@@ -258,21 +284,48 @@ impl<R: FnMut(Update)> Session<R> {
         });
         known::seed(&config.known, config.harness, &mut transcript);
         let thread = thread::Thread::new(config.harness, &transcript.entries);
-        let projector = transcript
-            .entries
-            .last()
-            .map_or_else(Projector::default, |entry| Projector::after(entry.id));
+        let opened = config
+            .thread
+            .take()
+            .zip(config.harness)
+            .map(|(start, agent)| {
+                keep::Keep::open(
+                    start,
+                    agent,
+                    config.load.as_deref(),
+                    &mut transcript.entries,
+                    config.cwd.clone(),
+                )
+            });
+        let mut last = transcript.last_entry_id();
+        let keep = opened.map(|opened| {
+            transcript.thread = Some(opened.thread);
+            // The thread's file goes on from its newest entry, so ids never
+            // repeat in it.
+            last = last.max(opened.last);
+            opened.keep
+        });
+        let projector = last.map_or_else(Projector::default, Projector::after);
         let facts = crate::context::Facts {
             agent: config.agent.clone(),
             cwd: config.cwd.display().to_string(),
         };
         // Memory opens here, on the session's thread, which also runs the
-        // prompts that recall from it.
-        let recall = config
-            .sheprd
-            .as_ref()
-            .and_then(|_| crate::context::Recall::open(&config.cwd));
-        let context = Context::new(std::mem::take(&mut config.prompts), facts, told)
+        // prompts that recall from it. A fixed Antigravity chat never sends
+        // Sheprd notes, so it skips opening memory; a `--choose` chat keeps
+        // context ready in case it switches to another agent, while bypassing
+        // notes whenever Antigravity is active.
+        let direct = config.harness == Some(Agent::Antigravity);
+        let may_annotate = !direct || config.choices.is_some();
+        let recall = if may_annotate {
+            config
+                .sheprd
+                .as_ref()
+                .and_then(|_| crate::context::Recall::open(&config.cwd))
+        } else {
+            None
+        };
+        let mut context = Context::new(std::mem::take(&mut config.prompts), facts, told)
             .with_memory(config.sheprd.as_deref(), recall)
             .with_pull_requests(config.sheprd.as_deref().filter(|_| config.listens))
             .with_launch(
@@ -281,12 +334,16 @@ impl<R: FnMut(Update)> Session<R> {
                     .as_deref()
                     .filter(|_| config.harness.is_some()),
             );
+        context.set_direct(direct);
         Self {
             accepts: crate::files::Accepts::default(),
             acp_session: None,
             activity: None,
             asked: HashMap::new(),
+            auth_attempted: false,
+            auth_methods: Vec::new(),
             briefs: briefs::Briefs::default(),
+            can_load_session: false,
             commands: pull_requests::Commands::default(),
             config,
             context,
@@ -295,13 +352,17 @@ impl<R: FnMut(Update)> Session<R> {
             epoch: Uuid::new_v4(),
             handled: VecDeque::new(),
             harness: HarnessId::default(),
+            keep,
+            keep_failure: None,
             launch: None,
+            legacy_model_option: false,
             log: VecDeque::new(),
             log_bytes: 0,
             next_permission: 0,
             next_request: 0,
             outbox,
             pending: HashMap::new(),
+            picks: picks::Picks::default(),
             pictures: pictures::Pictures::default(),
             projector,
             queued_origins: HashMap::new(),
@@ -330,7 +391,7 @@ impl<R: FnMut(Update)> Session<R> {
     /// Opens the ACP connection.
     pub(crate) fn start(&mut self) {
         let mut request = wire::InitializeRequest::new(acp::ProtocolVersion::V1).client_info(
-            wire::Implementation::new("herdr-acp", env!("CARGO_PKG_VERSION")),
+            wire::Implementation::new("sheprd", env!("CARGO_PKG_VERSION")),
         );
         request.client_capabilities.meta = Some(wire::Meta::from_iter([(
             crate::project::opencode::CAPABILITY.to_owned(),
@@ -350,6 +411,7 @@ impl<R: FnMut(Update)> Session<R> {
             } if harness == self.harness => {
                 self.exited(code, &stderr);
                 if self.config.exit_with_agent {
+                    self.keep_entries();
                     self.bye(ByeReason::Exiting);
                     return Flow::Exit;
                 }
@@ -363,6 +425,7 @@ impl<R: FnMut(Update)> Session<R> {
                 self.ack(conn, id, Some(Rejection::Unsupported));
             }
             Input::Shutdown => {
+                self.keep_entries();
                 self.bye(ByeReason::Exiting);
                 return Flow::Exit;
             }
@@ -387,6 +450,9 @@ impl<R: FnMut(Update)> Session<R> {
     /// Applies a change and sends it to every client.
     fn emit(&mut self, change: Change) {
         let change = self.pictures_before(change);
+        if let Change::Truncate { before } = &change {
+            self.keep_before_truncate(*before);
+        }
         if self.transcript.apply(&change).is_err() {
             // The session only emits changes made from its own transcript, so
             // one that does not fit is a bug; dropping it keeps every client
@@ -396,6 +462,7 @@ impl<R: FnMut(Update)> Session<R> {
         if let Change::Truncate { before } = &change {
             self.projector.forget_before(*before);
         }
+        self.keep_mark(&change);
         self.seq += 1;
         let size = change_size(&change);
         while self.log.len() == LOG || (self.log_bytes + size > LOG_BYTES && !self.log.is_empty()) {
@@ -432,6 +499,7 @@ impl<R: FnMut(Update)> Session<R> {
         self.report_activity();
         self.pictures_after(&change);
         self.find_pull_requests(&change);
+        self.keep_after(&change);
         self.find_brief(&change);
     }
 

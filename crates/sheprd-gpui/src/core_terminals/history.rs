@@ -170,6 +170,7 @@ pub(super) fn editor_purpose(
         None => current,
     };
     key.map(|(scope, workspace)| Purpose::Tab {
+        focus: true,
         group: None,
         scope,
         workspace,

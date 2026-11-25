@@ -80,11 +80,28 @@ pub(crate) enum Icon {
     // keep-sorted end
 }
 
+/// Progress of the agents delegated by one turn.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub(crate) struct AgentProgress {
+    pub(crate) done: usize,
+    pub(crate) total: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) latest: Option<String>,
+}
+
 /// The step told for the phone's styles (`apns::activity`): an older app
 /// ignores these keys and shows `step`.
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Detail {
+    /// Internal host-card metadata, outside the sealed content on shared reports.
+    #[serde(skip)]
+    pub(crate) question_revision: Option<u64>,
+    /// The pane currently shown by a combined host activity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) focus: Option<Attributes>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) agents: Option<AgentProgress>,
     /// `step` in plain words, such as `Checking pull request #1548`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) activity: Option<String>,

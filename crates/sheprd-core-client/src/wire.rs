@@ -97,6 +97,10 @@ pub const BLOCKED: &str = "blocked";
 /// The refusal kind of a send whose `if` status no longer holds.
 pub const STATUS_MISMATCH: &str = "status_mismatch";
 
+/// The refusal kind of an attach to a kept terminal whose program was lost
+/// and whose new shell the core has not started yet.
+pub const UNAVAILABLE: &str = "unavailable";
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct List {
     #[serde(default)]

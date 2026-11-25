@@ -106,6 +106,10 @@ Every command accepts:
 | `window fullscreen [on\|off\|toggle]` | |
 | `window size [WIDTHxHEIGHT]` | Print or set the window's size; windows cannot be moved |
 | `window detach\|reconnect` | Detach from, or reconnect to, the selected host |
+| `ui settings [PAGE]` | Open a Settings page, such as `ui settings voice` for speech accounts. Omit PAGE to list pages and row IDs |
+| `ui highlight ROW_ID` | Open Settings at that row, scroll it into view, and highlight it |
+| `ui guide TEXT [--highlight ROW_ID]` | Update one persistent top banner (three lines maximum), optionally opening and highlighting a Settings row |
+| `ui guide --clear` | Dismiss the banner and highlight; the person can also dismiss it |
 | `ui sidebar\|statusbar\|menubar [on\|off\|toggle]` | For this window and session. `menubar` is the in-window menu bar on Linux and Windows; macOS, whose menus are the system's, exits 8 |
 | `ui font-size +\|-\|reset\|POINTS` | The terminal font size for this session |
 | `ui traces [--host ID\|--tag TAG\|--all]` | Without options, read prepared replication status, the current `filter`, and indexed `hosts` with stable IDs and device tags. `peers` report `waiting`, `syncing`, `ready`, or `failed` (with `error`). With a filter, open Traces for that host or existing device label, or clear the source filter. Unknown hosts/tags exit 5; usual `--json` and `--window` targeting applies. Cached hosts remain filterable offline. |
@@ -137,41 +141,43 @@ Sheprd** entry, which both Windows installers add, runs this command through
 | --- | --- |
 | `tab [list]` | Pages, code, reviews, and Devices tabs with IDs |
 | `tab focus\|close ID` | |
-| `browser open\|reload\|feedback` | See [browser tabs](../crates/sheprd-gpui/README.md#browser-tabs) |
+| `browser open\|reload\|feedback` | Files and web addresses open in a background tab. Use `--focus` to select it or `--beside` for a visible split. See [browser tabs](../crates/sheprd-gpui/README.md#browser-tabs) |
 | `browser list` | Page tabs only |
 | `browser navigate ID URL` | Load another address in a page tab |
 | `browser back\|forward ID` | |
 | `browser zoom ID +\|-\|reset\|PERCENT` | Zoom a page tab a step, back to 100%, or to 50-300%; the tab keeps it |
-| `browser text ID` | The page's visible text |
-| `browser screenshot ID PATH` | A PNG of the visible page, at most 2000 px a side (macOS) |
+| `browser text ID` | Read the page’s text in the background |
+| `browser screenshot ID PATH` | Capture the page without selecting the tab, at most 2000 px a side (macOS). Both screenshot and text report busy if an inactive Mac window would need to create the page |
 | `code open FILE[:LINE]` | A read-only code tab at a line |
 | `code edit FILE[:LINE]` | Your terminal editor, in a new pane beside yours |
 | `devices` | The Devices overview |
-| `machine [open [NAME]]` | The virtual Mac called NAME (default `default`) in a tab, started or resumed if it is not running. Closing the tab leaves it running; quitting Sheprd saves it (Apple silicon Macs) |
+| `machine [open [NAME]]` | The virtual Mac called NAME (default `default`) in a background tab, started or resumed if it is not running. Closing the tab leaves it running; quitting Sheprd saves it (Apple silicon Macs) |
+| `machine start NAME` | Start it without a tab, resuming it if it was saved; `machine agent` tells when it is ready |
 | `machine claim NAME [--wait S]` | Atomically reserve for the calling pane/terminal for 15 idle minutes; repeat to renew. Busy exits 6. `--wait` (1–600 seconds) retries with progress on stderr every five seconds, preserving JSON stdout |
 | `machine release NAME` | Release your own reservation when finished; another owner gets exit 6 |
 | `machine list` | Sheprd VM slots in use, total limit, and slots available, followed by each machine's reservation owner and idle seconds remaining (or unreserved), state, CPUs, memory, display, and disk use, which counts blocks shared with its image. Exits 4 when there are none |
 | `machine set NAME [--cpus N] [--memory GB] [--display fit\|WxH]` | What it boots with next, after it next shuts down |
 | `machine suspend NAME` | Save it and stop it; it resumes where it was when next shown |
-| `machine delete NAME` | Ask in Settings to delete it and free its disk; the user confirms there |
+| `machine delete NAME` | Add a notice to review deletion in Settings and free its disk; the user confirms there |
 | `machine new NAME --from IMAGE` | Make a machine from an image: an APFS clone that takes no real space until it changes, with its own identity, so several can run at once (macOS allows 2) |
-| `machine new [NAME]` | Open Settings > Virtual Macs, where the user confirms downloading Apple's newest macOS for this Mac (over 20 GB) and installing it on a new machine, `NAME` or `default`; it then opens with its setup guide. Exits 2 when `NAME` exists |
+| `machine new [NAME]` | Add a notice that the user can click to open Virtual Macs settings and confirm downloading Apple's newest macOS for this Mac (over 20 GB) and installing it on a new machine, `NAME` or `default`; it then opens with its setup guide. Exits 2 when `NAME` exists |
 | `machine image [list]` | The images machines can start from. Exits 4 when there are none |
 | `machine image save MACHINE IMAGE` | Keep a shut down machine as an image. Exits 6 while it runs or is suspended |
-| `machine image delete IMAGE` | Ask in Settings to delete it; the user confirms there. Machines made from it stay |
-| `machine setup [NAME]` | Shows the machine with its setup guide docked beside it: sign in, install Sheprd Agent, allow its two permissions, and save an image, each checked by Sheprd before the next. A machine made from an image opens with it already |
+| `machine image delete IMAGE` | Add a notice to review deletion in Settings; the user confirms there. Machines made from it stay |
+| `machine setup [NAME]` | Opens a background machine tab with its setup guide docked beside it: sign in, install Sheprd Agent, allow its two permissions, and save an image, each checked by Sheprd before the next. A machine made from an image opens with it already |
 | `machine agent NAME` | Whether Sheprd Agent answers inside the running machine: its screen size in pixels and whether macOS lets it post input and take screenshots (see [Working inside a virtual Mac](#working-inside-a-virtual-mac)). Exits 1 when it does not answer |
 | `machine exec NAME [--timeout S] [--cwd DIR] -- COMMAND...` | Run a command as the machine's logged-in user and print its output, as `cloud exec` does |
 | `machine screenshot NAME PATH` | Write a PNG of the machine's screen to PATH |
 | `machine click NAME X Y [--right] [--double]` | Click at a point of the machine's screen, in the screenshot's pixels |
 | `machine type NAME TEXT` | Type text in the machine as from a keyboard, at most 4096 characters at once |
 | `machine key NAME KEY` | Press a key in the machine, with modifiers: `return`, `escape`, `tab`, `cmd+q`, `cmd+shift+4` |
+| `machine --host HOST VERB ...` | `open`, `start`, `claim`, `release`, `list`, `suspend`, `agent`, `exec`, `screenshot`, `click`, `type`, or `key` run by the Sheprd on another Mac this window reaches (a host ID or label), when both slots here are busy (see [Virtual Macs on other computers](#virtual-macs-on-other-computers)). Exits 6 when the user declines, 8 when HOST has no Sheprd running, is too old, or cannot be reached |
 | `orchestrator [--repo PATH]` | Show the Issues section narrowed to your checkout's project, or PATH's |
 | `orchestrator restart RUN [--repo PATH]` | Open the user's confirmation to restart a loaded, owned Herdr 2 run in this project with its saved prompt/model and existing checkout; requires the running app |
 | `orchestrator adopt RUN [--repo PATH]` | Read the current process of a loaded legacy run and prepare the user's adoption confirmation; grants no authority until confirmed and revalidated |
 | `orchestrator items\|issues\|prs\|tasks` | What it last synced, from its local database (no app needed); `tasks` is the repository's Beads tasks, with each one's assignee, priority, and blockers in `--json` |
 | `review` | The review of your workspace's uncommitted changes |
-| `px0 [open]` | Open or focus px0 on your local workspace's checkout (macOS and Windows) |
+| `px0 [open]` | Open a background px0 tab on your local workspace's checkout (macOS and Windows) |
 
 `px0 open` reuses one editor tab per workspace. It discovers a local px0
 workbench or starts an installed px0; `config set px0.url http://127.0.0.1:7777/`
@@ -193,6 +199,7 @@ share at least two of its keywords and were not shown yet in that chat.
 
 | Command | What it does |
 | --- | --- |
+| `labels [list\|add TAG\|rename OLD NEW\|remove TAG] [--worktree] [--pane ID\|--workspace ID]` | Manage labels on the calling agent, or on its checkout with `--worktree`. An explicit pane or workspace uses the local remote-control daemon’s ID. A workspace selects the checkout directly. WSL sessions share checkout labels within the same distribution. The group of unlisted Herdr 2 terminals can span folders and supports only individual agent labels. iOS shows the combined labels on chat and terminal agent rows. Names are case-insensitive, with up to eight labels of 24 characters per target. Renaming or removing affects only the selected target. Requires Remote control on the host. |
 | `notes [list]` | Every worktree note |
 | `notes get\|clear`, `notes set TEXT` | The note on your checkout (its repository and branch) |
 | `memory [list] [--all] [--limit N]` | What agents learned about the current directory's repository: pinned entries first, then the most recently used, of the repository and the current branch (`--all`: every branch's). Exits 4 when there are none (no app needed) |
@@ -221,7 +228,7 @@ share at least two of its keywords and were not shown yet in that chat.
 | `chat pr [list]` | Run as the agent of a `sheprd-acp` chat: the pull requests that chat's side rail lists, oldest first, each with its repository, address, and what was done to it (`created`, `pushed`, `edited`, `commented`, `reviewed`, `ready`, `merged`, `closed`, `reopened`). Reaches the chat named by `SHEPRD_CHAT_ENDPOINT`, which the chat sets on its agent, over the chat's own socket; Sheprd need not run. Exits 4 when there are none, 2 outside a chat, and 3 when the chat cannot be reached (see [Pull requests in a chat's rail](#pull-requests-in-a-chats-rail)) |
 | `chat pr add URL` | List a pull request (`https://github.com/OWNER/REPO/pull/N`) in your chat's rail, for one you changed without `gh`. Exits 2 for an address that is not a GitHub pull request |
 | `chat show\|hide\|toggle [--pane ID]` | Show the native chat view over your pane (or ID, else the focused one), or its terminal |
-| `chat new [AGENT] [--pane ID] [--prompt TEXT \| --prompt-file PATH]` | Open a tab running a `sheprd-acp` chat with a built-in agent (`claude`, `codex`, `copilot`, `gemini`, `kimi`, `opencode`, `pi`) in the workspace and folder of your pane (or ID). `--prompt` or `--prompt-file` (`-` reads standard input) starts it with a brief, at most 96 KB, sent as its first prompt and shown as the calling agent's rather than the person's (see [Starting a chat with a brief](rich-chat.md#starting-a-chat-with-a-brief)); exits 2 for an empty, binary, or longer brief, and 8 for a chat on an SSH host or another machine's Herdr 2, which cannot take one yet. Run by a chat's agent, it starts a chat like that one: AGENT left out is the chat's own agent, and the chat's own agent, named or not, starts with the chat's model, thinking level, permission mode, and auto-accepting (see [Starting a chat like this one](rich-chat.md#starting-a-chat-like-this-one)); AGENT may be left out only there. While its agent is idle, a chat on this machine can switch to another installed agent from its composer, which hands the new agent the conversation. On an SSH host the tab runs that host's `sheprd-acp` (see [Chats on SSH hosts](#chats-on-ssh-hosts)). With no Herdr pane to go by, as when called from a Herdr 2 pane, a Herdr 2 tab in the active group splits its pane in use with the chat instead (see [Chats in Herdr 2 panes](rich-chat.md#chats-in-herdr-2-panes)); its pane id in `chat` is `core:` and the terminal's. Exits 8 when `sheprd-acp` is missing here, the host cannot be reached, or the agent is not installed on it (`sheprd-acp agents` lists those that are) |
+| `chat new [AGENT] [--pane ID] [--prompt TEXT \| --prompt-file PATH]` | Open a background tab running a `sheprd-acp` chat with a built-in agent (`antigravity`, `claude`, `codex`, `copilot`, `gemini`, `kimi`, `muse`, `opencode`, `pi`) in the workspace and folder of your pane (or ID). `--prompt` or `--prompt-file` (`-` reads standard input) groups the delegated task on the calling turn’s iOS Live Activity and starts it with a brief, at most 96 KB, sent as its first prompt and shown as the calling agent's rather than the person's (see [Starting a chat with a brief](rich-chat.md#starting-a-chat-with-a-brief)); exits 2 for an empty, binary, or longer brief, and 8 for a chat on an SSH host or another machine's Herdr 2, which cannot take one yet. Run by a chat's agent, it starts a chat like that one: AGENT left out is the chat's own agent, and the chat's own agent, named or not, starts with the chat's model, thinking level, permission mode, and auto-accepting (see [Starting a chat like this one](rich-chat.md#starting-a-chat-like-this-one)); AGENT may be left out only there. While its agent is idle, a chat on this machine can switch to another installed agent from its composer, which hands the new agent the conversation. On an SSH host the tab runs that host's `sheprd-acp` (see [Chats on SSH hosts](#chats-on-ssh-hosts)). A Herdr 2 caller gets a background tab in its workspace and folder (see [Chats in Herdr 2 panes](rich-chat.md#chats-in-herdr-2-panes)). Exits 8 when `sheprd-acp` is missing here, the host cannot be reached, or the agent is not installed on it (`sheprd-acp agents` lists those that are) |
 
 ### Hosts
 
@@ -393,9 +400,10 @@ run `sheprd config set tab_labels.agent_title true`.
 
 ### Working inside a virtual Mac
 
-`machine list --json` includes `capacity: {"in_use": 2, "limit": 2, "available": 0}`
-when all Sheprd VM slots are occupied. Starting and saving VMs, and a live macOS installer, count until they
-stop. This counts Sheprd's VMs, not VMs in other applications. Reservations and
+`machine list --json` includes `capacity: {"in_use": 2, "limit": 2, "available": 0, "others": 0}`
+when all VM slots are occupied. Starting and saving VMs, and a live macOS installer, count until they
+stop. macOS allows two VMs whoever runs them, so `in_use` also counts the VMs of other
+programs, such as Tart's CI runners, and `others` says how many of those there are. Reservations and
 running slots are separate: an unreserved running VM can be claimed and reused
 while slots are full, but an unreserved stopped VM cannot start. `machine open`,
 `setup`, and `claim` return busy (exit 6) with “No VM slots available: 2 of 2 in
@@ -416,6 +424,30 @@ VMs are busy, tell the user you are waiting, try `machine claim NAME --wait 60`,
 and report when acquired. This does not boot the machine or promise guest
 readiness. No FIFO queue is promised.
 
+
+### Virtual Macs on other computers
+
+When both slots here are busy, `machine --host HOST` borrows a virtual Mac
+on another Mac this window reaches, by its host ID or label. This app runs
+the request there with `sheprd machine lend` over its connection to that
+host, so that Mac's own Sheprd runs the machine and keeps its claims, which
+name this computer and the pane that asked. Nothing is copied: the other
+Mac makes machines from its own images.
+
+Opening, starting, or claiming a machine there adds a notice in this window.
+Click it to review the request and choose **Use once**, **Always use HOST** (kept in `[machine] borrow_from`),
+or **Wait for a slot here**. Waiting or closing the dialog exits 6. `open`
+starts the machine there and adds a background tab here drawn from its frames,
+which come a few times a second and shrink on a slow link; clicks and keys
+in that tab reach the machine unless an agent holds it. A screenshot's
+`PATH` is on this computer.
+
+A Mac lends unless `[machine] lend = false`, and never while it keeps Tart
+VMs or runs VMs of other programs, which share its two slots: `machine
+list --json` there names why in `lending`. Exits 8 when the host has no
+Sheprd running, has one too old to lend, or cannot be reached.
+
+### Sheprd Agent
 
 `machine agent`, `exec`, `screenshot`, `click`, `type`, and `key` work
 inside a running virtual Mac through Sheprd Agent, a small app in the guest
@@ -495,6 +527,66 @@ sheprd remote status --json
 sheprd remote revoke d_6f1c
 sheprd remote relays token relay.example.org < ~/relay-token.txt
 sheprd remote relays token relay.example.org --clear
+```
+
+### Phone
+
+Agents bring the person to a screen of the Sheprd phone app, or put a note
+in front of them there. A phone is driven only while the app is open on it
+and its person turned on **Let agents open screens** for this computer (that
+computer's page in the app's Settings; off by default). It refuses while its
+app is locked, and shows which computer's agent opened a screen. Nothing
+pairs, approves, or changes a setting from here. Remote control must be on.
+
+| Command | What it does |
+| --- | --- |
+| `phone [list]` | The phones connected that let agents open screens, by name and device ID, the one used last first. Exits 4 when there are none |
+| `phone state` | The screen in front: `home`, `workspaces`, `pull_requests`, `settings`, `new_workspace`, or one of this computer's `chat`, `term`, `workspace`, or `changes` with its pane or workspace; none for another computer's screen or a form. Says when the app is locked |
+| `phone open [PANE]` | Show a pane of this computer: its chat, else its terminal. Without PANE, your own pane (`HERDR_PANE_ID`); from a Herdr 2 terminal, name it |
+| `phone open home\|workspaces\|prs\|settings\|new-workspace` | Show a tab, or the form starting a workspace on this computer |
+| `phone open chat PANE`, `phone open term PANE` | Show a chat or a terminal |
+| `phone open workspace\|changes [WORKSPACE]` | Show a workspace, or its changes; default your workspace (`HERDR_WORKSPACE_ID`) |
+| `phone targets` | List Settings page names and highlight targets, without contacting a phone |
+| `phone open settings [PAGE]` | Open Settings or a named page, including nested delivery, desk-hold, and text-shortcuts pages |
+| `phone highlight TARGET` | Open the target's page, scroll to it, and highlight the control |
+| `phone guide TEXT [--highlight TARGET]` | Replace the persistent top banner, optionally highlighting a control; maximum three lines including the source |
+| `phone guide --clear` | Clear this computer's banner and highlight; tapping the banner also dismisses both |
+| `phone show TEXT` | A note on the phone, from this computer's agent (at most 500 characters) |
+
+Every `phone` command takes `--device ID|NAME`; without it, the phone with
+the most recent connection traffic is selected. This is not proof of user
+attention. Each native phone chat prompt carries the authenticated device
+ID in its Sheprd note. Agents should pass that ID explicitly, including
+when two phones are connected, and follow the latest message when the user
+switches devices. The note is appended to the new turn; earlier messages
+and the stable instructions are not rewritten, preserving their cacheable
+prefix. Desktop or unidentified prompts do not inherit an earlier phone.
+`phone targets --json` lists stable Settings page and highlight names. For
+example, `phone guide "This controls push delivery" --highlight push-relay
+--device ID` opens Notifications and highlights the push-relay switch. Guides
+remain until cleared or dismissed, or the phone backgrounds, locks, or revokes
+that computer's permission. Repeating `guide` updates the existing banner.
+Opening, highlighting, and guiding do not change settings. Keep notes short;
+long text is clipped to the three-line banner. `ui settings --json` discovers
+the desktop's available Settings pages and row IDs; `ui guide` and `ui highlight`
+use those row IDs. Desktop guidance is scoped to the caller's main window and
+shared with its Settings window.
+
+Exits 1 when the phone refuses (locked, or agents turned off for this
+computer) or a name is two phones', 2 for a blank or overlong note, 5 for
+a pane or workspace not on this computer, and 7 when the phone does not
+answer within a few seconds, as when it went to the background. `--json`
+gives the daemon's answer: `{"answer": "phones", "phones": [{"device",
+"name", "active_ms"}]}`, `{"answer": "no_phone"}`, or `{"answer": "driven",
+"phone", "outcome"}`, where `outcome` is `{"outcome": "done", "state":
+{"screen", "locked"}}` or `{"outcome": "refused", "reason"}` with a `reason`
+of `locked`, `not_found`, `off`, or `other`.
+
+```sh
+sheprd phone open
+sheprd phone open changes
+sheprd phone show "Tests pass; the PR is ready for review"
+sheprd phone state --json
 ```
 
 ### Fleet

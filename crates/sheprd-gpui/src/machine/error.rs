@@ -52,6 +52,8 @@ pub enum Error {
         path: PathBuf,
         source: std::io::Error,
     },
+    #[error(transparent)]
+    Remote(#[from] super::remote::Error),
     #[error("{0} is suspended: shut it down or forget its saved state first")]
     Suspended(Name),
     #[error("This Mac cannot run virtual Macs")]

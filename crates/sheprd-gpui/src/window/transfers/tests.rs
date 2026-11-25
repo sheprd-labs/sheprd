@@ -26,6 +26,7 @@ mod completion;
 #[cfg(windows)]
 mod covered_pages;
 mod en_xa;
+mod hidden_pane;
 mod progress;
 mod taskbar;
 

@@ -7,7 +7,7 @@ mod bonjour;
 mod control;
 pub(crate) use control::version;
 mod listener;
-mod live;
+pub(crate) mod live;
 mod notifier;
 pub(crate) use notifier::forget;
 mod options;
@@ -167,6 +167,8 @@ pub async fn run(options: Options) -> Result<()> {
         changes: Default::default(),
         computer: options::computer_name(),
         connected: Mutex::new(HashMap::new()),
+        drivers: Default::default(),
+        labels: web::labels::Labels::load(&options.state_dir),
         favorites: web::Favorites::load(crate::app::favorites::file(&options.state_dir)),
         fingerprint,
         fleet,
@@ -187,6 +189,7 @@ pub async fn run(options: Options) -> Result<()> {
         privacy: options.privacy,
         pull_requests,
         push,
+        launches: Default::default(),
         pushes: Default::default(),
         relay,
         reports: Mutex::new(web::report_limit()),

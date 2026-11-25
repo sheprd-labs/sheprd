@@ -22,6 +22,7 @@ mod fleet;
 mod hosts;
 mod keyboard;
 mod link;
+mod nearby_code;
 mod networks;
 mod share_github;
 mod ssh;
@@ -140,6 +141,7 @@ fn pairing_daemon(_: &Path, request: &Request) -> Result<Response, control::Erro
         }
         Request::Pairing { .. } => Response::Pairing(PairingState::Waiting {
             expires_in_ms: 60_000,
+            nearby_code: None,
         }),
         Request::Approve { allow: true, .. } => {
             APPROVED.store(true, Ordering::SeqCst);
@@ -218,6 +220,7 @@ fn cancel_daemon(_: &Path, request: &Request) -> Result<Response, control::Error
         Request::Pair => Response::Offer(offer()),
         Request::Pairing { .. } => Response::Pairing(PairingState::Waiting {
             expires_in_ms: 60_000,
+            nearby_code: None,
         }),
         _ => Response::Done,
     })

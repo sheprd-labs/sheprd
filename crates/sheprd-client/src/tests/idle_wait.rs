@@ -211,7 +211,7 @@ fn bytes_of_a_slow_frame_answer_a_liveness_probe() {
         MAX_GRAPHICS_FRAME_SIZE,
     )
     .unwrap();
-    client.handle.check_liveness();
+    client.handle.check_liveness(Suspicion::Slept);
     assert!(
         matches!(receive(&mut server), ClientMessage::EndpointControl { kind, .. } if kind == "endpoint.health.ping.v1")
     );

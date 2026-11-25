@@ -2,7 +2,7 @@
 //! chats, and push subscriptions. Auth calls that write to disk run on the
 //! blocking pool.
 
-use super::{
+use crate::web::{
     ApiError, Device, Peer, Shared, TypedFrom,
     fragments::folders,
     render::{now_ms, urlencode},
@@ -229,7 +229,10 @@ pub(super) async fn claim_status(
         // the approval, with what came of it.
         let pairing = match pairing {
             PairingState::Approved { device } if auth.pairings().fleet_settling(&device) => {
-                PairingState::Waiting { expires_in_ms: 0 }
+                PairingState::Waiting {
+                    expires_in_ms: 0,
+                    nearby_code: None,
+                }
             }
             pairing => pairing,
         };
@@ -247,6 +250,7 @@ pub(super) async fn claim_status(
         PairingState::Approved { device } => {
             let mut approved = json!({
                 "state": "approved",
+                "voice_exchange": true,
                 "device": device.0,
                 "origins": state.origins(),
                 "fingerprint": state.fingerprint,
@@ -364,7 +368,7 @@ pub(super) async fn origins(State(state): State<Shared>, _device: Device) -> Jso
 
 pub(super) async fn command(
     State(state): State<Shared>,
-    _device: Device,
+    device: Device,
     TypedFrom(origin): TypedFrom,
     Path(pane): Path<String>,
     Json(command): Json<Command>,
@@ -377,7 +381,7 @@ pub(super) async fn command(
         } => Command::Prompt {
             text,
             attachments: state.uploads.resolve(&attachments, now_ms())?,
-            origin: Some(origin),
+            origin: Some(TypedFrom::authenticated(origin, &device.0)),
         },
         command => command,
     };
@@ -498,10 +502,20 @@ pub(super) async fn start_chat(
     Ok(Json(json!({ "location": location })))
 }
 
+/// Older phones register per-pane cards. A phone that supports host cards
+/// opts in without changing the registration body accepted by older hosts.
+#[derive(Deserialize)]
+pub(super) struct ActivityMode {
+    #[serde(default)]
+    single: bool,
+    epoch: Option<uuid::Uuid>,
+}
+
 /// The iOS companion's Live Activity tokens or push relay handles: the
 /// push-to-start token when it changed, and every activity it still shows.
 /// The answer names the delivery, `push_relay`, the only one there is.
 pub(super) async fn register_apns(
+    axum::extract::Query(mode): axum::extract::Query<ActivityMode>,
     State(state): State<Shared>,
     Device(device): Device,
     body: axum::body::Bytes,
@@ -519,6 +533,8 @@ pub(super) async fn register_apns(
             devices.get(&device).and_then(|record| record.apns.as_ref()),
         );
         stored.apply(update);
+        stored.single_activity = mode.single;
+        stored.activity_epoch = mode.epoch;
         let value = stored
             .to_stored()
             .map_err(|_| ApiError::Invalid("that registration cannot be stored"))?;
@@ -567,4 +583,55 @@ pub(super) async fn unsubscribe_push(
     })
     .await?;
     Ok(Json(json!({ "ok": true })))
+}
+
+#[derive(Deserialize)]
+pub(super) struct VoiceExchange {
+    claim: String,
+    #[serde(flatten)]
+    offer: crate::control::voice::Offer,
+}
+
+/// The approved claim alone is public polling information. A fresh, matching
+/// device session proves possession of the device key before any secret moves.
+pub(super) async fn pair_voice(
+    State(state): State<Shared>,
+    Device(device): Device,
+    headers: HeaderMap,
+    Json(request): Json<VoiceExchange>,
+) -> Result<impl axum::response::IntoResponse, ApiError> {
+    if headers.contains_key(header::ORIGIN) || request.claim.len() > 128 {
+        return Err(ApiError::Unauthorized);
+    }
+    let now = now_ms();
+    {
+        let mut auth = state.auth();
+        let approved = auth.claim_status(&ClaimId(request.claim), now)?;
+        if !matches!(approved, PairingState::Approved { device: paired } if paired == device)
+            || !auth.devices().get(&device).is_some_and(|record| {
+                record.via.is_none()
+                    && record.app.is_none()
+                    && record.ssh.is_none()
+                    && now.saturating_sub(record.created_ms) < 120_000
+            })
+        {
+            return Err(ApiError::Unauthorized);
+        }
+    }
+    if !request.offer.valid() {
+        return Err(ApiError::Invalid("invalid voice account"));
+    }
+    let mut pending = state.changes.ask_voice(request.offer)?;
+    let answer = tokio::time::timeout(Duration::from_secs(15), pending.answer())
+        .await
+        .ok()
+        .flatten()
+        .flatten()
+        .ok_or(ApiError::Invalid(
+            "The desktop could not access its voice account.",
+        ))?;
+    if state.auth().devices().get(&device).is_none() {
+        return Err(ApiError::Unauthorized);
+    }
+    Ok(([(header::CACHE_CONTROL, "no-store")], Json(answer)))
 }

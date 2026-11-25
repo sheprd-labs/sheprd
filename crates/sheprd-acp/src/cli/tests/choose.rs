@@ -33,4 +33,13 @@ fn choose_refuses_what_another_agent_could_not_take_over() {
         Err(Error::ChooseLoad)
     );
     assert_eq!(parse(args(&["--choose"])), Err(Error::MissingAgent));
+    let antigravity = run(&["--choose", "antigravity"]);
+    assert!(antigravity.choose);
+    assert_eq!(
+        antigravity.agent,
+        AgentChoice::Builtin {
+            agent: Agent::Antigravity,
+            args: Vec::new(),
+        }
+    );
 }

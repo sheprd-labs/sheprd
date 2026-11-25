@@ -71,5 +71,7 @@ pub enum Error {
     UnknownUser,
     #[error("Remote control cannot run as a service on this platform")]
     Unsupported,
+    #[error(transparent)]
+    Voice(#[from] super::voice::Error),
     // keep-sorted end
 }

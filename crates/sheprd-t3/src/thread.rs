@@ -79,20 +79,32 @@ pub enum TurnKind {
         input: Value,
     },
     #[serde(rename_all = "camelCase")]
-    FileChange {
-        file_name: String,
-    },
+    FileChange { file_name: String },
     WebSearch {
         #[serde(default)]
         patterns: Option<Vec<String>>,
     },
+    /// The agent asks to go ahead (`orchestrationV2.ts:1493`); answered
+    /// with one of `options`' decisions, or any of T3's when it names none.
+    #[serde(rename_all = "camelCase")]
     ApprovalRequest {
+        #[serde(default)]
+        options: Vec<ApprovalOption>,
         #[serde(default)]
         prompt: Option<String>,
         #[serde(default)]
         reason: Option<String>,
+        #[serde(default)]
+        request_id: Option<String>,
     },
-    UserInputRequest,
+    /// The agent asks questions (`orchestrationV2.ts:1452`).
+    #[serde(rename_all = "camelCase")]
+    UserInputRequest {
+        #[serde(default)]
+        questions: Vec<InputQuestion>,
+        #[serde(default)]
+        request_id: Option<String>,
+    },
     SystemNotice {
         #[serde(default)]
         message: String,
@@ -110,6 +122,45 @@ pub enum TurnKind {
     Other,
 }
 
+/// One way to answer an approval request (`providerPolicy.ts:63`).
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct ApprovalOption {
+    pub decision: String,
+    pub label: String,
+}
+
+/// A question of a user input request (`orchestrationV2.ts:1196`).
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InputQuestion {
+    pub id: String,
+    #[serde(default)]
+    pub header: Option<String>,
+    #[serde(default)]
+    pub multi_select: bool,
+    #[serde(default)]
+    pub options: Vec<InputOption>,
+    pub question: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct InputOption {
+    #[serde(default)]
+    pub description: Option<String>,
+    pub label: String,
+    /// What the answer carries when it differs from the label.
+    #[serde(default)]
+    pub value: Option<String>,
+}
+
+/// The provider instance and model a thread runs (`modelSelection.ts:9`).
+#[derive(Clone, Debug, Default, Eq, PartialEq, serde::Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelSelection {
+    pub instance_id: String,
+    pub model: String,
+}
+
 /// The parts of the projection's thread row Sheprd shows.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -119,14 +170,27 @@ pub struct Header {
     #[serde(default)]
     pub title: String,
     #[serde(default)]
+    pub model_selection: Option<ModelSelection>,
+    #[serde(default)]
     pub provider_instance_id: Option<String>,
 }
 
-/// A run's id and status: whether the agent is working.
+/// A run's id, place, and status: whether the agent is working.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 struct Run {
     id: String,
+    #[serde(default)]
+    ordinal: u64,
     status: String,
+}
+
+impl Run {
+    fn active(&self) -> bool {
+        matches!(
+            self.status.as_str(),
+            "preparing" | "queued" | "starting" | "running" | "waiting"
+        )
+    }
 }
 
 /// A runtime request's id and status: whether the agent waits on the user.
@@ -184,7 +248,7 @@ pub struct Thread {
     messages: HashMap<String, Message>,
     next_entry: u64,
     requests: HashMap<String, String>,
-    runs: HashMap<String, String>,
+    runs: HashMap<String, Run>,
     /// The sequence the thread is current to; `None` before the snapshot.
     pub sequence: Option<u64>,
 }
@@ -222,7 +286,7 @@ impl Thread {
         self.runs = projection
             .runs
             .into_iter()
-            .map(|run| (run.id, run.status))
+            .map(|run| (run.id.clone(), run))
             .collect();
         self.requests = projection
             .runtime_requests
@@ -255,7 +319,16 @@ impl Thread {
             }
             "run.created" | "run.updated" => {
                 if let Ok(run) = serde_json::from_value::<Run>(event.payload) {
-                    self.runs.insert(run.id, run.status);
+                    self.runs.insert(run.id.clone(), run);
+                }
+            }
+            // Renames and model, provider, and mode changes carry the
+            // whole thread row (`orchestrationV2.ts:1670-1699`).
+            kind if kind.starts_with("thread.") => {
+                if let Ok(header) = serde_json::from_value::<Header>(event.payload)
+                    && header.id == self.header.id
+                {
+                    self.header = header;
                 }
             }
             "runtime-request.updated" => {
@@ -293,17 +366,37 @@ impl Thread {
 
     /// Whether a run is under way.
     pub fn working(&self) -> bool {
-        self.runs.values().any(|status| {
-            matches!(
-                status.as_str(),
-                "preparing" | "queued" | "starting" | "running" | "waiting"
-            )
-        })
+        self.runs.values().any(Run::active)
+    }
+
+    /// The latest run under way, which an interrupt stops; queued runs
+    /// have not started, so they are not it (as T3's own client picks).
+    pub fn active_run(&self) -> Option<&str> {
+        self.runs
+            .values()
+            .filter(|run| run.active() && run.status != "queued")
+            .max_by_key(|run| run.ordinal)
+            .map(|run| run.id.as_str())
     }
 
     /// Whether the agent waits on the user to answer a request.
     pub fn waiting(&self) -> bool {
         self.requests.values().any(|status| status == "pending")
+    }
+
+    /// Whether the runtime request `id` still waits for an answer.
+    pub fn pending(&self, id: &str) -> bool {
+        self.requests
+            .get(id)
+            .is_some_and(|status| status == "pending")
+    }
+
+    /// The turn item shown as entry `id`.
+    pub fn item(&self, id: EntryId) -> Option<&TurnItem> {
+        self.entry_ids
+            .iter()
+            .find(|(_, entry)| **entry == id)
+            .and_then(|(item, _)| self.items.get(item))
     }
 }
 

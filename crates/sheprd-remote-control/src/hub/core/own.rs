@@ -339,7 +339,7 @@ impl Layouts {
             for terminal in workspace
                 .terminals
                 .iter_mut()
-                .filter(|terminal| !terminal.tab.starts_with(super::saved::SAVED_TAB))
+                .filter(|terminal| !super::saved::is_saved_tab(&terminal.tab))
             {
                 for pane in &mut terminal.panes {
                     let name = records

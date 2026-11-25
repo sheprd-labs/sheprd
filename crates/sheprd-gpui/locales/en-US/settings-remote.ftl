@@ -106,7 +106,7 @@ settings-remote-pair-connected = { $count ->
         [one] { $count } phone connected.
        *[other] { $count } phones connected.
     } Scan a code with another phone's camera to add it.
-settings-remote-pair-button = Pair a phone…
+settings-remote-pair-button = Pair device…
 settings-remote-pair-no-window = Open a Sheprd window to pair a device.
 settings-remote-pair-dialog-open = Close the open dialog, then pair the device.
 

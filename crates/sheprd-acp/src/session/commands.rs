@@ -6,8 +6,8 @@ use sheprd_chat_protocol::{
     Origin, PermissionId, Queued, Rejection, Status, Turn,
 };
 
-use super::{ConnId, Pending, Session, Update};
 use crate::project::STOP_METHOD;
+use crate::session::{ConnId, Pending, Session, Update};
 
 /// Prompts waiting behind a turn, and their text in bytes: the queue is
 /// copied into every change and snapshot, so it stays well inside a frame.
@@ -151,11 +151,12 @@ impl<R: FnMut(Update)> Session<R> {
             // Only a prompt the agent received names the chat and starts
             // the conversation a later agent is handed.
             self.thread.prompted(&shown, handoff);
+            self.keep_started(&shown);
             (self.report)(Update::Prompt(shown));
             self.turn = Some(self.next_request);
             self.emit(Change::Turn {
                 turn: Some(Turn {
-                    started_ms: super::now_ms(),
+                    started_ms: crate::session::now_ms(),
                 }),
             });
             self.status(Status::Working);
@@ -174,7 +175,7 @@ impl<R: FnMut(Update)> Session<R> {
             return;
         }
         let next = queued.remove(0);
-        let origin = self.queued_origins.get(&next.id).copied();
+        let origin = self.queued_origins.get(&next.id).cloned();
         self.queue_changed(queued);
         self.send_prompt(&next.text, &next.attachments, origin);
     }
@@ -280,6 +281,23 @@ impl<R: FnMut(Update)> Session<R> {
             .any(|option| option.id == id && option.accepts(value));
         if !known {
             return Err(Rejection::UnknownSetting);
+        }
+        if self.legacy_model_option && id == crate::project::models::OPTION_ID {
+            let OptionValue::Choice { id: model_id } = value else {
+                return Err(Rejection::UnknownSetting);
+            };
+            let request = serde_json::json!({
+                "sessionId": session,
+                "modelId": model_id,
+            });
+            if !self.request(
+                "session/set_model",
+                &request,
+                Pending::SetModel(model_id.clone()),
+            ) {
+                return Err(Rejection::AgentUnavailable);
+            }
+            return Ok(());
         }
         let request = wire::SetSessionConfigOptionRequest::new(
             session,

@@ -230,3 +230,30 @@ fn instructions_of(note: &str) -> Option<&str> {
     let (_, rest) = note.split_once(INSTRUCTIONS)?;
     Some(rest.split_once(INSTRUCTIONS_END)?.0)
 }
+
+/// Per-turn context appended to the new prompt, never written into the
+/// stable system prompt or earlier turns (which providers may cache).
+pub(super) fn current_device(origin: &Origin) -> String {
+    if origin.device == Device::PhoneApp
+        && let Some(id) = origin.phone.as_deref().filter(|id| {
+            !id.is_empty()
+                && id.len() <= 256
+                && id
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
+        })
+    {
+        return format!(
+            "This message came from the phone with device id `{id}`. \
+             To open a screen, read its state, or show a note on this phone, \
+             use `sheprd phone open|state|show --device {id}` (see the Sheprd skill). \
+             Always pass this id; do not guess from which phone was active last. \
+             The phone still requires its user to allow agent control.\n"
+        );
+    }
+    format!(
+        "This message came from {}. No phone target is identified for this message; \
+         do not reuse a phone id from an earlier message.\n",
+        crate::context::device_name(origin.device)
+    )
+}

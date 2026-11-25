@@ -62,6 +62,25 @@ fn machines_show_their_target() {
 }
 
 #[test]
+fn machines_show_by_the_name_devices_gives_them() {
+    let relay = ConnectTarget::Ssh {
+        target: "penso@r-c122c28593608ee9.sheprd.invalid".into(),
+        session: "default".into(),
+    };
+    let names = BTreeMap::from([
+        ("paired".to_owned(), "m4max".to_owned()),
+        ("blank".to_owned(), "  ".to_owned()),
+    ]);
+    assert_eq!(named("paired", &relay, &names), "m4max");
+    // A blank or missing name falls back to the target.
+    assert_eq!(
+        named("blank", &relay, &names),
+        "penso@r-c122c28593608ee9.sheprd.invalid"
+    );
+    assert_eq!(named("other", &ConnectTarget::Local, &names), "other");
+}
+
+#[test]
 fn a_fleet_host_keeps_one_saved_device_id() {
     let host = "0123456789abcdef0123456789ABCDEF0123456789abcdef0123456789abcdef";
     assert_eq!(

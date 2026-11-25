@@ -149,6 +149,9 @@ pub(crate) struct ChatPane {
     /// Closes the open menu once the person types in the composer, as a
     /// click outside it would.
     pub(super) composer_typed: Option<gpui::Subscription>,
+    /// The version of the kept draft this composer restored or last wrote,
+    /// the only one it may clear (`super::drafts`).
+    pub(crate) draft_seen: super::drafts::Seen,
     /// The message effects met and playing.
     pub(crate) effects: super::effects::Effects,
     /// The last command this window could not send.
@@ -283,6 +286,7 @@ impl ChatPane {
             completion: 0,
             composer: None,
             composer_typed: None,
+            draft_seen: None,
             effects: Default::default(),
             error: None,
             expanded: HashSet::new(),

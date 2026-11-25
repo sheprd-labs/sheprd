@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sheprd for iPhone and iPad · Privacy</title>
+<meta name="description" content="What the Sheprd app for iPhone, iPad, and Apple Watch keeps, and what it shares.">
+<meta property="og:title" content="Sheprd for iPhone and iPad · Privacy">
+<meta property="og:description" content="What the Sheprd app for iPhone, iPad, and Apple Watch keeps, and what it shares.">
+<meta property="og:image" content="https://sheprd.org/assets/sheprd-social-preview.png?v=2">
+<meta property="og:site_name" content="Sheprd">
+<meta property="og:url" content="https://sheprd.org/privacy/">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://sheprd.org/privacy/">
+<link rel="icon" href="/assets/paw.svg">
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="masthead">
+  <div class="masthead-inner">
+    <a class="brand" href="/" aria-label="Sheprd home">
+      <img src="/assets/paw.svg" alt="" width="34" height="34">
+      <span>Sheprd</span>
+    </a>
+    <nav aria-label="Site">
+      <ul>
+        <li class="nav-docs"><a href="/docs/">Docs</a></li>
+        <li><a class="repo" href="https://discord.gg/GE4JRp8kaX" aria-label="Discord"><svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg><span class="repo-name">Discord</span></a></li>
+        <li><a class="nav-install" href="/#get">Get Sheprd</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="tf wrap legal">
+  <section class="tf-hero" aria-labelledby="pp-h">
+    <p class="kicker">Sheprd for iPhone, iPad, and Apple Watch</p>
+    <h1 id="pp-h">Privacy</h1>
+    <p class="dek">The app shows what Sheprd runs on your own computers. Your phone connects directly to those computers. Optional cloud voices send the text spoken aloud to the provider you select. We run no accounts, analytics, ads, or tracking.</p>
+    <p class="note">Last updated 23 November 2026.</p>
+  </section>
+
+  <h2>What stays on your phone</h2>
+  <ul>
+    <li>The computers you paired: their names, addresses, and certificate fingerprints, in the Keychain. The key that proves your phone is yours is made in the Secure Enclave and never leaves it.</li>
+    <li>The last view of each computer and recent chats, so the app opens at once. It is stored protected by your passcode, and Settings &gt; Privacy &amp; Storage clears it. Unpairing a computer deletes its copy.</li>
+    <li>Your settings, drafts, and text shortcuts.</li>
+  </ul>
+
+  <h2>What goes to your computers</h2>
+  <p>The app talks directly to Sheprd on the computers you paired, over your network, Tailscale, or a Sheprd relay. Prompts you send, answers to agents' questions, photos and files you attach, terminal input, and diagnostics you choose to send all go to that computer. When a relay carries the connection, it is end-to-end encrypted: the relay passes encrypted bytes and sees only the IP addresses, timing, and size of the traffic, and keeps no logs of them.</p>
+
+  <h2>Optional voice services</h2>
+  <p>Apple speech runs on your device. When you choose a cloud voice or preview one, the app sends the text to ElevenLabs, OpenAI, Deepgram or OpenRouter using your own account. Spoken text can include chat titles, workspace names and task descriptions. OpenRouter routes synthesis to its model provider. The provider’s billing and data retention policies apply.</p>
+  <p>Your phone saves the active voice key in its device-only Keychain. When you approve pairing, the devices copy the active account across the authenticated connection if only one has a voice account. Disconnect removes the local copy. To invalidate all copies, revoke the key with the provider. If you choose Wispr Flow for dictation, its keyboard handles your audio under your Wispr settings.</p>
+
+  <h2>Notifications and the push relay</h2>
+  <p>Apple delivers notifications for this app only when they come from Sheprd, so they go through a small server we run, the push relay at push.sheprd.org. It is on by default, and you can turn it off in Settings &gt; Notifications &gt; Push Relay.</p>
+  <ul>
+    <li><strong>What it sees:</strong> your phone's push token while it sends a push, the time and size of each push, and the IP addresses of your computer and phone.</li>
+    <li><strong>What it never sees:</strong> your prompts, chats, code, file names, or terminal output. Alerts and Live Activities are encrypted so that only your phone can read them; Apple sees only "Sheprd" and "New activity".</li>
+    <li><strong>What it keeps:</strong> push tokens and contents are never stored or logged. It keeps the ids of handles you revoked until they would have expired. Your computers hold sealed handles, never your push token.</li>
+    <li>Apple also sees the push token, timing, and size of every push. To confirm the app is genuine, the push relay uses Apple's App Attest.</li>
+  </ul>
+  <p>Turning the push relay off revokes every handle your phone made and tells your computers to forget them.</p>
+
+  <h2>Permissions</h2>
+  <ul>
+    <li><strong>Camera:</strong> to scan a computer's pairing code, and to take photos you send to a chat.</li>
+    <li><strong>Microphone and speech recognition:</strong> for dictated prompts and spoken commands, transcribed on your phone by the built-in recognizer.</li>
+    <li><strong>Bluetooth and local network:</strong> to find and pair your computers nearby, and, if you turn on presence, to tell them you are at the desk.</li>
+    <li><strong>Face ID:</strong> before a chat may run every tool without asking.</li>
+    <li><strong>Notifications:</strong> for questions, finished turns, and errors from your agents.</li>
+  </ul>
+
+  <h2>GitHub and websites</h2>
+  <p>If you sign in to GitHub, the app keeps the token in the Keychain and talks to GitHub directly to show pull requests and checks; GitHub's privacy statement covers what GitHub receives. Links you open load the website directly from your phone.</p>
+
+  <h2>Deleting your data</h2>
+  <p>Unpair computers in Settings &gt; Computers and sign out of GitHub before deleting the app, and clear cached chats in Settings &gt; Privacy &amp; Storage. Deleting the app removes its files, but iOS can keep its Keychain items, such as paired computers and the GitHub sign-in, and give them back if you install it again. There is no account to delete: we hold nothing that names you.</p>
+
+  <h2>Children</h2>
+  <p>The app is a tool for software developers and is not directed at children.</p>
+
+  <h2>Changes and questions</h2>
+  <p>We will update this page when the app changes what it shares, and change the date above. Questions? <a href="https://github.com/sheprd-labs/sheprd/issues/new/choose">Open an issue</a> or ask on <a href="https://discord.gg/GE4JRp8kaX">Discord</a>. The app's source is <a href="https://github.com/sheprd-labs/sheprd">on GitHub</a>, so you can check all of this.</p>
+</main>
+</body>
+</html>

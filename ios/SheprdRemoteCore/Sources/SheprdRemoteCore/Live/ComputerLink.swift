@@ -1,17 +1,25 @@
 import Foundation
 
 /// How a computer is reached right now.
-public enum LinkStatus: Hashable, Sendable {
+public enum LinkStatus: Codable, Hashable, Sendable {
     case connecting
     case online(origin: String)
     /// Nothing answered, or the connection dropped; it retries by itself
     /// and stays offline until a retry gets through.
     case offline(reason: String)
+    case relayBanned(RelayEndpoint)
     /// The computer no longer knows this phone: unpaired or revoked there.
     case revoked
     /// The computer's Sheprd has no live API for this app: update Sheprd
     /// there. It keeps retrying, so an update is picked up by itself.
     case outdated
+
+    /// A reconnect attempt does not change what the person last saw until
+    /// the computer answers or the attempt fails.
+    public func presented(lastKnown: LinkStatus?) -> LinkStatus {
+        if case .connecting = self, let lastKnown, lastKnown != .connecting { return lastKnown }
+        return self
+    }
 }
 
 /// What a link reports: its status, and what its socket says.
@@ -58,6 +66,8 @@ public struct LinkIO: Sendable {
     /// A bearer token from `origin`, signed with the device key.
     public var session: @Sendable (_ origin: String) async throws -> String
     public var connect: @Sendable (_ origin: String, _ token: String) async throws -> LiveConnection
+    /// Checks the relays for an explicit address ban after all paths failed.
+    public var bannedRelay: @Sendable () async -> RelayEndpoint? = { nil }
     public var sleep: @Sendable (Duration) async throws -> Void
 
     public init(
@@ -89,11 +99,18 @@ public actor ComputerLink {
     private var sizes: [LiveView: TermSize] = [:]
     /// The chats watched while no screen shows them, so again on reconnect.
     private var background: Set<LiveView> = []
+    /// Whether agents on the computer may drive the app, once its person
+    /// has turned the switch on at all: `nil` sends nothing, as an older
+    /// computer would answer an error.
+    private var agentControl: Bool?
     private var connection: LiveConnection?
     /// The address `connection` is open at, and since when.
     private var connected: String?
     private var connectedAt: ContinuousClock.Instant?
     private var runner: Task<Void, Never>?
+    private var banCheck: Task<Void, Never>?
+    private var banCheckID = 0
+    private var confirmedBan: RelayEndpoint?
     private var wake: CheckedContinuation<Void, Never>?
     private var attempt = 0
     private var pauseID = 0
@@ -118,6 +135,8 @@ public actor ComputerLink {
     }
 
     public func stop() {
+        cancelBanCheck()
+        confirmedBan = nil
         runner?.cancel()
         runner = nil
         connection?.close()
@@ -150,9 +169,26 @@ public actor ComputerLink {
         try? await connection?.send(.unsubscribe(view))
     }
 
+    /// Tells the computer whether its agents may drive the app (`drive`),
+    /// now and after every reconnect while allowed. A socket starts not
+    /// allowed, so a reconnect says nothing while it is off.
+    public func setAgentControl(_ allowed: Bool) async {
+        guard agentControl != allowed else { return }
+        let sent = agentControl != nil || allowed
+        agentControl = allowed
+        if sent { try? await connection?.send(.agentControl(allowed: allowed)) }
+    }
+
+    /// Answers the computer's `drive` numbered `id`; dropped while the
+    /// link is down, as the computer stopped waiting with the socket.
+    public func reply(id: UInt64, outcome: AgentOutcome) async {
+        try? await connection?.send(.driven(id: id, outcome: outcome))
+    }
+
     /// The network changed: stop waiting and try every address again.
     public func networkChanged() {
         attempt = 0
+        cancelBanCheck()
         if wake == nil { retryNow = true }
         wakeUp()
     }
@@ -188,8 +224,20 @@ public actor ComputerLink {
                 guard let origin = race.found else {
                     if !reported { continuation.yield(.unreachable(race.failures)) }
                     reported = true
-                    throw Offline(reason: "No address answered (\(origins.count) tried)")
+                    guard !Task.isCancelled else { return }
+                    let reason = "No address answered (\(origins.count) tried)"
+                    startBanCheck(offlineReason: reason)
+                    if let relay = confirmedBan {
+                        continuation.yield(.status(.relayBanned(relay)))
+                    } else {
+                        continuation.yield(.status(.offline(reason: reason)))
+                    }
+                    offline = true
+                    await pause()
+                    continue
                 }
+                cancelBanCheck()
+                confirmedBan = nil
                 let token = try await io.session(origin)
                 let opened = try await io.connect(origin, token)
                 connection = opened
@@ -203,6 +251,7 @@ public actor ComputerLink {
                 for (view, since) in watched {
                     try await opened.send(.subscribe(view, since: since, size: sizes[view], background: background.contains(view)))
                 }
+                if agentControl == true { try await opened.send(.agentControl(allowed: true)) }
                 let ending = try await follow(opened)
                 connection = nil
                 opened.close()
@@ -344,6 +393,38 @@ public actor ComputerLink {
         if let id, id != pauseID { return }
         wake?.resume()
         wake = nil
+    }
+
+    /// Checks relays for an explicit address ban without holding up retries.
+    private func startBanCheck(offlineReason: String) {
+        guard banCheck == nil else { return }
+        banCheckID += 1
+        let id = banCheckID
+        let check = io.bannedRelay
+        banCheck = Task {
+            let relay = await check()
+            self.finishBanCheck(id: id, relay: relay, offlineReason: offlineReason)
+        }
+    }
+
+    private func finishBanCheck(id: Int, relay: RelayEndpoint?, offlineReason: String) {
+        guard id == banCheckID, !Task.isCancelled, runner != nil, connection == nil else { return }
+        banCheck = nil
+        if let relay {
+            if confirmedBan != relay {
+                confirmedBan = relay
+                continuation.yield(.status(.relayBanned(relay)))
+            }
+        } else if confirmedBan != nil {
+            confirmedBan = nil
+            continuation.yield(.status(.offline(reason: offlineReason)))
+        }
+    }
+
+    private func cancelBanCheck() {
+        banCheck?.cancel()
+        banCheck = nil
+        banCheckID += 1
     }
 
     /// A fingerprint as hex digits alone: `/api/ping` writes it with colons.

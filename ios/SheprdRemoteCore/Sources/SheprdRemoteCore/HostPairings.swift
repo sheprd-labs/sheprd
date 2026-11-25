@@ -46,7 +46,10 @@ public struct HostPairings: Sendable {
         hosts.filter { link in
             guard pending[link.host] == nil else { return false }
             switch link.state {
-            case .offered, .failed: return true
+            case .offered, .failed:
+                // Before enrollment the offer only carries its host label.
+                // Suppress a redundant suggestion without trusting a name as a key.
+                return !held.contains { $0.name.caseInsensitiveCompare(link.name) == .orderedSame }
             case let .paired(enrolled): return !held.contains { $0.fingerprint == enrolled.fingerprint }
             case .allowed, .asking, .pending: return false
             }

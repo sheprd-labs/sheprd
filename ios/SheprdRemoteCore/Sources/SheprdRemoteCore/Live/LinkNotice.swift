@@ -7,7 +7,7 @@ import Foundation
 public struct LinkNotice: Hashable, Sendable {
     /// Worst first: the order a pill picks in.
     public enum Kind: Int, Hashable, Sendable, Comparable {
-        case revoked, outdated, offline, connecting
+        case revoked, outdated, relayBanned, offline, connecting
 
         public static func < (a: Kind, b: Kind) -> Bool { a.rawValue < b.rawValue }
 
@@ -15,6 +15,7 @@ public struct LinkNotice: Hashable, Sendable {
             switch status {
             case .revoked: self = .revoked
             case .outdated: self = .outdated
+            case .relayBanned: self = .relayBanned
             case .offline: self = .offline
             case .connecting: self = .connecting
             case .online: return nil

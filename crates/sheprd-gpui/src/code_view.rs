@@ -225,16 +225,31 @@ impl SheprdWindow {
             self.show_flash(Flash::warning(fl!("code-view-no-workspace")), cx);
             return;
         };
+        if let Some(id) = self.load_code_tab(target, scope, &workspace, cx) {
+            self.show_browser_tab(id, window, cx);
+            if let Some(view) = self.code_views.get(&id) {
+                window.focus(&view.focus, cx);
+            }
+        }
+    }
+
+    pub(crate) fn load_code_tab(
+        &mut self,
+        target: &EditorTarget,
+        scope: crate::browser::Scope,
+        workspace: &str,
+        cx: &mut Context<Self>,
+    ) -> Option<TabId> {
         let Some(path) = target.path.to_str().map(str::to_owned) else {
             self.show_flash(
                 Flash::warning(crate::Error::InvalidCodeFile.to_string()),
                 cx,
             );
-            return;
+            return None;
         };
         let existing = cx.try_global::<Store>().and_then(|store| {
             store
-                .in_workspace(&scope, &workspace)
+                .in_workspace(&scope, workspace)
                 .find(|tab| {
                     matches!(&tab.location, Some(Location::Code { file }) if file.path == path)
                 })
@@ -246,31 +261,27 @@ impl SheprdWindow {
         };
         let opened = existing.or_else(|| {
             Store::update(cx, |store| {
-                store.open(scope, &workspace, Some(Location::Code { file }), None)
+                store.open(scope, workspace, Some(Location::Code { file }), None)
             })
         });
         let Some(id) = opened else {
             self.show_flash(Flash::warning(fl!("code-view-too-many-tabs")), cx);
-            return;
+            return None;
         };
         self.ensure_code_view(id, cx);
-        let Some(view) = self.code_views.get_mut(&id) else {
-            return;
-        };
+        let view = self.code_views.get_mut(&id)?;
         if let Some(line) = target.line {
             view.target = Some(line);
             if view.text().is_some() {
                 view.go_to(line);
             }
         }
-        let focus = view.focus.clone();
         // Read again even when the tab was open: an agent may have changed
         // the file since, and the line came from a newer index. The old text
         // shows until the new one is read.
         self.load_code_view(id, cx);
-        self.show_browser_tab(id, window, cx);
-        window.focus(&focus, cx);
         cx.notify();
+        Some(id)
     }
 
     /// Makes `id`'s view from its tab, if the window has none yet. Whether

@@ -40,6 +40,7 @@ fn window(cx: &mut TestAppContext) -> (Entity<SheprdWindow>, &mut VisualTestCont
                     key: KEY.into(),
                     label: "app".into(),
                     linked: true,
+                    root: String::new(),
                 }),
             );
             let location =
@@ -142,5 +143,141 @@ fn mods_follow_the_tab_shown_in_a_kept_workspace(cx: &mut TestAppContext) {
             .map(|t| t.id.as_str())
             .collect();
         assert_eq!(focused, [tab.as_str()]);
+    });
+}
+
+#[gpui::test]
+// No live backend: the last reported folder must keep naming the space
+// during a disconnect, without treating cached agents as still running.
+fn root_space_tracks_its_first_terminal_checkout(cx: &mut TestAppContext) {
+    let (view, cx, id) = window(cx);
+    cx.update(|_, cx| {
+        view.update(cx, |view, cx| {
+            let scope = crate::browser::scope(&view.endpoints[0]);
+            let tab = cx
+                .global::<crate::browser::Store>()
+                .in_workspace(&scope, &id)
+                .next()
+                .unwrap()
+                .id;
+            view.core_terminals.checkouts.seed(
+                FOLDER,
+                Some(Identity {
+                    branch: Some("main".into()),
+                    key: KEY.into(),
+                    label: "app".into(),
+                    linked: false,
+                    root: FOLDER.into(),
+                }),
+            );
+            for (cwd, root, expected) in [
+                ("/code/herdr-app/src", Some("/code/herdr-app"), "herdr-app"),
+                ("/code/another/tests", Some("/code/another"), "another"),
+                ("/tmp/notes", None, "notes"),
+            ] {
+                view.core_terminals.checkouts.seed(
+                    cwd,
+                    root.map(|root| Identity {
+                        branch: Some("main".into()),
+                        key: format!("{root}/.git"),
+                        label: expected.into(),
+                        linked: false,
+                        root: root.into(),
+                    }),
+                );
+                let terminal = TerminalId::new("t1").unwrap();
+                view.core_terminals.show_for_test(
+                    tab,
+                    Panes::single(terminal.clone()),
+                    false,
+                    vec![sheprd_backend::TerminalInfo {
+                        id: terminal,
+                        cwd: Some(cwd.into()),
+                        agent: sheprd_backend::AgentStatus::Unknown,
+                        foreground: None,
+                        labels: Default::default(),
+                        name: None,
+                        reporter: None,
+                        state: sheprd_backend::RunState::Running,
+                        title: None,
+                    }],
+                );
+                view.refresh_core_session(cx);
+                assert_eq!(view.sessions(0).workspace(&id).unwrap().label, expected);
+            }
+            view.rename_kept_workspace(&id, "my space", cx);
+            assert_eq!(view.sessions(0).workspace(&id).unwrap().label, "my space");
+        })
+    });
+}
+
+#[gpui::test]
+fn root_naming_uses_tree_order_and_ignores_mirrors(cx: &mut TestAppContext) {
+    let (view, cx, _) = window(cx);
+    cx.update(|_, cx| {
+        view.update(cx, |view, _| {
+            let scope = crate::browser::scope(&view.endpoints[0]);
+            let mut store = crate::browser::Store::default();
+            let terminal = |id| TerminalId::new(id).unwrap();
+            let mut split = Panes::single(terminal("first"));
+            split
+                .split(
+                    &terminal("first"),
+                    sheprd_session::panes::Axis::Row,
+                    terminal("second"),
+                )
+                .unwrap();
+            for (panes, observe) in [
+                (Panes::single(terminal("mirror")), true),
+                (split, false),
+                (Panes::single(terminal("later")), false),
+            ] {
+                store
+                    .open(
+                        scope.clone(),
+                        "selection",
+                        Some(Location::core_terminal(panes, observe)),
+                        None,
+                    )
+                    .unwrap();
+            }
+            for id in ["mirror", "second", "later"] {
+                view.core_terminals
+                    .infos
+                    .insert(sheprd_backend::TerminalInfo {
+                        id: terminal(id),
+                        cwd: Some(format!("/code/{id}").into()),
+                        agent: sheprd_backend::AgentStatus::Unknown,
+                        foreground: None,
+                        labels: Default::default(),
+                        name: None,
+                        reporter: None,
+                        state: sheprd_backend::RunState::Running,
+                        title: None,
+                    });
+            }
+            assert_eq!(
+                view.core_workspace_cwd(&store, &scope, "selection"),
+                None,
+                "a missing first terminal does not select a later one"
+            );
+            view.core_terminals
+                .infos
+                .insert(sheprd_backend::TerminalInfo {
+                    id: terminal("first"),
+                    cwd: Some("/code/first".into()),
+                    agent: sheprd_backend::AgentStatus::Unknown,
+                    foreground: None,
+                    labels: Default::default(),
+                    name: None,
+                    reporter: None,
+                    state: sheprd_backend::RunState::Running,
+                    title: None,
+                });
+            assert_eq!(
+                view.core_workspace_cwd(&store, &scope, "selection"),
+                Some("/code/first")
+            );
+        })
     });
 }

@@ -66,6 +66,7 @@ async fn an_open_list_hears_when_a_phone_saw_a_finished_agent() {
                 panes: Vec::new(),
                 zoomed: false,
                 agent: Some(crate::hub::TerminalAgent {
+                    boot: "b".into(),
                     name: None,
                     status: sheprd_client::protocol::AgentStatus::Done,
                     pane: "p1".into(),

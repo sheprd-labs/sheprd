@@ -26,7 +26,12 @@ fn name(distro: &str, session: &str) -> String {
 
 /// Whether `name` is a session inside a distribution.
 pub(in crate::hub) fn is_wsl(name: &str) -> bool {
-    name.contains(SEPARATOR)
+    distribution(name).is_some()
+}
+
+/// The distribution named by a followed WSL session.
+pub(super) fn distribution(name: &str) -> Option<&str> {
+    name.split_once(SEPARATOR).map(|(_, distro)| distro)
 }
 
 /// The sessions to follow now, of the distributions saved in `catalog` (found

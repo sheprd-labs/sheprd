@@ -20,6 +20,7 @@ impl SheprdWindow {
             Some(Location::Devices) => self.render_devices_tab(slot, tab, cx),
             Some(Location::CoreTerminal { .. }) => self.render_core_terminal_tab(slot, tab, cx),
             Some(Location::Machine { .. }) => self.render_machine_tab(tab, cx),
+            Some(Location::RemoteMachine { .. }) => self.render_remote_machine_tab(tab, cx),
             _ => self.render_review_tab(slot, tab, cx),
         }
     }

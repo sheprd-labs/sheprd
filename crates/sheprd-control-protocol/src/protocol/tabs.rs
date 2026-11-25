@@ -20,6 +20,14 @@ pub const MACHINE_TYPE_SECONDS: u64 =
 /// post input. Input waits for any typing already under way, as the agent
 /// posts one request's input at a time.
 pub const MACHINE_AGENT_WAIT_SECONDS: u64 = 30 + MACHINE_TYPE_SECONDS;
+/// What reaching another computer adds to a request run there: the SSH
+/// connection, and its Sheprd's command line starting.
+pub const MACHINE_REMOTE_SECONDS: u64 = 30;
+/// How long the user may take to answer whether to borrow another
+/// computer's virtual Mac.
+pub const MACHINE_BORROW_ASK_SECONDS: u64 = 120;
+/// The longest host name `machine --host` takes.
+pub const MAX_MACHINE_HOST: usize = 256;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
@@ -127,6 +135,22 @@ pub enum TabOp {
         modifiers: Vec<MachineModifier>,
     },
     MachineList,
+    /// A PNG of the screen of the virtual Mac called `name`, written to
+    /// `path`, for someone watching it: unlike a screenshot it needs no
+    /// claim, as it changes nothing, so a machine an agent holds can still
+    /// be watched.
+    MachinePeek {
+        name: String,
+        path: String,
+    },
+    /// `request`, a virtual Mac request, run by the Sheprd on `host`, a
+    /// connected host's ID or label: borrowing a virtual Mac there. A
+    /// screenshot's path is this computer's, and an opened machine shows
+    /// in a tab here drawn from its frames.
+    MachineOn {
+        host: String,
+        request: Box<TabOp>,
+    },
     /// Reserve a virtual Mac for this pane, or renew its reservation.
     MachineClaim {
         name: String,
@@ -166,6 +190,11 @@ pub enum TabOp {
         name: String,
         path: String,
     },
+    /// Start the virtual Mac called `name` without a tab, resuming it if it
+    /// was saved: what a borrowed machine does, as nobody is at its screen.
+    MachineStart {
+        name: String,
+    },
     /// Save the virtual Mac called `name` and stop it. It resumes when next
     /// shown.
     MachineSuspend {
@@ -197,6 +226,44 @@ pub enum OrchestratorRun {
 }
 
 impl TabOp {
+    /// Whether another computer may ask for it through `machine lend`:
+    /// virtual Mac requests that touch nothing but the machine, never ones
+    /// that open a tab, a dialog, or delete.
+    pub fn lendable(&self) -> bool {
+        matches!(
+            self,
+            Self::MachineAgent { .. }
+                | Self::MachineClaim { .. }
+                | Self::MachineClick { .. }
+                | Self::MachineExec { .. }
+                | Self::MachineKey { .. }
+                | Self::MachineList
+                | Self::MachinePeek { .. }
+                | Self::MachineRelease { .. }
+                | Self::MachineScreenshot { .. }
+                | Self::MachineStart { .. }
+                | Self::MachineSuspend { .. }
+                | Self::MachineType { .. }
+        )
+    }
+
+    /// Whether `machine --host` may forward it: what the other computer
+    /// lends, and opening a machine, which starts it there and shows it here.
+    /// A watcher's peek is not: its path is the lending computer's.
+    pub fn forwardable(&self) -> bool {
+        (self.lendable() && !matches!(self, Self::MachinePeek { .. }))
+            || matches!(self, Self::Machine { .. })
+    }
+
+    /// Whether it may take one of a computer's VM slots, which borrowing
+    /// asks the user about first.
+    pub fn takes_slot(&self) -> bool {
+        matches!(
+            self,
+            Self::Machine { .. } | Self::MachineClaim { .. } | Self::MachineStart { .. }
+        )
+    }
+
     pub fn wait_seconds(&self) -> u64 {
         match self {
             Self::Text { .. } | Self::Screenshot { .. } => PAGE_WAIT_SECONDS,
@@ -206,8 +273,18 @@ impl TabOp {
             Self::MachineAgent { .. }
             | Self::MachineClick { .. }
             | Self::MachineKey { .. }
+            | Self::MachinePeek { .. }
             | Self::MachineScreenshot { .. } => MACHINE_AGENT_WAIT_SECONDS,
             Self::MachineType { .. } => MACHINE_AGENT_WAIT_SECONDS + MACHINE_TYPE_SECONDS,
+            Self::MachineOn { request, .. } => request
+                .wait_seconds()
+                .max(ARRIVE_WAIT_SECONDS)
+                .saturating_add(MACHINE_REMOTE_SECONDS)
+                .saturating_add(if request.takes_slot() {
+                    MACHINE_BORROW_ASK_SECONDS
+                } else {
+                    0
+                }),
             Self::Code { .. }
             | Self::Edit { .. }
             | Self::Devices
@@ -222,6 +299,7 @@ impl TabOp {
             | Self::MachineNew { .. }
             | Self::MachineSet { .. }
             | Self::MachineSetup { .. }
+            | Self::MachineStart { .. }
             | Self::Orchestrator { .. }
             | Self::Review
             | Self::Px0 => ARRIVE_WAIT_SECONDS,
@@ -360,6 +438,10 @@ pub enum Reply {
         machines: Vec<MachineInfo>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         capacity: Option<MachineCapacity>,
+        /// Whether this computer lends its virtual Macs to others, and why
+        /// not; absent from apps that predate lending.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        lending: Option<Lending>,
     },
     MachineImages {
         images: Vec<MachineImageInfo>,
@@ -419,13 +501,18 @@ impl MachineState {
 /// Sheprd's simultaneous macOS VM limit on this computer.
 pub const MAX_ACTIVE_MACHINES: u32 = 2;
 
-/// Slots occupied by Sheprd VMs, including starting and saving machines.
-/// Other applications' VMs are not observable through this count.
+/// Slots occupied on this computer: Sheprd's VMs, including starting and
+/// saving machines, and `others`, the VMs other programs such as Tart run,
+/// which macOS counts against the same limit.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MachineCapacity {
     pub in_use: u32,
     pub limit: u32,
     pub available: u32,
+    /// Of `in_use`, the VMs of other programs; 0 from apps that predate
+    /// counting them.
+    #[serde(default)]
+    pub others: u32,
 }
 
 impl MachineCapacity {
@@ -434,6 +521,45 @@ impl MachineCapacity {
             in_use,
             limit: MAX_ACTIVE_MACHINES,
             available: MAX_ACTIVE_MACHINES.saturating_sub(in_use),
+            others: 0,
+        }
+    }
+
+    /// `sheprd` slots of Sheprd's own and `others` of other programs.
+    pub fn with_others(sheprd: u32, others: u32) -> Self {
+        Self {
+            others,
+            ..Self::new(sheprd.saturating_add(others))
+        }
+    }
+}
+
+/// Whether a computer lends its virtual Macs to the user's other computers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum Lending {
+    Lends,
+    /// `[machine] lend = false`.
+    Off,
+    /// Tart keeps VMs here, which a CI runner may start at any time.
+    Tart,
+    /// Other programs run `count` VMs here, sharing its slots.
+    OtherVms {
+        count: u32,
+    },
+}
+
+impl Lending {
+    /// Why it does not lend, for the listing and refusals; `None` when it
+    /// lends.
+    pub fn reason(self) -> Option<String> {
+        match self {
+            Self::Lends => None,
+            Self::Off => Some("`[machine] lend` is off in its config".to_owned()),
+            Self::Tart => Some("it keeps Tart VMs, which share its two slots".to_owned()),
+            Self::OtherVms { count } => Some(format!(
+                "other programs run {count} VM(s) there, which share its two slots"
+            )),
         }
     }
 }

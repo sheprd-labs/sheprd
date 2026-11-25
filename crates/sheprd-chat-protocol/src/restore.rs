@@ -22,7 +22,6 @@ pub use error::Error;
 
 use std::{
     fs,
-    io::{Read as _, Write as _},
     path::{Path, PathBuf},
 };
 
@@ -75,6 +74,9 @@ pub struct Record {
     /// The Herdr API socket the pane reported to (`HERDR_SOCKET_PATH`),
     /// which tells one Herdr session's panes from another's.
     pub socket: PathBuf,
+    /// The thread the chat kept, which `herdr-acp --thread` continues; none
+    /// from programs before threads, or before the thread's first prompt.
+    pub thread: Option<crate::thread::ThreadId>,
 }
 
 /// The record as it is stored; [`Record`] is what a valid one reads as.
@@ -87,6 +89,9 @@ struct Stored {
     pane: String,
     session: String,
     socket: PathBuf,
+    // Optional, so records stay readable both ways across the version.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    thread: Option<crate::thread::ThreadId>,
     version: u32,
 }
 
@@ -100,6 +105,7 @@ impl From<&Record> for Stored {
             pane: record.pane.clone(),
             session: record.session.clone(),
             socket: record.socket.clone(),
+            thread: record.thread,
             version: VERSION,
         }
     }
@@ -120,6 +126,7 @@ impl TryFrom<Stored> for Record {
             pane: stored.pane,
             session: stored.session,
             socket: stored.socket,
+            thread: stored.thread,
         };
         record.validate()?;
         Ok(record)
@@ -391,46 +398,15 @@ pub fn prune(dir: &Path, now: std::time::SystemTime) {
 }
 
 fn read_bounded(path: &Path) -> Result<Vec<u8>, Error> {
-    let file = fs::File::open(path)?;
-    let mut bytes = Vec::new();
-    file.take(MAX_RECORD_SIZE + 1).read_to_end(&mut bytes)?;
+    let bytes = crate::private::read_up_to(path, MAX_RECORD_SIZE)?;
     if bytes.len() as u64 > MAX_RECORD_SIZE {
         return Err(Error::Size);
     }
     Ok(bytes)
 }
 
-/// Writes `bytes` to `path` through a temporary file in `dir` and a rename,
-/// with the directory and file private to this user on Unix.
 fn write_private(dir: &Path, path: &Path, bytes: &[u8]) -> Result<(), Error> {
-    create_private_dir(dir)?;
-    // Unique per write, and never an existing file: two windows of one app
-    // may stamp the same chat at once.
-    static WRITES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-    let write = WRITES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let mut temporary = path.to_owned();
-    temporary.set_extension(format!("tmp-{}-{write}", std::process::id()));
-    let mut options = fs::OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-    let written = options
-        .open(&temporary)
-        .and_then(|mut file| file.write_all(bytes).and_then(|()| file.sync_all()))
-        .and_then(|()| fs::rename(&temporary, path));
-    if written.is_err() {
-        let _ = fs::remove_file(&temporary);
-    }
-    Ok(written?)
-}
-
-fn create_private_dir(dir: &Path) -> Result<(), Error> {
-    let mut builder = fs::DirBuilder::new();
-    builder.recursive(true);
-    #[cfg(unix)]
-    std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
-    builder.create(dir)?;
-    Ok(())
+    Ok(crate::private::write(dir, path, bytes)?)
 }
 
 #[cfg(test)]

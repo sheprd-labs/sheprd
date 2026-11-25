@@ -110,7 +110,7 @@ The app shows which agent needs you, lets you answer it, read its chat, and open
 2. Open [sheprd.org/testflight](https://sheprd.org/testflight/) on the device, tap **Join the TestFlight beta**, then **Accept** and **Install** in TestFlight.
 3. In Sheprd on your computer, turn on remote control and open pairing. Scan the QR code with the app, or keep the phone nearby to pair over Bluetooth.
 
-On macOS, pairing over Bluetooth needs Sheprd allowed in System Settings > Privacy & Security > Bluetooth. **Hold phone alerts while I'm here** in Settings > Remote control keeps a paired iPhone's alerts while it is near this computer over Bluetooth, until you step away. Nearby pairing and Live Activities are experimental.
+On macOS, pairing over Bluetooth needs Sheprd allowed in System Settings > Privacy & Security > Bluetooth. **Hold phone alerts while I'm here** in Settings > Remote control, on unless you turn it off, keeps a paired iPhone's alerts while it is near this computer over Bluetooth and you are using it, until you step away. The SSH and cloud machines this computer paired the phone with hold theirs too. Nearby pairing and Live Activities are experimental.
 
 ## Command line
 

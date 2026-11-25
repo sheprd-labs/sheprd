@@ -16,8 +16,10 @@ use serde_json::{Value, json};
 
 use crate::{Error, Result};
 
-/// The longest line the agent may send.
-pub(crate) const MAX_LINE: usize = 16 * 1024 * 1024;
+/// The longest line read whole before it is parsed. A longer one is parsed as
+/// it streams, so a line of any length costs only what is kept of it, never
+/// its raw bytes besides.
+pub(crate) const BUFFERED_LINE: usize = 1024 * 1024;
 /// Lines waiting to be written to the agent.
 const OUTBOX: usize = 1024;
 
@@ -36,13 +38,17 @@ pub(crate) enum Inbound {
         id: wire::RequestId,
         result: std::result::Result<Value, wire::Error>,
     },
-    /// The agent closed its output, or sent a line too long to read.
+    /// The agent closed its output, or it could not be read.
     Closed(Option<Error>),
 }
 
 /// Classifies one line; `None` for anything that is not a JSON-RPC message.
 pub(crate) fn classify(line: &[u8]) -> Option<Inbound> {
-    let Value::Object(mut message) = serde_json::from_slice::<Value>(line).ok()? else {
+    classify_value(serde_json::from_slice(line).ok()?)
+}
+
+fn classify_value(message: Value) -> Option<Inbound> {
+    let Value::Object(mut message) = message else {
         return None;
     };
     let id = message
@@ -77,6 +83,10 @@ pub(crate) fn spawn_reader(
 ) -> std::io::Result<thread::JoinHandle<()>> {
     spawn_lines(output, "acp-reader", move |read| match read {
         Lines::Line(line) => classify(line).is_none_or(&mut deliver),
+        Lines::Long(line) => serde_json::from_reader(line)
+            .ok()
+            .and_then(classify_value)
+            .is_none_or(&mut deliver),
         Lines::End(error) => deliver(Inbound::Closed(error)),
     })
 }
@@ -84,13 +94,16 @@ pub(crate) fn spawn_reader(
 /// What [`spawn_lines`] hands on.
 pub(crate) enum Lines<'a> {
     Line(&'a [u8]),
+    /// A line longer than [`BUFFERED_LINE`], to read as it streams. Whatever
+    /// of it is left unread is skipped.
+    Long(&'a mut dyn Read),
     /// The output ended, cleanly or with why it could not be read.
     End(Option<Error>),
 }
 
-/// Reads lines of at most [`MAX_LINE`] bytes on a thread named `name`,
-/// handing each to `handle` until it returns `false`, then how the output
-/// ended unless `handle` stopped first.
+/// Reads lines on a thread named `name`, handing each to `handle` until it
+/// returns `false`, then how the output ended unless `handle` stopped first.
+/// No line is too long: one past [`BUFFERED_LINE`] is handed on as a stream.
 pub(crate) fn spawn_lines(
     output: impl Read + Send + 'static,
     name: &str,
@@ -102,23 +115,75 @@ pub(crate) fn spawn_lines(
         let error = loop {
             line.clear();
             let read = (&mut reader)
-                .take(MAX_LINE as u64 + 1)
+                .take(BUFFERED_LINE as u64 + 1)
                 .read_until(b'\n', &mut line);
-            match read {
+            let handled = match read {
                 Ok(0) => break None,
-                Ok(_) if line.len() > MAX_LINE => {
-                    break Some(Error::LineTooLong { limit: MAX_LINE });
-                }
-                Ok(_) => {
-                    if !handle(Lines::Line(&line)) {
-                        return;
+                Ok(_) if line.len() > BUFFERED_LINE && line.last() != Some(&b'\n') => {
+                    let mut rest = LineRest::new(&mut reader);
+                    // Buffered again, since a parser reads a stream a byte at a time.
+                    let handled = handle(Lines::Long(&mut BufReader::new(
+                        (&line[..]).chain(&mut rest),
+                    )));
+                    if let Err(error) = rest.skip() {
+                        break Some(error.into());
                     }
+                    handled
                 }
+                Ok(_) => handle(Lines::Line(&line)),
                 Err(error) => break Some(error.into()),
+            };
+            if !handled {
+                return;
             }
         };
         handle(Lines::End(error));
     })
+}
+
+/// The rest of a line, up to and including its newline, which is consumed
+/// but not read out.
+struct LineRest<'a, R> {
+    reader: &'a mut R,
+    ended: bool,
+}
+
+impl<'a, R: BufRead> LineRest<'a, R> {
+    fn new(reader: &'a mut R) -> Self {
+        Self {
+            reader,
+            ended: false,
+        }
+    }
+
+    /// Consumes what is left of the line without keeping it.
+    fn skip(&mut self) -> std::io::Result<()> {
+        std::io::copy(self, &mut std::io::sink()).map(drop)
+    }
+}
+
+impl<R: BufRead> Read for LineRest<'_, R> {
+    fn read(&mut self, out: &mut [u8]) -> std::io::Result<usize> {
+        if self.ended || out.is_empty() {
+            return Ok(0);
+        }
+        let available = self.reader.fill_buf()?;
+        if available.is_empty() {
+            self.ended = true;
+            return Ok(0);
+        }
+        let window = &available[..available.len().min(out.len())];
+        let (take, consume) = match window.iter().position(|byte| *byte == b'\n') {
+            Some(end) => {
+                self.ended = true;
+                (end, end + 1)
+            }
+            None => (window.len(), window.len()),
+        };
+        out[..take].copy_from_slice(&available[..take]);
+        self.reader.consume(consume);
+        Ok(take)
+    }
 }
 
 /// Writes queued lines to the agent's input in order, until the queue closes.

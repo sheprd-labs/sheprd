@@ -28,12 +28,13 @@ pub(crate) use convert::Error as ConvertError;
 pub(crate) use core::project_spaces;
 pub(crate) use core::{Keeper, TabRef, arrangeable};
 pub(crate) use launcher::Launcher;
-#[cfg(test)]
-pub(crate) use layout::TerminalAgent;
-pub(crate) use layout::{Chat as ChatRow, Job, Layout, Terminal, TerminalPane, Workspace};
+pub(crate) use layout::{
+    Chat as ChatRow, Job, Layout, Terminal, TerminalAgent, TerminalPane, Workspace,
+};
 pub(crate) use new_workspace::NewWorkspace;
 pub(crate) use observed::observable;
 pub(crate) use row_summary::RowSummary;
+pub(crate) use sessions::wsl_distribution;
 
 use serde_json::{Value, json};
 use sheprd_chat_protocol::{Agent, Command, EndpointId, Rejection};
@@ -160,14 +161,20 @@ impl Hub {
             primary_socket.as_deref().and_then(sessions::session_name),
         )?;
         let (core_sender, core_layout) = watch::channel(Arc::new(Layout::default()));
-        let core = core::Source::start(core_sender, &target, core_endpoint, state_dir)?;
+        let sessions = sessions::Sessions::start(primary_socket, wsl_catalog);
+        let core = core::Source::start(
+            core_sender,
+            &target,
+            core_endpoint,
+            state_dir,
+            sessions.clone(),
+        )?;
         let (base_sender, base_layout) = watch::channel(Arc::new(Layout::default()));
         tokio::spawn(core::merge_sources(
             base_sender,
             daemon_layout.clone(),
             core_layout,
         ));
-        let sessions = sessions::Sessions::start(primary_socket, wsl_catalog);
         tokio::spawn(sessions::merge_sources(
             sender,
             base_layout,

@@ -12,9 +12,11 @@ pub const VERSION: u32 = 1;
 
 /// Additions to [`VERSION`] a client declares it reads in its greeting:
 /// 1 is `Change::Activity`, 2 is `Change::Harnesses`, 3 is
-/// `Change::PullRequest`, 4 is `Change::Brief`. A program sends a client of
-/// an earlier revision only what that client can decode.
-pub const REVISION: u32 = 4;
+/// `Change::PullRequest`, 4 is `Change::Brief`, 5 is threads:
+/// `Change::Thread`, `Transcript::thread`, and `EntryKind::Handoff`. A
+/// program sends a client of an earlier revision only what that client can
+/// decode.
+pub const REVISION: u32 = 5;
 
 /// The longest prompt a client may send, in bytes.
 pub const MAX_PROMPT_SIZE: usize = 256 * 1024;

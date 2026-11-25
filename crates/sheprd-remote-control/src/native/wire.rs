@@ -2,6 +2,7 @@
 //! text frame, as `docs/ios-app-plan.md` specifies them.
 
 use super::model::{ChatSnapshot, Home, Run};
+use crate::control::phone::{Drive, Outcome};
 use serde::{Deserialize, Serialize};
 use sheprd_chat_protocol::{Change, Cursor};
 
@@ -43,6 +44,16 @@ pub(crate) enum ClientMessage {
     /// history, negative down. Only a terminal followed at the phone's
     /// size scrolls.
     TermScroll { pane: String, lines: i32 },
+    /// Whether agents on this computer may drive the phone's app
+    /// (`control::phone`), as its person set it there; sent after each
+    /// connect while on, and when it changes.
+    AgentControl { allowed: bool },
+    /// What the phone did with drive `id`.
+    Driven {
+        id: u64,
+        #[serde(flatten)]
+        outcome: Outcome,
+    },
 }
 
 /// The most lines one `term_scroll` moves; more is moved this far.
@@ -124,5 +135,13 @@ pub(crate) enum ServerMessage {
     },
     Bye {
         reason: ByeReason,
+    },
+    /// An agent on this computer drives the phone's app; the phone answers
+    /// with `driven` and the same `id`. Sent only to a socket whose phone
+    /// said `agent_control`.
+    Drive {
+        id: u64,
+        #[serde(flatten)]
+        drive: Drive,
     },
 }

@@ -6,6 +6,7 @@ use sheprd_client::protocol::AgentStatus;
 
 fn agent(pane: &str, name: Option<&str>, status: AgentStatus) -> TerminalAgent {
     TerminalAgent {
+        boot: "b".into(),
         name: name.map(str::to_owned),
         status,
         pane: pane.to_owned(),

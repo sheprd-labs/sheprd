@@ -92,6 +92,15 @@ The status dot pulses amber during local daemon startup and is red when disconne
 Healthy connections leave the status bar quiet; connection indicators live in the
 device picker. Startup, disconnection, and operation errors remain in the status bar.
 
+
+## Speaking voices
+
+Settings > Voice shows the active provider. Click Change to choose ElevenLabs, OpenAI, Deepgram or OpenRouter in the provider sheet and connect your account. Choose a voice, preview it and select Use This Voice. Read aloud beside a chat reply sends its text to the selected provider. Playback starts as MP3 packets arrive. Stop reading cancels both playback and the download. Selecting a different reply switches to that reply. Wispr Flow on Mac or Windows dictates into the focused composer using its configured shortcut.
+
+OpenRouter supports browser sign-in with PKCE. The other speech APIs use a personal API key. New direct iOS pairings copy the active voice and credential if the other side has none. Disconnect removes the local copy. Revoke the key at the provider to invalidate all copies.
+
+Both clients currently use `gpt-4o-mini-tts` for direct OpenAI speech. OpenAI schedules this endpoint's models for retirement on January 6, 2027. [OpenAI deprecation schedule](https://developers.openai.com/api/docs/deprecations)
+
 ## macOS Git permission troubleshooting
 
 If Git in a local Sheprd terminal reports `Operation not permitted`, even
@@ -1296,7 +1305,11 @@ memory** in Settings > Status bar, shows the selected host's in the status bar;
 Sidebar, shows each host's on a sidebar line under its CPU and memory (layouts
 with detail lines; compact ones add a GPU gauge after the host's name). While
 either is on, the Overview and Devices pages show GPU and VRAM too. `[status_bar]
-gpu_detail = "compact"` shows the shares without the graph and meter. NVIDIA
+gpu_detail = "compact"` shows the shares without the graph and meter. In the
+Moonframe window, the sidebar shows each host's shares beside its name (CPU, memory, GPU, video memory); top-level
+`sidebar_load = "detailed"`, or **Host load** in Settings > Sidebar, gives the
+load lines of its own under the name instead: CPU with its graph and memory with
+its meter, then the GPU with its graph and video memory. NVIDIA
 cards are read with `nvidia-smi`, AMD cards from the `amdgpu` driver's sysfs
 files, and Apple GPUs with `ioreg`, which reports no video memory because it
 is shared; Intel GPUs report no usage without root and are left out. A remote
@@ -3633,13 +3646,17 @@ Agents running in the app's panes can open a page for you:
 
 ```sh
 sheprd browser open http://localhost:3000   # macOS: /Applications/Herdr.app/Contents/MacOS/Herdr
-sheprd browser open design/mockup.html      # in a split beside the agent's terminal
+sheprd browser open design/mockup.html      # a background tab
 sheprd browser open --no-focus https://example.com/docs
-sheprd browser open --tab design/mockup.html # a tab, like a web address
+sheprd browser open --beside design/mockup.html # explicitly show a split
 sheprd browser reload                       # reload the pages this pane opened
 sheprd browser feedback --wait 600          # wait for the notes you send it
 sheprd browser --help
 ```
+
+Command-opened tabs preserve the current tab and keyboard focus; select the
+new tab when ready. `--no-focus` remains accepted for compatibility. Tabs
+created manually in the app still take focus.
 
 The tab joins the caller's own workspace, which Herdr names in the pane's
 `HERDR_WORKSPACE_ID`, and remembers the caller's `HERDR_PANE_ID` so notes on
@@ -3683,10 +3700,8 @@ and opens the page in that workspace, once per request:
   all open; a workspace holds at most 32 tokens, so a burst of long addresses
   can be refused until earlier ones expire.
 
-A local file opened from a pane goes beside that pane's terminal, since it is
-usually a mockup or explainer the agent wrote for you to read while you talk
-to it; a web address takes a tab of the group in use. `--beside` and `--tab`
-choose instead. Beside means an editor group next to the group showing the
+Local files and web addresses both open in a background tab. Use `--focus`
+to select it, or `--beside` for a visible split. Beside means an editor group next to the group showing the
 caller's terminal: the group the page already belongs to, the group beside
 the terminal when the window is split, or a new group split off to its
 right. The terminal's group stays in use and keeps the keyboard, so you can
@@ -3756,7 +3771,7 @@ conversation natively over that pane. The program is the agent's only client,
 so the Herdr TUI, a plain terminal, and every app window see one conversation.
 
 **Starting one.** A group's **…** menu lists **New Chat** with one row per
-agent `sheprd-acp` knows (Claude, Codex, Copilot, Gemini, Kimi Code, OpenCode, Pi). A row
+agent `sheprd-acp` knows (Antigravity, Claude, Codex, Copilot, Gemini, Kimi Code, Muse Code, OpenCode, Pi). A row
 opens a tab named after the agent in the focused workspace, in the focused
 pane's folder, and runs the program there; `sheprd chat new AGENT` does
 the same from a pane, and from a chat, `sheprd chat new` starts that chat's
@@ -3768,8 +3783,8 @@ directory, or where `just install` puts both) and then on the login shell's
 saved SSH, cloud, and WSL hosts; an empty app-kept workspace starts a new
 Herdr 2 chat tab. Remote launches find the remote host's own program rather
 than using the desktop executable's path. Each agent has to be
-installed: `claude`, `codex` and `pi` (which `sheprd-acp` drives without an
-ACP adapter), `copilot --acp`, `gemini --acp`, `kimi acp`, or `opencode acp`. The program can
+installed: `agy acp`, `claude`, `codex` and `pi` (which `sheprd-acp` drives without an
+ACP adapter), `copilot --acp`, `gemini --acp`, `kimi acp`, `muse acp`, or `opencode acp`. The program can
 also be started by hand in any pane: `sheprd-acp claude`.
 
 **One click.** Each tab strip also offers an **Agent** button right after

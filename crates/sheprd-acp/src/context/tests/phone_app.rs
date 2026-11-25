@@ -1,4 +1,4 @@
-use super::*;
+use crate::context::tests::*;
 
 const PHONE_WEB: Origin = Origin::new(Device::PhoneWeb, Via::Relay);
 
@@ -39,5 +39,5 @@ fn moving_from_the_web_app_to_the_phone_app_tells_about_effects() {
     let mut context = Context::default();
     assert!(!context.before(Some(PHONE_WEB)).unwrap().contains(":big["));
     assert!(context.before(Some(PHONE)).unwrap().contains(":big["));
-    assert_eq!(context.before(Some(PHONE)), None);
+    assert!(!context.before(Some(PHONE)).unwrap().contains(":big["));
 }

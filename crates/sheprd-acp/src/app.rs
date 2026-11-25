@@ -119,10 +119,90 @@ fn search_path() -> std::ffi::OsString {
     )
 }
 
+/// Authenticates Antigravity through the ACP method the person selected, or
+/// a credential explicitly present in the chat's environment.
+fn antigravity_auth_method() -> String {
+    let requested = std::env::var("SHEPRD_ANTIGRAVITY_AUTH_METHOD").ok();
+    antigravity_auth_method_for(
+        requested.as_deref(),
+        std::env::var_os("GEMINI_API_KEY").is_some(),
+        std::env::var_os("GOOGLE_CLOUD_PROJECT").is_some()
+            && std::env::var_os("GOOGLE_CLOUD_LOCATION").is_some(),
+    )
+}
+
+fn antigravity_auth_method_for(
+    requested: Option<&str>,
+    has_api_key: bool,
+    has_cloud_project: bool,
+) -> String {
+    if let Some(method) = requested.filter(|method| !method.is_empty()) {
+        return method.to_owned();
+    }
+    if has_api_key {
+        return "gemini-api-key".to_owned();
+    }
+    if has_cloud_project {
+        return "agent-platform".to_owned();
+    }
+    "oauth-personal".to_owned()
+}
+
+/// The ACP authentication method Gemini should try when a session asks for
+/// sign-in, from an explicit override or configured credentials.
+fn gemini_auth_method() -> String {
+    let requested = std::env::var("SHEPRD_GEMINI_AUTH_METHOD").ok();
+    let use_vertex = std::env::var("GOOGLE_GENAI_USE_VERTEXAI")
+        .ok()
+        .is_some_and(|value| {
+            !matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "" | "0" | "false"
+            )
+        });
+    gemini_auth_method_for(
+        requested.as_deref(),
+        std::env::var_os("GEMINI_API_KEY").is_some(),
+        use_vertex
+            || (std::env::var_os("GOOGLE_CLOUD_PROJECT").is_some()
+                && std::env::var_os("GOOGLE_CLOUD_LOCATION").is_some())
+            || std::env::var_os("GOOGLE_API_KEY").is_some(),
+        std::env::var_os("GOOGLE_GEMINI_BASE_URL").is_some(),
+    )
+}
+
+fn gemini_auth_method_for(
+    requested: Option<&str>,
+    has_api_key: bool,
+    has_vertex: bool,
+    has_gateway: bool,
+) -> String {
+    if let Some(method) = requested.filter(|method| !method.is_empty()) {
+        return method.to_owned();
+    }
+    if has_api_key {
+        return "gemini-api-key".to_owned();
+    }
+    if has_vertex {
+        return "vertex-ai".to_owned();
+    }
+    if has_gateway {
+        return "gateway".to_owned();
+    }
+    "oauth-personal".to_owned()
+}
+
 /// The agents a `--choose` chat offers: those installed here, and the one
 /// it starts with even when only a fetcher such as `npx` can run it.
 fn choices(agent: crate::agents::Agent) -> Vec<crate::agents::Agent> {
     let installed = crate::agents::installed(Some(&search_path()));
+    choices_from(agent, &installed)
+}
+
+fn choices_from(
+    agent: crate::agents::Agent,
+    installed: &[crate::agents::Agent],
+) -> Vec<crate::agents::Agent> {
     crate::agents::Agent::ALL
         .iter()
         .copied()
@@ -317,7 +397,7 @@ pub(crate) fn run_owned(
     };
     let listens = endpoint.is_some();
     let target = Target::from_env();
-    let mut keeper = if target.is_none() && std::env::var_os("HC_TERMINAL_ID").is_some() {
+    let keeper = if target.is_none() && std::env::var_os("HC_TERMINAL_ID").is_some() {
         crate::restore::Keeper::core(
             sheprd_chat_protocol::restore::restore_dir(),
             endpoint.as_ref(),
@@ -336,6 +416,31 @@ pub(crate) fn run_owned(
             &cwd,
         )
     };
+    // A built-in agent's chat is a thread, `--thread`'s or a new one,
+    // which a restore continues.
+    let thread_id = match &options.agent {
+        AgentChoice::Builtin { .. } => Some(
+            options
+                .thread
+                .unwrap_or_else(sheprd_chat_protocol::thread::ThreadId::random),
+        ),
+        AgentChoice::Command { .. } => None,
+    };
+    let thread = thread_id
+        .zip(sheprd_chat_protocol::thread::threads_dir())
+        .and_then(
+            |(id, dir)| match crate::session::ThreadStart::read(dir, id) {
+                Ok(start) => Some(start),
+                Err(error) => {
+                    notices.push((
+                        NoticeLevel::Warning,
+                        format!("This conversation cannot be kept as a thread: {error}"),
+                    ));
+                    None
+                }
+            },
+        );
+    let mut keeper = keeper.map(|keeper| keeper.with_thread(thread_id));
     if let Some(keeper) = &mut keeper {
         keeper.child = Some(agent_process.id());
     }
@@ -367,18 +472,24 @@ pub(crate) fn run_owned(
         AgentChoice::Command { .. } => None,
     };
     // A file of the user's that cannot be used says so in the chat, which
-    // then uses the built-in text.
-    let prompts = match crate::context::Prompts::dir() {
-        Some(dir) => {
-            let (prompts, problems) = crate::context::Prompts::load(&dir);
-            notices.extend(
-                problems
-                    .into_iter()
-                    .map(|problem| (NoticeLevel::Warning, problem.to_string())),
-            );
-            prompts
+    // then uses the built-in text. A fixed Antigravity chat never annotates
+    // prompts, so it skips loading prompt files; a `--choose` chat still loads
+    // them in case the person switches to another agent.
+    let prompts = if !options.choose && harness == Some(crate::agents::Agent::Antigravity) {
+        crate::context::Prompts::default()
+    } else {
+        match crate::context::Prompts::dir() {
+            Some(dir) => {
+                let (prompts, problems) = crate::context::Prompts::load(&dir);
+                notices.extend(
+                    problems
+                        .into_iter()
+                        .map(|problem| (NoticeLevel::Warning, problem.to_string())),
+                );
+                prompts
+            }
+            None => crate::context::Prompts::default(),
         }
-        None => crate::context::Prompts::default(),
     };
     // The brief is read, and its file removed, before anything can fail to
     // start; one that cannot be read says so in the chat.
@@ -393,12 +504,15 @@ pub(crate) fn run_owned(
             .ok()
     });
     let settings_dir = crate::known::dir();
+    let picks_dir = settings_dir.clone();
     let settings = carried_settings(harness, options.load.is_some(), &mut notices);
     let config = Config {
+        antigravity_auth_method: Some(antigravity_auth_method()),
         agent: agent.display,
         choices: harness.filter(|_| options.choose).map(choices),
         cwd: cwd.clone(),
         exit_with_agent: options.headless,
+        gemini_auth_method: Some(gemini_auth_method()),
         harness,
         history,
         known: settings_dir
@@ -413,6 +527,7 @@ pub(crate) fn run_owned(
         require_load: options.require_load,
         settings,
         sheprd: crate::context::sheprd_executable(),
+        thread,
     };
     let launcher = inputs.clone();
     let session_thread = thread::Builder::new()
@@ -458,8 +573,14 @@ pub(crate) fn run_owned(
                     }
                 }
             });
+            if let Some(brief) = &brief {
+                session.link_delegation(&brief.text);
+            }
             if let Some(dir) = crate::briefs::dir() {
                 session.keep_briefs(dir);
+            }
+            if let Some(dir) = picks_dir {
+                session.keep_picks(dir);
             }
             for (level, text) in notices {
                 session.notice(level, text);

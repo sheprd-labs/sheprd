@@ -74,6 +74,7 @@ impl<R: FnMut(Update)> Session<R> {
                 }
             }
             self.config.settings = None;
+            self.remember_carried();
             self.next_queued();
             return;
         }

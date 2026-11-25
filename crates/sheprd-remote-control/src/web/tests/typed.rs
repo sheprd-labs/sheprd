@@ -1,6 +1,6 @@
 //! Where a phone's prompt says it was typed.
 
-use super::*;
+use crate::web::tests::*;
 use axum::{Extension, routing::get};
 use sheprd_chat_protocol::{Device, Origin, Via};
 
@@ -76,4 +76,47 @@ async fn a_request_carries_its_origin_to_the_handler() {
         origin_of(request(APP, [192, 168, 1, 50]), true).await,
         Origin::new(Device::PhoneApp, Via::Relay)
     );
+}
+
+#[test]
+fn phone_target_comes_from_authentication_and_is_cleared_for_web_clients() {
+    let device = DeviceId("authenticated-phone".into());
+    for kind in [Device::PhoneApp, Device::PhoneWeb] {
+        let mut claimed = Origin::new(kind, Via::Relay);
+        claimed.phone = Some("another-phone".into());
+        let origin = TypedFrom::authenticated(claimed, &device);
+        assert_eq!(
+            origin.phone.as_deref(),
+            (kind == Device::PhoneApp).then_some("authenticated-phone")
+        );
+    }
+}
+
+#[tokio::test]
+async fn two_authenticated_phones_get_distinct_prompt_targets() {
+    let dir = tempfile::tempdir().unwrap();
+    let state = state(dir.path());
+    let phones = [signed_in(&state, 1), signed_in(&state, 2)];
+    let router = Router::new()
+        .route(
+            "/",
+            get(
+                |device: crate::web::Device, TypedFrom(origin): TypedFrom| async move {
+                    axum::Json(TypedFrom::authenticated(origin, &device.0))
+                },
+            ),
+        )
+        .with_state(state);
+    for (id, token) in phones {
+        let mut request = request(APP, [192, 168, 1, 50]);
+        request.headers_mut().insert(
+            header::AUTHORIZATION,
+            format!("Bearer {token}").parse().unwrap(),
+        );
+        let response = router.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), 1024).await.unwrap();
+        let origin: Origin = serde_json::from_slice(&body).unwrap();
+        assert_eq!(origin.phone.as_deref(), Some(id.0.as_str()));
+    }
 }

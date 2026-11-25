@@ -205,6 +205,11 @@ fn phase(before: &Transcript) -> Phase {
     }
 }
 
+/// The current turn as an update, including its permission buttons.
+pub(crate) fn current(before: &Transcript) -> ContentState {
+    state(before, phase(before), now(before, &before.plan))
+}
+
 /// The content shared by every push for a running turn.
 fn state(before: &Transcript, phase: Phase, step: Step) -> ContentState {
     let (plan_done, plan_total) = plan_counts(&before.plan);
@@ -222,6 +227,9 @@ fn state(before: &Transcript, phase: Phase, step: Step) -> ContentState {
     edited.sort_unstable();
     edited.dedup();
     let detail = Detail {
+        focus: None,
+        question_revision: None,
+        agents: None,
         activity: step
             .described
             .as_ref()

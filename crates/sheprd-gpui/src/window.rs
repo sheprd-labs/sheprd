@@ -112,9 +112,12 @@ pub(crate) struct SheprdWindow {
     // keep-sorted start
     pub(crate) _activation: Subscription,
     pub(crate) _agent_favorites: Subscription,
+    pub(crate) _agent_guidance: Subscription,
     pub(crate) _agent_read: Subscription,
     pub(crate) _appearance: Subscription,
     pub(crate) _browser_tabs: Subscription,
+    /// Another window may keep or send a draft this one marks.
+    pub(crate) _chat_drafts: Subscription,
     pub(crate) _device_tags: Subscription,
     pub(crate) _host_theme: Subscription,
     /// Another window may mute or unmute what this one shows.
@@ -137,6 +140,7 @@ pub(crate) struct SheprdWindow {
     /// The coordinator group the agents panel is narrowed to, by name: a
     /// group outlives its coordinator's pane. None lists every group.
     pub(crate) agent_group: Option<String>,
+    pub(crate) agent_guidance: Entity<crate::agent_guidance::State>,
     /// Every device's unread agents, as their daemons last answered.
     pub(crate) agent_read: std::sync::Arc<crate::agent_read::Sets>,
     pub(crate) agent_sort: preferences::AgentSort,
@@ -163,6 +167,8 @@ pub(crate) struct SheprdWindow {
     pub(crate) browser: crate::browser::Browser,
     pub(crate) catalog: endpoint::Catalog,
     pub(crate) cell_width: f32,
+    /// The chats holding an unsent draft, on any listed host.
+    pub(crate) chat_drafts: std::sync::Arc<crate::chat::drafts::Marks>,
     /// Native views of the `herdr-acp` chats in this daemon's panes.
     /// The rail beside an agent chat, shared by every chat in the window.
     pub(crate) chat_rail_width: crate::panel_resize::PanelWidth,
@@ -259,6 +265,9 @@ pub(crate) struct SheprdWindow {
     /// Another app's window holds this view, and draws the sidebar, status bar
     /// and overlays as regions of its own; see `host_regions`.
     pub(crate) hosted: bool,
+    /// A split-header host draws the standalone title bar above all its columns.
+    /// None keeps the standalone bar in the main view for older layouts.
+    pub(crate) hosted_full_header: Option<bool>,
     /// The sidebar row the pointer is resting on, waiting to open its menu.
     pub(crate) hover: Option<sidebar::HoverRest>,
     /// The menu that resting opened, which the pointer closes by leaving it.

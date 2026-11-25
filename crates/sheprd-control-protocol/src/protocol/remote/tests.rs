@@ -80,6 +80,7 @@ fn remote_replies_round_trip() {
                 devices: 1,
                 connected: 1,
                 github_asks: 0,
+                voice_asks: 0,
                 relays: Default::default(),
             })),
             error: None,

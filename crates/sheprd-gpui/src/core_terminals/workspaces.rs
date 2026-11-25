@@ -86,6 +86,7 @@ impl SheprdWindow {
         };
         self.start_core_program(
             Purpose::Tab {
+                focus: true,
                 group: None,
                 scope: scope_of(self),
                 workspace: id,
@@ -117,6 +118,7 @@ impl SheprdWindow {
         };
         self.start_core_program(
             Purpose::Tab {
+                focus: true,
                 group: None,
                 scope: scope.clone(),
                 workspace: id.clone(),
@@ -127,6 +129,7 @@ impl SheprdWindow {
         self.start_core_chat_tab(
             agent,
             Purpose::Tab {
+                focus: true,
                 scope,
                 workspace: id,
                 group: None,

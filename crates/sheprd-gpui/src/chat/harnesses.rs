@@ -206,7 +206,7 @@ impl SheprdWindow {
 
     /// Runs every tick: asks the selected host which agents it has, when
     /// its answer is missing or old.
-    pub(super) fn probe_chat_agents(&mut self, cx: &mut Context<Self>) {
+    pub(crate) fn probe_chat_agents(&mut self, cx: &mut Context<Self>) {
         let Some(endpoint) = self.endpoints.get(self.selected_endpoint) else {
             return;
         };
@@ -237,18 +237,16 @@ impl SheprdWindow {
                     return;
                 }
                 this.chats.agents.finish(&id, agents);
+                this.refresh_landing_chats();
                 cx.notify();
             });
         })
         .detach();
     }
 
-    /// The agents a new chat may run on the selected host: the installed
-    /// ones once known, none before.
-    pub(crate) fn chat_agents(&self) -> Vec<Agent> {
-        if !self.can_start_chat() {
-            return Vec::new();
-        }
+    /// The installed chat agents reported by `herdr-acp agents` for the
+    /// selected host, or `None` until that probe answers.
+    pub(crate) fn probed_chat_agents(&self) -> Option<Vec<Agent>> {
         self.endpoints
             .get(self.selected_endpoint)
             .and_then(|endpoint| {
@@ -257,7 +255,15 @@ impl SheprdWindow {
                     .agents_for(&endpoint.id, &endpoint.connection.target)
             })
             .map(<[Agent]>::to_vec)
-            .unwrap_or_default()
+    }
+
+    /// The agents a new chat may run on the selected host: the installed
+    /// ones once known, none before.
+    pub(crate) fn chat_agents(&self) -> Vec<Agent> {
+        if !self.can_start_chat() {
+            return Vec::new();
+        }
+        self.probed_chat_agents().unwrap_or_default()
     }
 
     /// Whether `agent` is known not to be installed on the selected host.

@@ -156,9 +156,13 @@ pub(crate) struct Origin {
 
 impl Origin {
     pub(crate) fn of(view: &SheprdWindow) -> Option<Self> {
+        Self::at(view, view.selected_endpoint)
+    }
+
+    pub(crate) fn at(view: &SheprdWindow, index: usize) -> Option<Self> {
         Some(Self {
-            endpoint: view.endpoints.get(view.selected_endpoint)?.id.clone(),
-            boot_id: view.live.snapshot.as_ref()?.boot_id.clone(),
+            endpoint: view.endpoints.get(index)?.id.clone(),
+            boot_id: view.live_at(index).snapshot.as_ref()?.boot_id.clone(),
         })
     }
 

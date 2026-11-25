@@ -276,6 +276,13 @@ fn collect(
     if event.need_rescan() {
         return Seen::Rescan;
     }
+    // Opening a file is not a change, and the indexer opens every file it
+    // reads: following opens would read each file again forever.
+    if let notify::EventKind::Access(access) = event.kind
+        && access != notify::event::AccessKind::Close(notify::event::AccessMode::Write)
+    {
+        return Seen::Files;
+    }
     let mut seen = Seen::Files;
     for path in event.paths {
         // Translate only the registered prefix. Canonicalizing each event

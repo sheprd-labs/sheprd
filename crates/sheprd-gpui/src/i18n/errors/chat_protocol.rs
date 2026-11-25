@@ -61,6 +61,9 @@ impl Localize for Error {
             // shown; one message covers their failures.
             Self::Restore(_) => fl!("error-chat-protocol-restore"),
             Self::SettingsLimit { len } => fl!("error-chat-protocol-settings-limit", bytes = *len),
+            // A thread a chat program sent out of bounds; its details stay
+            // in the log.
+            Self::Thread(_) => fl!("error-chat-protocol-thread"),
             Self::UnknownEntry(id) => {
                 fl!("error-chat-protocol-unknown-entry", id = format!("{id:?}"))
             }

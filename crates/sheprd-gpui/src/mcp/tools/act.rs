@@ -42,28 +42,26 @@ pub(super) const TOOLS: &[Spec] = &[
     Spec {
         name: "browser_open",
         title: "Show a page",
-        description: "Show the user a web page or a local HTML file (a mockup, an explainer) in a Sheprd browser tab. A local file opened from a Herdr pane goes beside that terminal unless placement says otherwise. The user can annotate it; read their notes with browser_feedback.",
+        description: "Show the user a web page or a local HTML file (a mockup, an explainer) in a Sheprd browser tab. Files and addresses open in a background tab by default. The user can annotate it; read their notes with browser_feedback.",
         effect: Effect::Changes,
         properties: || {
             json!({
                 "target": string("A web address, or a local file's path.", LONG_TEXT),
                 "placement": { "type": "string", "enum": ["tab", "beside"], "description": "A tab of the window, or beside the caller's terminal." },
-                "focus": { "type": "boolean", "description": "Switch the window to the new tab." },
+                "focus": { "type": "boolean", "description": "Switch to the new tab only when the user asks to see it." },
             })
         },
         required: &["target"],
         build: |arguments| {
             Ok(ControlCommand::Browser(BrowserCommand::Open {
                 target: arguments.required_text("target", LONG_TEXT)?,
-                placement: arguments.choice(
-                    "placement",
-                    "tab, beside",
-                    |placement| match placement {
+                placement: arguments
+                    .choice("placement", "tab, beside", |placement| match placement {
                         "tab" => Some(Placement::Tab),
                         "beside" => Some(Placement::Beside),
                         _ => None,
-                    },
-                )?,
+                    })?
+                    .unwrap_or(Placement::Tab),
                 focus: arguments.flag("focus")?,
                 workspace: None,
             }))

@@ -49,6 +49,8 @@ mod device_tag_groups;
 #[cfg(test)]
 mod devices_layout;
 #[cfg(test)]
+mod drafted_agents;
+#[cfg(test)]
 mod favorite_agents;
 #[cfg(test)]
 mod fold_all_hosts;
@@ -614,10 +616,16 @@ pub(crate) fn fixture_window(window: &mut Window, cx: &mut Context<SheprdWindow>
     let mark_layer = cx.new(|cx| crate::mark_layer::MarkLayer::new(window, hosts, cx));
     let focus = cx.focus_handle();
     let terminal_focus = SheprdWindow::leave_region_with_terminal(&focus, window, cx);
+    let agent_guidance = cx.new(|_| crate::agent_guidance::State::default());
+    let agent_guidance_changed = cx.observe(&agent_guidance, |_, _, cx| cx.notify());
     SheprdWindow {
+        agent_guidance,
+        _agent_guidance: agent_guidance_changed,
         _terminal_focus: terminal_focus,
         chrome_region: None,
         hosted: false,
+        hosted_full_header: None,
+        chat_drafts: Default::default(),
         chat_rail_width: crate::panel_resize::CHAT_RAIL,
         chat_turns: Default::default(),
         chats: Default::default(),
@@ -856,6 +864,7 @@ pub(crate) fn fixture_window(window: &mut Window, cx: &mut Context<SheprdWindow>
         _agent_favorites: cx
             .observe_global::<crate::agent_favorites::AgentFavorites>(|_, cx| cx.notify()),
         _agent_read: cx.observe_global::<crate::agent_read::AgentRead>(|_, cx| cx.notify()),
+        _chat_drafts: SheprdWindow::observe_chat_drafts(cx),
         _device_tags: cx.observe_global::<crate::device_tags::DeviceTags>(|_, cx| cx.notify()),
         _worktree_notes: SheprdWindow::observe_worktree_notes(window, cx),
         prefix_armed: false,

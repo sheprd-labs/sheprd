@@ -11,6 +11,7 @@ import SheprdVoice
 final class VoiceSession: Identifiable {
     enum Phase: Equatable {
         case preparing
+        case keyboard
         case listening
         case thinking
         /// A plan, or a question about one, waiting on the person.
@@ -68,10 +69,13 @@ final class VoiceSession: Identifiable {
     private var optionsLoaded = false
     private var silence: Task<Void, Never>?
     private var loading: Task<Void, Never>?
+    private(set) var speechError: String?
+    private let loadSpeechAccount: () throws -> SpeechAccount?
     private let speaker = VoiceSpeaker()
     private unowned let model: AppModel
 
-    init(model: AppModel) {
+    init(model: AppModel, loadSpeechAccount: @escaping () throws -> SpeechAccount? = SpeechAccount.load) {
+        self.loadSpeechAccount = loadSpeechAccount
         self.model = model
         catalog = VoiceSession.catalog(of: model)
     }
@@ -119,6 +123,7 @@ final class VoiceSession: Identifiable {
     func listenAgain(forYes: Bool = false) {
         guard !cancelled else { return }
         speaker.stop()
+        speechError = nil
         awaitingYes = forYes
         // With no plan there is nothing to correct: it starts over.
         replyingTo = plan == .unknown ? nil : draft
@@ -178,8 +183,18 @@ final class VoiceSession: Identifiable {
 
     // MARK: Hearing
 
+    func submitKeyboard(_ words: String) async {
+        guard phase == .keyboard, !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        heard(words)
+        await finish()
+    }
+
     private func listen() async {
         guard !cancelled else { return }
+        if UserDefaults.standard.bool(forKey: "voiceKeyboardInput") {
+            phase = .keyboard
+            return
+        }
         phase = .preparing
         do {
             try await listener.start(names: catalog.vocabulary) { [weak self] text in self?.heard(text) }
@@ -281,6 +296,19 @@ final class VoiceSession: Identifiable {
         }
     }
 
+    @discardableResult
+    private func say(_ words: String, always: Bool = false) async -> Bool {
+        guard !cancelled, always || VoiceSettings.speaks else { return false }
+        speechError = nil
+        do {
+            return try await speaker.play(words, account: loadSpeechAccount())
+        } catch {
+            guard !cancelled, !Task.isCancelled else { return false }
+            speechError = error.localizedDescription
+            return false
+        }
+    }
+
     /// What comes after hearing: run what only shows something, and put the
     /// rest on the card.
     private func act() async {
@@ -289,7 +317,7 @@ final class VoiceSession: Identifiable {
             waiting = waitingNow()
             let words = Self.waitingWords(waiting)
             phase = .answered(words)
-            await speaker.say(words)
+            await say(words)
         case let .chat(chat) where chat.action == .open:
             model.voiceContext.chat = chat.chat
             model.pendingRoute = route(to: chat.chat)
@@ -297,12 +325,16 @@ final class VoiceSession: Identifiable {
         case let .workspace(workspace):
             phase = .ready
             if let question = workspace.question {
-                await speaker.say(question.words, always: VoiceSettings.confirms)
-                if question.answerable, phase == .ready { listenAgain() }
+                let silent = !VoiceSettings.speaks && !VoiceSettings.confirms
+                let completed = await say(question.words, always: VoiceSettings.confirms)
+                if question.answerable, phase == .ready, silent || completed { listenAgain() }
             } else if VoiceSettings.confirms, plan.confirmableByVoice, let words = plan.readBack {
-                readAloud = plan
-                await speaker.say(words, always: true)
-                if phase == .ready { listenAgain(forYes: true) }
+                let spoken = plan
+                readAloud = nil
+                if await say(words, always: true), phase == .ready, spoken.runsTheSame(as: plan), !cancelled {
+                    readAloud = spoken
+                    listenAgain(forYes: true)
+                }
             }
         default:
             phase = .ready
@@ -454,7 +486,7 @@ final class VoiceSession: Identifiable {
                 route: route(to: chat)
             )
             phase = .done(done)
-            await speaker.say(done.title)
+            await say(done.title)
         } catch {
             failed(error.localizedDescription)
         }
@@ -486,7 +518,7 @@ final class VoiceSession: Identifiable {
         }
         let title = "Started on \(started) computer\(started == 1 ? "" : "s")"
         phase = .done(Done(title: title, detail: (problems + plan.skipped.map { "\($0): skipped" }).joined(separator: "\n"), route: nil))
-        await speaker.say(title)
+        await say(title)
     }
 
     /// Saves a prompt that did not go in its chat's composer, as the form
@@ -521,7 +553,7 @@ final class VoiceSession: Identifiable {
             return
         }
         phase = .done(Done(title: result, detail: plan.chat.computer, route: route(to: plan.chat)))
-        await speaker.say(result)
+        await say(result)
     }
 
     private func send(_ command: ChatCommand, to chat: VoiceCatalog.Chat) async -> String? {

@@ -6,20 +6,28 @@ use serde::{Deserialize, Serialize};
 /// The device and the connection a prompt came from. The client that
 /// relays a prompt sets it, never the person typing: the remote control
 /// daemon replaces whatever a phone claims.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Origin {
     pub device: Device,
     pub via: Via,
+    /// The authenticated phone's id on the computer receiving this prompt.
+    /// Older clients omit it. Never a bearer token or a device name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phone: Option<String>,
 }
 
 impl Origin {
     pub const fn new(device: Device, via: Via) -> Self {
-        Self { device, via }
+        Self {
+            device,
+            via,
+            phone: None,
+        }
     }
 
     /// Whether the person can open a path on the agent's machine where they
     /// typed: only on that machine, in the desktop app or its terminal.
-    pub fn opens_paths(self) -> bool {
+    pub fn opens_paths(&self) -> bool {
         self.via == Via::Local && matches!(self.device, Device::Desktop | Device::Terminal)
     }
 }

@@ -113,6 +113,10 @@ Statuses: `0` ok, `1` offline, `2` busy, `3` timeout, `4` limited,
 
 #### WebSocket fallback and HTTP
 
+When a relay bans the caller’s network address, its HTTP 403 carries
+`Sheprd-Relay-Banned: 1` and `Cache-Control: no-store`. Clients use this
+response on `/v1/info` to identify a ban before opening a connection.
+
 | Route | What it does |
 | --- | --- |
 | `GET /v1/listen` | A computer's control socket. The relay sends `{"t":"challenge","nonce","version":1}`; the computer answers `{"key","signature","token"?}` over `"sheprd-relay/listen/v1\0" ‖ name ‖ 0x00 ‖ nonce`, where the name is the relay's host and path prefix as its endpoint gives them (`Endpoint::proof_name`, `relay.example.org/sheprd`). Binding the name stops one relay passing another's challenge through, prefixes included. The relay answers `{"t":"ready","route"}`. The computer sends `{"t":"dial_keys","keys"}` and `{"t":"pairing_key","key","seconds"}`, each answered `{"t":"status","status"}`, and hears `{"t":"incoming","session","key"}` for each dial. A newer listener with the same key replaces the older one, which is closed with 4409. |
@@ -221,7 +225,7 @@ ban it:
 
 | Offense | Points |
 | --- | --- |
-| Hitting a rate limit or the per-address connection cap | 1 |
+| Hitting a rate limit or the per-address connection cap | 0; excess work is refused |
 | Probing: a route or session id that does not parse, a stream held open with no request | 2 |
 | A forged proof or wrong listen token; malformed messages or frames | 3 |
 | Sending more than four times `max-transfer-per-hour` (20 GiB) in an hour | 10, a ban at once |
@@ -229,7 +233,12 @@ ban it:
 A refused dial costs nothing, whether no one listens or the key is not
 named: the two must cost the same, so a ban never reveals an occupied
 route, and a phone retrying while its computer is off must never get its
-household banned. The dial rate limit holds a flood of either back. Wrong
+household banned. The dial rate limit holds a flood of either back. Capacity
+and rate refusals never accumulate ban points: a desktop reconnecting its
+terminals, chats, and background commands, or several users sharing one public
+address, can legitimately reach those limits. The limits continue to refuse
+excess work; releasing capacity or replenishing the rate bucket permits retries
+without waiting for an IP ban to expire. Wrong
 dashboard tokens block that address from the dashboard for 15 minutes,
 never from the relay, so one person's typos cannot cost everyone behind a
 shared address their computers.
@@ -245,12 +254,10 @@ limit both ways for an hour sends 14 GiB a side and is never slowed.
 - A banned address is refused before any new work: before the QUIC
   handshake (even before a retry), before every new stream, and before
   every HTTP route but `/healthz`.
-- A ban that any probe, forged proof, malformed message, or overrun budget
-  led to also ends the address's open sessions (QUIC code 8, WebSocket
-  4429), its QUIC connections, and its listeners. A ban earned by hitting
-  limits alone leaves them open, and its listeners keep taking dials
-  (WebSocket accepts included): a household or a carrier's NAT can hit
-  limits together without anyone misbehaving.
+- A ban for probes, forged proofs, malformed messages, or an overrun budget
+  also ends the address's open sessions (QUIC code 8, WebSocket 4429), its
+  QUIC connections, and its listeners. Hitting capacity or rate limits alone
+  never bans an address or ends its existing sessions and listeners.
 - Bans are checked under the same lock that opens sessions and registers
   listeners, so a ban cannot slip between a dial and its session. A ban
   closes the address's QUIC connections, and every new stream checks.
@@ -1080,14 +1087,20 @@ through. B's daemon admits that tunnel key, sees that the device has an
 SSH key, splices the session to its SSH server instead of serving the
 API, and marks the device seen.
 
-**Joining the fleet in the same step** (built). Pairing leaves both
-computers in one fleet, whichever of them was in it (Fleet, Joining):
+**Joining the fleet in the same step** (the protocol is built; Sheprd's
+page no longer uses it). Add Device > Nearby Sheprd only pairs: it claims
+as soon as both screens show the code, with no fleet, so the other
+computer shows Allow at once. Pairing is pairing; joining a fleet is
+Settings > Fleet's, later (Invite on a machine this computer reaches).
+The daemons still carry and check a claim's fleet, as below, for peers
+that send one:
 
 - B names its fleet in the sealed offer while it is a live computer
   member (`fleet::bluetooth::hint`: the id, and its computer and host
   counts for the words, never trusted).
-- Once both screens show the code, A's page knows both fleets and the
-  child waits for its choice (`PairInput::Claim`) before it claims:
+- Once both screens show the code, the child waits for the page's claim
+  (`PairInput::Claim`). Sheprd's page sends it at once with no fleet; a
+  claim with one carries:
 
   | A | B | A's page offers | The claim carries |
   | --- | --- | --- | --- |
@@ -2410,8 +2423,8 @@ manual multi-machine and phone steps left unticked in its QA list.
      through the fleet, its pairing is superseded; a removed member's
      pairings go with it (phase 2).
    - **Bringing existing machines in:** saved devices, cloud machines,
-     and computers paired over Bluetooth show under Machines this Sheprd
-     reaches, to Share or Invite; paired phones join from the phone
+     and computers paired over Bluetooth show under Connected machines,
+     by the name Devices gives them, to Share or Invite; paired phones join from the phone
      (phase 5). Nothing is spread without that step.
 7. **Bluetooth on Linux and Windows:** scanning in `crates/sheprd-nearby`,
    then the transport measurement and its verdict here.

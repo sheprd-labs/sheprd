@@ -1,21 +1,21 @@
 //! `machine agent`, `exec`, and `screenshot`: what comes back from inside a
 //! virtual Mac. `exec` prints as `cloud exec` does.
-use super::{Context, Output, unexpected};
+use super::{Machines, Output, unexpected};
 use crate::{
     cli::control::ExecCommand,
     control::{
         client::hosts::exec,
         protocol::{
-            Request, Response,
+            Response,
             tabs::{MachineAgentInfo, Reply, TabOp},
         },
     },
 };
 use std::path::Path;
 
-pub(super) fn agent(name: String, context: &Context) -> crate::Result<Output> {
+pub(super) fn agent(name: String, on: &Machines) -> crate::Result<Output> {
     let op = TabOp::MachineAgent { name: name.clone() };
-    match context.call(Request::Tab, op)? {
+    match on.call(op)? {
         Response::Tab {
             reply: Reply::MachineAgent(info),
         } => Output::data(describe(&name, &info), &info),
@@ -46,14 +46,14 @@ pub(super) fn describe(name: &str, info: &MachineAgentInfo) -> String {
     ) // i18n: data
 }
 
-pub(super) fn exec(command: ExecCommand, context: &Context) -> crate::Result<Output> {
+pub(super) fn exec(command: ExecCommand, on: &Machines) -> crate::Result<Output> {
     let op = TabOp::MachineExec {
         name: command.device,
         command: command.command,
         cwd: command.cwd,
         wait_seconds: command.timeout,
     };
-    match context.call(Request::Tab, op)? {
+    match on.call(op)? {
         Response::Tab {
             reply: Reply::MachineExec(info),
         } => exec::output(&info),
@@ -63,13 +63,13 @@ pub(super) fn exec(command: ExecCommand, context: &Context) -> crate::Result<Out
 
 /// The app writes the picture, so the path is made absolute here, where the
 /// caller's working directory is known.
-pub(super) fn screenshot(name: String, path: &Path, context: &Context) -> crate::Result<Output> {
+pub(super) fn screenshot(name: String, path: &Path, on: &Machines) -> crate::Result<Output> {
     let path = std::path::absolute(path)?;
     let path = path
         .to_str()
         .ok_or(crate::Error::InvalidLocalPage)?
         .to_owned();
-    match context.call(Request::Tab, TabOp::MachineScreenshot { name, path })? {
+    match on.call(TabOp::MachineScreenshot { name, path })? {
         Response::Tab {
             reply: reply @ Reply::MachineScreenshot { .. },
         } => {
@@ -89,12 +89,12 @@ pub(super) fn screenshot(name: String, path: &Path, context: &Context) -> crate:
 
 /// Wait in the CLI process, never on the app thread. Progress stays on
 /// stderr so --json retains one machine-readable result on stdout.
-pub(super) fn claim(name: String, wait: u64, context: &Context) -> crate::Result<Output> {
+pub(super) fn claim(name: String, wait: u64, on: &Machines) -> crate::Result<Output> {
     use crate::control::protocol::ErrorCode;
     use std::time::{Duration, Instant};
     let deadline = Instant::now() + Duration::from_secs(wait);
     loop {
-        match context.act(Request::Tab, TabOp::MachineClaim { name: name.clone() }) {
+        match on.act(TabOp::MachineClaim { name: name.clone() }) {
             Err(crate::Error::Control(crate::control::Error::Rejected {
                 code: ErrorCode::Busy,
                 ref message,

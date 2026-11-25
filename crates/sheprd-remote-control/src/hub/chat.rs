@@ -8,8 +8,8 @@
 
 use super::{Error, Result};
 use sheprd_chat_protocol::{
-    ClientKind, ClientMessage, Command, CommandId, Cursor, REVISION, ServerMessage, Transcript,
-    VERSION, read_frame, write_frame,
+    ClientKind, ClientMessage, Command, CommandId, Cursor, ServerMessage, Transcript, VERSION,
+    read_frame, write_frame,
 };
 use sheprd_client::private_endpoint::{Closer, Connection};
 use std::{
@@ -26,6 +26,11 @@ use std::{
     time::Duration,
 };
 use tokio::sync::{broadcast, oneshot};
+
+/// The attach revision the daemon reads. Phones decode entries strictly,
+/// so the threads revision (5: handoff entries) waits until they draw them;
+/// until then the chat program sends its handoffs as notices.
+const PHONE_REVISION: u32 = 4;
 
 /// How long connecting waits for a free pipe instance on Windows.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(2);
@@ -416,7 +421,7 @@ impl Chat {
         let (sender, queued) = mpsc::sync_channel(MAX_COMMANDS);
         let hello = ClientMessage::Hello {
             client: ClientKind::Remote,
-            revision: REVISION,
+            revision: PHONE_REVISION,
             since,
             version: VERSION,
         };

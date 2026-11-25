@@ -16,11 +16,11 @@
 # none. Uninstalled names are ignored, and at most 8 are accepted per section.
 # With none installed and [terminal] fallback unset, a pane showing an icon
 # brings up a dismissible card naming a Nerd Font to install.
-# [sidebar], [tabs], and [ui] then fall back to the platform's Chinese,
-# Japanese, and Korean faces (PingFang and Hiragino on macOS, Microsoft YaHei
-# and Yu Gothic on Windows, Noto Sans CJK on Linux), the one matching the
-# first CJK language in `language` or the system's languages first, so Han
-# characters take that region's shapes. [terminal] keeps the icons alone.
+# [sidebar], [tabs], and [ui] prefer dedicated Symbols Nerd Fonts, then the
+# platform's Chinese, Japanese, and Korean faces, then other Nerd Fonts.
+# The first CJK language in `language` or the system's languages takes
+# priority among CJK faces, so Han characters use that region's shapes.
+# [terminal] keeps only the automatic Nerd Font cascade.
 # Saved changes to the local file reload automatically in every GUI window.
 
 # Built-ins: Default, Nord, Dracula, Catppuccin Mocha, Catppuccin Latte, plus
@@ -116,6 +116,12 @@ show_system_load = true
 # GPU tool runs on any host.
 show_gpu_load = false
 show_sidebar_gpu_load = false
+# How the Moonframe window's sidebar shows each host's load: "compact" puts
+# the shares beside its name (CPU, memory, then GPU and video memory when
+# show_sidebar_gpu_load is on); "detailed" adds lines under it, CPU with its
+# graph and memory with its meter, then the GPU and video memory when
+# show_sidebar_gpu_load is on. Also under Settings > Sidebar.
+sidebar_load = "compact"
 # Checkpoint a worktree each time one of its agents starts or finishes a turn,
 # locally or over SSH, so its files can be rolled back from the workspace
 # menu's Checkpoints. Snapshots include untracked (not ignored) files, live in
@@ -842,6 +848,16 @@ size = 12
 # enabled = false
 # seconds = 10
 
+# Virtual Macs shared with your other computers.
+# macOS runs two at once per Mac; when they are busy, `sheprd machine
+# --host HOST` borrows one from another Mac this window reaches.
+# [machine]
+# Let your other computers borrow this Mac's virtual Macs. A Mac that keeps
+# Tart VMs, or runs other programs' VMs, never lends.
+# lend = true
+# Hosts, by ID or label, to borrow from without asking each time.
+# borrow_from = []
+
 # Zen mode (View > Toggle Zen Mode, or `toggle_zen_mode`) hides the
 # header, sidebar, tab strips, status bar, and notices, and every group but
 # the one in use, for this window and session. Toasts and menus still show.
@@ -863,9 +879,9 @@ size = 12
 # acp_chats = true
 #
 # Open Sheprd in the window Moonframe lays out in Luau, in beta; false opens the
-# classic window. Read when Sheprd starts. Off by default on Windows. On macOS,
+# classic window (the default). Read when Sheprd starts. On macOS,
 # holding Option as Sheprd starts opens the other window once.
-# moonframe_window = true
+# moonframe_window = false
 #
 # Open a space's menu when the pointer rests on its sidebar row, without a
 # right click. Moving the pointer anywhere but into that menu closes it again.
@@ -1067,9 +1083,9 @@ size = 12
 # Antigravity (antigravity)
 # [usage.providers.antigravity]
 #   The agy executable on the probed host when it is not on the PATH (install it
-#   with `brew install --cask antigravity-cli`, run `agy` once, and sign in).
-#   agy runs only when this is set or antigravity is in show_providers, as a
-#   signed-out agy opens a browser to sign in.
+#   with `brew install --cask antigravity-cli`, run `agy` or `agy acp --login`,
+#   and sign in). A signed-in agy CLI is detected automatically; set this or
+#   list antigravity in show_providers to override detection.
 # cli_path = ""  # or ANTIGRAVITY_CLI_PATH
 #
 # Copilot (copilot)

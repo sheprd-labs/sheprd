@@ -7,6 +7,7 @@
 //! features read, so a reader moved onto it works on both backends.
 
 mod core;
+mod names;
 
 pub use core::CoreWorkspace;
 
@@ -30,6 +31,13 @@ pub struct Session {
     pub focused: Option<String>,
     /// In the order the user arranged them.
     pub workspaces: Vec<Workspace>,
+}
+
+/// Path rules of the host that owns a terminal, independent of its viewer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FolderStyle {
+    Posix,
+    Windows,
 }
 
 /// A workspace: a folder and the tabs opened in it.

@@ -37,3 +37,16 @@ error-machine-write = Cannot write { $path }: { $error }
 error-machine-name-mismatch = Open { $installed } instead of { $requested } to use the installed machine name.
 
 error-machine-capacity = No VM slots available: { $in_use } of { $limit } in use. Wait for a VM to stop or reuse an unreserved running VM.
+
+error-machine-remote-answer = The answer from { $host } was not one Sheprd sends: { $error }
+error-machine-remote-base64 = The picture from the other computer is not valid base64: { $error }
+error-machine-remote-decode = Cannot read the screenshot: { $error }
+error-machine-remote-encode = Cannot encode the frame: { $error }
+error-machine-remote-missing = No Sheprd is installed on { $host }.
+error-machine-remote-not-png = The picture from the other computer is not a PNG of the size it says.
+error-machine-remote-not-running = Sheprd is not running on { $host }, so its virtual Macs cannot start.
+error-machine-remote-refused = { $host } answered: { $message }
+error-machine-remote-request = The request to { $host } could not be written: { $error }
+error-machine-remote-run = Cannot reach { $host }: { $error }
+error-machine-remote-too-large = The answer from { $host } is larger than a picture can be.
+error-machine-remote-too-old = Sheprd on { $host } is too old to lend virtual Macs. Update it there.

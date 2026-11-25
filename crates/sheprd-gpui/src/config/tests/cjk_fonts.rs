@@ -126,11 +126,12 @@ fn the_setting_names_the_script_before_the_system() -> anyhow::Result<()> {
 }
 
 #[test]
-fn interface_faces_search_icons_then_cjk_and_the_terminal_only_icons() -> anyhow::Result<()> {
+fn interface_faces_search_symbols_then_cjk_then_patched_text() -> anyhow::Result<()> {
     let mut config = Config::parse("language = 'ko'\n[tabs]\nfallback = ['Menlo']")?;
     let families = || {
         let mut families: Vec<String> = every_family(PLATFORM_CJK_FONTS).into_iter().collect();
         families.push("Symbols Nerd Font Mono".to_owned());
+        families.push("D2KodingLigature Nerd Font Mono".to_owned());
         families
     };
     config.resolve_fonts_with(families, |_| false);
@@ -142,12 +143,19 @@ fn interface_faces_search_icons_then_cjk_and_the_terminal_only_icons() -> anyhow
     assert!(!expected_cjk.is_empty());
     let mut expected = vec!["Symbols Nerd Font Mono".to_owned()];
     expected.extend(expected_cjk);
+    expected.push("D2KodingLigature Nerd Font Mono".to_owned());
     assert_eq!(config.ui.fallbacks.as_deref(), Some(expected.as_slice()));
     assert_eq!(config.sidebar.fallbacks, config.ui.fallbacks);
     // The terminal keeps the icon cascade alone; a configured list is kept.
     assert_eq!(
         config.terminal.fallbacks.as_deref(),
-        Some(["Symbols Nerd Font Mono".to_owned()].as_slice())
+        Some(
+            [
+                "Symbols Nerd Font Mono".to_owned(),
+                "D2KodingLigature Nerd Font Mono".to_owned(),
+            ]
+            .as_slice()
+        )
     );
     assert_eq!(
         config.tabs.fallbacks.as_deref(),

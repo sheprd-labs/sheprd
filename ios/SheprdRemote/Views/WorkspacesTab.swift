@@ -55,7 +55,7 @@ struct WorkspacesTab: View {
         .task { if UserDefaults.standard.bool(forKey: "openComputer") { details = model.computers.first?.device } }
         #endif
         .toolbar {
-            if query.isEmpty, !ComputerTags.all(in: model.computers).isEmpty || model.computers.count > 1 {
+            if query.isEmpty, !ComputerTags.all(in: model.shownComputers).isEmpty || model.shownComputers.count > 1 {
                 ToolbarItem(placement: .topBarLeading) { TagFilterMenu() }
             }
             if query.isEmpty, machines.count > 1 {
@@ -122,16 +122,16 @@ struct WorkspacesTab: View {
         .refreshable { model.fleet.networkChanged() }
         .nearbyBanner()
         .overlay {
-            if model.computers.isEmpty {
+            if model.shownComputers.isEmpty {
                 ContentUnavailableView("No computers yet", systemImage: "desktopcomputer",
-                                       description: Text("Pair one in Settings to see its workspaces here."))
+                                       description: Text("Install Sheprd on your computer from [sheprd.org](https://sheprd.org), then pair it from Home to see its workspaces here."))
             }
         }
     }
 
     /// The computers the filter leaves.
     private var machines: [Fleet.Machine] {
-        let shown = model.tagFilter.shown(among: model.computers)
+        let shown = model.tagFilter.shown(among: model.shownComputers)
         return model.fleet.machines.filter { shown.contains($0.computer.device) }
     }
 
@@ -234,7 +234,7 @@ struct MachineStatus: View {
     var machine: Fleet.Machine
 
     var body: some View {
-        switch machine.status {
+        switch machine.presentedStatus {
         case .online:
             HStack(spacing: 6) {
                 if let waiting = machine.home?.waiting, waiting > 0 {
@@ -248,6 +248,8 @@ struct MachineStatus: View {
             }
         case .connecting:
             ProgressView().controlSize(.small)
+        case .relayBanned:
+            Label("Relay ban", systemImage: "nosign").font(.caption).foregroundStyle(.red)
         case .offline:
             Image(systemName: "wifi.slash").foregroundStyle(.secondary).accessibilityLabel("Offline")
         case .revoked:
@@ -510,6 +512,11 @@ private struct MachineActions: View {
 
     var body: some View {
         let computer = machine.computer
+        if case .online = machine.status {
+            Button("New Project…", systemImage: "folder.badge.plus") {
+                model.creating = .project(device: machine.id)
+            }
+        }
         Toggle("Hold Alerts at the Desk", systemImage: "bell.badge", isOn: Binding(
             get: { computer.presence },
             set: { model.setPresence($0, for: computer) }

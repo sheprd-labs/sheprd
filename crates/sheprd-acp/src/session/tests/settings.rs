@@ -6,7 +6,8 @@ fn options() -> Value {
     json!([
         {"id": "model", "name": "Model", "category": "model", "type": "select",
             "currentValue": "opus", "options": [
-                {"value": "opus", "name": "Opus"}, {"value": "sonnet", "name": "Sonnet"}]},
+                {"value": "opus", "name": "Opus"}, {"value": "sonnet", "name": "Sonnet"},
+                {"value": "gemini-4-neon", "name": "Gemini 4 Neon"}]},
         {"id": "effort", "name": "Thinking", "category": "thought_level", "type": "select",
             "currentValue": "high", "options": [{"group": "levels", "name": "Levels",
                 "options": [{"value": "low", "name": "Low"}, {"value": "high", "name": "High"}]}]},
@@ -71,15 +72,15 @@ fn changing_a_setting_asks_the_agent_and_takes_its_answer() {
         Command::SetOption {
             id: "model".into(),
             value: OptionValue::Choice {
-                id: "sonnet".into(),
+                id: "gemini-4-neon".into(),
             },
         },
     );
     let request = harness.last_request("session/set_config_option");
     assert_eq!(request["params"]["configId"], "model");
-    assert_eq!(request["params"]["value"], "sonnet");
+    assert_eq!(request["params"]["value"], "gemini-4-neon");
     let mut answered = options();
-    answered[0]["currentValue"] = json!("sonnet");
+    answered[0]["currentValue"] = json!("gemini-4-neon");
     harness.respond(
         request["id"].as_i64().unwrap(),
         json!({"configOptions": answered}),
@@ -90,7 +91,7 @@ fn changing_a_setting_asks_the_agent_and_takes_its_answer() {
             .option(OptionCategory::Model)
             .unwrap()
             .current_name(),
-        "Sonnet"
+        "Gemini 4 Neon"
     );
 }
 

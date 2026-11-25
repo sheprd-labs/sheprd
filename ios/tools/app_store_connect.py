@@ -15,6 +15,7 @@ import urllib.parse
 import urllib.request
 
 API = "https://api.appstoreconnect.apple.com/v1"
+MAX_PAGES = 10
 
 
 def b64url(data: bytes) -> str:
@@ -70,11 +71,35 @@ def bearer_from_env() -> str:
     )
 
 
-def get(path: str, query: dict, bearer: str) -> dict:
-    url = f"{API}/{path}?{urllib.parse.urlencode(query)}"
+def get_url(url: str, bearer: str) -> dict:
     request = urllib.request.Request(url, headers={"Authorization": f"Bearer {bearer}"})
     with urllib.request.urlopen(request, timeout=30) as response:
         return json.load(response)
+
+
+def get(path: str, query: dict, bearer: str) -> dict:
+    url = f"{API}/{path}?{urllib.parse.urlencode(query)}"
+    return get_url(url, bearer)
+
+
+def get_all(path: str, query: dict, bearer: str) -> list:
+    """Fetch every page, following only links back to this API."""
+    url = f"{API}/{path}?{urllib.parse.urlencode(query)}"
+    resources = []
+    for _ in range(MAX_PAGES):
+        response = get_url(url, bearer)
+        resources.extend(response["data"])
+        url = response.get("links", {}).get("next")
+        if not url:
+            return resources
+        parsed = urllib.parse.urlsplit(url)
+        if (
+            parsed.scheme != "https"
+            or parsed.netloc != "api.appstoreconnect.apple.com"
+            or not parsed.path.startswith("/v1/")
+        ):
+            raise ValueError("App Store Connect returned an unsafe pagination URL")
+    raise RuntimeError(f"App Store Connect returned more than {MAX_PAGES} pages")
 
 
 def send(method: str, path: str, body: dict, bearer: str) -> dict:
@@ -85,7 +110,8 @@ def send(method: str, path: str, body: dict, bearer: str) -> dict:
         headers={"Authorization": f"Bearer {bearer}", "Content-Type": "application/json"},
     )
     with urllib.request.urlopen(request, timeout=30) as response:
-        return json.load(response)
+        payload = response.read()
+    return json.loads(payload) if payload else {}
 
 
 def app_id(bundle_id: str, bearer: str):

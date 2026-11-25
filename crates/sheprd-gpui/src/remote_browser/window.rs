@@ -235,7 +235,7 @@ impl SheprdWindow {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !crate::browser::EMBEDDED {
+        if focus && !crate::browser::EMBEDDED {
             cx.open_url(url.as_str());
             return;
         }

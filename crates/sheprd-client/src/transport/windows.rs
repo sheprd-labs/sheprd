@@ -171,16 +171,39 @@ enum Direction {
     Outbound,
 }
 
+/// Which ends of a private pipe are overlapped.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Overlap {
+    /// This process's end only; the other is synchronous, as a child's
+    /// standard stream usually expects.
+    Ours,
+    /// Both ends, for tests that drive both here.
+    Both,
+    /// The other end only, for a child that needs it and a reader here that
+    /// blocks; see [`overlapped_output`].
+    Peer,
+}
+
+/// A pipe for a child's stdout or stderr, which the child writes through an
+/// overlapped handle and this process reads with plain blocking reads: this
+/// end, and the child's. OpenSSH for Windows' `ssh.exe` stops delivering
+/// output into a synchronous pipe or a file once its stdin has ended; into
+/// an overlapped pipe it keeps going. Drop the command once the child is
+/// spawned, so that an exited child reads as closed.
+pub fn overlapped_output() -> io::Result<(File, Stdio)> {
+    let (reader, stdout) = private_pipe(Direction::Inbound, Overlap::Peer)?;
+    Ok((File::from(reader), stdout.into()))
+}
+
 /// Create a private pipe and open its other end, returning this process's end
-/// (overlapped) and the other one (synchronous, as a child's standard stream
-/// expects; `overlapped_peer` is for tests that drive both ends here).
+/// and the other one, overlapped as `overlap` says.
 ///
 /// This is what the standard library does for `Stdio::piped`, made explicit
 /// because its ends are not documented to be overlapped: a unique name, one
 /// instance only, created first and refusing remote clients, so the open
 /// below is the only client that can ever reach it. A process that raced it
 /// would make that open fail rather than share the pipe.
-fn private_pipe(direction: Direction, overlapped_peer: bool) -> io::Result<(OwnedHandle, File)> {
+fn private_pipe(direction: Direction, overlap: Overlap) -> io::Result<(OwnedHandle, File)> {
     static NEXT: AtomicU64 = AtomicU64::new(0);
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -191,6 +214,10 @@ fn private_pipe(direction: Direction, overlapped_peer: bool) -> io::Result<(Owne
         NEXT.fetch_add(1, Ordering::Relaxed)
     );
     let wide: Vec<u16> = OsStr::new(&name).encode_wide().chain([0]).collect();
+    let ours = match overlap {
+        Overlap::Ours | Overlap::Both => FILE_FLAG_OVERLAPPED,
+        Overlap::Peer => 0,
+    };
     let access = match direction {
         Direction::Duplex => PIPE_ACCESS_DUPLEX,
         Direction::Inbound => PIPE_ACCESS_INBOUND,
@@ -203,7 +230,7 @@ fn private_pipe(direction: Direction, overlapped_peer: bool) -> io::Result<(Owne
     let handle = unsafe {
         let handle = CreateNamedPipeW(
             wide.as_ptr(),
-            access | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
+            access | ours | FILE_FLAG_FIRST_PIPE_INSTANCE,
             PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
             1,
             CHUNK as u32,
@@ -222,7 +249,7 @@ fn private_pipe(direction: Direction, overlapped_peer: bool) -> io::Result<(Owne
         Direction::Inbound => options.write(true),
         Direction::Outbound => options.read(true),
     };
-    if overlapped_peer {
+    if matches!(overlap, Overlap::Both | Overlap::Peer) {
         options.custom_flags(FILE_FLAG_OVERLAPPED);
     }
     Ok((handle, options.open(&name)?))
@@ -255,8 +282,8 @@ impl Stream {
     /// stdout. Drop the command once the child is spawned; until then it holds
     /// the child's ends, and an exited child would never read as closed.
     pub(crate) fn child() -> io::Result<(Self, Stdio, Stdio)> {
-        let (writer, stdin) = private_pipe(Direction::Outbound, false)?;
-        let (reader, stdout) = private_pipe(Direction::Inbound, false)?;
+        let (writer, stdin) = private_pipe(Direction::Outbound, Overlap::Ours)?;
+        let (reader, stdout) = private_pipe(Direction::Inbound, Overlap::Ours)?;
         Ok((Self::new(reader, writer)?, stdin.into(), stdout.into()))
     }
 
@@ -297,7 +324,7 @@ impl Stream {
 
     /// A connected pair over a private pipe, for tests.
     pub fn pair() -> io::Result<(Self, Self)> {
-        let (server, client) = private_pipe(Direction::Duplex, true)?;
+        let (server, client) = private_pipe(Direction::Duplex, Overlap::Both)?;
         Ok((Self::duplex(server)?, Self::duplex(client.into())?))
     }
 }

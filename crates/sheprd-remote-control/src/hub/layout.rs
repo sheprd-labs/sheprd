@@ -41,6 +41,14 @@ pub(crate) struct Workspace {
     pub(crate) terminals: Vec<Terminal>,
 }
 
+impl Workspace {
+    /// The unlisted core group takes its cwd from one terminal and can span checkouts.
+    pub(crate) fn checkout_folder(&self) -> Option<&str> {
+        let (_, id) = super::sessions::split_id(&self.id);
+        (id != super::core::UNLISTED && !self.cwd.is_empty()).then_some(self.cwd.as_str())
+    }
+}
+
 /// A pane running `herdr-acp`.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Chat {
@@ -80,6 +88,8 @@ pub(crate) struct Terminal {
 /// An agent Herdr detects in a terminal tab, outside any chat.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct TerminalAgent {
+    /// The snapshot boot scopes Herdr 1 pane numbers across restarts.
+    pub(crate) boot: String,
     pub(crate) name: Option<String>,
     pub(crate) status: AgentStatus,
     /// The pane it runs in, which a phone opens for it.
@@ -293,6 +303,7 @@ pub(crate) fn project_with(snapshot: &ClientShellSnapshot, listed: Chats) -> Lay
                         .iter()
                         .filter(|agent| agent.tab_id == tab.tab_id)
                         .map(|agent| TerminalAgent {
+                            boot: snapshot.boot_id.clone(),
                             name: agent_kind(agent),
                             status: agent.agent_status,
                             pane: agent.pane_id.clone(),

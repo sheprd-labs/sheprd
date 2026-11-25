@@ -149,6 +149,14 @@ pub(crate) fn entry(entry: &Entry, width: usize) -> Vec<Line<'static>> {
                 Style::default().fg(Color::DarkGray),
             ));
         }
+        EntryKind::Handoff(handoff) => prefixed(
+            &mut lines,
+            "─ ",
+            "  ",
+            &handoff.notice_text(),
+            width,
+            Style::default().fg(Color::Blue),
+        ),
         EntryKind::Notice { level, text, .. } => {
             let color = match level {
                 NoticeLevel::Info => Color::Blue,

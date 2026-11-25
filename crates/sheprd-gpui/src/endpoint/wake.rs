@@ -42,6 +42,18 @@ pub(crate) enum Trigger {
     Sleep,
 }
 
+impl Trigger {
+    /// How suspect a live link is. A link that lived through a network change
+    /// may still be retransmitting after the stall, so only a sleep asks for
+    /// an answer within seconds.
+    pub(crate) fn suspicion(self) -> sheprd_client::Suspicion {
+        match self {
+            Self::PathChanged | Self::NetworkRestored => sheprd_client::Suspicion::NetworkChanged,
+            Self::Sleep => sheprd_client::Suspicion::Slept,
+        }
+    }
+}
+
 /// How many network changes the monitor has reported, by kind.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct NetworkChanges {

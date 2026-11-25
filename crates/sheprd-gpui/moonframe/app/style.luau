@@ -23,7 +23,6 @@ return style {
 		[".sheprd-device-trash:hover"] = { background = "secondary" },
 		[".sheprd-device-activity:hover"] = { border_color = "muted-foreground" },
 		-- The left pane's edge: a hairline; the shell draws its handle.
-		[".sheprd-left-edge-line"] = { background = "border" },
 		-- An edge's handle, as Sheprd's own (src/panel_resize/grip.rs): its
 		-- accent pill, 3 across, growing and easing in over 180ms.
 		[".sheprd-grip"] = { background = "#78a9ff", radius = 999, opacity = 0, transition = "fade 180ms ease-out" },

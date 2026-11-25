@@ -15,7 +15,7 @@
 use super::{
     Error, Name, Result,
     configuration::new_identity,
-    store::{self, AUXILIARY, DISK, GUIDE, HARDWARE, IDENTITY, SETTINGS, STATE},
+    store::{self, AUXILIARY, DISK, FROM_IMAGE, GUIDE, HARDWARE, IDENTITY, READY, SETTINGS, STATE},
 };
 use std::{
     fs,
@@ -85,7 +85,10 @@ fn save_in(source: &Path, machine: &Name, root: &Path, image: &Name) -> Result<(
     clone_as(source, root, image, |_| Ok(()))
 }
 
-/// Makes machine `name` from image `image`, with an identity of its own.
+/// Makes machine `name` from image `image`, with an identity of its own. An
+/// image whose agent was seen set up makes a machine without a setup guide;
+/// one saved before Sheprd kept that note opens its guide once the agent
+/// says it is needed ([`super::guide::Opening::Quiet`]).
 pub(crate) fn create(name: &Name, image: &Name) -> Result<()> {
     create_in(
         &root()?.join(image.as_str()),
@@ -100,11 +103,15 @@ fn create_in(source: &Path, image: &Name, root: &Path, name: &Name, identity: &[
     if !source.join(DISK).is_file() {
         return Err(Error::ImageNotFound(image.clone()));
     }
+    let ready = source.join(READY).is_file();
     clone_as(source, root, name, |staging| {
         let path = staging.join(IDENTITY);
         fs::write(&path, identity).map_err(|source| store::write_error(&path, source))?;
+        if ready {
+            return Ok(());
+        }
         let guide = staging.join(GUIDE);
-        fs::write(&guide, b"").map_err(|source| store::write_error(&guide, source))
+        fs::write(&guide, FROM_IMAGE).map_err(|source| store::write_error(&guide, source))
     })
 }
 
@@ -133,9 +140,11 @@ fn clone_as(
     for file in [AUXILIARY, DISK, HARDWARE] {
         clone_file(&source.join(file), &staging.path().join(file))?;
     }
-    match clone_file(&source.join(SETTINGS), &staging.path().join(SETTINGS)) {
-        Err(Error::Read { source, .. }) if source.kind() == ErrorKind::NotFound => {}
-        cloned => cloned?,
+    for file in [READY, SETTINGS] {
+        match clone_file(&source.join(file), &staging.path().join(file)) {
+            Err(Error::Read { source, .. }) if source.kind() == ErrorKind::NotFound => {}
+            cloned => cloned?,
+        }
     }
     finish(staging.path())?;
     fs::rename(staging.path(), &target).map_err(|source| match source.kind() {

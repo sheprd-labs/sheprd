@@ -120,6 +120,8 @@ def run_case(args, mode, round_number):
         (destination / "pane-current.json").write_text(json.dumps(current))
         pane = current.get("pane", {}).get("pane_id") or current.get("pane_id") or sandbox.panes[0]
         environment = {**sandbox.app_env(), "ZED_MEASUREMENTS": "1"}
+        if mode == "moonframe":
+            environment["SHEPRD_MOONFRAME"] = "1"
         command = [args.app] + (["--classic"] if mode == "classic" else [])
         log = (destination / "app.log").open("w")
         app = subprocess.Popen(command, env=environment, stdout=subprocess.PIPE,

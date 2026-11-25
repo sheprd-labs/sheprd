@@ -1,6 +1,7 @@
 use super::*;
 use anyhow::Context as _;
 
+mod app_store;
 mod channels;
 mod packages;
 mod progress;

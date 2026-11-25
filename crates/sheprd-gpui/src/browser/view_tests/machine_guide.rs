@@ -21,7 +21,7 @@ fn the_setup_guide_sits_beside_the_machine_and_closes(cx: &mut gpui::TestAppCont
         let location = Some(Location::Machine { name: name.clone() });
         let id = Store::update(cx, |store| store.open(scope, "w0", location, None)).unwrap();
         view.update(cx, |view, cx| view.show_browser_tab(id, window, cx));
-        guide::begin(&name, cx);
+        guide::begin(&name, guide::Opening::Shown, cx);
     });
     draw(cx);
     draw(cx);

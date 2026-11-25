@@ -24,6 +24,16 @@ fn the_line_carries_the_program_its_choice_and_environment() {
         " sh -c 'exec \"$0\" \"$@\"' 'env' 'ANTHROPIC_MODEL=opus' \
          '/Applications/Sheprd.app/Contents/MacOS/herdr-acp' '--choose' 'codex'"
     );
+    assert_eq!(
+        shell_line(
+            Agent::Antigravity,
+            program,
+            AgentChoice::Open,
+            &BTreeMap::new()
+        )
+        .unwrap(),
+        " sh -c 'exec \"$0\" \"$@\"' '/Applications/Sheprd.app/Contents/MacOS/herdr-acp' '--choose' 'antigravity'"
+    );
     // A quote would end the word early, so no line is typed.
     let env = BTreeMap::from([("NOTE".to_owned(), "it's".to_owned())]);
     assert!(shell_line(Agent::Claude, program, AgentChoice::Fixed, &env).is_none());

@@ -1,3 +1,4 @@
+use sheprd_relay::{Endpoint, client};
 use std::path::PathBuf;
 
 /// Why adding a nearby Sheprd, or reaching one through a relay, failed.
@@ -45,8 +46,12 @@ pub enum Error {
     RecordConflict(String),
     #[error("the relay record is not valid")]
     RecordFormat,
-    #[error("no relay of the other computer could be reached")]
-    Relay(#[source] sheprd_relay::client::Error),
+    #[error("{endpoint}: {source}")]
+    Relay {
+        endpoint: String,
+        #[source]
+        source: client::Error,
+    },
     #[error("the other computer's relay details are not valid")]
     RelayInfo,
     #[error("could not start the async runtime")]
@@ -62,4 +67,44 @@ pub enum Error {
     // keep-sorted end
 }
 
+impl Error {
+    /// Keep an explicit ban visible if later relays also fail.
+    pub(super) fn record_relay(&mut self, endpoint: &Endpoint, source: client::Error) {
+        if !matches!(
+            self,
+            Self::Relay {
+                source: client::Error::Banned,
+                ..
+            }
+        ) {
+            *self = Self::Relay {
+                endpoint: endpoint.to_string(),
+                source,
+            };
+        }
+    }
+}
+
 pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[cfg(test)]
+mod tests {
+    use crate::desktop::Error;
+    use sheprd_relay::{Endpoint, client};
+
+    #[test]
+    fn a_later_offline_relay_preserves_the_confirmed_ban_and_its_endpoint()
+    -> Result<(), sheprd_relay::endpoint::Error> {
+        let first = Endpoint::parse("https://first.example")?;
+        let second = Endpoint::parse("https://second.example")?;
+        let mut failure = Error::NoRelays;
+        failure.record_relay(&first, client::Error::Banned);
+        failure.record_relay(
+            &second,
+            client::Error::Refused(sheprd_relay::wire::Status::Offline),
+        );
+        assert!(failure.to_string().contains("first.example"));
+        assert!(failure.to_string().contains("banned your network address"));
+        Ok(())
+    }
+}

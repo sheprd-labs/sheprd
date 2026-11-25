@@ -93,9 +93,15 @@ pub(crate) fn pick_agent(snapshot: &ClientShellSnapshot) -> Option<Agent> {
             .find(|workspace| workspace.focused)
             .map(|workspace| workspace.workspace_id.as_str())
     })?;
-    let agent = snapshot
-        .focused_pane_id
-        .as_deref()
+    workspace_agent(snapshot, workspace, snapshot.focused_pane_id.as_deref())
+}
+
+fn workspace_agent(
+    snapshot: &ClientShellSnapshot,
+    workspace: &str,
+    pane: Option<&str>,
+) -> Option<Agent> {
+    let agent = pane
         .and_then(|pane| crate::agent_notes::agent(snapshot, pane))
         .filter(|agent| agent.workspace_id == workspace)
         .or_else(|| {
@@ -340,8 +346,17 @@ impl SheprdWindow {
     /// then reads their lines. Only the latest load lands.
     fn load_review(&mut self, id: TabId, cx: &mut Context<Self>) {
         // The pull request's base, when GitHub reported one for this branch.
-        let base_hint = self.git_pull_request().map(|pr| pr.base_ref_name.clone());
-        let status = self.git.status();
+        let Some(checkout) = self.reviews.get(&id).map(|review| &review.checkout) else {
+            return;
+        };
+        let base_hint = self
+            .checkout_pull_request(checkout)
+            .map(|pr| pr.base_ref_name.clone());
+        let status = self
+            .git
+            .tracked()
+            .filter(|tracked| *tracked == checkout)
+            .and_then(|_| self.git.status());
         let Some(review) = self.reviews.get_mut(&id) else {
             return;
         };
@@ -466,7 +481,7 @@ impl SheprdWindow {
             )
         })
         .expect("a tab");
-        let mut review = self.new_review(id, input_checkout, agent, cx);
+        let mut review = self.new_review(id, input_checkout, agent, self.selected_endpoint, cx);
         review.scope = loaded.scope;
         review.request = 1;
         review.set_loaded(loaded, cx);

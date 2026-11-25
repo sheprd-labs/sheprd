@@ -11,7 +11,7 @@ use axum::{
 };
 use sheprd_chat_protocol::{Device, Origin, Via};
 
-use super::Peer;
+use crate::web::Peer;
 
 /// Marks a request that came through Sheprd's relay rather than over the
 /// network.
@@ -19,7 +19,7 @@ use super::Peer;
 pub(crate) struct Relayed;
 
 /// The origin of the prompts a request carries.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct TypedFrom(pub(crate) Origin);
 
 impl<S: Send + Sync> FromRequestParts<S> for TypedFrom {
@@ -80,5 +80,13 @@ pub(crate) fn via(relayed: bool, peer: Option<IpAddr>, host: Option<&str>) -> Vi
         IpAddr::V4(ip) if ip.is_private() || ip.is_link_local() => Via::Lan,
         IpAddr::V6(ip) if ip.is_unique_local() || ip.is_unicast_link_local() => Via::Lan,
         _ => Via::Other,
+    }
+}
+
+impl TypedFrom {
+    /// Only the authenticated endpoint supplies this id; client JSON cannot.
+    pub(crate) fn authenticated(mut origin: Origin, device: &crate::control::DeviceId) -> Origin {
+        origin.phone = (origin.device == Device::PhoneApp).then(|| device.0.clone());
+        origin
     }
 }

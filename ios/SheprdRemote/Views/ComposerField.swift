@@ -22,7 +22,9 @@ struct ComposerField: UIViewRepresentable {
         view.backgroundColor = .clear
         view.textContainerInset = .zero
         view.textContainer.lineFragmentPadding = 0
-        view.isScrollEnabled = false
+        // Keep native caret scrolling enabled even while the field is growing.
+        // A speculative layout width must never change the editor’s scroll state.
+        view.alwaysBounceVertical = false
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         view.pasteConfiguration = UIPasteConfiguration(acceptableTypeIdentifiers: [
             UTType.image.identifier, UTType.plainText.identifier, UTType.url.identifier,
@@ -55,10 +57,6 @@ struct ComposerField: UIViewRepresentable {
         let line = view.font?.lineHeight ?? 22
         let fitting = view.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
         let height = min(max(fitting, line), line * CGFloat(maxLines))
-        let scrolls = fitting > height + 1
-        if view.isScrollEnabled != scrolls {
-            Task { @MainActor in view.isScrollEnabled = scrolls }
-        }
         return CGSize(width: width, height: ceil(height))
     }
 

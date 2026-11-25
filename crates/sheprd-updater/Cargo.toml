@@ -9,6 +9,11 @@ version.workspace      = true
 [lints]
 workspace = true
 
+[features]
+# The Mac App Store build: the store updates the app, so this copy never checks,
+# downloads, or installs a release, and never runs as the install helper.
+mas = []
+
 [dependencies]
 chrono.workspace        = true
 ed25519-dalek.workspace = true

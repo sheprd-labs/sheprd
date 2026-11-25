@@ -138,7 +138,7 @@ fn tools_become_the_commands_they_are_named_after() {
             target: "/tmp/a.html".into(),
             workspace: None,
             focus: true,
-            placement: Some(Placement::Beside),
+            placement: Placement::Beside,
         })
     );
     assert_eq!(

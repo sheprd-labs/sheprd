@@ -28,6 +28,11 @@ pub enum WindowCommand {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UiCommand {
+    Settings(Option<String>),
+    Guide {
+        text: Option<String>,
+        highlight: Option<String>,
+    },
     Traces,
     TracesFilter(TraceFilter),
     Sidebar(Switch),
@@ -99,6 +104,31 @@ pub(super) fn ui(args: &mut Args) -> Result<UiCommand, CliError> {
         what: "sidebar|statusbar|menubar|font-size|panel|agent-group|traces",
     })?;
     Ok(match verb.to_str() {
+        Some("settings") => UiCommand::Settings(args.optional_text()?),
+        Some("highlight") => UiCommand::Guide {
+            text: None,
+            highlight: Some(args.required_text("ROW_ID")?),
+        },
+        Some("guide") if args.flag("--clear") => UiCommand::Guide {
+            text: None,
+            highlight: None,
+        },
+        Some("guide") => {
+            let highlight = args.text_option("--highlight")?;
+            let text = args.words()?.ok_or(CliError::MissingArgument {
+                command: "ui guide",
+                what: "TEXT",
+            })?;
+            if !sheprd_remote_control::control::phone::valid_text(&text) {
+                return Err(CliError::InvalidValue(
+                    "TEXT: at most 500 characters, not blank",
+                ));
+            }
+            UiCommand::Guide {
+                text: Some(text),
+                highlight,
+            }
+        }
         Some("traces") => {
             let host = args.text_option("--host")?;
             let tag = args.text_option("--tag")?;

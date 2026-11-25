@@ -3,6 +3,21 @@ use std::{ffi::OsString, path::PathBuf};
 use super::*;
 
 #[test]
+fn a_delegated_turn_round_trips_with_a_validated_endpoint() {
+    use crate::brief::Delegation;
+    let parent = Delegation {
+        endpoint: EndpointId::random(),
+        started_ms: 1234,
+    };
+    let encoded = serde_json::to_string(&parent).unwrap();
+    assert_eq!(
+        serde_json::from_str::<Delegation>(&encoded).unwrap(),
+        parent
+    );
+    assert!(serde_json::from_str::<Delegation>(r#"{"endpoint":"bad","started_ms":1234}"#).is_err());
+}
+
+#[test]
 fn endpoint_ids_are_32_lowercase_hex_digits() {
     let id = EndpointId::random();
     assert_eq!(id.as_str().parse::<EndpointId>().unwrap(), id);

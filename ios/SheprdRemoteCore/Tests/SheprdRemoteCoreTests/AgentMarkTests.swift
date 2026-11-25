@@ -10,6 +10,9 @@ struct AgentMarkTests {
         #expect(AgentMark.named("grok") == "grok")
         #expect(AgentMark.named("cursor") == "cursor")
         #expect(AgentMark.named("agy") == "agy")
+        #expect(AgentMark.named("Muse Code") == "muse")
+        #expect(AgentMark.named("antigravity") == "agy")
+        #expect(AgentMark.named("Antigravity") == "agy")
         // "copilot" holds "pi"; it keeps its own logo.
         #expect(AgentMark.named("copilot") == "copilot")
         #expect(AgentMark.named("pi") == "pi")

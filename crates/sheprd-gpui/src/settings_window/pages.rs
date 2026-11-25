@@ -16,6 +16,7 @@ mod status_bar;
 mod tabs;
 pub(in crate::settings_window) mod text_shortcuts;
 mod theme;
+pub(in crate::settings_window) mod voice;
 mod window;
 
 use super::{SettingsWindow, inputs::DropdownField, ui};

@@ -14,6 +14,17 @@ struct TerminalAgentTests {
         #expect(terminal.agent?.opensAsChat == true)
     }
 
+    @Test func terminalAgentLabelsCombineWithTheCheckout() throws {
+        guard case let .home(home) = try WireTests.event("home") else { Issue.record("not home"); return }
+        var workspace = try #require(home.workspaces.first)
+        let oldAgent = try #require(workspace.terminals.first?.agent)
+        #expect(workspace.rowLabels(agent: oldAgent.labels).isEmpty)
+        workspace.labels = ["Release"]
+        let data = Data(#"{"name":"codex","status":"idle","labels":["CLI","release"]}"#.utf8)
+        let agent = try JSONDecoder().decode(Home.TerminalRow.DetectedAgent.self, from: data)
+        #expect(workspace.rowLabels(agent: agent.labels) == ["CLI", "release"])
+    }
+
     @Test func opensTheAgentsPaneRatherThanTheFocusedOne() {
         var terminal = row(agentPane: "p2")
         #expect(terminal.agentPane?.pane == "p2")

@@ -55,6 +55,7 @@ fn tab(view: &mut SheprdWindow, names: &[&str], cx: &mut gpui::Context<SheprdWin
                     .into_owned(),
                 label: "app".into(),
                 linked: false,
+                root: String::new(),
             }),
         );
     }

@@ -11,8 +11,12 @@ use super::{
     presence::{PresenceRelay, Received},
     presence_frame, refusal, request, scan,
 };
-use crate::remote::supervisor::{Client, Supervisor};
-use gpui::{App, Global};
+use crate::remote::{
+    host_presence::{self, HostMarks, Outcome, Run},
+    supervisor::{Client, Supervisor},
+};
+use gpui::{App, AsyncApp, Global};
+use sheprd_remote_control::control::Request;
 use std::{
     rc::{Rc, Weak},
     sync::mpsc::{self, TryRecvError},
@@ -280,9 +284,11 @@ async fn run(
     queued: &mpsc::Receiver<String>,
     client: Option<&Client>,
     generation: u64,
-    cx: &mut gpui::AsyncApp,
+    cx: &mut AsyncApp,
 ) {
     let mut presence = PresenceRelay::default();
+    let mut hosts = HostMarks::default();
+    let (ran, ended) = mpsc::channel::<(Run, Outcome)>();
     loop {
         match cx.update(|cx| Station::check(cx, generation)) {
             Check::Stop => return,
@@ -341,17 +347,65 @@ async fn run(
             ) => {}
             Err(TryRecvError::Empty) => {
                 if let Some(client) = client {
-                    for request in presence.due(Instant::now()) {
+                    let requests = presence.due(Instant::now());
+                    mark_hosts(&mut hosts, client, &requests).await;
+                    for request in requests {
                         if let Err(error) = client.request(request).await {
                             tracing::debug!(%error, "presence was not sent");
                         }
                     }
+                }
+                while let Ok((run, outcome)) = ended.try_recv() {
+                    hosts.finished(run, outcome, Instant::now());
+                }
+                for run in hosts.take(Instant::now()) {
+                    start_run(run, &ran, cx);
                 }
                 cx.background_executor().timer(STEP).await;
             }
             Err(TryRecvError::Disconnected) => return,
         }
     }
+}
+
+/// Owes each linked host the marks `requests` give this daemon, under the
+/// phone's id there (`remote::host_presence`).
+async fn mark_hosts(hosts: &mut HostMarks, client: &Client, requests: &[Request]) {
+    if requests.is_empty() {
+        return;
+    }
+    let paired = host_presence::paired(client.request(Request::Devices).await);
+    let now = Instant::now();
+    for request in requests {
+        let Request::PresenceSet { device, near } = request else {
+            continue;
+        };
+        for to in paired.get(device).into_iter().flatten() {
+            hosts.mark(to.clone(), *near, now);
+        }
+    }
+}
+
+/// Runs `run` on the background executor, reporting how it ended on
+/// `ended`; a host no window connects to any more is not run.
+fn start_run(run: Run, ended: &mpsc::Sender<(Run, Outcome)>, cx: &mut AsyncApp) {
+    let Some(target) = cx.update(|cx| Supervisor::host_target(cx, &run.host)) else {
+        let _ = ended.send((run, Outcome::Gone));
+        return;
+    };
+    let ended = ended.clone();
+    cx.background_executor()
+        .spawn(async move {
+            let outcome = match host_presence::send(&target, &run.marks) {
+                Ok(()) => Outcome::Sent,
+                Err(error) => {
+                    tracing::debug!(%error, "a linked host's presence was not sent");
+                    Outcome::Failed
+                }
+            };
+            let _ = ended.send((run, outcome));
+        })
+        .detach();
 }
 
 #[cfg(test)]

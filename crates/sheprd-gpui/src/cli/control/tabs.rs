@@ -40,6 +40,17 @@ impl From<OsString> for FileAt {
 /// `machine`: a virtual Mac on this computer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MachineCommand {
+    /// `command` run by the Sheprd on another computer, `--host HOST`.
+    On {
+        host: String,
+        command: Box<MachineCommand>,
+    },
+    /// Hidden: another computer's Sheprd borrowing a machine here, one
+    /// request as JSON on standard input.
+    Lend,
+    Start {
+        name: String,
+    },
     Claim {
         name: String,
         wait: u64,
@@ -187,6 +198,43 @@ pub(super) fn open_only(args: &mut Args) -> Result<(), CliError> {
 }
 
 pub(super) fn machine(args: &mut Args) -> Result<MachineCommand, CliError> {
+    let host = args.text_option("--host")?;
+    let command = machine_here(args)?;
+    let Some(host) = host else {
+        return Ok(command);
+    };
+    if !command.forwardable() {
+        return Err(CliError::InvalidValue("--host"));
+    }
+    Ok(MachineCommand::On {
+        host,
+        command: Box::new(command),
+    })
+}
+
+impl MachineCommand {
+    /// Whether `--host` takes it: work on a machine there, never making,
+    /// deleting, or changing one, which its own Sheprd asks about.
+    fn forwardable(&self) -> bool {
+        matches!(
+            self,
+            Self::Agent { .. }
+                | Self::Claim { .. }
+                | Self::Click { .. }
+                | Self::Exec(_)
+                | Self::Key { .. }
+                | Self::List
+                | Self::Open { .. }
+                | Self::Release { .. }
+                | Self::Screenshot { .. }
+                | Self::Start { .. }
+                | Self::Suspend { .. }
+                | Self::Type { .. }
+        )
+    }
+}
+
+fn machine_here(args: &mut Args) -> Result<MachineCommand, CliError> {
     let Some(verb) = args.verb() else {
         return Ok(MachineCommand::Open {
             name: "default".to_owned(),
@@ -204,6 +252,10 @@ pub(super) fn machine(args: &mut Args) -> Result<MachineCommand, CliError> {
                 .unwrap_or_else(|| "default".to_owned()),
         },
         Some("list") => MachineCommand::List,
+        Some("lend") => MachineCommand::Lend,
+        Some("start") => MachineCommand::Start {
+            name: args.required_text("NAME")?,
+        },
         Some("claim") => MachineCommand::Claim {
             wait: args.number("--wait", 1..=600_u64)?.unwrap_or(0),
             name: args.required_text("NAME")?,

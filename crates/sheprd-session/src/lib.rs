@@ -16,4 +16,4 @@ pub use saved::{
     NEW_WORKSPACE_TITLE_LABEL, SESSION_LABEL, STAND_IN_SHELL, SavedTabs, SavedWorkspace,
     WORKSPACE_LABEL, labelled_workspace, new_workspace, new_workspace_title, tab_workspace,
 };
-pub use session::{Agent, CoreWorkspace, Keeper, Session, Tab, Workspace, Worktree};
+pub use session::{Agent, CoreWorkspace, FolderStyle, Keeper, Session, Tab, Workspace, Worktree};

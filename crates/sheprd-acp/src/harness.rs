@@ -77,6 +77,15 @@ pub(crate) trait Translator: Send + 'static {
     fn start(&mut self) -> Vec<Out>;
     fn on_session(&mut self, inbound: Inbound) -> Vec<Out>;
     fn on_harness(&mut self, message: &Value) -> Vec<Out>;
+    /// A line longer than [`rpc::BUFFERED_LINE`], read as it streams on the
+    /// reader's thread: as much of the message as [`Self::on_harness`] reads,
+    /// or `None` to skip it. All of it by default.
+    fn read_long(line: &mut dyn Read) -> Option<Value>
+    where
+        Self: Sized,
+    {
+        serde_json::from_reader(line).ok()
+    }
 }
 
 /// A harness reached through `T`.
@@ -96,6 +105,10 @@ impl<T: Translator> Reach for Translated<T> {
                     Ok(message) => FromHarness::Message(message),
                     // A line that is not JSON, such as a stray log line, is skipped.
                     Err(_) => return true,
+                },
+                rpc::Lines::Long(line) => match T::read_long(line) {
+                    Some(message) => FromHarness::Message(message),
+                    None => return true,
                 },
                 rpc::Lines::End(error) => FromHarness::Closed(error),
             };

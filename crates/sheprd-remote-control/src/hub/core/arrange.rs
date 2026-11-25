@@ -21,7 +21,7 @@ use super::{
     HubError, Result, Source, lock,
     own::OWN_TAB,
     projection,
-    saved::{SAVED_TAB, TabRef},
+    saved::{TabRef, is_saved_tab},
 };
 use crate::{control::layout::Op, hub::Hub};
 use sheprd_backend::TerminalId;
@@ -174,18 +174,40 @@ impl Source {
         // Take ownership before starting a split's shell. A running desktop
         // must receive the intent without a speculative terminal being made.
         let _owner = self.tabs.as_deref().map(file_owner).transpose()?;
-        if lock(&self.poller).shared().is_some() {
-            return self.arrange_doc(tab, address, op);
-        }
-        let TabRef::File(tab) = *tab else {
-            // The document was read when the phone named its tab.
-            return Err(Error::Changed.into());
+        let (session, tab, scope) = {
+            let poller = lock(&self.poller);
+            match tab {
+                TabRef::Named { session, id } => {
+                    let target = crate::hub::sessions::join_id(Some(session), &id.to_string());
+                    if !poller.local_tab_holds(self.scope.as_deref(), &target, address) {
+                        return Err(Error::Changed.into());
+                    }
+                    let scope = poller
+                        .named_scopes
+                        .get(session)
+                        .ok_or(Error::Changed)?
+                        .clone();
+                    (Some(session.as_str()), *id, scope)
+                }
+                TabRef::File(id)
+                    if poller.shared().is_none()
+                        || poller.local_tab_holds(
+                            self.scope.as_deref(),
+                            &id.to_string(),
+                            address,
+                        ) =>
+                {
+                    (None, *id, self.scope.clone().ok_or(Error::NoTabs)?)
+                }
+                _ if poller.shared().is_some() => {
+                    drop(poller);
+                    return self.arrange_doc(tab, address, op);
+                }
+                _ => return Err(Error::Changed.into()),
+            }
         };
-        let (path, scope) = self
-            .tabs
-            .as_deref()
-            .zip(self.scope.as_deref())
-            .ok_or(Error::NoTabs)?;
+        let scope = scope.as_str();
+        let path = self.tabs.as_deref().ok_or(Error::NoTabs)?;
         match op {
             Op::RenameWorkspace { workspace, name } => {
                 edit_owned_file(path, |bytes| {
@@ -213,11 +235,14 @@ impl Source {
         if let Some(axis) = axis(op) {
             let record = self.record(address)?;
             let workspace = lock(&self.poller).saved_workspace(scope, tab);
-            let labels = workspace
+            let mut labels = workspace
                 .as_deref()
                 .filter(|id| sheprd_session::tab_workspace(id))
                 .map(|id| BTreeMap::from([(WORKSPACE_LABEL, id)]))
                 .unwrap_or_default();
+            if let Some(name) = session {
+                labels.insert(SESSION_LABEL, name);
+            }
             let new = self.start_beside(&record, labels)?;
             let split = TerminalId::new(new.address.as_str())
                 .map_err(Error::from)
@@ -305,7 +330,7 @@ impl Hub {
             return Err(Error::Fixed.into());
         }
         let core = self.core.as_ref().ok_or(super::Error::Disconnected)?;
-        if tab.starts_with(SAVED_TAB) {
+        if is_saved_tab(tab) {
             let (tab, terminal) = core
                 .saved_target(tab, pane)
                 .ok_or(super::Error::Unsupported)?;

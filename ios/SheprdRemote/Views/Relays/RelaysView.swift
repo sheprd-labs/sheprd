@@ -8,10 +8,11 @@ import UIKit
 /// paired computers named are already here, and any other is typed.
 struct RelaysView: View {
     @Environment(AppModel.self) private var model
+    @AppStorage("relayDiagnosticHistory") private var historyData = Data()
     @State private var address = ""
     @State private var problem: String?
     /// Whether each relay answered, for as long as the screen shows.
-    @State private var reach: [RelayEndpoint: RelayReach] = [:]
+    @State private var reach: [RelayEndpoint: RelayDiagnostic] = [:]
     @FocusState private var typing: Bool
 
     var body: some View {
@@ -27,7 +28,7 @@ struct RelaysView: View {
                     let naming = model.computers(naming: relay)
                     // What a computer naming it calls it, in `[remote] relays`.
                     let label = naming.lazy.compactMap { $0.relay?.label(for: relay) }.first
-                    RelayRow(relay: relay, label: label, reach: reach[relay], naming: naming.map(model.displayName))
+                    RelayRow(relay: relay, label: label, diagnostic: reach[relay], naming: naming.map(model.displayName))
                         // A relay a computer names comes back with it, so
                         // removing one only stops trying it for the others,
                         // which only one you added is.
@@ -41,6 +42,19 @@ struct RelaysView: View {
             } footer: {
                 if !relays.isEmpty {
                     Text("Each computer is tried on the relays it named, then on the ones you added. A relay sees only encrypted traffic.")
+                }
+            }
+            Section("Diagnostics") {
+                Text("Checks are saved on this phone, including failures. Pull to refresh. Relay info reachability does not test a connection to a computer.")
+                    .font(.footnote)
+                if !history.entries.isEmpty {
+                    ShareLink("Share relay diagnostics", item: history.report)
+                    DisclosureGroup("Recent checks") {
+                        ForEach(Array(history.entries.reversed().enumerated()), id: \.offset) { _, entry in
+                            Text(entry.report).font(.caption).textSelection(.enabled)
+                        }
+                    }
+                    Button("Clear diagnostics", role: .destructive) { historyData = Data() }
                 }
             }
             Section {
@@ -76,6 +90,10 @@ struct RelaysView: View {
         .task(id: relays) { await check(relays, again: false) }
     }
 
+    private var history: RelayDiagnosticHistory {
+        (try? JSONDecoder().decode(RelayDiagnosticHistory.self, from: historyData)) ?? RelayDiagnosticHistory()
+    }
+
     private func add() {
         switch model.addRelay(address) {
         case .added:
@@ -95,11 +113,17 @@ struct RelaysView: View {
     /// Asks every relay whether it answers, all at once.
     private func check(_ relays: [RelayEndpoint], again: Bool) async {
         if again { reach = [:] }
-        await withTaskGroup(of: (RelayEndpoint, RelayReach).self) { group in
+        await withTaskGroup(of: (RelayEndpoint, RelayDiagnostic).self) { group in
             for relay in relays where reach[relay] == nil {
-                group.addTask { (relay, await RelayReach.probe(relay)) }
+                group.addTask { (relay, await RelayReach.diagnose(relay)) }
             }
-            for await (relay, answer) in group { reach[relay] = answer }
+            for await (relay, answer) in group {
+                guard !Task.isCancelled else { continue }
+                reach[relay] = answer
+                var saved = history
+                saved.append(answer)
+                if let data = try? JSONEncoder().encode(saved) { historyData = data }
+            }
         }
     }
 }
@@ -110,7 +134,8 @@ struct RelaysView: View {
 private struct RelayRow: View {
     var relay: RelayEndpoint
     var label: RelayLabel?
-    var reach: RelayReach?
+    var diagnostic: RelayDiagnostic?
+    private var reach: RelayReach? { diagnostic?.reach }
     var naming: [String]
 
     var body: some View {
@@ -127,7 +152,7 @@ private struct RelayRow: View {
     private var color: Color {
         switch reach {
         case .reachable: .green
-        case .noWebSocket, .notARelay, .unreachable: .red
+        case .noWebSocket, .notARelay, .unreachable, .banned: .red
         case nil: Color(.tertiaryLabel)
         }
     }
@@ -136,8 +161,8 @@ private struct RelayRow: View {
         switch reach {
         case .reachable: "Reachable"
         case .noWebSocket: "No WebSocket, which this \(UIDevice.current.model) needs"
-        case .notARelay: "Not a relay"
-        case .unreachable: "No answer"
+        case .notARelay: diagnostic?.detail ?? "Invalid relay response"
+        case .banned, .unreachable: diagnostic?.detail ?? "Check failed"
         case nil: "Checking…"
         }
     }

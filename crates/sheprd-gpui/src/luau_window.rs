@@ -1,6 +1,6 @@
 //! All of Sheprd in a window Moonframe lays out from `moonframe/app/main.luau`:
-//! the `moonframe` feature, on by default. A build with it opens this window
-//! on a plain launch unless the user chose the classic one; see [`wanted`].
+//! release builds include the `moonframe` feature. A plain launch opens this
+//! window when the user opts in. See [`wanted`].
 //! Release builds run the layout compiled into the binary; `moonframe-studio`
 //! reads it from this checkout instead, so saving a file reloads it.
 
@@ -22,6 +22,7 @@ use {
     },
 };
 
+mod native_region;
 mod theme;
 
 /// Moonframe's name for the app, which names its folders: `~/.config/sheprd`
@@ -297,9 +298,13 @@ pub(crate) fn wanted(args: &[std::ffi::OsString], chosen: impl FnOnce() -> bool)
 /// is read as the first frame's settings are, writing nothing; a file that
 /// does not parse leaves the default, and the app reports it.
 pub(crate) fn chosen() -> bool {
+    // Development, benchmarks and recordings can select it for a single launch.
+    if std::env::var_os("SHEPRD_MOONFRAME").as_deref() == Some(std::ffi::OsStr::new("1")) {
+        return true;
+    }
     // A launch from Finder or a desktop launcher may lack the login shell's
     // `XDG_CONFIG_HOME`; without adopting it first, this would read another
-    // folder's settings and miss `moonframe_window = false`. Both startups
+    // folder's settings and miss the user's window preference. Both startups
     // adopt it again, which then finds it already set.
     crate::login_env::adopt_config_home();
     let kept = crate::config::Config::load_startup().map_or_else(
@@ -423,16 +428,23 @@ impl SheprdRegion {
         let name = init.props().get("region").and_then(Data::as_str);
         let region = match name {
             Some("activity") => Some(Region::ActivityBar),
+            Some("activity_editor") => Some(Region::ActivityBarWithEditor),
+            Some("worktrees") => Some(Region::Worktrees),
+            Some("agents") => Some(Region::Agents),
+            Some("sidebar_actions") => Some(Region::SidebarActions),
+            Some("build") => Some(Region::Build),
             Some("devices") => Some(Region::Devices),
+            Some("full_header") => Some(Region::FullHeader),
             Some("header") => Some(Region::Header),
             Some("sidebar") => Some(Region::Sidebar),
+            Some("sidebar_title") => Some(Region::SidebarTitle),
             Some("status") => Some(Region::StatusBar),
             Some("titlebar") => Some(Region::TitleBar),
             _ => None,
         };
         let view = match region {
             Some(region) => host.region(region, cx),
-            None => host.main(),
+            None => host.layout_main(name == Some("body"), cx),
         };
         #[cfg(feature = "integration-test")]
         if region.is_none() {
@@ -446,10 +458,15 @@ impl SheprdRegion {
                 if last.replace(sizes) != Some(sizes) {
                     messenger.send(Data::map([
                         ("activity_bar", f64::from(sizes.activity_bar).into()),
+                        ("build", f64::from(sizes.build).into()),
                         ("devices", f64::from(sizes.devices).into()),
+                        ("full_header", sizes.full_header.into()),
                         ("header", f64::from(sizes.header).into()),
                         ("height", f64::from(sizes.height).into()),
                         ("left", f64::from(sizes.left).into()),
+                        ("sidebar_region", sizes.sidebar_region.into()),
+                        ("zen", sizes.zen.into()),
+                        ("sidebar_title", f64::from(sizes.sidebar_title).into()),
                         ("status_bar", f64::from(sizes.status_bar).into()),
                         ("titlebar", f64::from(sizes.titlebar).into()),
                     ]));
@@ -639,11 +656,14 @@ impl Render for SheprdRegion {
             )
         });
         // `Terminal` keeps Moonframe's Escape off: it belongs to the terminal.
-        div()
-            .key_context(TERMINAL_CONTEXT)
-            .size_full()
-            .child(self.view.clone())
-            .children(overlay)
+        native_region::NativeRegion(
+            div()
+                .key_context(TERMINAL_CONTEXT)
+                .size_full()
+                .child(self.view.clone())
+                .children(overlay)
+                .into_any_element(),
+        )
     }
 }
 

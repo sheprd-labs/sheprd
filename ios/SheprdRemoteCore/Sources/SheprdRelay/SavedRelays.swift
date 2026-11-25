@@ -156,6 +156,7 @@ public enum RelayReach: Equatable, Sendable {
     /// Something answers there that is not a relay this app speaks to.
     case notARelay
     case unreachable
+    case banned
 
     struct Info: Decodable {
         let `protocol`: Int
@@ -164,11 +165,7 @@ public enum RelayReach: Equatable, Sendable {
 
     /// What an answer to `GET /v1/info` means.
     public static func read(status: Int, body: Data) -> RelayReach {
-        guard status == 200, let info = try? JSONDecoder().decode(Info.self, from: body), info.protocol == 1 else {
-            return .notARelay
-        }
-        // A relay older than the field serves WebSockets.
-        return info.websocket == false ? .noWebSocket : .reachable
+        outcome(status: status, body: body).reach
     }
 
     /// The most of an answer that is read: a relay's `/v1/info` is a few
@@ -180,21 +177,7 @@ public enum RelayReach: Equatable, Sendable {
     /// `maxInfo`, so whatever a saved address serves, it costs this phone
     /// no more memory than that.
     public static func probe(_ endpoint: RelayEndpoint, session: URLSession = .shared) async -> RelayReach {
-        guard let url = endpoint.info else { return .notARelay }
-        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
-        request.httpMethod = "GET"
-        guard let (bytes, response) = try? await session.bytes(for: request),
-              let http = response as? HTTPURLResponse
-        else { return .unreachable }
-        // Leaving with the answer unfinished ends the download.
-        defer { bytes.task.cancel() }
-        guard http.expectedContentLength <= Int64(maxInfo) else { return .notARelay }
-        do {
-            guard let body = try await bounded(bytes, limit: maxInfo) else { return .notARelay }
-            return read(status: http.statusCode, body: body)
-        } catch {
-            return .unreachable
-        }
+        await diagnose(endpoint, session: session).reach
     }
 
     /// What `bytes` carries, or nil once it carries more than `limit`: the

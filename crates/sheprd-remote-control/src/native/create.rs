@@ -252,7 +252,7 @@ pub(super) fn offered(installed: Option<Vec<Agent>>) -> Vec<Agent> {
 /// `POST /api/v2/workspaces`.
 pub(crate) async fn create_workspace(
     State(state): State<Shared>,
-    _device: Device,
+    device: Device,
     TypedFrom(origin): TypedFrom,
     Json(request): Json<NewWorkspace>,
 ) -> Result<Json<CreatedWorkspace>, ApiError> {
@@ -270,7 +270,14 @@ pub(crate) async fn create_workspace(
             title,
         })
         .await?;
-    let opened = open(&state, created.pane, request.start, request.prompt, origin).await;
+    let opened = open(
+        &state,
+        created.pane,
+        request.start,
+        request.prompt,
+        TypedFrom::authenticated(origin, &device.0),
+    )
+    .await;
     Ok(Json(CreatedWorkspace {
         pane: opened.pane,
         prompted: opened.prompted,
@@ -282,7 +289,7 @@ pub(crate) async fn create_workspace(
 /// `POST /api/v2/workspaces/{workspace}/chats`.
 pub(crate) async fn start_chat(
     State(state): State<Shared>,
-    _device: Device,
+    device: Device,
     TypedFrom(origin): TypedFrom,
     Path(workspace): Path<String>,
     Json(request): Json<NewChat>,
@@ -290,7 +297,14 @@ pub(crate) async fn start_chat(
     check_prompt(&request.prompt)?;
     let agent = parse_agent(&request.agent)?;
     let pane = state.hub.start_chat(&workspace, agent, None).await?;
-    let opened = open(&state, pane, request.start, request.prompt, origin).await;
+    let opened = open(
+        &state,
+        pane,
+        request.start,
+        request.prompt,
+        TypedFrom::authenticated(origin, &device.0),
+    )
+    .await;
     Ok(Json(CreatedChat {
         pane: opened.pane,
         prompted: opened.prompted,

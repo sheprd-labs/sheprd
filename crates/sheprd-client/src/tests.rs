@@ -179,7 +179,7 @@ fn test_client_paced(
     let (tx, events) = bounded(EVENT_CAPACITY);
     let stop = Arc::new(AtomicBool::new(false));
     let worker_stop = stop.clone();
-    let liveness = Arc::new(AtomicBool::new(false));
+    let liveness = Arc::new(crate::liveness::Request::default());
     let worker_liveness = liveness.clone();
     let worker = thread::spawn(move || {
         run_connection(

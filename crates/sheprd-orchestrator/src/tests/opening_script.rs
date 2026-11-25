@@ -169,6 +169,7 @@ fn one_script_reads_the_repository_agents_and_branches() {
 fn a_beads_folder_outside_git_still_reads_its_agents() {
     let (dir, checkout, bin) = fixture();
     std::fs::create_dir(checkout.join(".beads")).unwrap();
+    std::fs::write(checkout.join(".beads/metadata.json"), "{}").unwrap();
     let (info, extras) = open(dir.path(), &checkout, &bin).unwrap();
     assert!(info.beads);
     assert_eq!(extras.programs, Some(vec!["claude".into()]));

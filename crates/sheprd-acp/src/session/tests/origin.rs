@@ -3,8 +3,8 @@
 
 use sheprd_chat_protocol::{Device, Origin, Via};
 
-use super::*;
 use crate::context::{Facts, Prompts};
+use crate::session::tests::*;
 use sheprd_chat_protocol::{Entry, EntryId, Transcript};
 
 const PHONE: Origin = Origin::new(Device::PhoneApp, Via::Tailscale);
@@ -55,11 +55,13 @@ fn a_phone_prompt_tells_the_agent_first_and_the_transcript_shows_only_the_words(
         .collect();
     assert_eq!(shown, ["show me the mockups"]);
 
-    // The same place again says nothing new; another place does.
+    // Each prompt identifies the current device; only a move repeats its guide.
     finish(&mut harness, id);
     harness.command(0, from(Some(PHONE), "again"));
     let (id, sent) = sent_prompt(&harness);
-    assert_eq!(sent, ["again"]);
+    assert!(sent[0].contains("This message came from"));
+    assert!(!sent[0].contains("Markdown image"));
+    assert_eq!(sent[1], "again");
     finish(&mut harness, id);
     harness.command(0, from(Some(DESKTOP), "back at my desk"));
     let (_, sent) = sent_prompt(&harness);
@@ -72,6 +74,40 @@ fn a_prompt_without_an_origin_sends_only_its_words() {
     let mut harness = ready();
     harness.command(0, from(None, "hi"));
     assert_eq!(sent_prompt(&harness).1, ["hi"]);
+}
+
+#[test]
+fn antigravity_gets_the_persons_prompt_without_sheprd_annotations() {
+    let mut harness = harness_with(Config {
+        antigravity_auth_method: Some("oauth-personal".to_owned()),
+        agent: "Antigravity".to_owned(),
+        harness: Some(Agent::Antigravity),
+        listens: true,
+        prompts: Prompts::with_instructions("Do not inject this into Antigravity."),
+        sheprd: Some(PathBuf::from("/bin/sheprd")),
+        ..config()
+    });
+    harness.session.start();
+    let initialize = harness.last_request("initialize");
+    assert_eq!(initialize["params"]["clientInfo"]["name"], "sheprd");
+    let id = initialize["id"].as_i64().unwrap();
+    harness.respond(
+        id,
+        json!({"protocolVersion": 1, "agentCapabilities": {}, "authMethods": [
+            {"id": "oauth-personal", "name": "Log in with Google"}
+        ]}),
+    );
+    let authenticate = harness.last_request("authenticate");
+    assert_eq!(authenticate["params"]["methodId"], "oauth-personal");
+    harness.respond(authenticate["id"].as_i64().unwrap(), json!({}));
+    let id = harness.last_request("session/new")["id"].as_i64().unwrap();
+    harness.respond(id, json!({"sessionId": "antigravity-1"}));
+
+    harness.command(0, from(Some(PHONE), "make the change"));
+    let (id, sent) = sent_prompt(&harness);
+    assert_eq!(sent, ["make the change"]);
+    assert!(!sent.iter().any(|text| text.contains("Do not inject")));
+    finish(&mut harness, id);
 }
 
 #[test]
@@ -169,7 +205,8 @@ fn a_restored_chat_tells_again_only_on_another_device() {
     let mut harness = continued();
     harness.command(0, from(Some(PHONE), "and the dark variant"));
     let (id, sent) = sent_prompt(&harness);
-    assert_eq!(sent, ["and the dark variant"]);
+    assert!(!sent[0].contains("Markdown image"));
+    assert_eq!(sent[1], "and the dark variant");
     finish(&mut harness, id);
     harness.command(0, from(Some(DESKTOP), "at my desk now"));
     let (_, sent) = sent_prompt(&harness);
@@ -212,5 +249,31 @@ fn a_replayed_conversation_hides_its_notes_and_counts_them_told() {
         .collect();
     assert_eq!(texts, ["earlier"]);
     harness.command(0, from(Some(PHONE), "hi"));
-    assert_eq!(sent_prompt(&harness).1, ["hi"]);
+    let (_, sent) = sent_prompt(&harness);
+    assert!(!sent[0].contains("Be brief."));
+    assert!(sent[0].contains("This message came from"));
+    assert_eq!(sent[1], "hi");
+}
+
+#[test]
+fn queued_messages_keep_their_own_phone_target() {
+    let mut harness = ready();
+    let mut first = PHONE;
+    first.phone = Some("phone-a".into());
+    let mut second = PHONE;
+    second.phone = Some("phone-b".into());
+    harness.command(0, from(Some(first), "one"));
+    let (id, sent) = sent_prompt(&harness);
+    assert!(sent[0].contains("--device phone-a"));
+    harness.command(0, from(Some(second), "two"));
+    harness.command(0, from(Some(DESKTOP), "three"));
+    finish(&mut harness, id);
+    let (id, sent) = sent_prompt(&harness);
+    assert!(sent[0].contains("--device phone-b"));
+    assert!(!sent[0].contains("phone-a"));
+    assert_eq!(sent[1], "two");
+    finish(&mut harness, id);
+    let (_, sent) = sent_prompt(&harness);
+    assert!(sent[0].contains("No phone target is identified"));
+    assert_eq!(sent[1], "three");
 }

@@ -32,6 +32,8 @@ pub(crate) enum Page {
     Automation,
     /// The account menu's Azure DevOps tokens, beside GitHub's and GitLab's.
     AzureDevOps,
+    /// Confirming a virtual Mac on another computer may be borrowed.
+    BorrowMachine,
     /// Reviewing, then following, a move of the pane menu's pane to another
     /// device.
     CarryPane,
@@ -308,7 +310,7 @@ impl WorkspaceMenuAction {
             Self::Expand => "icons/chevron-down.svg",
             Self::Teleport | Self::GoToTeleported => "icons/teleport.svg",
             Self::TeleportBack => "icons/teleport-back.svg",
-            Self::ClearTeleported => "icons/x.svg",
+            Self::ClearTeleported => "icons/close.svg",
             Self::Checkpoints => "icons/refresh.svg",
             Self::FanOut => "icons/fan-out.svg",
             Self::Orchestrator => "icons/github.svg",

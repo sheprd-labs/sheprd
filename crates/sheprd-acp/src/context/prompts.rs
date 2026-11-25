@@ -12,7 +12,7 @@ use std::{
 
 use sheprd_chat_protocol::{Device, Origin};
 
-use super::template;
+use crate::context::template;
 
 /// The longest file read, in bytes; a longer one is not used.
 pub(crate) const MAX_FILE: u64 = 16 * 1024;
@@ -125,7 +125,7 @@ const PLACE_NAMES: &[&str] = &["connection", "device", "where"];
 const FACT_NAMES: &[&str] = &["agent", "cwd", "max_image_mb", "max_pictures", "os"];
 
 /// What the place names of a template stand for.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 enum Where {
     /// The person is at this origin.
     At(Origin),
@@ -213,11 +213,11 @@ impl Prompts {
 }
 
 fn fill(template: &str, facts: &Facts, at: Where) -> String {
-    let place = |name: &str| match at {
+    let place = |name: &str| match &at {
         Where::At(origin) => Some(match name {
-            "connection" => Cow::Borrowed(super::connection_name(origin.via)),
-            "device" => Cow::Borrowed(super::device_name(origin.device)),
-            _ => Cow::Owned(super::place_phrase(origin)),
+            "connection" => Cow::Borrowed(crate::context::connection_name(origin.via)),
+            "device" => Cow::Borrowed(crate::context::device_name(origin.device)),
+            _ => Cow::Owned(crate::context::place_phrase(origin)),
         }),
         Where::Unknown => Some(Cow::Borrowed(match name {
             "connection" => "an unknown connection",

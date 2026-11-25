@@ -1,12 +1,10 @@
-//! Tabs opened in the caller's workspace: code, the editor, Devices, the
-//! orchestrator, and the review. Each feature opens its tab in the focused
-//! workspace, so the window first switches to the caller's, and the tab
-//! opens once a snapshot says the switch landed.
+//! Tab commands target the caller's workspace. Background opens register their
+//! tabs directly. Interactive commands wait for the destination to be shown.
 use super::{busy, closed};
 use crate::window::main_window::MainWindow;
 use crate::{
     SheprdWindow,
-    browser::{Location, OrchestratorRepo, ReviewCheckout, Store},
+    browser::{Location, OrchestratorRepo, Store},
     control::{
         protocol::{
             Caller, ErrorCode, Response,
@@ -81,6 +79,38 @@ fn destination(caller: &Caller, cx: &mut App) -> Result<Destination, Response> {
     })
 }
 
+/// Capture where an agent's tab belongs before asynchronous work starts.
+pub(super) fn workspace(
+    caller: &Caller,
+    cx: &mut App,
+) -> Result<(crate::browser::Scope, String), Response> {
+    let dest = destination(caller, cx)?;
+    let scope = dest
+        .handle
+        .read_with(cx, |view, _| {
+            crate::browser::scope(&view.endpoints[dest.endpoint])
+        })
+        .map_err(|_| closed())?;
+    Ok((scope, dest.workspace))
+}
+
+pub(super) fn background_tab(
+    key: (crate::browser::Scope, String),
+    location: Location,
+    cx: &mut App,
+) -> Response {
+    let (scope, workspace) = key;
+    match Store::update(cx, |store| store.open_location(scope, &workspace, location)) {
+        Some(id) => Response::Tab {
+            reply: Reply::Opened {
+                id: id.into(),
+                workspace,
+            },
+        },
+        None => Response::error(ErrorCode::TabLimit, "Too many tabs are open"),
+    }
+}
+
 /// Switches the window to the caller's workspace, then, once the switch
 /// landed and `ready` holds, runs `act` there and answers with what it says.
 fn open_there(
@@ -146,36 +176,36 @@ fn open_there(
     );
 }
 
-/// The tab of the window's focused workspace that `shows` picks, as the
-/// answer to opening it; the feature already told the user why when none.
-fn opened(
-    view: &SheprdWindow,
-    workspace: &str,
-    what: &str,
-    cx: &App,
-    shows: impl Fn(&Location) -> bool,
-) -> Response {
-    let scope = crate::browser::scope(&view.endpoints[view.selected_endpoint]);
-    let id = cx.try_global::<Store>().and_then(|store| {
-        store
-            .in_workspace(&scope, workspace)
-            .filter(|tab| !tab.place.is_editor())
-            .filter(|tab| tab.location.as_ref().is_some_and(&shows))
-            .last()
-            .map(|tab| tab.id)
-    });
-    match id {
-        Some(id) => Response::Tab {
-            reply: Reply::Opened {
-                id: id.into(),
-                workspace: workspace.to_owned(),
-            },
-        },
-        None => Response::error(
-            ErrorCode::Failed,
-            format!("Could not open {what}; the window says why"),
-        ),
-    }
+fn open_background(
+    caller: &Caller,
+    incoming: socket::Incoming,
+    cx: &mut App,
+    open: impl FnOnce(
+        &mut SheprdWindow,
+        usize,
+        &str,
+        &mut Context<SheprdWindow>,
+    ) -> Result<crate::browser::TabId, Response>,
+) {
+    let dest = match destination(caller, cx) {
+        Ok(dest) => dest,
+        Err(response) => return incoming.respond(response),
+    };
+    let response = dest
+        .handle
+        .update(cx, |view, _, cx| {
+            match open(view, dest.endpoint, &dest.workspace, cx) {
+                Ok(id) => Response::Tab {
+                    reply: Reply::Opened {
+                        id: id.into(),
+                        workspace: dest.workspace,
+                    },
+                },
+                Err(response) => response,
+            }
+        })
+        .unwrap_or_else(|_| closed());
+    incoming.respond(response);
 }
 
 pub(super) fn code(
@@ -183,31 +213,17 @@ pub(super) fn code(
     path: &str,
     line: Option<u32>,
     incoming: socket::Incoming,
-    watches: &mut Watches,
     cx: &mut App,
 ) {
     let target = match editor_target(path, line) {
         Ok(target) => target,
         Err(response) => return incoming.respond(response),
     };
-    let path = path.to_owned();
-    open_there(
-        caller,
-        incoming,
-        watches,
-        cx,
-        |_| true,
-        move |view, workspace, window, cx| {
-            view.open_code_view(&target, window, cx);
-            opened(
-                view,
-                workspace,
-                &path,
-                cx,
-                |location| matches!(location, Location::Code { file } if file.path == path),
-            )
-        },
-    );
+    open_background(caller, incoming, cx, |view, endpoint, workspace, cx| {
+        let scope = crate::browser::scope(&view.endpoints[endpoint]);
+        view.load_code_tab(&target, scope, workspace, cx)
+            .ok_or_else(|| Response::error(ErrorCode::Failed, "Could not open the code tab"))
+    });
 }
 
 /// Opens the file in the user's editor, in a pane split beside the
@@ -247,25 +263,12 @@ pub(super) fn edit(
     );
 }
 
-pub(super) fn devices(
-    caller: &Caller,
-    incoming: socket::Incoming,
-    watches: &mut Watches,
-    cx: &mut App,
-) {
-    open_there(
-        caller,
-        incoming,
-        watches,
-        cx,
-        |_| true,
-        |view, workspace, window, cx| {
-            view.open_devices_overview(window, cx);
-            opened(view, workspace, "the Devices overview", cx, |location| {
-                matches!(location, Location::Devices)
-            })
-        },
-    );
+pub(super) fn devices(caller: &Caller, incoming: socket::Incoming, cx: &mut App) {
+    let answer = match workspace(caller, cx) {
+        Ok(key) => background_tab(key, Location::Devices, cx),
+        Err(response) => response,
+    };
+    incoming.respond(answer);
 }
 
 /// The virtual Mac called `name`, in a tab of the caller's workspace.
@@ -284,8 +287,10 @@ pub(super) fn machine(
             "A machine name takes letters, digits, '-', and '_', and starts with a letter or digit",
         ));
     };
-    // Resolve before the tab stores its name: the tab, live VM, and claims
-    // must all use the installed directory entry's spelling.
+    let key = match workspace(caller, cx) {
+        Ok(key) => key,
+        Err(response) => return incoming.respond(response),
+    };
     let resolved = std::rc::Rc::new(std::cell::RefCell::new(None));
     #[cfg(target_os = "macos")]
     {
@@ -302,40 +307,35 @@ pub(super) fn machine(
     {
         *resolved.borrow_mut() = Some(Ok::<_, crate::machine::Error>(name));
     }
-    let ready = resolved.clone();
-    open_there(
-        caller,
+
+    watches.add(
         incoming,
-        watches,
-        cx,
-        move |_| ready.borrow().is_some(),
-        move |view, workspace, window, cx| {
-            let name = match resolved.borrow_mut().take() {
-                Some(Ok(name)) => name,
-                Some(Err(error)) => return Response::error(ErrorCode::Failed, error.to_string()),
-                None => {
-                    return Response::error(ErrorCode::Timeout, "Machine name was not resolved");
-                }
+        Duration::from_secs(ARRIVE_WAIT_SECONDS),
+        move |cx| {
+            let name = match resolved.borrow_mut().take()? {
+                Ok(name) => name,
+                Err(error) => return Some(Response::error(ErrorCode::Failed, error.to_string())),
             };
             #[cfg(target_os = "macos")]
             if let Err(error) = crate::machine::check_capacity(&name) {
-                return Response::error(ErrorCode::Busy, error.to_string());
+                return Some(Response::error(ErrorCode::Busy, error.to_string()));
             }
             #[cfg(target_os = "macos")]
             if setup {
-                crate::machine::guide::begin(&name, cx);
+                crate::machine::guide::begin(&name, crate::machine::guide::Opening::Shown, cx);
             }
             #[cfg(not(target_os = "macos"))]
             let _ = setup;
-            view.open_machine(name.clone(), window, cx);
-            opened(
-                view,
-                workspace,
-                "the machine",
-                cx,
-                |location| matches!(location, Location::Machine { name: open } if *open == name),
-            )
+            let response =
+                background_tab(key.clone(), Location::Machine { name: name.clone() }, cx);
+            #[cfg(target_os = "macos")]
+            if matches!(response, Response::Tab { .. }) {
+                crate::machine::start(&name, cx);
+            }
+            Some(response)
         },
+        Response::error(ErrorCode::Timeout, "Machine name was not resolved in time"),
+        cx,
     );
 }
 
@@ -396,76 +396,39 @@ pub(super) fn orchestrator(
     );
 }
 
-/// The review of the workspace's checkout, once the window's Git worker
-/// follows that checkout rather than the one shown before the switch.
-pub(super) fn review(
-    caller: &Caller,
-    incoming: socket::Incoming,
-    watches: &mut Watches,
-    cx: &mut App,
-) {
-    open_there(
-        caller,
-        incoming,
-        watches,
-        cx,
-        |view| {
-            let input = view.git_input();
-            input.is_none() || view.git.tracked() == input.as_ref()
-        },
-        |view, workspace, window, cx| {
-            let Some(checkout) = view
-                .git_input()
-                .and_then(|input| ReviewCheckout::try_from(&input).ok())
-            else {
-                return Response::error(
-                    ErrorCode::Failed,
-                    format!("Workspace {workspace} has no local Git checkout to review"),
-                );
-            };
-            view.open_review(window, cx);
-            opened(
-                view,
-                workspace,
-                "the review",
-                cx,
-                |location| matches!(location, Location::Review { checkout: open } if *open == checkout),
+pub(super) fn review(caller: &Caller, incoming: socket::Incoming, cx: &mut App) {
+    open_background(caller, incoming, cx, |view, endpoint, workspace, cx| {
+        view.background_review(
+            endpoint,
+            workspace,
+            caller.pane_id.as_deref(),
+            caller.terminal_id.as_deref(),
+            cx,
+        )
+        .ok_or_else(|| {
+            Response::error(
+                ErrorCode::Failed,
+                format!("Could not open a review of workspace {workspace}"),
             )
-        },
-    );
+        })
+    });
+}
+
+pub(super) fn px0(caller: &Caller, incoming: socket::Incoming, cx: &mut App) {
+    open_background(caller, incoming, cx, |view, index, workspace, cx| {
+        if !crate::browser::EMBEDDED || view.px0_root_at(index, workspace).is_none() {
+            return Err(Response::error(
+                ErrorCode::Unsupported,
+                "px0 needs a local workspace and embedded pages (macOS or Windows)",
+            ));
+        }
+        let scope = crate::browser::scope(&view.endpoints[index]);
+        Store::update(cx, |store| {
+            store.open_editor_tab(scope, workspace, crate::browser::Editor::Px0, None)
+        })
+        .ok_or_else(|| Response::error(ErrorCode::TabLimit, "Too many tabs are open"))
+    });
 }
 
 #[cfg(test)]
 mod tests;
-
-pub(super) fn px0(
-    caller: &Caller,
-    incoming: socket::Incoming,
-    watches: &mut Watches,
-    cx: &mut App,
-) {
-    open_there(
-        caller,
-        incoming,
-        watches,
-        cx,
-        |_| true,
-        |view, workspace, window, cx| {
-            if !crate::browser::EMBEDDED || view.px0_root().is_none() {
-                return Response::error(
-                    ErrorCode::Unsupported,
-                    "px0 needs a local workspace and embedded pages (macOS or Windows)",
-                );
-            }
-            match view.open_px0(None, window, cx) {
-                Some(id) => Response::Tab {
-                    reply: Reply::Opened {
-                        id: id.into(),
-                        workspace: workspace.to_owned(),
-                    },
-                },
-                None => Response::error(ErrorCode::Failed, "Could not open the px0 tab"),
-            }
-        },
-    );
-}

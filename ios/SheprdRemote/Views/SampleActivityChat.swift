@@ -1,4 +1,3 @@
-#if DEBUG
 import Foundation
 import SheprdRemoteCore
 
@@ -69,4 +68,3 @@ extension Transcript {
         return try? JSONDecoder().decode(Entry.self, from: data)
     }
 }
-#endif

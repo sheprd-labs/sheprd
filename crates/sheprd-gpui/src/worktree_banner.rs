@@ -1,7 +1,7 @@
 use gpui::{prelude::*, *};
 
 /// Worktree builds hang this strip at the window's foot; other builds do not.
-const HEIGHT: f32 = 22.;
+pub(crate) const HEIGHT: f32 = 22.;
 
 pub(super) fn pull_request_url(pr: &str) -> String {
     format!("{}/pull/{pr}", crate::about::REPOSITORY)

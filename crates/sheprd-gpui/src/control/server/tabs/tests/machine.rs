@@ -11,3 +11,30 @@ fn a_machine_tab_is_listed_by_its_kind_and_name() {
     assert_eq!(listed[0].location.as_deref(), Some("work"));
     assert!(!TabKind::Machine.is_page());
 }
+
+#[gpui::test]
+fn agent_machine_tabs_open_once_without_navigating(cx: &mut gpui::TestAppContext) {
+    let (view, cx) = window(cx);
+    let caller = Caller {
+        workspace_id: Some("w1".into()),
+        ..Caller::default()
+    };
+    let name = crate::machine::Name::try_from("work".to_owned()).unwrap();
+    for location in [
+        Location::Machine { name: name.clone() },
+        Location::RemoteMachine {
+            endpoint: "host".into(),
+            name,
+        },
+    ] {
+        cx.cx.update(|cx| {
+            let key = arrive::workspace(&caller, cx).unwrap();
+            let first = arrive::background_tab(key.clone(), location.clone(), cx);
+            assert!(matches!(&first, Response::Tab { reply: Reply::Opened { workspace, .. } } if workspace == "w1"));
+            assert_eq!(first, arrive::background_tab(key, location, cx));
+            let view = view.read(cx);
+            assert!(view.shows_workspace(0, "w0"));
+            assert!(view.pending_navigation.is_none());
+        });
+    }
+}

@@ -27,6 +27,7 @@ fn window(cx: &mut TestAppContext) -> (Entity<SheprdWindow>, &mut VisualTestCont
                     key: KEY.into(),
                     label: "app".into(),
                     linked: true,
+                    root: String::new(),
                 }),
             );
             view.endpoints.push(crate::endpoint::Endpoint::new(

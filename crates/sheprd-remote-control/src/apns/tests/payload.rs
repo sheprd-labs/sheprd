@@ -84,6 +84,9 @@ fn question_update_matches_the_swift_fixture() {
         pane: "w1-p3".to_owned(),
         state: ContentState {
             detail: Detail {
+                focus: None,
+                question_revision: None,
+                agents: None,
                 activity: Some("Running tests".to_owned()),
                 files: Some(1),
                 icon: Some(Icon::Test),

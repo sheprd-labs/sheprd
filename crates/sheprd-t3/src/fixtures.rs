@@ -4,6 +4,11 @@ use serde_json::Value;
 
 pub(crate) const SNAPSHOTS: &str = include_str!("../fixtures/snapshots.json");
 pub(crate) const LIVE: &str = include_str!("../fixtures/live-turn.json");
+/// Both sides of a session that steers a thread, each frame marked with
+/// the side (`dir`) that sent it.
+pub(crate) const STEER: &str = include_str!("../fixtures/steer.json");
+/// Both sides of a session that creates a project and starts threads.
+pub(crate) const LAUNCHES: &str = include_str!("../fixtures/launch.json");
 /// The recorded thread.
 pub(crate) const THREAD: &str = "mcp:a25d344c-e7a9-41ec-a6b4-33cb6f752f91";
 

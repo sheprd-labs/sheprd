@@ -8,9 +8,11 @@ mod events;
 mod fleet;
 mod help;
 mod hosts;
+mod labels;
 mod local;
 mod mods;
 mod open;
+mod phone;
 mod remote;
 mod settings;
 mod tabs;
@@ -555,6 +557,7 @@ pub(crate) fn dispatch(command: ControlCommand, context: &Context) -> crate::Res
         ControlCommand::Review => tabs::review(context),
         ControlCommand::Chat(command) => chat::chat(command, context),
         ControlCommand::Px0 => tabs::px0(context),
+        ControlCommand::Labels(command) => labels::run(command),
         ControlCommand::Notes(command) => work::notes(command, context),
         ControlCommand::Memory(command) => work::memory(command, context),
         #[cfg(feature = "mcp")]
@@ -581,6 +584,7 @@ pub(crate) fn dispatch(command: ControlCommand, context: &Context) -> crate::Res
         ControlCommand::Automation(command) => hosts::automation(command, context),
         ControlCommand::Remote(command) => remote::remote(command, context),
         ControlCommand::Fleet(command) => fleet::fleet(command, context),
+        ControlCommand::Phone(command) => phone::phone(command, context),
         ControlCommand::Mod(command) => mods::run(command, context),
         ControlCommand::Search {
             files,

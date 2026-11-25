@@ -13,6 +13,7 @@ fn an_archive_is_cancelled_when_its_checkout_changes_branch(cx: &mut TestAppCont
                 key: Path::new(MAIN).join(".git").display().to_string(),
                 label: "app".into(),
                 linked: true,
+                root: String::new(),
             }),
         );
         view.refresh_core_session(cx);

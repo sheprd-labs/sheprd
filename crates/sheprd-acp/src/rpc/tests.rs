@@ -46,18 +46,55 @@ fn the_reader_delivers_messages_then_closes() {
 }
 
 #[test]
-fn an_overlong_line_closes_with_an_error() {
-    let input = vec![b'x'; MAX_LINE + 2];
+fn a_line_of_any_length_is_read_and_one_that_is_not_json_skipped() {
+    let picture = "A".repeat(3 * BUFFERED_LINE);
+    let mut input =
+        format!(r#"{{"jsonrpc":"2.0","method":"session/update","params":{{"data":"{picture}"}}}}"#)
+            .into_bytes();
+    input.push(b'\n');
+    input.extend(vec![b'x'; BUFFERED_LINE * 2]);
+    input.extend(b"\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":null}\n");
+    // A last line past the buffer with no newline before the output ends.
+    input.extend(format!(r#"{{"jsonrpc":"2.0","method":"last","params":"{picture}"}}"#).as_bytes());
     let (sender, receiver) = bounded(8);
     spawn_reader(Cursor::new(input), move |inbound| {
         sender.send(inbound).is_ok()
     })
     .unwrap();
-    let closed = receiver.recv_timeout(Duration::from_secs(10)).unwrap();
+    let next = || receiver.recv_timeout(Duration::from_secs(10)).unwrap();
+    assert!(matches!(next(),
+        Inbound::Notification { method, params } if method == "session/update" && params["data"] == picture.as_str()));
     assert!(matches!(
-        closed,
-        Inbound::Closed(Some(Error::LineTooLong { limit: MAX_LINE }))
+        next(),
+        Inbound::Response {
+            id: wire::RequestId::Number(1),
+            ..
+        }
     ));
+    assert!(matches!(next(), Inbound::Notification { method, .. } if method == "last"));
+    assert!(matches!(next(), Inbound::Closed(None)));
+}
+
+#[test]
+fn a_line_left_half_read_is_skipped_to_its_end() {
+    let mut input = vec![b'y'; BUFFERED_LINE + 10];
+    input.extend(b"\nnext\n");
+    let (sender, receiver) = bounded(8);
+    spawn_lines(Cursor::new(input), "test-reader", move |read| {
+        let seen = match read {
+            Lines::Long(line) => {
+                let mut start = [0; 4];
+                line.read_exact(&mut start).unwrap();
+                format!("long {}", String::from_utf8_lossy(&start))
+            }
+            Lines::Line(line) => String::from_utf8_lossy(line).into_owned(),
+            Lines::End(error) => format!("end {}", error.is_none()),
+        };
+        sender.send(seen).is_ok()
+    })
+    .unwrap();
+    let seen: Vec<String> = receiver.iter().take(3).collect();
+    assert_eq!(seen, ["long yyyy", "next\n", "end true"]);
 }
 
 #[test]

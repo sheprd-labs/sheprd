@@ -101,6 +101,12 @@ pub(crate) enum Location {
     Machine {
         name: crate::machine::Name,
     },
+    /// A virtual Mac on another computer, by its host's endpoint, drawn
+    /// from frames its Sheprd makes there.
+    RemoteMachine {
+        endpoint: String,
+        name: crate::machine::Name,
+    },
 }
 
 /// The checkout an orchestrator view lists the repository of, on the view's
@@ -251,7 +257,8 @@ impl Location {
             | Self::Orchestrator { .. }
             | Self::Devices
             | Self::CoreTerminal { .. }
-            | Self::Machine { .. } => "about:blank".to_owned(),
+            | Self::Machine { .. }
+            | Self::RemoteMachine { .. } => "about:blank".to_owned(),
         }
     }
 
@@ -265,6 +272,7 @@ impl Location {
                 | Self::Devices
                 | Self::CoreTerminal { .. }
                 | Self::Machine { .. }
+                | Self::RemoteMachine { .. }
         )
     }
 
@@ -285,6 +293,8 @@ impl Location {
                 format!("herdr-core terminal {}", terminals.join(", ")) // i18n: data
             }
             Self::Machine { name } => format!("Virtual Mac {name}"), // i18n: data
+            // i18n: data
+            Self::RemoteMachine { endpoint, name } => format!("Virtual Mac {name} on {endpoint}"),
         }
     }
 
@@ -301,7 +311,7 @@ impl Location {
             Self::Orchestrator { repo } => format!("Orchestrator \u{00b7} {}", repo.name()),
             Self::Devices => "Devices".to_owned(), // i18n: data
             Self::CoreTerminal { .. } => "Terminal".to_owned(), // i18n: data
-            Self::Machine { name } => name.to_string(),
+            Self::Machine { name } | Self::RemoteMachine { name, .. } => name.to_string(),
         }
     }
 
@@ -317,7 +327,9 @@ impl Location {
             }
             Self::Devices => Some(fl!("browser-tab-devices")),
             Self::CoreTerminal { .. } => Some(fl!("browser-tab-terminal")),
-            Self::Machine { name } => Some(fl!("browser-tab-machine", name = name.as_str())),
+            Self::Machine { name } | Self::RemoteMachine { name, .. } => {
+                Some(fl!("browser-tab-machine", name = name.as_str()))
+            }
             Self::Web { .. } | Self::Local { .. } | Self::Code { .. } => None,
         }
     }

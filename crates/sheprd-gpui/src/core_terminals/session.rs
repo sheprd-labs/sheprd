@@ -45,6 +45,8 @@ impl SheprdWindow {
                         })
                         .collect()
                 });
+            folders.sort();
+            folders.dedup();
             // The shown pane's checkout, for the Git and pull request chips.
             if let Some(folder) = self.shown_core_folder()
                 && self
@@ -88,6 +90,7 @@ impl SheprdWindow {
                     .is_some_and(super::Hub::cooling);
             if self.keep_default_workspace(missing, &scope, cx) {
                 let purpose = super::Purpose::Tab {
+                    focus: true,
                     group: None,
                     scope,
                     workspace: super::WORKSPACE.to_owned(),
@@ -115,6 +118,8 @@ impl SheprdWindow {
                             .map(str::to_owned)
                     })
                     .collect();
+                folders.sort();
+                folders.dedup();
                 if let Some(folder) = shown_folder
                     && !folders.contains(&folder)
                 {
@@ -165,7 +170,7 @@ impl SheprdWindow {
             .collect()
     }
 
-    pub(super) fn live_at(&self, index: usize) -> &crate::state::LiveState {
+    pub(crate) fn live_at(&self, index: usize) -> &crate::state::LiveState {
         if index == self.selected_endpoint {
             &self.live
         } else {
@@ -196,12 +201,6 @@ impl SheprdWindow {
             let mut workspace = CoreWorkspace::from(saved);
             if let Some(cwd) = self.core_workspace_cwd(store, scope, &saved.id) {
                 workspace.cwd = cwd;
-                if !saved.custom {
-                    workspace.label = std::path::Path::new(cwd)
-                        .file_name()
-                        .and_then(|name| name.to_str())
-                        .unwrap_or(&saved.label);
-                }
             }
             if let Some(checkout) = checkouts.and_then(|checkouts| checkouts.get(workspace.cwd)) {
                 workspace.branch = checkout.branch.as_deref();
@@ -248,6 +247,21 @@ impl SheprdWindow {
         let mut session = Session::core(workspaces, tabs, focused, |terminal| {
             self.core_terminals.reported(&host, terminal)
         });
+        let home = if local.is_some() {
+            sheprd_client::local_path::home_dir().map(|home| home.to_string_lossy().into_owned())
+        } else {
+            checkouts.and_then(|known| known.home()).map(str::to_owned)
+        };
+        crate::core_terminals::names::apply(
+            &mut session,
+            checkouts,
+            home.as_deref().unwrap_or_default(),
+            if local.is_some() && cfg!(windows) {
+                sheprd_session::FolderStyle::Windows
+            } else {
+                sheprd_session::FolderStyle::Posix
+            },
+        );
         for workspace in &mut session.workspaces {
             workspace.ahead_behind =
                 checkouts.and_then(|checkouts| checkouts.upstream(&workspace.cwd));

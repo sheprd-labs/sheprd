@@ -1,7 +1,7 @@
 //! Compact per-role controls and a root-level, transient family chooser.
 // i18n: migrated
-use super::*;
 use crate::direction::Logical;
+use crate::settings_window::controls::*;
 use crate::{
     config::FontConfig,
     fonts::StyledFont,
@@ -88,7 +88,7 @@ type FamilyWriter = dyn Fn(FontTarget, Option<String>) -> crate::Result<()> + Se
 #[derive(Clone)]
 pub(super) struct FamilyIo {
     write: std::sync::Arc<FamilyWriter>,
-    load: std::sync::Arc<dyn Fn() -> crate::Result<super::super::Loaded> + Send + Sync>,
+    load: std::sync::Arc<dyn Fn() -> crate::Result<crate::settings_window::Loaded> + Send + Sync>,
 }
 
 pub(in crate::settings_window) fn face_font(config: &Config, face: FontFace) -> &FontConfig {

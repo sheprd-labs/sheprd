@@ -105,7 +105,15 @@ impl SheprdWindow {
         let window = cx.entity_id();
         crate::relay_sharing::RelaySharing::reach(cx, window, &reachable);
         // And carry the fleet's log to those in it.
-        crate::fleet::Fleet::reach(cx, window, &reachable);
+        // By the names Devices shows: a computer paired nearby is reached
+        // through a relay address nobody would recognise.
+        let names = self
+            .endpoints
+            .iter()
+            .filter(|endpoint| reachable.contains_key(&endpoint.id))
+            .map(|endpoint| (endpoint.id.clone(), endpoint.label.clone()))
+            .collect();
+        crate::fleet::Fleet::reach(cx, window, &reachable, &names);
         DeviceTags::reach(cx, reachable);
     }
 

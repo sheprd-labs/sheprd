@@ -33,6 +33,7 @@ mod limit;
 mod options;
 mod relay;
 mod serve;
+mod shared;
 mod store;
 mod web;
 

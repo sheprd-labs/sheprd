@@ -576,3 +576,39 @@ Before phase 5 offers the relay to anyone, from issue #1056:
 - **Self-hosted relays.** Anyone can run the code, but only for an app they sign
   themselves, for the reason given above. Say so in the docs rather than offering
   a relay URL setting.
+
+### One Live Activity for all hosts
+
+The phone opts a pairing in by registering an additional activity recipient
+with the reserved pane `relay/all-hosts` and requesting host grouping. The
+ordinary recipients still support alerts, existing pane cards, and daemons
+that ignore the reserved pane. A participating daemon passes its redacted
+host-card snapshots to `POST /v1/push` using that recipient for every event.
+
+The sealed handle extends `push_to_start` with a random 128-bit phone
+generation (`group`) and a generation-specific pairing pseudonym (`slot`).
+The report contains a random-card digest, increasing host revision, finish
+and question flags, an opaque revision for the focused question, working,
+waiting, done and total counts, encrypted state, and an optional
+encrypted completion label. Each pairing retains its own notify key. The
+relay can correlate opted-in slots and see progress and timing. Computer
+identities, pane routes, questions, options, and labels stay inside seals.
+
+The relay serializes delivery for each generation. It starts one card,
+retains the latest report per slot while the update token is pending, and
+ends after every participating run finishes. Revisions fence retries and
+reordered reports. A card carries a fresh nonce and the SHA-256 hash of
+the generation secret. The phone sends an activity handle scoped to that
+generation and nonce directly to the relay with an empty JSON payload.
+The app observes token changes on background launch. Only a matching card
+can bind the token, even if the relay missed the APNs start acknowledgement. The widget authenticates the
+selected slot, decrypts its state, and checks the focused computer against
+that pairing before displaying a link or permission action.
+
+Coordination lives in one relay process per APNs environment. No coordination
+state goes to disk or logs. The cache admits up to 1,024 generations of
+32 slots and expires idle entries after eight hours on access. A restart
+loses pending reports and tokens. A subsequent active snapshot can start
+a replacement card. Changes to grouping membership and entering Private
+retire the previous phone generation, invalidate its widget content, and
+refresh registrations when computers are reachable.

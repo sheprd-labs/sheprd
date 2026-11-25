@@ -18,7 +18,7 @@ settings-fleet-failed = The fleet did not do that
 
 settings-fleet-members = Members
 settings-fleet-hosts = Hosts
-settings-fleet-machines = Machines this Sheprd reaches
+settings-fleet-machines = Connected machines
 
 settings-fleet-kind-computer = Computer
 settings-fleet-kind-phone = Phone
@@ -58,7 +58,7 @@ settings-fleet-equivocating = { $member } signed in two places
 settings-fleet-equivocating-description = Its key is in use on two devices: a cloned disk, a restored backup, or a theft. What it adds counts for nothing until you remove it.
 
 settings-fleet-machines-none = No other machine reached
-settings-fleet-machines-none-description = Machines this Sheprd connects to over SSH show here, to invite or share.
+settings-fleet-machines-none-description = Devices this window is connected to over SSH show here, to invite into the fleet or share as a host.
 settings-fleet-machine-member = In your fleet
 settings-fleet-machine-outside = Not in your fleet
 settings-fleet-machine-elsewhere = In another fleet

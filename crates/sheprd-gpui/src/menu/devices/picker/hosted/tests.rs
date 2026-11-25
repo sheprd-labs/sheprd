@@ -137,3 +137,21 @@ fn a_secondary_click_lists_a_device_too_and_keeps_the_sheet(cx: &mut gpui::TestA
         assert_eq!(view.menu.page, Some(Page::Devices));
     });
 }
+
+#[gpui::test]
+fn the_sessions_shortcut_uses_the_native_sheet_after_a_layout_picker_closes(
+    cx: &mut gpui::TestAppContext,
+) {
+    let (view, cx) = cx.add_window_view(hosted);
+    view.update_in(cx, |view, window, cx| {
+        view.hosted_picker_toggle(window, cx);
+        assert!(view.hosted_picker_open());
+        view.hosted_picker_dismiss(window, cx);
+        view.config.sidebar_style.device_footer = crate::config::DeviceFooter::Never;
+        view.open_sessions(Default::default(), window, cx);
+        assert!(view.menu.anchor.y > gpui::px(100.));
+        assert_eq!(view.menu.page, Some(Page::Devices));
+        assert!(!view.hosted_picker_open());
+        assert!(view.hosted_device_picker()["sheet"].is_null());
+    });
+}

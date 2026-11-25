@@ -97,3 +97,55 @@ fn a_chat_whose_agent_the_host_lacks_falls_back_to_the_shell() {
     picker.allow_chats(false);
     assert_eq!(picker.chosen, Landing::Terminal);
 }
+
+#[test]
+fn antigravity_and_probed_chat_agents_including_gemini_are_offered() {
+    let mut picker = picker_with(Landing::Chat(Agent::Antigravity), true);
+    picker.offer(Ok(vec![AgentKind::Antigravity, AgentKind::Claude]));
+    assert_eq!(picker.chosen, Landing::Chat(Agent::Antigravity));
+    assert_eq!(
+        picker.offered_chats(),
+        [
+            Landing::Chat(Agent::Antigravity),
+            Landing::Chat(Agent::Claude),
+        ]
+    );
+    // Turning chats off falls back to Antigravity in the terminal.
+    picker.allow_chats(false);
+    assert_eq!(picker.chosen, Landing::Agent(AgentKind::Antigravity));
+
+    // A `herdr-acp agents` probe offers every available chat agent, including
+    // Gemini (which has no terminal AgentKind) and Antigravity.
+    picker.allow_chats(true);
+    picker.offer_chats(vec![
+        Agent::Gemini,
+        Agent::Antigravity,
+        Agent::Claude,
+        Agent::Muse,
+    ]);
+    assert_eq!(
+        picker.offered_chats(),
+        [
+            Landing::Chat(Agent::Antigravity),
+            Landing::Chat(Agent::Claude),
+            Landing::Chat(Agent::Gemini),
+            Landing::Chat(Agent::Muse),
+        ]
+    );
+    assert!(picker.choose(Landing::Chat(Agent::Gemini)));
+    assert_eq!(picker.chosen, Landing::Chat(Agent::Gemini));
+    // Gemini has no terminal fallback, so turning chats off lands in the shell.
+    picker.allow_chats(false);
+    assert_eq!(picker.chosen, Landing::Terminal);
+}
+
+#[test]
+fn every_chat_agent_has_a_non_fetcher_binary_for_host_lookup() {
+    for agent in Agent::ALL {
+        let bins: Vec<&str> = chat_binaries(*agent).collect();
+        assert!(!bins.is_empty(), "{agent:?}");
+        assert!(!bins.contains(&"npx"), "{agent:?}: {bins:?}");
+    }
+    assert!(chat_binaries(Agent::Antigravity).any(|bin| bin == "agy"));
+    assert!(chat_binaries(Agent::Gemini).any(|bin| bin == "gemini"));
+}

@@ -1,10 +1,12 @@
 //! Opening and drawing a machine's tab, and the status bar item that says a
 //! machine is running whether or not a tab shows it.
 
+use super::Tab;
 #[cfg(target_os = "macos")]
-use super::TabId;
-use super::{Location, Store, Tab};
-use crate::{SheprdWindow, i18n::fl, machine::Name, window::Flash};
+use super::{Location, Store, TabId};
+#[cfg(target_os = "macos")]
+use crate::machine::Name;
+use crate::{SheprdWindow, i18n::fl, window::Flash};
 use gpui::{AnyElement, Context, Div, IntoElement, ParentElement, Styled, Window, div, rgb};
 #[cfg(target_os = "macos")]
 use gpui::{
@@ -15,22 +17,14 @@ use gpui::{
 impl SheprdWindow {
     /// Shows machine `name` in a tab of the focused workspace, or brings back
     /// the one already showing it there, and starts it if it is stopped.
+    #[cfg(target_os = "macos")]
     pub(crate) fn open_machine(&mut self, name: Name, window: &mut Window, cx: &mut Context<Self>) {
         let Some((scope, workspace)) = self.browser_key() else {
             self.show_flash(Flash::warning(fl!("machine-no-workspace")), cx);
             return;
         };
-        let existing = cx.try_global::<Store>().and_then(|store| {
-            store
-                .in_workspace(&scope, &workspace)
-                .find(|tab| matches!(&tab.location, Some(Location::Machine { name: open }) if *open == name))
-                .map(|tab| tab.id)
-        });
-        let opened = existing.or_else(|| {
-            Store::update(cx, {
-                let name = name.clone();
-                |store| store.open(scope, &workspace, Some(Location::Machine { name }), None)
-            })
+        let opened = Store::update(cx, |store| {
+            store.open_location(scope, &workspace, Location::Machine { name: name.clone() })
         });
         let Some(id) = opened else {
             self.show_flash(Flash::warning(fl!("machine-too-many-tabs")), cx);
@@ -38,7 +32,6 @@ impl SheprdWindow {
         };
         self.dismiss_menu(window, cx);
         self.show_browser_tab(id, window, cx);
-        #[cfg(target_os = "macos")]
         crate::machine::start(&name, cx);
         cx.notify();
     }

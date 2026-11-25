@@ -48,6 +48,14 @@ async fn a_manually_banned_address_is_refused_everywhere_but_healthz() {
             "{path}: {response}"
         );
     }
+    #[cfg(feature = "client")]
+    {
+        let endpoint = format!("http://{}", relay.http).parse().unwrap();
+        assert!(matches!(
+            crate::client::reach(&endpoint).await,
+            Err(crate::client::Error::Banned)
+        ));
+    }
     // QUIC refuses it before the handshake.
     assert!(
         tokio::time::timeout(
@@ -177,8 +185,120 @@ async fn a_ban_closes_open_quic_connections() {
     let closed = tokio::time::timeout(Duration::from_secs(5), connection.closed())
         .await
         .expect("the connection stayed open");
+    #[cfg(feature = "client")]
+    assert!(matches!(
+        crate::client::Error::from(closed.clone()),
+        crate::client::Error::Banned
+    ));
     assert!(
         matches!(&closed, quinn::ConnectionError::ApplicationClosed(close) if close.error_code.into_inner() == u64::from(crate::wire::code::BANNED)),
         "{closed:?}"
     );
+}
+
+#[cfg(feature = "client")]
+#[tokio::test]
+async fn a_ban_during_a_pending_listener_request_reports_banned() {
+    use crate::wire::{Message, Parse, Request, Status};
+    let (endpoint, info) = crate::bind_quic("127.0.0.1:0".parse().unwrap(), None, None).unwrap();
+    let address = endpoint.local_addr().unwrap();
+    let pin: crate::pin::Pin = URL_SAFE_NO_PAD
+        .decode(&info.pin)
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let server = tokio::spawn(async move {
+        let incoming = endpoint.accept().await.unwrap();
+        let connection = incoming.await.unwrap();
+        let (mut send, mut recv) = connection.accept_bi().await.unwrap();
+        let mut bytes = Vec::new();
+        loop {
+            match Request::parse(&bytes).unwrap() {
+                Parse::Done(_, _) => break,
+                Parse::Need(total) => {
+                    let have = bytes.len();
+                    bytes.resize(total, 0);
+                    recv.read_exact(&mut bytes[have..]).await.unwrap();
+                }
+            }
+        }
+        send.write_all(&[Status::Ok as u8]).await.unwrap();
+        // Wait until the listener's set_dial_keys request arrives, so the client
+        // is blocked in `read_exact` waiting for a reply when the ban closes
+        // the connection.
+        bytes.clear();
+        loop {
+            match Message::parse(&bytes).unwrap() {
+                Parse::Done(_, _) => break,
+                Parse::Need(total) => {
+                    let have = bytes.len();
+                    bytes.resize(total, 0);
+                    recv.read_exact(&mut bytes[have..]).await.unwrap();
+                }
+            }
+        }
+        connection.close(quinn::VarInt::from_u32(crate::wire::code::BANNED), b"");
+    });
+
+    let connection = crate::client::connect(address, pin).await.unwrap();
+    let mut listener = crate::client::Listener::listen(connection, &signing_key(112), b"")
+        .await
+        .unwrap();
+    let result = tokio::time::timeout(
+        Duration::from_secs(5),
+        listener.set_dial_keys(vec![public(&phone())]),
+    )
+    .await
+    .expect("set_dial_keys timed out");
+    assert!(
+        matches!(result, Err(crate::client::Error::Banned)),
+        "{result:?}"
+    );
+    server.await.unwrap();
+}
+
+#[cfg(feature = "client")]
+#[test]
+fn stream_read_and_write_errors_unwrap_bans() {
+    let banned_code = quinn::VarInt::from_u32(crate::wire::code::BANNED);
+    let other_code = quinn::VarInt::from_u32(crate::wire::code::SHUTDOWN);
+    let banned_close = quinn::ConnectionError::ApplicationClosed(quinn::ApplicationClose {
+        error_code: banned_code,
+        reason: Default::default(),
+    });
+    let other_close = quinn::ConnectionError::ApplicationClosed(quinn::ApplicationClose {
+        error_code: other_code,
+        reason: Default::default(),
+    });
+
+    assert!(matches!(
+        crate::client::Error::from(quinn::ReadExactError::ReadError(
+            quinn::ReadError::ConnectionLost(banned_close.clone())
+        )),
+        crate::client::Error::Banned
+    ));
+    assert!(matches!(
+        crate::client::Error::from(quinn::ReadExactError::ReadError(quinn::ReadError::Reset(
+            banned_code
+        ))),
+        crate::client::Error::Banned
+    ));
+    assert!(matches!(
+        crate::client::Error::from(quinn::ReadExactError::ReadError(
+            quinn::ReadError::ConnectionLost(other_close.clone())
+        )),
+        crate::client::Error::Read(_)
+    ));
+    assert!(matches!(
+        crate::client::Error::from(quinn::WriteError::ConnectionLost(banned_close)),
+        crate::client::Error::Banned
+    ));
+    assert!(matches!(
+        crate::client::Error::from(quinn::WriteError::Stopped(banned_code)),
+        crate::client::Error::Banned
+    ));
+    assert!(matches!(
+        crate::client::Error::from(quinn::WriteError::ConnectionLost(other_close)),
+        crate::client::Error::Write(_)
+    ));
 }

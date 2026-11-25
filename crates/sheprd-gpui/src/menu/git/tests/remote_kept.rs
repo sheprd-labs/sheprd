@@ -33,6 +33,7 @@ fn remote_kept_checkouts_never_reach_local_git_workers(cx: &mut TestAppContext) 
                 key: "/work/same-path/.git".into(),
                 label: "repo".into(),
                 linked: true,
+                root: String::new(),
             };
             view.core_terminals
                 .seed_checkout_for_test(folder, Some(identity.clone()));

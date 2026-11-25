@@ -57,6 +57,7 @@ required-features = ["server"]
 secrecy.workspace              = true
 sheprd-apns                    = { optional = true, workspace = true }
 sheprd-chat-protocol.workspace = true
+sheprd-credentials.workspace = true
 sheprd-client.workspace        = true
 sheprd-github.workspace        = true
 # Relay addresses in `[remote] relays`; with `server`, listening on them

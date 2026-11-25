@@ -95,6 +95,7 @@ public struct Home: Codable, Hashable, Sendable {
     }
 
     public struct Workspace: Codable, Hashable, Sendable, Identifiable {
+        public var labels: [String]? = nil
         public var id: String
         public var label: String
         public var branch: String?
@@ -118,11 +119,17 @@ public struct Home: Codable, Hashable, Sendable {
         /// computers, and checkouts of other hosts, leave it out.
         public var github: GitHubRepository? = nil
 
+        /// Agent-specific labels first, followed by labels shared by the checkout.
+        public func rowLabels(agent: [String]?) -> [String] {
+            var seen = Set<String>()
+            return ((agent ?? []) + (labels ?? [])).filter { seen.insert($0.lowercased()).inserted }
+        }
+
         /// Its pull request is merged, so the work here is done.
         public var merged: Bool { pullRequest?.tone == .merged }
 
         enum CodingKeys: String, CodingKey {
-            case id, label, branch, cwd, worktree, session, chats, terminals, github
+            case id, label, labels, branch, cwd, worktree, session, chats, terminals, github
             case pullRequest = "pull_request"
             case unopenedCommits = "unopened_commits"
             case uncommitted
@@ -166,6 +173,7 @@ public struct Home: Codable, Hashable, Sendable {
     }
 
     public struct ChatRow: Codable, Hashable, Sendable, Identifiable {
+        public var labels: [String]? = nil
         public var pane: String
         public var tab: String
         public var title: String
@@ -301,6 +309,7 @@ public struct Home: Codable, Hashable, Sendable {
         }
 
         public struct DetectedAgent: Codable, Hashable, Sendable {
+            public var labels: [String]? = nil
             public var name: String?
             public var status: AgentStatus
             /// The pane it runs in; older computers leave it out.
@@ -325,7 +334,7 @@ public struct Home: Codable, Hashable, Sendable {
             public var unread: Bool? = nil
 
             enum CodingKeys: String, CodingKey {
-                case name, status, pane, title, preview, transcript, favorite, unread
+                case name, status, pane, title, labels, preview, transcript, favorite, unread
                 case changedMs = "changed_ms"
             }
 

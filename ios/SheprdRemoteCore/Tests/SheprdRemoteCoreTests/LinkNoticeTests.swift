@@ -36,6 +36,13 @@ struct LinkNoticeTests {
         #expect(LinkNotice.worst([("a", .revoked)], patient: true, dismissed: dismissed)?.kind == .revoked)
     }
 
+    @Test func aBanTakesPriorityEvenAfterDismissingOffline() throws {
+        let relay = try #require(RelayEndpoint("relay.example.org"))
+        let links: [(String, LinkStatus)] = [("a", .relayBanned(relay)), ("b", offline)]
+        let notice = LinkNotice.worst(links, patient: true, dismissed: [.init(device: "a", kind: .offline)])
+        #expect(notice == LinkNotice(kind: .relayBanned, devices: ["a"]))
+    }
+
     @Test func aComputerBackOnlineMayNoticeAgain() {
         let dismissed: Set<LinkNotice.Key> = [.init(device: "a", kind: .offline), .init(device: "b", kind: .offline)]
         #expect(LinkNotice.cleared(dismissed, online: ["a"]) == [.init(device: "b", kind: .offline)])

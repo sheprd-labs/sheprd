@@ -116,6 +116,18 @@ extension View {
     }
 }
 
+private struct AgentLabels: View {
+    let tags: [String]
+
+    var body: some View {
+        if !tags.isEmpty {
+            PillFlow(spacing: 4) {
+                ForEach(tags, id: \.self) { TagPill(tag: $0) }
+            }
+        }
+    }
+}
+
 struct ChatRowLabel: View {
     @AppStorage(RowLines.key) private var lines = RowLines.choices.lowerBound
     var item: ChatItem
@@ -159,6 +171,7 @@ struct ChatRowLabel: View {
                     // glance whether the agent's work is ready or failing.
                     if showsPullRequest { WorkspacePullRequestBadge(workspace: item.workspace).fixedSize() }
                 }
+                AgentLabels(tags: item.workspace.rowLabels(agent: item.chat.labels))
             }
         }
         // In the row's leading margin, so read and unread rows line up.
@@ -275,6 +288,7 @@ struct AgentTerminalRowLabel: View {
                         .accessibilityValue(showsWorkspace && !showsPullRequest && item.workspace.merged ? "Pull request merged" : "")
                     if showsPullRequest { WorkspacePullRequestBadge(workspace: item.workspace).fixedSize() }
                 }
+                AgentLabels(tags: item.workspace.rowLabels(agent: item.agent?.labels))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -346,6 +360,7 @@ struct AnswerCard: View {
                     Text("\(item.computer.name) · \(item.workspace.label)").font(.caption).foregroundStyle(.secondary)
                 }
             }
+            AgentLabels(tags: item.workspace.rowLabels(agent: item.chat.labels))
             Text(question.title)
             // Permissions fit on one row; a question's answers get a row each.
             let compact = question.options.allSatisfy { $0.kind != .other } && question.options.count <= 4

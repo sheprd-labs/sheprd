@@ -40,6 +40,8 @@ impl<R: FnMut(Update)> Session<R> {
             .harness
             .zip(self.acp_session.as_ref().map(|id| id.0.to_string()));
         self.keep_leaving();
+        self.thread.leaving(self.config.harness);
+        self.keep_switched(agent);
         let resume = self
             .thread
             .switch(leaving, self.transcript.last_entry_id(), agent);
@@ -53,12 +55,17 @@ impl<R: FnMut(Update)> Session<R> {
         self.accepts = crate::files::Accepts::default();
         self.acp_session = None;
         self.asked.clear();
+        self.auth_attempted = false;
+        self.auth_methods.clear();
+        self.can_load_session = false;
+        self.legacy_model_option = false;
         self.pending.clear();
         self.pictures = super::pictures::Pictures::default();
         self.ready = false;
         self.turn = None;
         self.config.agent = agent.display_name().to_owned();
         self.context.switched(&self.config.agent);
+        self.context.set_direct(agent == Agent::Antigravity);
         self.config.harness = Some(agent);
         self.config.login_hint = Some(agent.login_hint().to_owned());
 
@@ -68,6 +75,7 @@ impl<R: FnMut(Update)> Session<R> {
         // The conversation stays; what the old agent alone held does not.
         transcript.entries = std::mem::take(&mut self.transcript.entries);
         transcript.truncated = self.transcript.truncated;
+        transcript.thread = self.transcript.thread.take();
         // What the conversation worked on stays listed, added by hand too.
         transcript.pull_requests = std::mem::take(&mut self.transcript.pull_requests);
         // Prompts typed while the old agent started go to the new one.
@@ -79,6 +87,8 @@ impl<R: FnMut(Update)> Session<R> {
         super::known::seed(&self.config.known, Some(agent), &mut transcript);
         self.transcript = transcript;
         self.projector = self.projector.restart();
+        // Settings carried into the chat were for the agent it started with.
+        self.config.settings = None;
 
         // A new epoch: no client's cursor or logged change applies to the
         // new transcript, so every client replaces what it holds.
@@ -99,6 +109,7 @@ impl<R: FnMut(Update)> Session<R> {
                 count: self.remote_clients(),
             });
         }
+        self.thread_changed();
         if self.thread.started() {
             let notice = self.projector.notice(
                 sheprd_chat_protocol::NoticeLevel::Info,
@@ -106,6 +117,7 @@ impl<R: FnMut(Update)> Session<R> {
             );
             self.emit(notice);
         }
+        self.recall_picks();
         (self.report)(Update::Harness(agent));
         self.report_activity();
         self.launch = Some(agent);

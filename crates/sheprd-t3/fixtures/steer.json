@@ -1,0 +1,2887 @@
+[
+ {"dir": "client", "_tag": "Request", "id": "1", "tag": "server.getConfig", "payload": {}, "headers": []},
+ {
+  "dir": "server",
+  "_tag": "Exit",
+  "requestId": "1",
+  "exit": {
+   "_tag": "Success",
+   "value": {
+    "environment": {
+     "environmentId": "2d9e98ee-c03f-48ab-9f48-d4164f3dcba8",
+     "label": "sandbox",
+     "platform": {"os": "darwin", "arch": "arm64", "machine": "laptop"},
+     "serverVersion": "0.1.9",
+     "orchestrationProtocolVersion": 2,
+     "databaseMigration": 81,
+     "capabilities": {"repositoryIdentity": true, "connectionProbe": true, "attachmentUploads": true, "questionAttachments": true, "fileAttachments": {"maxUploadBytes": 52428800}, "pullRequests": true, "pullRequestChecks": true, "sideChats": true, "vcsBranchStatus": true, "inlineMessageContext": true, "requiredWorktreeBootstrap": true, "threadSettlement": true, "threadAutoSettlement": true, "storageCleanup": true, "storageCleanupRun": true, "databaseStorage": true, "otlpEndpointCheck": true, "projectWorktreeCleanup": true, "settledWorktreeCleanup": true, "worktreesDirectory": true, "fastWorktreeCheckout": true, "threadAutoSettlementScope": true, "threadRestartContinuation": true, "projectSettingsOverrides": true, "projectProviderInstanceOverrides": true, "threadSnooze": true, "threadForceStop": true, "environmentThemes": true, "usageLimitSources": true, "providerWorkspaceSnapshotsOnDemand": true, "modelCatalogRefresh": true, "usagePriceOverrides": true, "usageModelAliases": true, "threadPinning": true, "threadPinReorder": true, "threadActiveReorder": true, "threadAutoSettleOptOut": true, "threadProjectFromScratch": true, "threadTitleRegeneration": true, "threadVisitedTracking": true, "threadPullRequestLinking": true, "serverResolvedCommandContext": true, "threadStop": true, "localServerStop": true, "threadPullRequests": true, "threadPullRequestWatch": true, "pullRequestStackActions": true, "npmReleaseLookup": true, "agentActivityPublishing": false, "projectCloneTracking": true, "projectOrganization": true, "ignoredFileListing": true, "environmentIcon": true, "commandOutputStreaming": true, "serverBrowser": true, "peerLinks": true, "mcpModeLimitHeader": true, "linkFence": true, "mcpApprovalCodes": true, "mcpHostedApproval": true, "triage": true, "oneTimeSchedules": true, "freshContext": true, "scheduledTaskThreadModes": true, "voiceTranscription": true, "cloudVoiceTranscription": true}
+    },
+    "auth": {
+     "policy": "loopback-browser",
+     "bootstrapMethods": ["one-time-token"],
+     "sessionMethods": ["browser-session-cookie", "bearer-access-token", "dpop-access-token"],
+     "sessionCookieName": "t3_session_47391_8e19d4479616",
+     "serverUpdateScope": "environment:maintain"
+    },
+    "cwd": "/tmp/t3rec/work",
+    "keybindingsConfigPath": "/tmp/t3rec/home/userdata/keybindings.json",
+    "issues": [],
+    "providers": [
+     {
+      "instanceId": "codex",
+      "driver": "codex",
+      "displayName": "Codex",
+      "continuation": {"groupKey": "codex:home:/tmp/t3rec/fakehome/.codex"},
+      "showInteractionModeToggle": true,
+      "reportsContextWindow": true,
+      "setup": {"canAuthenticate": false, "canInstall": false},
+      "enabled": true,
+      "installed": false,
+      "version": null,
+      "status": "error",
+      "auth": {"status": "unknown"},
+      "checkedAt": "2026-11-22T02:11:33.295Z",
+      "message": "Could not start Codex CLI (`codex`). Check Settings → Providers → Codex → Binary path on the server. Installing ChatGPT or Codex desktop may not add codex to PATH.",
+      "models": [],
+      "slashCommands": [],
+      "skills": [],
+      "versionAdvisory": {"status": "unknown", "currentVersion": null, "latestVersion": null, "updateCommand": null, "canUpdate": false, "canInstallVersion": false, "checkedAt": "2026-11-22T02:11:33.295Z", "message": null}
+     },
+     {
+      "instanceId": "claudeAgent",
+      "driver": "claudeAgent",
+      "displayName": "Claude",
+      "continuation": {"groupKey": "claude:home:/tmp/t3rec/fakehome/.claude"},
+      "showInteractionModeToggle": true,
+      "reportsContextWindow": true,
+      "setup": {"canAuthenticate": false, "canInstall": false},
+      "enabled": true,
+      "installed": false,
+      "version": null,
+      "status": "error",
+      "auth": {"status": "unknown"},
+      "checkedAt": "2026-11-22T02:11:33.306Z",
+      "message": "Claude Agent CLI (`claude`) was not found on PATH.",
+      "models": [
+       {
+        "slug": "claude-opus-5-5",
+        "name": "Claude Opus 5.5",
+        "aliases": ["opus", "opus-5.5", "claude-opus-5.5"],
+        "isCustom": false,
+        "isDefault": true,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium", "isDefault": true}, {"id": "high", "label": "High"}, {"id": "xhigh", "label": "Extra High"}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}, {"id": "ultracode", "label": "Ultracode", "type": "boolean"}, {"id": "fastMode", "label": "Fast Mode", "type": "boolean"}]}
+       },
+       {
+        "slug": "claude-sonnet-5-5",
+        "name": "Claude Sonnet 5.5",
+        "aliases": ["sonnet", "sonnet-5.5", "claude-sonnet-5.5"],
+        "isCustom": false,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium"}, {"id": "high", "label": "High", "isDefault": true}, {"id": "xhigh", "label": "Extra High"}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}, {"id": "ultracode", "label": "Ultracode", "type": "boolean"}]}
+       },
+       {
+        "slug": "claude-fable-5-2",
+        "name": "Claude Fable 5.2",
+        "aliases": ["fable", "fable-5.2", "claude-fable-5.2"],
+        "isCustom": false,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium", "isDefault": true}, {"id": "high", "label": "High"}, {"id": "xhigh", "label": "Extra High"}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}, {"id": "ultracode", "label": "Ultracode", "type": "boolean"}]}
+       },
+       {
+        "slug": "claude-fable-5-1",
+        "name": "Claude Fable 5.1",
+        "aliases": ["fable-5.1", "claude-fable-5.1"],
+        "isCustom": false,
+        "isLegacy": true,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium", "isDefault": true}, {"id": "high", "label": "High"}, {"id": "xhigh", "label": "Extra High"}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}, {"id": "ultracode", "label": "Ultracode", "type": "boolean"}]}
+       },
+       {
+        "slug": "claude-fable-5",
+        "name": "Claude Fable 5",
+        "isCustom": false,
+        "isLegacy": true,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium", "isDefault": true}, {"id": "high", "label": "High"}, {"id": "xhigh", "label": "Extra High"}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}, {"id": "ultracode", "label": "Ultracode", "type": "boolean"}]}
+       },
+       {
+        "slug": "claude-opus-5",
+        "name": "Claude Opus 5",
+        "aliases": ["opus-5", "claude-opus-5.0", "claude-opus-5-0"],
+        "isCustom": false,
+        "isLegacy": true,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium"}, {"id": "high", "label": "High", "isDefault": true}, {"id": "xhigh", "label": "Extra High"}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}, {"id": "ultracode", "label": "Ultracode", "type": "boolean"}, {"id": "fastMode", "label": "Fast Mode", "type": "boolean"}]}
+       },
+       {
+        "slug": "claude-opus-4-8",
+        "name": "Claude Opus 4.8",
+        "aliases": ["opus-4.8", "claude-opus-4.8"],
+        "isCustom": false,
+        "isLegacy": true,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium"}, {"id": "high", "label": "High", "isDefault": true}, {"id": "xhigh", "label": "Extra High"}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}, {"id": "ultracode", "label": "Ultracode", "type": "boolean"}, {"id": "fastMode", "label": "Fast Mode", "type": "boolean"}]}
+       },
+       {
+        "slug": "claude-opus-4-7",
+        "name": "Claude Opus 4.7",
+        "aliases": ["opus-4.7", "claude-opus-4.7"],
+        "isCustom": false,
+        "isLegacy": true,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium"}, {"id": "high", "label": "High"}, {"id": "xhigh", "label": "Extra High", "isDefault": true}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}, {"id": "fastMode", "label": "Fast Mode", "type": "boolean"}]}
+       },
+       {
+        "slug": "claude-opus-4-6",
+        "name": "Claude Opus 4.6",
+        "aliases": ["opus-4.6", "claude-opus-4.6", "claude-opus-4-6-20251117"],
+        "isCustom": false,
+        "isLegacy": true,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium"}, {"id": "high", "label": "High", "isDefault": true}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}, {"id": "fastMode", "label": "Fast Mode", "type": "boolean"}, {"id": "contextWindow", "label": "Context Window", "type": "select", "options": [{"id": "200k", "label": "200k"}, {"id": "1m", "label": "1M", "isDefault": true}]}]}
+       },
+       {
+        "slug": "claude-opus-4-5",
+        "name": "Claude Opus 4.5",
+        "isCustom": false,
+        "isLegacy": true,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium"}, {"id": "high", "label": "High", "isDefault": true}, {"id": "max", "label": "Max"}]}, {"id": "fastMode", "label": "Fast Mode", "type": "boolean"}]}
+       },
+       {
+        "slug": "claude-sonnet-5",
+        "name": "Claude Sonnet 5",
+        "aliases": ["sonnet-5", "claude-sonnet-5.0", "claude-sonnet-5-0"],
+        "isCustom": false,
+        "isLegacy": true,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium"}, {"id": "high", "label": "High", "isDefault": true}, {"id": "xhigh", "label": "Extra High"}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}]}
+       },
+       {
+        "slug": "claude-sonnet-4-6",
+        "name": "Claude Sonnet 4.6",
+        "aliases": ["sonnet-4.6", "claude-sonnet-4.6", "claude-sonnet-4-6-20251117"],
+        "isCustom": false,
+        "isLegacy": true,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium"}, {"id": "high", "label": "High", "isDefault": true}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}, {"id": "contextWindow", "label": "Context Window", "type": "select", "options": [{"id": "200k", "label": "200k", "isDefault": true}, {"id": "1m", "label": "1M"}]}]}
+       },
+       {
+        "slug": "claude-haiku-5-5",
+        "name": "Claude Haiku 5.5",
+        "aliases": ["haiku", "haiku-5.5", "claude-haiku-5.5"],
+        "isCustom": false,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Reasoning", "type": "select", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium", "isDefault": true}, {"id": "high", "label": "High"}, {"id": "xhigh", "label": "Extra High"}, {"id": "max", "label": "Max"}, {"id": "ultrathink", "label": "Ultrathink"}], "promptInjectedValues": ["ultrathink"]}, {"id": "ultracode", "label": "Ultracode", "type": "boolean"}]}
+       },
+       {
+        "slug": "claude-haiku-4-5",
+        "name": "Claude Haiku 4.5",
+        "aliases": ["haiku-4.5", "claude-haiku-4.5", "claude-haiku-4-5-20251001"],
+        "isCustom": false,
+        "isLegacy": true,
+        "capabilities": {"optionDescriptors": [{"id": "thinking", "label": "Thinking", "type": "boolean", "currentValue": true}]}
+       }
+      ],
+      "slashCommands": [],
+      "skills": [],
+      "versionAdvisory": {"status": "unknown", "currentVersion": null, "latestVersion": null, "updateCommand": null, "canUpdate": false, "canInstallVersion": false, "checkedAt": "2026-11-22T02:11:33.306Z", "message": null}
+     },
+     {
+      "instanceId": "cursor",
+      "driver": "cursor",
+      "displayName": "Cursor",
+      "continuation": {"groupKey": "cursor:instance:cursor"},
+      "showInteractionModeToggle": true,
+      "supportsConversationRollback": false,
+      "setup": {"canAuthenticate": true, "canInstall": false},
+      "enabled": false,
+      "installed": false,
+      "version": null,
+      "status": "disabled",
+      "auth": {"status": "unknown", "canLogout": true},
+      "checkedAt": "2026-11-22T02:11:33.319Z",
+      "message": "Cursor is disabled in T3 Code settings.",
+      "models": [],
+      "slashCommands": [],
+      "skills": []
+     },
+     {
+      "instanceId": "grok",
+      "driver": "grok",
+      "displayName": "Grok",
+      "continuation": {"groupKey": "grok:instance:grok"},
+      "showInteractionModeToggle": false,
+      "supportedRuntimeModes": ["approval-required", "auto", "full-access"],
+      "supportsConversationRollback": false,
+      "setup": {"canAuthenticate": false, "canInstall": false},
+      "enabled": false,
+      "installed": false,
+      "version": null,
+      "status": "disabled",
+      "auth": {"status": "unknown"},
+      "checkedAt": "2026-11-22T02:11:33.318Z",
+      "message": "Grok is disabled in T3 Code settings.",
+      "models": [{"slug": "grok-build", "name": "Grok Build", "isCustom": false, "capabilities": {"optionDescriptors": []}}],
+      "slashCommands": [],
+      "skills": []
+     },
+     {
+      "instanceId": "opencode",
+      "driver": "opencode",
+      "displayName": "OpenCode",
+      "continuation": {"groupKey": "opencode:instance:opencode"},
+      "showInteractionModeToggle": false,
+      "setup": {"canAuthenticate": false, "canInstall": false},
+      "enabled": false,
+      "installed": false,
+      "version": null,
+      "status": "disabled",
+      "auth": {"status": "unknown"},
+      "checkedAt": "2026-11-22T02:11:33.319Z",
+      "message": "OpenCode is disabled in T3 Code settings.",
+      "models": [],
+      "slashCommands": [],
+      "skills": [],
+      "usageLimits": {"checkedAt": "2026-11-22T02:11:33.319Z", "windows": [], "unavailable": {"reason": "unsupported"}}
+     },
+     {
+      "instanceId": "antigravity",
+      "driver": "antigravity",
+      "displayName": "Antigravity",
+      "continuation": {"groupKey": "antigravity:instance:antigravity"},
+      "showInteractionModeToggle": false,
+      "supportedRuntimeModes": ["approval-required", "auto-accept-edits", "full-access"],
+      "supportsConversationRollback": false,
+      "supportsTextGeneration": false,
+      "setup": {"canAuthenticate": true, "canInstall": true},
+      "enabled": false,
+      "installed": false,
+      "version": null,
+      "status": "disabled",
+      "auth": {"status": "unknown", "type": "oauth-personal"},
+      "checkedAt": "2026-11-22T02:11:33.320Z",
+      "message": "Antigravity is disabled in T3 Code settings.",
+      "models": [],
+      "slashCommands": [],
+      "skills": [],
+      "workspaceSnapshots": []
+     },
+     {
+      "instanceId": "fx",
+      "driver": "fx",
+      "displayName": "fx",
+      "continuation": {"groupKey": "fx:instance:fx"},
+      "showInteractionModeToggle": false,
+      "supportedRuntimeModes": ["approval-required", "auto"],
+      "supportsTextGeneration": false,
+      "setup": {"canAuthenticate": false, "canInstall": false},
+      "enabled": false,
+      "installed": false,
+      "version": null,
+      "status": "disabled",
+      "auth": {"status": "unknown"},
+      "checkedAt": "2026-11-22T02:11:33.318Z",
+      "message": "fx is disabled in T3 Code settings.",
+      "models": [
+       {
+        "slug": "default",
+        "name": "Default",
+        "isCustom": false,
+        "isDefault": true,
+        "capabilities": {"optionDescriptors": [{"id": "effort", "label": "Effort", "type": "select", "options": [{"id": "auto", "label": "Auto"}, {"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium", "isDefault": true}, {"id": "high", "label": "High"}, {"id": "xhigh", "label": "Extra High"}, {"id": "max", "label": "Max"}]}]}
+       }
+      ],
+      "slashCommands": [],
+      "skills": [],
+      "versionAdvisory": {"status": "unknown", "currentVersion": null, "latestVersion": null, "updateCommand": null, "canUpdate": false, "canInstallVersion": false, "checkedAt": "2026-11-22T02:11:33.318Z", "message": null}
+     },
+     {
+      "instanceId": "kiro",
+      "driver": "kiro",
+      "displayName": "Kiro",
+      "continuation": {"groupKey": "kiro:instance:kiro"},
+      "showInteractionModeToggle": false,
+      "supportedRuntimeModes": ["approval-required", "full-access"],
+      "setup": {"canAuthenticate": false, "canInstall": false},
+      "enabled": false,
+      "installed": false,
+      "version": null,
+      "status": "disabled",
+      "auth": {"status": "unknown"},
+      "checkedAt": "2026-11-22T02:11:33.322Z",
+      "message": "Kiro is disabled in T3 Code settings.",
+      "models": [{"slug": "default", "name": "Kiro default", "isCustom": false, "capabilities": {"optionDescriptors": []}}],
+      "slashCommands": [{"name": "compact", "description": "Summarize the conversation and reduce context usage"}],
+      "skills": [],
+      "versionAdvisory": {"status": "unknown", "currentVersion": null, "latestVersion": null, "updateCommand": null, "canUpdate": false, "canInstallVersion": false, "checkedAt": "2026-11-22T02:11:33.322Z", "message": null}
+     },
+     {
+      "instanceId": "fakeacp",
+      "driver": "acpRegistry",
+      "displayName": "Fake ACP",
+      "continuation": {"groupKey": "acpRegistry:instance:fakeacp"},
+      "supportsTextGeneration": false,
+      "setup": {"canAuthenticate": false, "canInstall": false},
+      "nativeSessions": {"canList": false, "canLoad": false, "canResume": false, "canDelete": false},
+      "configurableProviders": false,
+      "enabled": true,
+      "installed": true,
+      "version": null,
+      "status": "ready",
+      "auth": {"status": "unknown", "canLogout": false},
+      "checkedAt": "2026-11-22T02:11:33.290Z",
+      "models": [
+       {"slug": "fast", "name": "Fast", "isCustom": false, "isDefault": true, "capabilities": {"optionDescriptors": []}},
+       {"slug": "smart", "name": "Smart", "isCustom": false, "capabilities": {"optionDescriptors": []}}
+      ],
+      "slashCommands": [],
+      "skills": []
+     },
+     {
+      "instanceId": "fakeacp2",
+      "driver": "acpRegistry",
+      "displayName": "Fake ACP Two",
+      "continuation": {"groupKey": "acpRegistry:instance:fakeacp2"},
+      "supportsTextGeneration": false,
+      "setup": {"canAuthenticate": false, "canInstall": false},
+      "nativeSessions": {"canList": false, "canLoad": false, "canResume": false, "canDelete": false},
+      "configurableProviders": false,
+      "enabled": true,
+      "installed": true,
+      "version": null,
+      "status": "ready",
+      "auth": {"status": "unknown", "canLogout": false},
+      "checkedAt": "2026-11-22T02:11:33.295Z",
+      "models": [
+       {"slug": "fast", "name": "Fast", "isCustom": false, "isDefault": true, "capabilities": {"optionDescriptors": []}},
+       {"slug": "smart", "name": "Smart", "isCustom": false, "capabilities": {"optionDescriptors": []}}
+      ],
+      "slashCommands": [],
+      "skills": []
+     },
+     {
+      "instanceId": "muse",
+      "driver": "muse",
+      "displayName": "Muse Code",
+      "continuation": {"groupKey": "muse:instance:muse"},
+      "showInteractionModeToggle": false,
+      "reportsContextWindow": true,
+      "supportedRuntimeModes": ["approval-required", "full-access"],
+      "setup": {"canAuthenticate": false, "canInstall": false},
+      "enabled": false,
+      "installed": false,
+      "version": null,
+      "status": "disabled",
+      "auth": {"status": "unknown"},
+      "checkedAt": "2026-11-22T02:11:33.323Z",
+      "message": "Muse Code is disabled in T3 Code settings.",
+      "models": [],
+      "slashCommands": [],
+      "skills": []
+     },
+     {
+      "instanceId": "pi",
+      "driver": "pi",
+      "displayName": "Pi",
+      "continuation": {"groupKey": "pi:instance:pi"},
+      "showInteractionModeToggle": false,
+      "reportsContextWindow": true,
+      "supportedRuntimeModes": ["approval-required", "auto-accept-edits", "full-access"],
+      "setup": {"canAuthenticate": false, "canInstall": false},
+      "enabled": false,
+      "installed": false,
+      "version": null,
+      "status": "disabled",
+      "auth": {"status": "unknown"},
+      "checkedAt": "2026-11-22T02:11:33.323Z",
+      "message": "Pi is disabled in T3 Code settings.",
+      "models": [{"slug": "default", "name": "Pi default", "isCustom": false, "capabilities": {"optionDescriptors": []}}],
+      "slashCommands": [],
+      "skills": []
+     }
+    ],
+    "availableEditors": ["file-manager"],
+    "remoteOpenTargets": [{"kind": "mdns", "host": "sandbox.local", "username": "user"}],
+    "directEndpoints": [],
+    "observability": {
+     "logsDirectoryPath": "/tmp/t3rec/home/userdata/logs",
+     "localTracingEnabled": true,
+     "otlpTracesEnabled": false,
+     "otlpMetricsEnabled": false,
+     "otlpLogsEnabled": false
+    },
+    "shellResumeCompletionMarker": true,
+    "shellThreadFamilies": true,
+    "threadLinkMetadata": true,
+    "shellOlderSettled": true,
+    "shellRevealInFileManager": true,
+    "shellRevealInFileManagerKind": "finder",
+    "threadResumeCompletionMarker": true,
+    "threadSnapshotPagination": true,
+    "threadFind": true,
+    "threadFindProgressive": true,
+    "secretProviderSettings": true,
+    "secretReferences": true,
+    "secretRequestReferences": true,
+    "scratchWorkspaceRoot": "/tmp/t3rec/home/scratch",
+    "newProjectsRoot": "/tmp/t3rec/home/projects"
+   }
+  }
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "2",
+  "tag": "orchestration.dispatchCommand",
+  "payload": {
+   "type": "thread.runtime-mode.set",
+   "commandId": "sheprd:4b01d9fe-1432-455f-bbed-6100c72c4b33",
+   "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+   "runtimeMode": "approval-required"
+  },
+  "headers": []
+ },
+ {"dir": "server", "_tag": "Exit", "requestId": "2", "exit": {"_tag": "Success", "value": {"sequence": 195}}},
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "3",
+  "tag": "orchestration.subscribeThread",
+  "payload": {"threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427"},
+  "headers": []
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "snapshot",
+    "snapshotSequence": 195,
+    "projection": {
+     "thread": {
+      "createdBy": "agent",
+      "creationSource": "mcp",
+      "id": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "projectId": "4b4bb756-3a53-4e82-83e0-716fe1357f27",
+      "title": "Steer test",
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "runtimeMode": "approval-required",
+      "interactionMode": "default",
+      "branch": null,
+      "worktreePath": null,
+      "pullRequests": [],
+      "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427"},
+      "forkedFrom": null,
+      "createdAt": "2026-11-22T02:14:29.679Z",
+      "updatedAt": "2026-11-22T02:14:33.427Z",
+      "archivedAt": null,
+      "settledOverride": null,
+      "settledAt": null,
+      "snoozedUntil": null,
+      "snoozedAt": null,
+      "lastVisitedAt": "2026-11-22T02:14:29.684Z",
+      "deletedAt": null
+     },
+     "runs": [
+      {
+       "id": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "ordinal": 1,
+       "providerInstanceId": "fakeacp",
+       "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "userMessageId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "activeAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:attempt:1",
+       "status": "completed",
+       "queuePosition": null,
+       "requestedAt": "2026-11-22T02:14:29.685Z",
+       "startedAt": "2026-11-22T02:14:29.741Z",
+       "completedAt": "2026-11-22T02:14:29.823Z",
+       "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:1",
+       "contextHandoffId": null,
+       "workspacePreparation": {"type": "root"}
+      }
+     ],
+     "attempts": [
+      {
+       "id": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:attempt:1",
+       "nativeThreadId": "sess-348c66a9a417",
+       "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "attemptOrdinal": 1,
+       "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "providerInstanceId": "fakeacp",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "providerTurnId": null,
+       "reason": "initial",
+       "status": "completed",
+       "startedAt": "2026-11-22T02:14:29.741Z",
+       "completedAt": "2026-11-22T02:14:29.819Z"
+      }
+     ],
+     "nodes": [
+      {
+       "id": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "parentNodeId": null,
+       "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "kind": "root_turn",
+       "status": "completed",
+       "countsForRun": true,
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "runtimeRequestId": null,
+       "checkpointScopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root",
+       "startedAt": "2026-11-22T02:14:29.741Z",
+       "completedAt": "2026-11-22T02:14:29.823Z"
+      },
+      {
+       "id": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1%3Aassistant%3A0",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "parentNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "kind": "assistant_message",
+       "status": "completed",
+       "countsForRun": false,
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1",
+       "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:1:assistant:0", "strength": "weak"},
+       "runtimeRequestId": null,
+       "checkpointScopeId": null,
+       "startedAt": "2026-11-22T02:14:29.810Z",
+       "completedAt": "2026-11-22T02:14:29.810Z"
+      }
+     ],
+     "subagents": [],
+     "providerSessions": [],
+     "providerThreads": [
+      {
+       "id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "driver": "acpRegistry",
+       "providerInstanceId": "fakeacp",
+       "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd",
+       "appThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "ownerNodeId": null,
+       "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417", "strength": "strong"},
+       "nativeConversationHeadRef": null,
+       "status": "idle",
+       "firstRunOrdinal": 1,
+       "lastRunOrdinal": 1,
+       "handoffIds": [],
+       "forkedFrom": null,
+       "pendingBackgroundTasks": [],
+       "contextUsage": null,
+       "nativeMetadata": {"itemIdentityVersion": 2},
+       "goal": null,
+       "createdAt": "2026-11-22T02:14:29.685Z",
+       "updatedAt": "2026-11-22T02:14:29.819Z"
+      }
+     ],
+     "providerTurns": [
+      {
+       "id": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "runAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:attempt:1",
+       "nativeTurnRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:1", "strength": "weak"},
+       "ordinal": 1,
+       "status": "completed",
+       "startedAt": "2026-11-22T02:14:29.807Z",
+       "completedAt": "2026-11-22T02:14:29.810Z",
+       "turnTokenUsage": {"usageScope": "main_agent", "hasSubagents": false, "usageStatus": "unavailable"}
+      }
+     ],
+     "runtimeRequests": [],
+     "messages": [
+      {
+       "createdBy": "agent",
+       "creationSource": "mcp",
+       "id": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "role": "user",
+       "text": "hello",
+       "attachments": [],
+       "streaming": false,
+       "createdAt": "2026-11-22T02:14:29.685Z",
+       "updatedAt": "2026-11-22T02:14:29.685Z"
+      },
+      {
+       "createdBy": "agent",
+       "creationSource": "provider",
+       "id": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1%3Aassistant%3A0",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1%3Aassistant%3A0",
+       "role": "assistant",
+       "text": "Echo (fast): hello",
+       "attachments": [],
+       "streaming": false,
+       "createdAt": "2026-11-22T02:14:29.810Z",
+       "updatedAt": "2026-11-22T02:14:29.810Z"
+      }
+     ],
+     "plans": [],
+     "turnItems": [
+      {
+       "id": "turn-item:message:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000001,
+       "status": "completed",
+       "title": null,
+       "startedAt": "2026-11-22T02:14:29.685Z",
+       "completedAt": "2026-11-22T02:14:29.685Z",
+       "updatedAt": "2026-11-22T02:14:29.685Z",
+       "createdBy": "agent",
+       "creationSource": "mcp",
+       "type": "user_message",
+       "messageId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "inputIntent": "turn_start",
+       "text": "hello",
+       "attachments": []
+      },
+      {
+       "id": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000002,
+       "status": "completed",
+       "title": "Workspace ready",
+       "startedAt": "2026-11-22T02:14:29.685Z",
+       "completedAt": "2026-11-22T02:14:29.697Z",
+       "updatedAt": "2026-11-22T02:14:29.697Z",
+       "type": "command_execution",
+       "input": "Preparing workspace",
+       "outputOmitted": true,
+       "exitCode": 0
+      },
+      {
+       "id": "turn-item:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1%3Aassistant%3A0",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1%3Aassistant%3A0",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1",
+       "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:1:assistant:0", "strength": "weak"},
+       "parentItemId": null,
+       "ordinal": 1000003,
+       "status": "completed",
+       "title": null,
+       "startedAt": "2026-11-22T02:14:29.810Z",
+       "completedAt": "2026-11-22T02:14:29.810Z",
+       "updatedAt": "2026-11-22T02:14:29.810Z",
+       "type": "assistant_message",
+       "messageId": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1%3Aassistant%3A0",
+       "text": "Echo (fast): hello",
+       "streaming": false
+      },
+      {
+       "id": "turn-item:provider:acpRegistry:native-item:checkpoint%3Acheckpoint%3Ascope%3Acheckpoint-scope%253Athread%253Amcp%25253A780fa4c7-179e-40bd-aee8-12b54e8ae427%253Aname%253Aroot%3Aname%3A1",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "providerTurnId": null,
+       "nativeItemRef": null,
+       "parentItemId": null,
+       "ordinal": 1000004,
+       "status": "completed",
+       "title": null,
+       "startedAt": "2026-11-22T02:14:29.823Z",
+       "completedAt": "2026-11-22T02:14:29.823Z",
+       "updatedAt": "2026-11-22T02:14:29.823Z",
+       "type": "checkpoint",
+       "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:1",
+       "scopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root",
+       "files": []
+      }
+     ],
+     "checkpointScopes": [
+      {
+       "id": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "parentScopeId": null,
+       "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "kind": "root_run",
+       "ordinalWithinParent": 0,
+       "advancesAppRunCount": true,
+       "cwd": "/tmp/t3rec/work",
+       "createdAt": "2026-11-22T02:14:29.697Z"
+      }
+     ],
+     "checkpoints": [
+      {
+       "id": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:0",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "scopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root",
+       "runId": null,
+       "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "parentCheckpointId": null,
+       "ordinalWithinScope": 0,
+       "appRunOrdinal": null,
+       "ref": "refs/t3/orchestration-v2/checkpoints/MDg3NWY0MmJmMTE3OWU4NThiNGFlMTVlMTQ4M2Y1YzQ/ordinal/0",
+       "status": "ready",
+       "files": [],
+       "capturedAt": "2026-11-22T02:14:29.685Z"
+      },
+      {
+       "id": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:1",
+       "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "scopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root",
+       "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+       "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+       "parentCheckpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:0",
+       "ordinalWithinScope": 1,
+       "appRunOrdinal": 1,
+       "ref": "refs/t3/orchestration-v2/checkpoints/MDg3NWY0MmJmMTE3OWU4NThiNGFlMTVlMTQ4M2Y1YzQ/ordinal/1",
+       "status": "ready",
+       "files": [],
+       "capturedAt": "2026-11-22T02:14:29.823Z"
+      }
+     ],
+     "contextHandoffs": [],
+     "contextTransfers": [],
+     "visibleTurnItems": [
+      {
+       "position": 0,
+       "visibility": "local",
+       "sourceThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "sourceItemId": "turn-item:message:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "item": {
+        "id": "turn-item:message:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427",
+        "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+        "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000001,
+        "status": "completed",
+        "title": null,
+        "startedAt": "2026-11-22T02:14:29.685Z",
+        "completedAt": "2026-11-22T02:14:29.685Z",
+        "updatedAt": "2026-11-22T02:14:29.685Z",
+        "createdBy": "agent",
+        "creationSource": "mcp",
+        "type": "user_message",
+        "messageId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+        "inputIntent": "turn_start",
+        "text": "hello",
+        "attachments": []
+       }
+      },
+      {
+       "position": 1,
+       "visibility": "local",
+       "sourceThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "sourceItemId": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+       "item": {
+        "id": "turn-item:provider:acpRegistry:native-item:workspace-preparation%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+        "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+        "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000002,
+        "status": "completed",
+        "title": "Workspace ready",
+        "startedAt": "2026-11-22T02:14:29.685Z",
+        "completedAt": "2026-11-22T02:14:29.697Z",
+        "updatedAt": "2026-11-22T02:14:29.697Z",
+        "type": "command_execution",
+        "input": "Preparing workspace",
+        "outputOmitted": true,
+        "exitCode": 0
+       }
+      },
+      {
+       "position": 2,
+       "visibility": "local",
+       "sourceThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "sourceItemId": "turn-item:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1%3Aassistant%3A0",
+       "item": {
+        "id": "turn-item:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1%3Aassistant%3A0",
+        "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+        "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+        "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1%3Aassistant%3A0",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+        "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1",
+        "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:1:assistant:0", "strength": "weak"},
+        "parentItemId": null,
+        "ordinal": 1000003,
+        "status": "completed",
+        "title": null,
+        "startedAt": "2026-11-22T02:14:29.810Z",
+        "completedAt": "2026-11-22T02:14:29.810Z",
+        "updatedAt": "2026-11-22T02:14:29.810Z",
+        "type": "assistant_message",
+        "messageId": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A1%3Aassistant%3A0",
+        "text": "Echo (fast): hello",
+        "streaming": false
+       }
+      },
+      {
+       "position": 3,
+       "visibility": "local",
+       "sourceThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+       "sourceItemId": "turn-item:provider:acpRegistry:native-item:checkpoint%3Acheckpoint%3Ascope%3Acheckpoint-scope%253Athread%253Amcp%25253A780fa4c7-179e-40bd-aee8-12b54e8ae427%253Aname%253Aroot%3Aname%3A1",
+       "item": {
+        "id": "turn-item:provider:acpRegistry:native-item:checkpoint%3Acheckpoint%3Ascope%3Acheckpoint-scope%253Athread%253Amcp%25253A780fa4c7-179e-40bd-aee8-12b54e8ae427%253Aname%253Aroot%3Aname%3A1",
+        "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+        "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:1",
+        "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1:root",
+        "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+        "providerTurnId": null,
+        "nativeItemRef": null,
+        "parentItemId": null,
+        "ordinal": 1000004,
+        "status": "completed",
+        "title": null,
+        "startedAt": "2026-11-22T02:14:29.823Z",
+        "completedAt": "2026-11-22T02:14:29.823Z",
+        "updatedAt": "2026-11-22T02:14:29.823Z",
+        "type": "checkpoint",
+        "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:1",
+        "scopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root",
+        "files": []
+       }
+      }
+     ],
+     "updatedAt": "2026-11-22T02:14:33.427Z"
+    }
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "4",
+  "tag": "orchestration.dispatchCommand",
+  "payload": {
+   "type": "message.dispatch",
+   "commandId": "sheprd:724d6d6b-073b-447d-96d6-3f10dfc371c7",
+   "createdBy": "user",
+   "creationSource": "web",
+   "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+   "messageId": "sheprd:724d6d6b-073b-447d-96d6-3f10dfc371c7:message",
+   "text": "please ask permission",
+   "attachments": [],
+   "dispatchMode": {"type": "start_immediately"}
+  },
+  "headers": []
+ },
+ {"dir": "server", "_tag": "Exit", "requestId": "4", "exit": {"_tag": "Success", "value": {"sequence": 202}}},
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 196,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A724d6d6b-073b-447d-96d6-3f10dfc371c7:5cb3ba31-baa2-4686-b10d-5de01992b263",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.938Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "appThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "idle", "firstRunOrdinal": 1, "lastRunOrdinal": 2, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:14:29.685Z", "updatedAt": "2026-11-22T02:14:33.938Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 197,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A724d6d6b-073b-447d-96d6-3f10dfc371c7:2dd22a0d-a81c-443d-92b6-04a6c7509234",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.938Z",
+     "type": "run.created",
+     "payload": {
+      "id": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "ordinal": 2,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "userMessageId": "sheprd:724d6d6b-073b-447d-96d6-3f10dfc371c7:message",
+      "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:attempt:1",
+      "status": "starting",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:14:33.938Z",
+      "startedAt": null,
+      "completedAt": null,
+      "checkpointId": null,
+      "contextHandoffId": null
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 198,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A724d6d6b-073b-447d-96d6-3f10dfc371c7:ea444c38-eda6-40ec-8d2f-ad9772d4ed9f",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.938Z",
+     "type": "run-attempt.created",
+     "payload": {"id": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:attempt:1", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "attemptOrdinal": 1, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "providerInstanceId": "fakeacp", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "reason": "initial", "status": "pending", "startedAt": null, "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 199,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A724d6d6b-073b-447d-96d6-3f10dfc371c7:23d1cda9-91e7-4662-8be5-dc6af829c9f0",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.938Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "kind": "root_turn", "status": "pending", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "startedAt": null, "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 200,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A724d6d6b-073b-447d-96d6-3f10dfc371c7:8202806f-04a3-4f7c-9485-c6f79b390a8c",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.938Z",
+     "type": "checkpoint-scope.created",
+     "payload": {"id": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "parentScopeId": null, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "kind": "root_run", "ordinalWithinParent": 0, "advancesAppRunCount": true, "cwd": "/tmp/t3rec/work", "createdAt": "2026-11-22T02:14:33.938Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 201,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A724d6d6b-073b-447d-96d6-3f10dfc371c7:cef624df-b322-4758-ac93-de1a6fbf7693",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.938Z",
+     "type": "message.updated",
+     "payload": {
+      "createdBy": "user",
+      "creationSource": "web",
+      "id": "sheprd:724d6d6b-073b-447d-96d6-3f10dfc371c7:message",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+      "role": "user",
+      "text": "please ask permission",
+      "attachments": [],
+      "streaming": false,
+      "createdAt": "2026-11-22T02:14:33.938Z",
+      "updatedAt": "2026-11-22T02:14:33.938Z"
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 202,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A724d6d6b-073b-447d-96d6-3f10dfc371c7:d8c91840-03ea-420c-b6a8-aa62b86921ad",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.938Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:message:sheprd%3A724d6d6b-073b-447d-96d6-3f10dfc371c7%3Amessage",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": null,
+      "nativeItemRef": null,
+      "parentItemId": null,
+      "ordinal": 2000001,
+      "status": "completed",
+      "title": null,
+      "startedAt": "2026-11-22T02:14:33.938Z",
+      "completedAt": "2026-11-22T02:14:33.938Z",
+      "updatedAt": "2026-11-22T02:14:33.938Z",
+      "createdBy": "user",
+      "creationSource": "web",
+      "type": "user_message",
+      "messageId": "sheprd:724d6d6b-073b-447d-96d6-3f10dfc371c7:message",
+      "inputIntent": "turn_start",
+      "text": "please ask permission",
+      "attachments": []
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 203,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:e772e509-5f44-47d5-b177-38235182901a",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.984Z",
+     "type": "provider-session.attached",
+     "payload": {"id": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "status": "ready", "cwd": "/tmp/t3rec/work", "model": "fast", "capabilities": {"sessions": {"supportsMultipleProviderThreadsPerSession": false, "supportsModelSwitchInSession": true, "supportsProviderSwitchingViaHandoff": true, "supportsRuntimeModeSwitchInSession": false, "pendingRequestsSurviveRestart": false}, "threads": {"canCreateEmptyThread": true, "canReadThreadSnapshot": true, "canRollbackThread": true, "canForkThread": false, "canForkFromTurn": false, "canForkFromSubagentThread": false, "exposesNativeThreadId": true}, "turns": {"exposesNativeTurnId": false, "emitsTurnStarted": true, "emitsTurnCompleted": true, "supportsInterrupt": true, "supportsActiveSteering": false, "supportsSteeringByInterruptRestart": true, "supportsQueuedMessages": true, "terminalStatusQuality": "strong"}, "streaming": {"streamsAssistantText": true, "streamsReasoning": true, "streamsToolOutput": true, "streamsPlanText": false, "emitsMessageCompleted": true}, "tools": {"exposesToolItemIds": true, "emitsToolStarted": true, "emitsToolCompleted": true, "emitsToolOutput": true, "supportsMcpTools": true, "supportsDynamicToolCallbacks": false}, "approvals": {"supportsCommandApproval": true, "supportsFileReadApproval": true, "supportsFileChangeApproval": true, "supportsApplyPatchApproval": false, "approvalsHaveNativeRequestIds": false, "approvalCallbacksAreLiveOnly": true, "approvalsCanOriginateFromSubagents": false}, "planning": {"emitsPlanUpdated": true, "emitsTodoList": true, "emitsProposedPlan": false, "supportsStructuredQuestions": true, "planDeltasHaveItemIds": false}, "subagents": {"supportsSubagents": false, "exposesSubagentThreadIds": false, "emitsSubagentLifecycle": false, "canWaitForSubagents": false, "canCloseSubagents": false, "canForkSubagentThread": false}, "context": {"acceptsSystemContext": false, "acceptsDeveloperContext": false, "acceptsSyntheticUserContext": true, "canGenerateSummaries": true, "canConsumeHandoffSummaries": true, "supportsDeltaHandoff": true, "supportsFullThreadHandoff": true, "maxRecommendedHandoffChars": null}, "checkpointing": {"appCanCheckpointFilesystem": true, "supportsNestedCheckpointScopes": true, "providerCanRollbackConversation": true, "providerRollbackReturnsSnapshot": true, "providerCanReadConversationSnapshot": true}, "identity": {"nativeThreadIds": "strong", "nativeTurnIds": "weak", "nativeItemIds": "weak", "nativeRequestIds": "weak"}, "runtimePolicy": {"enforcement": "client-boundary"}}, "extensionStatuses": [], "createdAt": "2026-11-22T02:14:33.984Z", "updatedAt": "2026-11-22T02:14:33.984Z", "lastError": null}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 204,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:4041d4a1-f59a-49a7-9c59-cb44848290bc",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.986Z",
+     "type": "provider-session.updated",
+     "payload": {"id": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "status": "ready", "cwd": "/tmp/t3rec/work", "model": "fast", "capabilities": {"sessions": {"supportsMultipleProviderThreadsPerSession": false, "supportsModelSwitchInSession": true, "supportsProviderSwitchingViaHandoff": true, "supportsRuntimeModeSwitchInSession": false, "pendingRequestsSurviveRestart": false}, "threads": {"canCreateEmptyThread": true, "canReadThreadSnapshot": true, "canRollbackThread": true, "canForkThread": false, "canForkFromTurn": false, "canForkFromSubagentThread": false, "exposesNativeThreadId": true}, "turns": {"exposesNativeTurnId": false, "emitsTurnStarted": true, "emitsTurnCompleted": true, "supportsInterrupt": true, "supportsActiveSteering": false, "supportsSteeringByInterruptRestart": true, "supportsQueuedMessages": true, "terminalStatusQuality": "strong"}, "streaming": {"streamsAssistantText": true, "streamsReasoning": true, "streamsToolOutput": true, "streamsPlanText": false, "emitsMessageCompleted": true}, "tools": {"exposesToolItemIds": true, "emitsToolStarted": true, "emitsToolCompleted": true, "emitsToolOutput": true, "supportsMcpTools": true, "supportsDynamicToolCallbacks": false}, "approvals": {"supportsCommandApproval": true, "supportsFileReadApproval": true, "supportsFileChangeApproval": true, "supportsApplyPatchApproval": false, "approvalsHaveNativeRequestIds": false, "approvalCallbacksAreLiveOnly": true, "approvalsCanOriginateFromSubagents": false}, "planning": {"emitsPlanUpdated": true, "emitsTodoList": true, "emitsProposedPlan": false, "supportsStructuredQuestions": true, "planDeltasHaveItemIds": false}, "subagents": {"supportsSubagents": false, "exposesSubagentThreadIds": false, "emitsSubagentLifecycle": false, "canWaitForSubagents": false, "canCloseSubagents": false, "canForkSubagentThread": false}, "context": {"acceptsSystemContext": false, "acceptsDeveloperContext": false, "acceptsSyntheticUserContext": true, "canGenerateSummaries": true, "canConsumeHandoffSummaries": true, "supportsDeltaHandoff": true, "supportsFullThreadHandoff": true, "maxRecommendedHandoffChars": null}, "checkpointing": {"appCanCheckpointFilesystem": true, "supportsNestedCheckpointScopes": true, "providerCanRollbackConversation": true, "providerRollbackReturnsSnapshot": true, "providerCanReadConversationSnapshot": true}, "identity": {"nativeThreadIds": "strong", "nativeTurnIds": "weak", "nativeItemIds": "weak", "nativeRequestIds": "weak"}, "runtimePolicy": {"enforcement": "client-boundary"}}, "extensionStatuses": [], "createdAt": "2026-11-22T02:14:33.984Z", "updatedAt": "2026-11-22T02:14:33.984Z", "lastError": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 205,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:0495b4f5-99a1-44ba-aef6-981a55f333a8",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.986Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "appThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "active", "firstRunOrdinal": 1, "lastRunOrdinal": 2, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:14:29.685Z", "updatedAt": "2026-11-22T02:14:33.986Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 206,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:c3963a30-fb2b-49c1-bc21-ea5bfaa0ad2e",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.986Z",
+     "type": "run.updated",
+     "payload": {
+      "id": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "ordinal": 2,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "userMessageId": "sheprd:724d6d6b-073b-447d-96d6-3f10dfc371c7:message",
+      "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:attempt:1",
+      "status": "running",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:14:33.938Z",
+      "startedAt": "2026-11-22T02:14:33.986Z",
+      "completedAt": null,
+      "checkpointId": null,
+      "contextHandoffId": null
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 207,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:4fe0785a-3e87-498a-93ed-ae3fb6d8afcc",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.986Z",
+     "type": "run-attempt.updated",
+     "payload": {"id": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:attempt:1", "nativeThreadId": "sess-348c66a9a417", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "attemptOrdinal": 1, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "providerInstanceId": "fakeacp", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "reason": "initial", "status": "running", "startedAt": "2026-11-22T02:14:33.986Z", "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 208,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:bda65b7c-688f-4ee3-a96e-daee178ee191",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:33.986Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "kind": "root_turn", "status": "running", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "startedAt": "2026-11-22T02:14:33.986Z", "completedAt": null}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 209,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:257fbba5-7e5c-4816-8869-e56deb529d21",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.003Z",
+     "type": "provider-turn.updated",
+     "payload": {"id": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "runAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:attempt:1", "nativeTurnRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:2", "strength": "weak"}, "ordinal": 2, "status": "running", "startedAt": "2026-11-22T02:14:34.002Z", "completedAt": null}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 210,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:568c31be-5b06-4a86-961f-fafbb96e3511",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.004Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "appThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "active", "firstRunOrdinal": 1, "lastRunOrdinal": 2, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:14:29.685Z", "updatedAt": "2026-11-22T02:14:34.002Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 211,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:d8fb48fd-b5ec-4596-824f-93684c492111",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Atool%3Atool-29053038",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.006Z",
+     "type": "node.updated",
+     "payload": {"id": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Atool%3Atool-29053038", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "parentNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "kind": "tool_call", "status": "running", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2", "nativeItemRef": {"driver": "acpRegistry", "nativeId": "tool-29053038", "strength": "strong"}, "runtimeRequestId": null, "checkpointScopeId": null, "startedAt": "2026-11-22T02:14:34.005Z", "completedAt": null}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 212,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:aba8e2d3-e182-4171-bd49-ddac63abaefe",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Atool%3Atool-29053038",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.007Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Atool%3Atool-29053038",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Atool%3Atool-29053038",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2",
+      "nativeItemRef": {"driver": "acpRegistry", "nativeId": "tool-29053038", "strength": "strong"},
+      "parentItemId": null,
+      "ordinal": 2000002,
+      "status": "pending",
+      "title": "Changed files",
+      "startedAt": "2026-11-22T02:14:34.005Z",
+      "completedAt": null,
+      "updatedAt": "2026-11-22T02:14:34.005Z",
+      "type": "file_change",
+      "fileName": "/tmp/t3rec/work/notes.txt"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 213,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:bcdf8548-1aac-4844-9b10-14d5721b90bb",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.009Z",
+     "type": "node.updated",
+     "payload": {"id": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "parentNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "kind": "approval_request", "status": "waiting", "countsForRun": false, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2", "nativeItemRef": {"driver": "acpRegistry", "nativeId": "tool-29053038", "strength": "weak"}, "runtimeRequestId": "runtime-request:provider:acpRegistry:provider-turn:provider-turn%3Aprovider%3AacpRegistry%3Anative-turn%3Aprovider-instance%253Afakeacp%253Asess-348c66a9a417%253Aturn%253A2:native-request:tool-29053038:f51e9d84-74ca-42ee-9e64-935d3c430f6f", "checkpointScopeId": null, "startedAt": "2026-11-22T02:14:34.006Z", "completedAt": null}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 214,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:25838bf5-b05c-4901-89e1-60435dd80951",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.009Z",
+     "type": "runtime-request.updated",
+     "payload": {
+      "id": "runtime-request:provider:acpRegistry:provider-turn:provider-turn%3Aprovider%3AacpRegistry%3Anative-turn%3Aprovider-instance%253Afakeacp%253Asess-348c66a9a417%253Aturn%253A2:native-request:tool-29053038:f51e9d84-74ca-42ee-9e64-935d3c430f6f",
+      "nodeId": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+      "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2",
+      "nativeRequestRef": {"driver": "acpRegistry", "nativeId": "tool-29053038", "strength": "weak"},
+      "kind": "file-change",
+      "status": "pending",
+      "responseCapability": {
+       "type": "live",
+       "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd"
+      },
+      "createdAt": "2026-11-22T02:14:34.006Z",
+      "resolvedAt": null
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 215,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:7fbefe37-c9a1-48cc-b67e-6914250cb14e",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.010Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "nodeId": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2",
+      "nativeItemRef": {"driver": "acpRegistry", "nativeId": "tool-29053038", "strength": "weak"},
+      "parentItemId": null,
+      "ordinal": 2000003,
+      "status": "waiting",
+      "title": null,
+      "startedAt": "2026-11-22T02:14:34.006Z",
+      "completedAt": null,
+      "updatedAt": "2026-11-22T02:14:34.006Z",
+      "type": "approval_request",
+      "requestId": "runtime-request:provider:acpRegistry:provider-turn:provider-turn%3Aprovider%3AacpRegistry%3Anative-turn%3Aprovider-instance%253Afakeacp%253Asess-348c66a9a417%253Aturn%253A2:native-request:tool-29053038:f51e9d84-74ca-42ee-9e64-935d3c430f6f",
+      "requestKind": "file-change",
+      "prompt": "Changed files"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "5",
+  "tag": "orchestration.dispatchCommand",
+  "payload": {
+   "type": "runtime-request.respond",
+   "commandId": "sheprd:c5b707ae-92d1-4019-be4a-12bf3aa9fae2",
+   "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+   "requestId": "runtime-request:provider:acpRegistry:provider-turn:provider-turn%3Aprovider%3AacpRegistry%3Anative-turn%3Aprovider-instance%253Afakeacp%253Asess-348c66a9a417%253Aturn%253A2:native-request:tool-29053038:f51e9d84-74ca-42ee-9e64-935d3c430f6f",
+   "decision": "accept"
+  },
+  "headers": []
+ },
+ {"dir": "server", "_tag": "Exit", "requestId": "5", "exit": {"_tag": "Success", "value": {"sequence": 218}}},
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 216,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3Ac5b707ae-92d1-4019-be4a-12bf3aa9fae2:9424660a-dbec-47b5-9dd4-a2404bccd8d0",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.555Z",
+     "type": "runtime-request.updated",
+     "payload": {
+      "id": "runtime-request:provider:acpRegistry:provider-turn:provider-turn%3Aprovider%3AacpRegistry%3Anative-turn%3Aprovider-instance%253Afakeacp%253Asess-348c66a9a417%253Aturn%253A2:native-request:tool-29053038:f51e9d84-74ca-42ee-9e64-935d3c430f6f",
+      "nodeId": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+      "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2",
+      "nativeRequestRef": {"driver": "acpRegistry", "nativeId": "tool-29053038", "strength": "weak"},
+      "kind": "file-change",
+      "status": "resolved",
+      "responseCapability": {
+       "type": "live",
+       "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd"
+      },
+      "createdAt": "2026-11-22T02:14:34.006Z",
+      "resolvedAt": "2026-11-22T02:14:34.555Z",
+      "decision": "accept"
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 217,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3Ac5b707ae-92d1-4019-be4a-12bf3aa9fae2:88a6726f-2e4d-46c8-b76d-27f7478a3882",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.555Z",
+     "type": "node.updated",
+     "payload": {"id": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "parentNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "kind": "approval_request", "status": "completed", "countsForRun": false, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2", "nativeItemRef": {"driver": "acpRegistry", "nativeId": "tool-29053038", "strength": "weak"}, "runtimeRequestId": "runtime-request:provider:acpRegistry:provider-turn:provider-turn%3Aprovider%3AacpRegistry%3Anative-turn%3Aprovider-instance%253Afakeacp%253Asess-348c66a9a417%253Aturn%253A2:native-request:tool-29053038:f51e9d84-74ca-42ee-9e64-935d3c430f6f", "checkpointScopeId": null, "startedAt": "2026-11-22T02:14:34.006Z", "completedAt": "2026-11-22T02:14:34.555Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 218,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3Ac5b707ae-92d1-4019-be4a-12bf3aa9fae2:1a60843d-1857-45f6-a1ec-9bcb89a33aee",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.555Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "nodeId": "node:runtime-request:runtime-request%3Aprovider%3AacpRegistry%3Aprovider-turn%3Aprovider-turn%253Aprovider%253AacpRegistry%253Anative-turn%253Aprovider-instance%25253Afakeacp%25253Asess-348c66a9a417%25253Aturn%25253A2%3Anative-request%3Atool-29053038%3Af51e9d84-74ca-42ee-9e64-935d3c430f6f",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2",
+      "nativeItemRef": {"driver": "acpRegistry", "nativeId": "tool-29053038", "strength": "weak"},
+      "parentItemId": null,
+      "ordinal": 2000003,
+      "status": "completed",
+      "title": null,
+      "startedAt": "2026-11-22T02:14:34.006Z",
+      "completedAt": "2026-11-22T02:14:34.555Z",
+      "updatedAt": "2026-11-22T02:14:34.555Z",
+      "type": "approval_request",
+      "requestId": "runtime-request:provider:acpRegistry:provider-turn:provider-turn%3Aprovider%3AacpRegistry%3Anative-turn%3Aprovider-instance%253Afakeacp%253Asess-348c66a9a417%253Aturn%253A2:native-request:tool-29053038:f51e9d84-74ca-42ee-9e64-935d3c430f6f",
+      "requestKind": "file-change",
+      "prompt": "Changed files"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 219,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:690f37e9-6889-4339-a848-9a9baca0b36e",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Atool%3Atool-29053038",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.561Z",
+     "type": "node.updated",
+     "payload": {"id": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Atool%3Atool-29053038", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "parentNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "kind": "tool_call", "status": "completed", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2", "nativeItemRef": {"driver": "acpRegistry", "nativeId": "tool-29053038", "strength": "strong"}, "runtimeRequestId": null, "checkpointScopeId": null, "startedAt": "2026-11-22T02:14:34.005Z", "completedAt": "2026-11-22T02:14:34.560Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 220,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:58749a7a-e8b1-4db8-8a0a-728899c0be65",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Atool%3Atool-29053038",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.562Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Atool%3Atool-29053038",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Atool%3Atool-29053038",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2",
+      "nativeItemRef": {"driver": "acpRegistry", "nativeId": "tool-29053038", "strength": "strong"},
+      "parentItemId": null,
+      "ordinal": 2000002,
+      "status": "completed",
+      "title": "Changed files",
+      "startedAt": "2026-11-22T02:14:34.005Z",
+      "completedAt": "2026-11-22T02:14:34.560Z",
+      "updatedAt": "2026-11-22T02:14:34.560Z",
+      "type": "file_change",
+      "fileName": "/tmp/t3rec/work/notes.txt"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 221,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:d306b9c3-9d4d-4ee2-9428-1473d6cdad85",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2%3Aassistant%3A0",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.564Z",
+     "type": "node.updated",
+     "payload": {"id": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2%3Aassistant%3A0", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "parentNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "kind": "assistant_message", "status": "completed", "countsForRun": false, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2", "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:2:assistant:0", "strength": "weak"}, "runtimeRequestId": null, "checkpointScopeId": null, "startedAt": "2026-11-22T02:14:34.560Z", "completedAt": "2026-11-22T02:14:34.560Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 222,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:683dd2ef-c079-41a1-b4c5-08b02e1088e3",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2%3Aassistant%3A0",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.565Z",
+     "type": "message.updated",
+     "payload": {
+      "createdBy": "agent",
+      "creationSource": "provider",
+      "id": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2%3Aassistant%3A0",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2%3Aassistant%3A0",
+      "role": "assistant",
+      "text": "Permission answer: allow_once. Echo: please ask permission",
+      "attachments": [],
+      "streaming": false,
+      "createdAt": "2026-11-22T02:14:34.560Z",
+      "updatedAt": "2026-11-22T02:14:34.560Z"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 223,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:814f4f99-2cab-4bda-ade4-b5394f7d9273",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2%3Aassistant%3A0",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.566Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2%3Aassistant%3A0",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2%3Aassistant%3A0",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2",
+      "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:2:assistant:0", "strength": "weak"},
+      "parentItemId": null,
+      "ordinal": 2000004,
+      "status": "completed",
+      "title": null,
+      "startedAt": "2026-11-22T02:14:34.560Z",
+      "completedAt": "2026-11-22T02:14:34.560Z",
+      "updatedAt": "2026-11-22T02:14:34.560Z",
+      "type": "assistant_message",
+      "messageId": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2%3Aassistant%3A0",
+      "text": "Permission answer: allow_once. Echo: please ask permission",
+      "streaming": false
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 224,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:877eff9c-5cbc-4ff8-860f-61e0e08d7981",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.567Z",
+     "type": "provider-turn.updated",
+     "payload": {"id": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A2", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "runAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:attempt:1", "nativeTurnRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:2", "strength": "weak"}, "ordinal": 2, "status": "completed", "startedAt": "2026-11-22T02:14:34.002Z", "completedAt": "2026-11-22T02:14:34.560Z", "turnTokenUsage": {"usageScope": "main_agent", "hasSubagents": false, "usageStatus": "unavailable"}}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 225,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:b5409bb7-2ef7-45ae-a904-d648a46181bc",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.567Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "appThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "active", "firstRunOrdinal": 1, "lastRunOrdinal": 2, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:14:29.685Z", "updatedAt": "2026-11-22T02:14:34.560Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 226,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:dbc12595-69e7-49ce-a499-a14462de9017",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.570Z",
+     "type": "run-attempt.updated",
+     "payload": {"id": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:attempt:1", "nativeThreadId": "sess-348c66a9a417", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "attemptOrdinal": 1, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "providerInstanceId": "fakeacp", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "reason": "initial", "status": "completed", "startedAt": "2026-11-22T02:14:33.986Z", "completedAt": "2026-11-22T02:14:34.570Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 227,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:7d7766c7-e8fd-4116-864c-c6e075661443",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.570Z",
+     "type": "run.updated",
+     "payload": {
+      "id": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "ordinal": 2,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "userMessageId": "sheprd:724d6d6b-073b-447d-96d6-3f10dfc371c7:message",
+      "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:attempt:1",
+      "status": "waiting",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:14:33.938Z",
+      "startedAt": "2026-11-22T02:14:33.986Z",
+      "completedAt": null,
+      "checkpointId": null,
+      "contextHandoffId": null
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 228,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:c011d9d7-99cd-4268-8de7-5cd1accc2826",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.570Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "kind": "root_turn", "status": "waiting", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "startedAt": "2026-11-22T02:14:33.986Z", "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 229,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:464371c4-937a-4341-80ce-1e9a6e3ad5aa",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.570Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "appThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "idle", "firstRunOrdinal": 1, "lastRunOrdinal": 2, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:14:29.685Z", "updatedAt": "2026-11-22T02:14:34.570Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 230,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:ef8fd912-c30c-46f5-9ffd-60c340202748",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.575Z",
+     "type": "checkpoint.captured",
+     "payload": {"id": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:2", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "scopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "parentCheckpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:1", "ordinalWithinScope": 2, "appRunOrdinal": 2, "ref": "refs/t3/orchestration-v2/checkpoints/MDg3NWY0MmJmMTE3OWU4NThiNGFlMTVlMTQ4M2Y1YzQ/ordinal/2", "status": "ready", "files": [], "capturedAt": "2026-11-22T02:14:34.575Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 231,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:c13a3d4c-e35b-4c04-ad0f-c953e1943261",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.575Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:provider:acpRegistry:native-item:checkpoint%3Acheckpoint%3Ascope%3Acheckpoint-scope%253Athread%253Amcp%25253A780fa4c7-179e-40bd-aee8-12b54e8ae427%253Aname%253Aroot%3Aname%3A2",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": null,
+      "nativeItemRef": null,
+      "parentItemId": null,
+      "ordinal": 2000005,
+      "status": "completed",
+      "title": null,
+      "startedAt": "2026-11-22T02:14:34.575Z",
+      "completedAt": "2026-11-22T02:14:34.575Z",
+      "updatedAt": "2026-11-22T02:14:34.575Z",
+      "type": "checkpoint",
+      "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:2",
+      "scopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root",
+      "files": []
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 232,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:7948f1c1-dddc-4c37-a71c-9ef092f83782",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.575Z",
+     "type": "run.updated",
+     "payload": {
+      "id": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "ordinal": 2,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "userMessageId": "sheprd:724d6d6b-073b-447d-96d6-3f10dfc371c7:message",
+      "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:attempt:1",
+      "status": "completed",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:14:33.938Z",
+      "startedAt": "2026-11-22T02:14:33.986Z",
+      "completedAt": "2026-11-22T02:14:34.575Z",
+      "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:2",
+      "contextHandoffId": null
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 233,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:97aa2dc5-7208-430d-b772-8eff0ae9ebc5",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:34.575Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:2", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A2:root", "kind": "root_turn", "status": "completed", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "startedAt": "2026-11-22T02:14:33.986Z", "completedAt": "2026-11-22T02:14:34.575Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "6",
+  "tag": "orchestration.dispatchCommand",
+  "payload": {
+   "type": "message.dispatch",
+   "commandId": "sheprd:724d6d6b-073b-447d-96d6-3f10dfc371c7",
+   "createdBy": "user",
+   "creationSource": "web",
+   "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+   "messageId": "sheprd:724d6d6b-073b-447d-96d6-3f10dfc371c7:message",
+   "text": "please ask permission",
+   "attachments": [],
+   "dispatchMode": {"type": "start_immediately"}
+  },
+  "headers": []
+ },
+ {"dir": "server", "_tag": "Exit", "requestId": "6", "exit": {"_tag": "Success", "value": {"sequence": 202}}},
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "7",
+  "tag": "orchestration.dispatchCommand",
+  "payload": {
+   "type": "runtime-request.respond",
+   "commandId": "sheprd:0c55e523-1434-407e-b32d-4f51d0335499",
+   "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+   "requestId": "runtime-request:unknown",
+   "decision": "accept"
+  },
+  "headers": []
+ },
+ {
+  "dir": "server",
+  "_tag": "Exit",
+  "requestId": "7",
+  "exit": {
+   "_tag": "Failure",
+   "cause": [
+    {
+     "_tag": "Fail",
+     "error": {
+      "_tag": "OrchestrationV2DispatchCommandError",
+      "commandId": "sheprd:0c55e523-1434-407e-b32d-4f51d0335499",
+      "commandType": "runtime-request.respond",
+      "message": "Runtime request runtime-request:unknown was not found.",
+      "detail": "Runtime request runtime-request:unknown was not found.",
+      "cause": {
+       "name": "OrchestratorDispatchError",
+       "message": "Failed to dispatch orchestration command runtime-request.respond (sheprd:0c55e523-1434-407e-b32d-4f51d0335499).",
+       "cause": "Runtime request runtime-request:unknown was not found."
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "8",
+  "tag": "orchestration.dispatchCommand",
+  "payload": {
+   "type": "message.dispatch",
+   "commandId": "sheprd:89d4d80b-ce3b-46a3-b22f-9747eb7b5c30",
+   "createdBy": "user",
+   "creationSource": "web",
+   "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+   "messageId": "sheprd:89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:message",
+   "text": "go slow please",
+   "attachments": [],
+   "dispatchMode": {"type": "start_immediately"}
+  },
+  "headers": []
+ },
+ {"dir": "server", "_tag": "Exit", "requestId": "8", "exit": {"_tag": "Success", "value": {"sequence": 240}}},
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 234,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:4f64a02d-9d26-40b6-934a-68ffdb101d8d",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.179Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "appThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "idle", "firstRunOrdinal": 1, "lastRunOrdinal": 3, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:14:29.685Z", "updatedAt": "2026-11-22T02:14:38.179Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 235,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:f5658f00-2075-4295-8270-05e1e0d8bf97",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.179Z",
+     "type": "run.created",
+     "payload": {
+      "id": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "ordinal": 3,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "userMessageId": "sheprd:89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:message",
+      "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:attempt:1",
+      "status": "starting",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:14:38.179Z",
+      "startedAt": null,
+      "completedAt": null,
+      "checkpointId": null,
+      "contextHandoffId": null
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 236,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:b134c3fe-470c-496f-993d-4d3f3212c291",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.179Z",
+     "type": "run-attempt.created",
+     "payload": {"id": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:attempt:1", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3", "attemptOrdinal": 1, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "providerInstanceId": "fakeacp", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "reason": "initial", "status": "pending", "startedAt": null, "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 237,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:9c5f8fc8-09ff-4eaf-a288-7fd0329b6096",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.179Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "kind": "root_turn", "status": "pending", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "startedAt": null, "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 238,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:e00f2eba-6e04-45ff-8fe5-180178d56cb7",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.179Z",
+     "type": "checkpoint-scope.created",
+     "payload": {"id": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3", "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "parentScopeId": null, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "kind": "root_run", "ordinalWithinParent": 0, "advancesAppRunCount": true, "cwd": "/tmp/t3rec/work", "createdAt": "2026-11-22T02:14:38.179Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 239,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:a6706e93-4bdf-4979-a62d-1013084d2f35",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.179Z",
+     "type": "message.updated",
+     "payload": {
+      "createdBy": "user",
+      "creationSource": "web",
+      "id": "sheprd:89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:message",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+      "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+      "role": "user",
+      "text": "go slow please",
+      "attachments": [],
+      "streaming": false,
+      "createdAt": "2026-11-22T02:14:38.179Z",
+      "updatedAt": "2026-11-22T02:14:38.179Z"
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 240,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:eccf4ad4-527c-49bd-b532-45470576d66d",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.179Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:message:sheprd%3A89d4d80b-ce3b-46a3-b22f-9747eb7b5c30%3Amessage",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+      "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": null,
+      "nativeItemRef": null,
+      "parentItemId": null,
+      "ordinal": 3000001,
+      "status": "completed",
+      "title": null,
+      "startedAt": "2026-11-22T02:14:38.179Z",
+      "completedAt": "2026-11-22T02:14:38.179Z",
+      "updatedAt": "2026-11-22T02:14:38.179Z",
+      "createdBy": "user",
+      "creationSource": "web",
+      "type": "user_message",
+      "messageId": "sheprd:89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:message",
+      "inputIntent": "turn_start",
+      "text": "go slow please",
+      "attachments": []
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 241,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:8ec23069-5942-4205-b4c3-ecc7e197e60d",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.190Z",
+     "type": "provider-session.updated",
+     "payload": {"id": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "status": "ready", "cwd": "/tmp/t3rec/work", "model": "fast", "capabilities": {"sessions": {"supportsMultipleProviderThreadsPerSession": false, "supportsModelSwitchInSession": true, "supportsProviderSwitchingViaHandoff": true, "supportsRuntimeModeSwitchInSession": false, "pendingRequestsSurviveRestart": false}, "threads": {"canCreateEmptyThread": true, "canReadThreadSnapshot": true, "canRollbackThread": true, "canForkThread": false, "canForkFromTurn": false, "canForkFromSubagentThread": false, "exposesNativeThreadId": true}, "turns": {"exposesNativeTurnId": false, "emitsTurnStarted": true, "emitsTurnCompleted": true, "supportsInterrupt": true, "supportsActiveSteering": false, "supportsSteeringByInterruptRestart": true, "supportsQueuedMessages": true, "terminalStatusQuality": "strong"}, "streaming": {"streamsAssistantText": true, "streamsReasoning": true, "streamsToolOutput": true, "streamsPlanText": false, "emitsMessageCompleted": true}, "tools": {"exposesToolItemIds": true, "emitsToolStarted": true, "emitsToolCompleted": true, "emitsToolOutput": true, "supportsMcpTools": true, "supportsDynamicToolCallbacks": false}, "approvals": {"supportsCommandApproval": true, "supportsFileReadApproval": true, "supportsFileChangeApproval": true, "supportsApplyPatchApproval": false, "approvalsHaveNativeRequestIds": false, "approvalCallbacksAreLiveOnly": true, "approvalsCanOriginateFromSubagents": false}, "planning": {"emitsPlanUpdated": true, "emitsTodoList": true, "emitsProposedPlan": false, "supportsStructuredQuestions": true, "planDeltasHaveItemIds": false}, "subagents": {"supportsSubagents": false, "exposesSubagentThreadIds": false, "emitsSubagentLifecycle": false, "canWaitForSubagents": false, "canCloseSubagents": false, "canForkSubagentThread": false}, "context": {"acceptsSystemContext": false, "acceptsDeveloperContext": false, "acceptsSyntheticUserContext": true, "canGenerateSummaries": true, "canConsumeHandoffSummaries": true, "supportsDeltaHandoff": true, "supportsFullThreadHandoff": true, "maxRecommendedHandoffChars": null}, "checkpointing": {"appCanCheckpointFilesystem": true, "supportsNestedCheckpointScopes": true, "providerCanRollbackConversation": true, "providerRollbackReturnsSnapshot": true, "providerCanReadConversationSnapshot": true}, "identity": {"nativeThreadIds": "strong", "nativeTurnIds": "weak", "nativeItemIds": "weak", "nativeRequestIds": "weak"}, "runtimePolicy": {"enforcement": "client-boundary"}}, "extensionStatuses": [], "createdAt": "2026-11-22T02:14:33.984Z", "updatedAt": "2026-11-22T02:14:33.984Z", "lastError": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 242,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:8fd15500-1532-420b-acef-eea11adb6a01",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.190Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "appThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "active", "firstRunOrdinal": 1, "lastRunOrdinal": 3, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:14:29.685Z", "updatedAt": "2026-11-22T02:14:38.190Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 243,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:a0cfa0e3-bb5f-458a-908d-2f148ddf8494",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.190Z",
+     "type": "run.updated",
+     "payload": {
+      "id": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "ordinal": 3,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "userMessageId": "sheprd:89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:message",
+      "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:attempt:1",
+      "status": "running",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:14:38.179Z",
+      "startedAt": "2026-11-22T02:14:38.190Z",
+      "completedAt": null,
+      "checkpointId": null,
+      "contextHandoffId": null
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 244,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:46c95b17-017c-41e0-8f75-35bc346910c9",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.190Z",
+     "type": "run-attempt.updated",
+     "payload": {"id": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:attempt:1", "nativeThreadId": "sess-348c66a9a417", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3", "attemptOrdinal": 1, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "providerInstanceId": "fakeacp", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "reason": "initial", "status": "running", "startedAt": "2026-11-22T02:14:38.190Z", "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 245,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:9f41eb93-1b39-4c76-94bc-af75a6e6d352",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.190Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "kind": "root_turn", "status": "running", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "startedAt": "2026-11-22T02:14:38.190Z", "completedAt": null}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 246,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:f6bb105c-0223-426e-9c77-47ddf6ae2623",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.204Z",
+     "type": "provider-turn.updated",
+     "payload": {"id": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "runAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:attempt:1", "nativeTurnRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:3", "strength": "weak"}, "ordinal": 3, "status": "running", "startedAt": "2026-11-22T02:14:38.203Z", "completedAt": null}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 247,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:c88d3117-fc85-4ef3-9190-d60ffa3087cf",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:38.205Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "appThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "active", "firstRunOrdinal": 1, "lastRunOrdinal": 3, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:14:29.685Z", "updatedAt": "2026-11-22T02:14:38.203Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "9",
+  "tag": "orchestration.dispatchCommand",
+  "payload": {
+   "type": "message.dispatch",
+   "commandId": "sheprd:54f68061-3317-4721-896b-909906032697",
+   "createdBy": "user",
+   "creationSource": "web",
+   "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+   "messageId": "sheprd:54f68061-3317-4721-896b-909906032697:message",
+   "text": "queued after the slow one",
+   "attachments": [],
+   "dispatchMode": {"type": "queue_after_active"}
+  },
+  "headers": []
+ },
+ {"dir": "server", "_tag": "Exit", "requestId": "9", "exit": {"_tag": "Success", "value": {"sequence": 252}}},
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 248,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A54f68061-3317-4721-896b-909906032697:5a9ead57-a6d5-4786-a9db-2c1dd6091f14",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:40.295Z",
+     "type": "run.created",
+     "payload": {
+      "id": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "ordinal": 4,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "userMessageId": "sheprd:54f68061-3317-4721-896b-909906032697:message",
+      "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:attempt:1",
+      "status": "queued",
+      "queuePosition": 1,
+      "requestedAt": "2026-11-22T02:14:40.295Z",
+      "startedAt": null,
+      "completedAt": null,
+      "checkpointId": null,
+      "contextHandoffId": null
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 249,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A54f68061-3317-4721-896b-909906032697:bc79d4e9-59e9-4796-bcc0-404e1816b243",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:40.295Z",
+     "type": "run-attempt.created",
+     "payload": {"id": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:attempt:1", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4", "attemptOrdinal": 1, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root", "providerInstanceId": "fakeacp", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "reason": "initial", "status": "pending", "startedAt": null, "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 250,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A54f68061-3317-4721-896b-909906032697:a9881b10-5e4d-4324-ab5a-4dbf254ea452",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:40.295Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root", "kind": "root_turn", "status": "pending", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "startedAt": null, "completedAt": null}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 251,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A54f68061-3317-4721-896b-909906032697:ee48c365-8b6c-4723-8469-5a7d06047d5f",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:40.295Z",
+     "type": "checkpoint-scope.created",
+     "payload": {"id": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4", "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root", "parentScopeId": null, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "kind": "root_run", "ordinalWithinParent": 0, "advancesAppRunCount": true, "cwd": "/tmp/t3rec/work", "createdAt": "2026-11-22T02:14:40.295Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 252,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A54f68061-3317-4721-896b-909906032697:392fba36-b7a9-4566-b831-b7a028b31572",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:40.295Z",
+     "type": "message.updated",
+     "payload": {
+      "createdBy": "user",
+      "creationSource": "web",
+      "id": "sheprd:54f68061-3317-4721-896b-909906032697:message",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4",
+      "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root",
+      "role": "user",
+      "text": "queued after the slow one",
+      "attachments": [],
+      "streaming": false,
+      "createdAt": "2026-11-22T02:14:40.295Z",
+      "updatedAt": "2026-11-22T02:14:40.295Z"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "10",
+  "tag": "orchestration.dispatchCommand",
+  "payload": {
+   "type": "run.interrupt",
+   "commandId": "sheprd:635783c7-447b-4c04-8729-6d3a46c966f2",
+   "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+   "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+   "holdQueue": true
+  },
+  "headers": []
+ },
+ {"dir": "server", "_tag": "Exit", "requestId": "10", "exit": {"_tag": "Success", "value": {"sequence": 254}}},
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 253,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A635783c7-447b-4c04-8729-6d3a46c966f2:059af479-2df0-49fb-96f8-0fff0d621535",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.304Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:signal:interrupt-request",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+      "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3",
+      "nativeItemRef": null,
+      "parentItemId": null,
+      "ordinal": 3000003,
+      "status": "completed",
+      "title": "Interrupt requested",
+      "startedAt": "2026-11-22T02:14:41.304Z",
+      "completedAt": "2026-11-22T02:14:41.304Z",
+      "updatedAt": "2026-11-22T02:14:41.304Z",
+      "type": "run_interrupt_request",
+      "message": "Stopped by user"
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 254,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3A635783c7-447b-4c04-8729-6d3a46c966f2:21191df5-31a2-48c5-879f-c59e9d87e92d",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.304Z",
+     "type": "run.updated",
+     "payload": {
+      "id": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:4",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "ordinal": 4,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "userMessageId": "sheprd:54f68061-3317-4721-896b-909906032697:message",
+      "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A4:attempt:1",
+      "status": "queued",
+      "queuePosition": 1,
+      "queueHeld": true,
+      "requestedAt": "2026-11-22T02:14:40.295Z",
+      "startedAt": null,
+      "completedAt": null,
+      "checkpointId": null,
+      "contextHandoffId": null
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 255,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:5ddd7a1d-47bc-4f07-966b-f513b8034812",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3%3Aassistant%3A0",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.742Z",
+     "type": "node.updated",
+     "payload": {"id": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3%3Aassistant%3A0", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3", "parentNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "kind": "assistant_message", "status": "completed", "countsForRun": false, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3", "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:3:assistant:0", "strength": "weak"}, "runtimeRequestId": null, "checkpointScopeId": null, "startedAt": "2026-11-22T02:14:38.206Z", "completedAt": "2026-11-22T02:14:41.741Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 256,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:6595dc58-97d6-4c25-88fb-1924a560432b",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3%3Aassistant%3A0",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.743Z",
+     "type": "message.updated",
+     "payload": {
+      "createdBy": "agent",
+      "creationSource": "provider",
+      "id": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3%3Aassistant%3A0",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+      "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3%3Aassistant%3A0",
+      "role": "assistant",
+      "text": "slow 1 slow 2 slow 3 slow 4 slow 5 slow 6 slow 7 ",
+      "attachments": [],
+      "streaming": false,
+      "createdAt": "2026-11-22T02:14:38.206Z",
+      "updatedAt": "2026-11-22T02:14:41.741Z"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 257,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:a1c27c5d-6bca-4ad2-a215-3aabe5f9eb72",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3%3Aassistant%3A0",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.746Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3%3Aassistant%3A0",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+      "nodeId": "node:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3%3Aassistant%3A0",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3",
+      "nativeItemRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:3:assistant:0", "strength": "weak"},
+      "parentItemId": null,
+      "ordinal": 3000002,
+      "status": "completed",
+      "title": null,
+      "startedAt": "2026-11-22T02:14:38.206Z",
+      "completedAt": "2026-11-22T02:14:41.741Z",
+      "updatedAt": "2026-11-22T02:14:41.741Z",
+      "type": "assistant_message",
+      "messageId": "message:provider:acpRegistry:native-item:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3%3Aassistant%3A0",
+      "text": "slow 1 slow 2 slow 3 slow 4 slow 5 slow 6 slow 7 ",
+      "streaming": false
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 258,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:d7069d07-9ce7-4ef7-a976-e3806fc5aba0",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.749Z",
+     "type": "provider-turn.updated",
+     "payload": {"id": "provider-turn:provider:acpRegistry:native-turn:provider-instance%3Afakeacp%3Asess-348c66a9a417%3Aturn%3A3", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "runAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:attempt:1", "nativeTurnRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417:turn:3", "strength": "weak"}, "ordinal": 3, "status": "interrupted", "startedAt": "2026-11-22T02:14:38.203Z", "completedAt": "2026-11-22T02:14:41.741Z", "turnTokenUsage": {"usageScope": "main_agent", "hasSubagents": false, "usageStatus": "unavailable"}}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 259,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:provider-session:provider-session%3Aprovider-instance%3Afakeacp%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3A43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd:06dc28b9-e2d1-4a4b-8972-79447c9c4d30",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.750Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "appThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "active", "firstRunOrdinal": 1, "lastRunOrdinal": 3, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:14:29.685Z", "updatedAt": "2026-11-22T02:14:41.741Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 260,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:7123da65-7ee9-468e-a9ac-4ffb6f762577",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.753Z",
+     "type": "run-attempt.updated",
+     "payload": {"id": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:attempt:1", "nativeThreadId": "sess-348c66a9a417", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3", "attemptOrdinal": 1, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "providerInstanceId": "fakeacp", "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "reason": "initial", "status": "interrupted", "startedAt": "2026-11-22T02:14:38.190Z", "completedAt": "2026-11-22T02:14:41.753Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 261,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:8df93f5d-865b-406e-ac61-01aefec8eae2",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.753Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:signal:interrupt-result",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+      "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": null,
+      "nativeItemRef": null,
+      "parentItemId": "turn-item:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:signal:interrupt-request",
+      "ordinal": 3000004,
+      "status": "interrupted",
+      "title": "Interrupted",
+      "startedAt": "2026-11-22T02:14:41.753Z",
+      "completedAt": "2026-11-22T02:14:41.753Z",
+      "updatedAt": "2026-11-22T02:14:41.753Z",
+      "type": "run_interrupt_result",
+      "message": "Stopped by user"
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 262,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:4c7af42b-75fb-4359-89d0-e1610e5ecb9c",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.753Z",
+     "type": "run.updated",
+     "payload": {
+      "id": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "ordinal": 3,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "userMessageId": "sheprd:89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:message",
+      "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:attempt:1",
+      "status": "interrupted",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:14:38.179Z",
+      "startedAt": "2026-11-22T02:14:38.190Z",
+      "completedAt": "2026-11-22T02:14:41.753Z",
+      "checkpointId": null,
+      "contextHandoffId": null
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 263,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:7ca70ee8-9960-4cd8-9770-6c78f4af54d3",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.753Z",
+     "type": "node.updated",
+     "payload": {"id": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3", "parentNodeId": null, "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "kind": "root_turn", "status": "interrupted", "countsForRun": true, "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "providerTurnId": null, "nativeItemRef": null, "runtimeRequestId": null, "checkpointScopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "startedAt": "2026-11-22T02:14:38.190Z", "completedAt": "2026-11-22T02:14:41.753Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 264,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:cc8e65a3-8ea6-4178-ba94-f4416a012eee",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.753Z",
+     "type": "provider-thread.updated",
+     "payload": {"id": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1", "driver": "acpRegistry", "providerInstanceId": "fakeacp", "providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "appThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "ownerNodeId": null, "nativeThreadRef": {"driver": "acpRegistry", "nativeId": "sess-348c66a9a417", "strength": "strong"}, "nativeConversationHeadRef": null, "status": "idle", "firstRunOrdinal": 1, "lastRunOrdinal": 3, "handoffIds": [], "forkedFrom": null, "pendingBackgroundTasks": [], "contextUsage": null, "nativeMetadata": {"itemIdentityVersion": 2}, "goal": null, "createdAt": "2026-11-22T02:14:29.685Z", "updatedAt": "2026-11-22T02:14:41.753Z"}
+    }
+   }
+  ]
+ },
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 265,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:1f694694-ffee-4dd4-8f79-32e316d5d048",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.785Z",
+     "type": "checkpoint.captured",
+     "payload": {"id": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:3", "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427", "scopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root", "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3", "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root", "parentCheckpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:2", "ordinalWithinScope": 3, "appRunOrdinal": 3, "ref": "refs/t3/orchestration-v2/checkpoints/MDg3NWY0MmJmMTE3OWU4NThiNGFlMTVlMTQ4M2Y1YzQ/ordinal/3", "status": "ready", "files": [], "capturedAt": "2026-11-22T02:14:41.785Z"}
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 266,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:b7eb72e8-6ef2-4836-a38f-5acdc4d0e72c",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.785Z",
+     "type": "turn-item.updated",
+     "payload": {
+      "id": "turn-item:provider:acpRegistry:native-item:checkpoint%3Acheckpoint%3Ascope%3Acheckpoint-scope%253Athread%253Amcp%25253A780fa4c7-179e-40bd-aee8-12b54e8ae427%253Aname%253Aroot%3Aname%3A3",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+      "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "providerTurnId": null,
+      "nativeItemRef": null,
+      "parentItemId": null,
+      "ordinal": 3000005,
+      "status": "completed",
+      "title": null,
+      "startedAt": "2026-11-22T02:14:41.785Z",
+      "completedAt": "2026-11-22T02:14:41.785Z",
+      "updatedAt": "2026-11-22T02:14:41.785Z",
+      "type": "checkpoint",
+      "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:3",
+      "scopeId": "checkpoint-scope:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:name:root",
+      "files": []
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 267,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:command%3Aeffect%3Acheckpoint.capture%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:4c5ee9c1-5da0-4ab0-a685-6f373c39a86d",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "runId": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+     "nodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:41.785Z",
+     "type": "run.updated",
+     "payload": {
+      "id": "run:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:ordinal:3",
+      "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "ordinal": 3,
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "fast"},
+      "providerThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "userMessageId": "sheprd:89d4d80b-ce3b-46a3-b22f-9747eb7b5c30:message",
+      "rootNodeId": "node:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:root",
+      "activeAttemptId": "run-attempt:run:run%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A3:attempt:1",
+      "status": "interrupted",
+      "queuePosition": null,
+      "requestedAt": "2026-11-22T02:14:38.179Z",
+      "startedAt": "2026-11-22T02:14:38.190Z",
+      "completedAt": "2026-11-22T02:14:41.753Z",
+      "checkpointId": "checkpoint:scope:checkpoint-scope%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aname%3Aroot:name:3",
+      "contextHandoffId": null
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "11",
+  "tag": "orchestration.dispatchCommand",
+  "payload": {
+   "type": "thread.model-selection.set",
+   "commandId": "sheprd:b1520d89-f3d2-4d74-8b94-2f2193499b6c",
+   "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+   "modelSelection": {"instanceId": "fakeacp", "model": "smart"}
+  },
+  "headers": []
+ },
+ {"dir": "server", "_tag": "Exit", "requestId": "11", "exit": {"_tag": "Success", "value": {"sequence": 268}}},
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 268,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3Ab1520d89-f3d2-4d74-8b94-2f2193499b6c:8df71626-7e55-4436-8b21-4a4a9f902e6e",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:47.318Z",
+     "type": "thread.model-selection-updated",
+     "payload": {
+      "createdBy": "agent",
+      "creationSource": "mcp",
+      "id": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "projectId": "4b4bb756-3a53-4e82-83e0-716fe1357f27",
+      "title": "Steer test",
+      "providerInstanceId": "fakeacp",
+      "modelSelection": {"instanceId": "fakeacp", "model": "smart"},
+      "runtimeMode": "approval-required",
+      "interactionMode": "default",
+      "branch": null,
+      "worktreePath": null,
+      "pullRequests": [],
+      "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427"},
+      "forkedFrom": null,
+      "createdAt": "2026-11-22T02:14:29.679Z",
+      "updatedAt": "2026-11-22T02:14:47.318Z",
+      "archivedAt": null,
+      "settledOverride": null,
+      "settledAt": null,
+      "snoozedUntil": null,
+      "snoozedAt": null,
+      "lastVisitedAt": "2026-11-22T02:14:29.684Z",
+      "deletedAt": null
+     }
+    }
+   }
+  ]
+ },
+ {
+  "dir": "client",
+  "_tag": "Request",
+  "id": "12",
+  "tag": "orchestration.dispatchCommand",
+  "payload": {
+   "type": "provider.switch",
+   "commandId": "sheprd:fec1122a-9e12-4e56-9260-eee9f7d243cd",
+   "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+   "modelSelection": {"instanceId": "fakeacp2", "model": "fast"}
+  },
+  "headers": []
+ },
+ {"dir": "server", "_tag": "Exit", "requestId": "12", "exit": {"_tag": "Success", "value": {"sequence": 270}}},
+ {
+  "dir": "server",
+  "_tag": "Chunk",
+  "requestId": "3",
+  "values": [
+   {
+    "kind": "event",
+    "sequence": 269,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3Afec1122a-9e12-4e56-9260-eee9f7d243cd:8072f0af-0ce3-455e-b63d-1d5671ada5df",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "providerInstanceId": "fakeacp2",
+     "occurredAt": "2026-11-22T02:14:48.351Z",
+     "type": "thread.provider-switched",
+     "payload": {
+      "createdBy": "agent",
+      "creationSource": "mcp",
+      "id": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+      "projectId": "4b4bb756-3a53-4e82-83e0-716fe1357f27",
+      "title": "Steer test",
+      "providerInstanceId": "fakeacp2",
+      "modelSelection": {"instanceId": "fakeacp2", "model": "fast"},
+      "runtimeMode": "approval-required",
+      "interactionMode": "default",
+      "branch": null,
+      "worktreePath": null,
+      "pullRequests": [],
+      "activeProviderThreadId": "provider-thread:provider:acpRegistry:native-thread:pending%3Arun%3Athread%3Amcp%253A780fa4c7-179e-40bd-aee8-12b54e8ae427%3Aordinal%3A1",
+      "lineage": {"parentThreadId": null, "relationshipToParent": null, "rootThreadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427"},
+      "forkedFrom": null,
+      "createdAt": "2026-11-22T02:14:29.679Z",
+      "updatedAt": "2026-11-22T02:14:48.351Z",
+      "archivedAt": null,
+      "settledOverride": null,
+      "settledAt": null,
+      "snoozedUntil": null,
+      "snoozedAt": null,
+      "lastVisitedAt": "2026-11-22T02:14:29.684Z",
+      "deletedAt": null
+     }
+    }
+   },
+   {
+    "kind": "event",
+    "sequence": 270,
+    "event": {
+     "id": "event:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:command:sheprd%3Afec1122a-9e12-4e56-9260-eee9f7d243cd:2c5ed7b5-a3ee-463b-b9ec-3051355db735",
+     "threadId": "mcp:780fa4c7-179e-40bd-aee8-12b54e8ae427",
+     "driver": "acpRegistry",
+     "providerInstanceId": "fakeacp",
+     "occurredAt": "2026-11-22T02:14:48.351Z",
+     "type": "provider-session.detached",
+     "payload": {"providerSessionId": "provider-session:provider-instance:fakeacp:thread:mcp%3A780fa4c7-179e-40bd-aee8-12b54e8ae427:43decb4a-96c4-4bd0-b4d5-3d6b25eaf2dd", "detachedAt": "2026-11-22T02:14:48.351Z", "reason": "Provider or model selection changed."}
+    }
+   }
+  ]
+ },
+ {"dir": "client", "_tag": "Interrupt", "requestId": "3"},
+ {"dir": "server", "_tag": "Exit", "requestId": "3", "exit": {"_tag": "Failure", "cause": [{"_tag": "Interrupt", "fiberId": 5669}]}}
+]

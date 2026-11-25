@@ -26,6 +26,24 @@ pub(crate) fn duration(ms: u64) -> String {
 
 /// `Worked 12s · 3.2k in · 450 out`: how a turn ended, how long it took,
 /// and the tokens it used when the agent reports them.
+/// The divider where another agent took over the conversation.
+pub(crate) fn handoff(handoff: &sheprd_chat_protocol::HandedOver) -> String {
+    let agent = handoff.to.display_name();
+    let line = if handoff.resumed {
+        fl!("chat-handoff-resumed", agent = agent, kept = handoff.kept)
+    } else {
+        fl!("chat-handoff-fresh", agent = agent, kept = handoff.kept)
+    };
+    if handoff.omitted == 0 {
+        return line;
+    }
+    fl!(
+        "chat-handoff-omitted",
+        line = line,
+        omitted = handoff.omitted
+    )
+}
+
 pub(crate) fn turn(summary: &TurnSummary) -> String {
     let duration = duration(summary.duration_ms);
     let ended = match summary.end {

@@ -4,8 +4,10 @@
 //! Rows come from each device's sessions, as the window's own sidebar reads
 //! them: Herdr 1's workspaces, then those the app keeps for herdr-core.
 
-use super::{hex, load_state, status_name};
+use super::{hex, status_name};
+use crate::sidebar::{cell::Fold, repository, wash::HostMark};
 use crate::{
+    config::status_bar::Detail,
     endpoint::Endpoint,
     session_model::Sessions,
     sidebar::workspaces::{
@@ -38,6 +40,15 @@ struct Place<'a> {
 }
 
 impl SheprdWindow {
+    fn hosted_host_mark(&self, index: usize, endpoint: &Endpoint) -> HostMark {
+        HostMark::resolve(
+            &self.config.sidebar_style,
+            &endpoint.label,
+            index == self.selected_endpoint,
+            &self.theme,
+        )
+    }
+
     /// The window's folds and devices, as one number: equal numbers say no
     /// header or group was folded and no device's sessions changed. Read on
     /// every notification, so it allocates nothing.
@@ -65,6 +76,8 @@ impl SheprdWindow {
                     &endpoint.id,
                     endpoint.collapsed,
                     endpoint.enabled,
+                    self.hosted_host_mark(index, endpoint),
+                    self.config.show_repository_icons,
                     snapshot,
                 )
                     .hash(hasher);
@@ -98,11 +111,19 @@ impl SheprdWindow {
                 let selected = index == self.selected_endpoint;
                 let live = if selected { &self.live } else { &endpoint.live };
                 let host = crate::usage::Host::load_of(&endpoint.connection.target);
-                let reading = host
+                // As the classic row: CPU and memory, and the GPU's line when
+                // the sidebar shows it. `sidebar_load` chooses shares beside
+                // the name, or lines under it with their graphs.
+                let detail = self.config.sidebar_load;
+                let (load, gpu) = (
+                    self.config.show_system_load.then_some(detail),
+                    self.config.show_sidebar_gpu_load.then_some(detail),
+                );
+                let load = host
                     .as_ref()
-                    .filter(|_| self.config.show_system_load)
+                    .filter(|_| load.is_some() || gpu.is_some())
                     .and_then(|host| self.system_load.get(host))
-                    .and_then(|load| load.latest().copied());
+                    .map(|reading| crate::system_load::host_load(reading, &self.theme, load, gpu));
                 let folded = multi && endpoint.collapsed;
                 let sessions = self.sessions(index);
                 let rows = if folded {
@@ -110,13 +131,18 @@ impl SheprdWindow {
                 } else {
                     self.hosted_rows(index, endpoint, &sessions, cx)
                 };
+                let mark = self.hosted_host_mark(index, endpoint);
                 json!({
+                    "wash": mark.wash.map(|wash| format!("#{:06x}{:02x}", wash.color, wash.alpha)),
+                    "opacity": mark.opacity(),
                     "collapsed": folded,
                     "connected": live.status.is_connected(),
                     "enabled": endpoint.enabled,
                     "id": endpoint.id,
                     "label": endpoint.label,
-                    "load": reading.as_ref().map(|reading| load_state(Some(reading))),
+                    "load": load,
+                    // Whether the load takes lines of its own under the name.
+                    "load_lines": detail == Detail::Detailed,
                     "removing": self.device_removing(endpoint),
                     "search": search_rows(endpoint, &sessions, cx),
                     "selected": selected,
@@ -249,8 +275,22 @@ impl SheprdWindow {
         );
         let (ahead, behind) = workspace.ahead_behind.unwrap_or((0, 0));
         let tree = workspace.worktree.as_ref();
+        let tile = repository::name(workspace)
+            .filter(|_| self.config.show_repository_icons)
+            .map(|name| {
+                let tile = repository::Tile::new(name, &self.theme);
+                json!({
+                    "letters": tile.letters.as_str(),
+                    "background": hex(tile.background),
+                    "foreground": hex(tile.foreground),
+                })
+            });
         let counts = badge.as_ref().and_then(|badge| badge.counts.as_ref());
         let pr = badge.as_ref().and_then(|badge| badge.pr.as_ref());
+        let collapsed = place
+            .group
+            .as_ref()
+            .is_some_and(|key| place.collapsed.contains(key));
         json!({
             "added": counts.map(|counts| counts.additions.clone()),
             "agent_status": status_name(place.status),
@@ -258,7 +298,8 @@ impl SheprdWindow {
             "behind": behind,
             "branch": workspace.branch,
             "child": child,
-            "collapsed": place.group.as_ref().is_some_and(|key| place.collapsed.contains(key)),
+            "collapsed": collapsed,
+            "fold_glyph": place.group.as_ref().map(|_| Fold::glyph(collapsed)),
             "dirty": badge.as_ref().is_some_and(|badge| badge.dirty),
             "endpoint": place.endpoint.id,
             "focused": place.focused,
@@ -277,6 +318,7 @@ impl SheprdWindow {
             "pr_color": pr.map(|pr| hex(pr.color)),
             "removed": counts.map(|counts| counts.deletions.clone()),
             "repo": tree.map(|tree| tree.label.clone()),
+            "repo_tile": tile,
             "repo_key": tree.map(|tree| tree.key.clone()),
             "teleported": badge.as_ref().is_some_and(|badge| badge.teleported),
         })

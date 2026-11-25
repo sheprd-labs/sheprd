@@ -26,9 +26,7 @@ struct SettingsView: View {
             if relayError != nil || problem != nil {
                 Section {
                     if let relayError {
-                        NavigationLink {
-                            NotificationSettingsView().makesRoomForConnectionToast()
-                        } label: {
+                        NavigationLink(value: AgentSettingsPage.notifications) {
                             ProblemRow(title: "Push relay refused this \(UIDevice.current.model)", detail: relayError)
                         }
                     }
@@ -38,35 +36,19 @@ struct SettingsView: View {
                 }
             }
             Section {
-                SettingsLink("Computers", symbol: "desktopcomputer", color: .blue, value: "\(model.computers.count)") {
-                    ComputersSettingsView()
-                }
-                SettingsLink("Fleet", symbol: "point.3.connected.trianglepath.dotted", color: .indigo, value: fleetSummary) {
-                    FleetSettingsView()
-                }
+                SettingsLink("Computers", symbol: "desktopcomputer", color: .blue, value: "\(model.computers.count)", page: .computers)
+                SettingsLink("Fleet", symbol: "point.3.connected.trianglepath.dotted", color: .indigo, value: fleetSummary, page: .fleet)
                 SettingsLink("Relays", symbol: "antenna.radiowaves.left.and.right", color: .teal,
-                             value: "\(model.savedRelays.relays.count)") {
-                    RelaysView()
-                }
+                             value: "\(model.savedRelays.relays.count)", page: .relays)
                 GitHubSettingsRow()
             }
             Section {
-                SettingsLink("Notifications", symbol: "bell.badge.fill", color: .red) {
-                    NotificationSettingsView()
-                }
-                SettingsLink("Chats", symbol: "bubble.left.and.bubble.right.fill", color: .green) {
-                    ChatSettingsView()
-                }
-                SettingsLink("Voice", symbol: "waveform", color: .pink) {
-                    VoiceSettingsView()
-                }
+                SettingsLink("Notifications", symbol: "bell.badge.fill", color: .red, page: .notifications)
+                SettingsLink("Chats", symbol: "bubble.left.and.bubble.right.fill", color: .green, page: .chats)
+                SettingsLink("Voice", symbol: "waveform", color: .pink, page: .voice)
                 SettingsLink("Terminal Keys", symbol: "terminal.fill", color: .gray,
-                             value: "\(model.termKeys.layout.top.count + model.termKeys.layout.bottom.count)") {
-                    TerminalKeysView()
-                }
-                SettingsLink("Sounds & Haptics", symbol: "speaker.wave.2.fill", color: .orange) {
-                    SoundsSettingsView()
-                }
+                             value: "\(model.termKeys.layout.top.count + model.termKeys.layout.bottom.count)", page: .terminalKeys)
+                SettingsLink("Sounds & Haptics", symbol: "speaker.wave.2.fill", color: .orange, page: .sounds)
             }
             Section {
                 Picker(selection: $appearance) {
@@ -75,9 +57,7 @@ struct SettingsView: View {
                     Label { Text("Appearance") } icon: { SettingsIcon(symbol: "circle.lefthalf.filled", color: .blue) }
                 }
                 .pickerStyle(.menu)
-                SettingsLink("Privacy & Storage", symbol: "hand.raised.fill", color: .blue) {
-                    PrivacySettingsView()
-                }
+                SettingsLink("Privacy & Storage", symbol: "hand.raised.fill", color: .blue, page: .privacy)
             } footer: {
                 Text("Terminals stay dark in either appearance.")
             }
@@ -86,6 +66,9 @@ struct SettingsView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(for: AgentSettingsPage.self) { page in
+            AgentSettingsDestination(page: page).makesRoomForConnectionToast()
+        }
         #if DEBUG
         .navigationDestination(isPresented: $showingComputers) { ComputersSettingsView().makesRoomForConnectionToast() }
         .task { if UserDefaults.standard.bool(forKey: "editComputers") { showingComputers = true } }
@@ -125,26 +108,24 @@ struct SettingsIcon: View {
 }
 
 /// One of the hub's rows: an icon, a title, a value, and the page it opens.
-private struct SettingsLink<Destination: View>: View {
+private struct SettingsLink: View {
     let title: LocalizedStringKey
     let symbol: String
     let color: Color
     var value: String?
-    @ViewBuilder let destination: () -> Destination
+    let page: AgentSettingsPage
 
     init(_ title: LocalizedStringKey, symbol: String, color: Color, value: String? = nil,
-         @ViewBuilder destination: @escaping () -> Destination) {
+         page: AgentSettingsPage) {
         self.title = title
         self.symbol = symbol
         self.color = color
         self.value = value
-        self.destination = destination
+        self.page = page
     }
 
     var body: some View {
-        NavigationLink {
-            destination().makesRoomForConnectionToast()
-        } label: {
+        NavigationLink(value: page) {
             LabeledContent {
                 if let value { Text(verbatim: value) }
             } label: {

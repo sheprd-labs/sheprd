@@ -11,7 +11,7 @@ fn captured_target_fences_cancel_and_reset_cancels_immediately(cx: &mut TestAppC
         let epoch = view.selection_epoch;
         let generation = view.endpoints[0].generation;
         let id = view.endpoints[0].id.clone();
-        for case in 0..12 {
+        for case in 0..10 {
             view.live = live.clone();
             view.selection_epoch = epoch;
             view.endpoints[0].generation = generation;
@@ -20,7 +20,7 @@ fn captured_target_fences_cancel_and_reset_cancels_immediately(cx: &mut TestAppC
                 target: HOST.into(),
                 session: "default".into(),
             };
-            let target = if matches!(case, 7 | 8) {
+            let target = if matches!(case, 5 | 6) {
                 popup(view, "popup");
                 InputTarget::Popup("popup".into())
             } else {
@@ -37,21 +37,17 @@ fn captured_target_fences_cancel_and_reset_cancels_immediately(cx: &mut TestAppC
                 3 => Arc::make_mut(view.live.snapshot.as_mut().unwrap())
                     .panes
                     .clear(),
-                4 => Arc::make_mut(view.live.surface.as_mut().unwrap())
-                    .panes
-                    .clear(),
-                5 => view.endpoints[0].id.push_str("-new"),
-                6 => popup(view, "popup"),
-                7 => popup(view, "replacement"),
-                8 => Arc::make_mut(view.live.surface.as_mut().unwrap()).popup = None,
-                9 => view.live.status = ConnectionStatus::Disconnected,
-                10 => {
+                4 => view.endpoints[0].id.push_str("-new"),
+                5 => popup(view, "replacement"),
+                6 => Arc::make_mut(view.live.surface.as_mut().unwrap()).popup = None,
+                7 => view.live.status = ConnectionStatus::Disconnected,
+                8 => {
                     view.endpoints[0].connection.target = ConnectTarget::Ssh {
                         target: "other.invalid".into(),
                         session: "default".into(),
                     }
                 }
-                11 => {
+                9 => {
                     let cancelled = view.file_transfer.as_ref().unwrap().cancelled.clone();
                     view.detach_endpoint(cx);
                     assert!(

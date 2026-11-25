@@ -55,9 +55,6 @@ fn a_links_code_shows_once_the_claim_brings_it(cx: &mut TestAppContext) {
             computer: studio.clone(),
             code: code.into(),
             claimed,
-            offer: super::super::fleet::Offer::None,
-            pairing: "p".into(),
-            decided: true,
         };
         assert_eq!(setup(view).step, showing("", false));
         // Only six digits are taken as the code.

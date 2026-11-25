@@ -143,6 +143,15 @@ pub enum FontSize {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum UiOp {
+    /// Settings pages and row IDs, or navigation to one page.
+    Settings {
+        page: Option<String>,
+    },
+    /// Update persistent guidance; both absent clears it. A row ID opens its page.
+    Guide {
+        text: Option<String>,
+        highlight: Option<String>,
+    },
     /// Read the app's prepared trace-replication status without starting I/O.
     Traces {},
     TracesFilter {
@@ -243,6 +252,10 @@ pub struct AlertInfo {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Reply {
+    SettingsTargets {
+        pages: Vec<String>,
+        rows: Vec<SettingsTarget>,
+    },
     Traces {
         peers: Vec<TracePeer>,
         #[serde(default)]
@@ -271,3 +284,11 @@ pub enum Reply {
 
 #[cfg(test)]
 mod tests;
+
+/// A stable, discoverable Settings row an agent may point at, without changing it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SettingsTarget {
+    pub id: String,
+    pub page: String,
+    pub title: String,
+}

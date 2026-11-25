@@ -16,6 +16,41 @@ use crate::{Agent, EntryId, EntryKind, Transcript};
 /// The most briefs a transcript keeps; a new one past it is refused.
 pub const MAX_BRIEFS: usize = 16;
 
+/// Parent turn whose Live Activity follows a delegated chat's initial brief.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Delegation {
+    pub endpoint: crate::EndpointId,
+    pub started_ms: u64,
+}
+
+impl Delegation {
+    pub const ENV: &str = "SHEPRD_BRIEF_PARENT";
+}
+
+/// Launch metadata for the initial brief. It outlives a transcript truncation
+/// and is cleared by the next user prompt.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DelegatedTask {
+    pub parent: Delegation,
+    pub label: String,
+    pub(crate) prompted: bool,
+}
+
+impl DelegatedTask {
+    pub fn new(parent: Delegation, brief: &str) -> Self {
+        let title = brief
+            .lines()
+            .map(str::trim)
+            .find(|line| !line.is_empty())
+            .unwrap_or("Agent");
+        Self {
+            parent,
+            label: crate::excerpt::one_line(title, 80),
+            prompted: false,
+        }
+    }
+}
+
 /// A user entry another agent wrote.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Brief {
@@ -26,6 +61,13 @@ pub struct Brief {
 }
 
 impl Transcript {
+    /// Owner and short name of the initial delegated prompt, even after its
+    /// text falls out of the bounded transcript.
+    pub fn delegated_brief(&self) -> Option<(&Delegation, &str)> {
+        let task = self.delegation.as_ref()?;
+        task.prompted.then_some((&task.parent, task.label.as_str()))
+    }
+
     /// The brief `id` is, if another agent wrote it.
     pub fn brief(&self, id: EntryId) -> Option<&Brief> {
         self.briefs.iter().find(|brief| brief.entry == id)

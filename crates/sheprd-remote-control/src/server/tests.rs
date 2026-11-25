@@ -13,6 +13,7 @@ mod fleet;
 mod fleet_joins;
 mod github;
 mod idle;
+mod presence_verb;
 mod push_relay;
 mod push_relay_revoke;
 mod push_status;

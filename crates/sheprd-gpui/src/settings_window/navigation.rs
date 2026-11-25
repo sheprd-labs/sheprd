@@ -3,6 +3,8 @@
 // i18n: migrated
 use super::*;
 
+pub(super) const NAVIGATION_PADDING: f32 = 12.;
+
 impl SettingsWindow {
     pub(super) fn navigation(&self, cx: &mut Context<Self>) -> Stateful<Div> {
         use crate::panel_resize::{PanelDrag, Side, handle};
@@ -26,20 +28,11 @@ impl SettingsWindow {
                     }
                 }),
             )
-            .child(handle(
-                "settings-navigation-resize",
-                Side::start(),
-                PanelDrag::SettingsNavigation,
-                cx.listener(|this, _, _, cx| {
-                    this.navigation_width.reset();
-                    cx.notify();
-                }),
-            ))
             .h_full()
             .flex_none()
             .flex()
             .flex_col()
-            .p(px(12.))
+            .p(px(NAVIGATION_PADDING))
             .gap(px(2.))
             .bg(rgb(mix(theme.surface, theme.background, 25)))
             .border_e(px(1.))
@@ -90,6 +83,17 @@ impl SettingsWindow {
                     cx,
                 ),
             )
+            // Keep the resize grip above the scrollbar where the two meet in
+            // right-to-left layouts.
+            .child(handle(
+                "settings-navigation-resize",
+                Side::start(),
+                PanelDrag::SettingsNavigation,
+                cx.listener(|this, _, _, cx| {
+                    this.navigation_width.reset();
+                    cx.notify();
+                }),
+            ))
     }
 
     fn group_label(&self, group: Group) -> Div {

@@ -205,6 +205,7 @@ fn every_variant_with_fields_has_a_message() {
 fn every_reason_app_updates_never_checks_has_a_message() {
     use sheprd_updater::Disabled;
     assert_localized(&[
+        Disabled::AppStore,
         Disabled::LocalBuild,
         Disabled::Platform,
         Disabled::Secondary,

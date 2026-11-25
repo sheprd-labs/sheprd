@@ -38,6 +38,7 @@ mod github_accounts;
 mod herdr_2_scrollback;
 mod herdr_2_terminals;
 mod icon_font;
+mod interface_fallbacks;
 mod keybindings;
 mod language;
 mod line_height;

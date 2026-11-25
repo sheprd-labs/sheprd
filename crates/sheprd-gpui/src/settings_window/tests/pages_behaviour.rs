@@ -26,6 +26,42 @@ fn show(view: &Entity<SettingsWindow>, section: Section, cx: &mut VisualTestCont
 }
 
 #[gpui::test]
+fn voice_providers_show_their_account_controls(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(skill_fixture);
+    cx.simulate_resize(size(px(960.), px(1000.)));
+    show(&view, Section::Voice, cx);
+    assert!(cx.debug_bounds("voice-preview").is_none());
+    let point = cx.debug_bounds("voice-change").unwrap().center();
+    cx.simulate_click(point, Default::default());
+    cx.simulate_keystrokes("escape");
+    draw(cx);
+    assert!(cx.debug_bounds("voice-option-0").is_none());
+    for (selector, sign_in, voices) in [
+        ("voice-option-3", true, false),
+        ("voice-option-0", false, true),
+        ("voice-option-2", false, false),
+        ("voice-option-1", false, false),
+    ] {
+        let point = cx.debug_bounds("voice-change").unwrap().center();
+        cx.simulate_click(point, Default::default());
+        cx.run_until_parked();
+        draw(cx);
+        let point = cx.debug_bounds(selector).unwrap().center();
+        cx.simulate_click(point, Default::default());
+        cx.run_until_parked();
+        draw(cx);
+        assert_eq!(cx.debug_bounds("voice-sign-in").is_some(), sign_in);
+        assert_eq!(cx.debug_bounds("voice-refresh").is_some(), voices);
+        assert!(cx.debug_bounds("voice-preview").is_some());
+        let point = cx.debug_bounds("voice-sheet-close").unwrap().center();
+        cx.simulate_click(point, Default::default());
+        cx.run_until_parked();
+        draw(cx);
+        assert!(cx.debug_bounds("voice-preview").is_none());
+    }
+}
+
+#[gpui::test]
 fn behaviour_pages_route_every_row_to_its_preference(cx: &mut TestAppContext) {
     let (view, cx) = cx.add_window_view(skill_fixture);
     let edits = view.update(cx, |view, _| recording(view));

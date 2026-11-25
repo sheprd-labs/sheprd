@@ -119,7 +119,7 @@ impl SheprdWindow {
         bar = bar.child(
             pill(
                 "overview-batch-clear".to_owned(),
-                "icons/x.svg",
+                "icons/close.svg",
                 fl!("overview-selection-clear"),
                 look,
             )

@@ -143,6 +143,8 @@ settings-sidebar-device-icons = Show device icons
 settings-sidebar-device-icons-description = A mark before each device's name: this machine, a cloud provider or SSH.
 settings-sidebar-gpu-load = Show GPU and video memory
 settings-sidebar-gpu-load-description = Each host's GPU busy share and VRAM on a line under its CPU and memory, or a GPU gauge after its name in compact layouts. Off by default.
+settings-sidebar-load = Host load
+settings-sidebar-load-description = Each host's CPU, memory and GPU in the Moonframe window's sidebar: Compact shows the shares beside its name (CPU, memory, GPU, video memory), Detailed adds lines under it with their graphs and video memory.
 settings-sidebar-indent = Indent
 settings-sidebar-indent-description = Pixels each nesting level steps in.
 settings-sidebar-row-padding = Row padding
@@ -276,8 +278,8 @@ settings-remote-notifications = Notification text
 settings-remote-notifications-description = Whether phone notifications include a short excerpt of the message.
 settings-remote-idle = Forget idle devices after
 settings-remote-idle-description = A day, a week, a month, or never: how long a paired device may stay away.
-settings-remote-pair-card = Pair a phone
-settings-remote-pair-card-description = Show a QR code to scan with a phone, then approve it.
+settings-remote-pair-card = Pair device
+settings-remote-pair-card-description = Show a QR code to scan with a phone, or for a computer nearby to find, then approve it.
 settings-remote-devices = Paired devices
 settings-remote-devices-description = Devices that can control your chats, with when each was last seen. Revoke one here.
 settings-config-local = Sheprd settings
@@ -286,3 +288,7 @@ settings-config-shared = Herdr configuration
 settings-config-shared-description = Herdr's configuration file, which its terminal client reads too.
 settings-config-reload = Reload configuration
 settings-config-reload-description = Re-reads both files. Does not restart the daemon.
+
+settings-agent-guide-dismiss = Dismiss agent guidance
+
+settings-section-voice = Voice

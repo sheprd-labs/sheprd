@@ -9,9 +9,11 @@ mod capped;
 mod cross_site;
 mod dashboard;
 mod guard;
+mod handshake;
 mod history;
 mod identity;
 mod keys;
+mod legitimate_load;
 mod lockout;
 mod metrics;
 mod options;
@@ -26,7 +28,7 @@ mod shared_address;
 mod through;
 mod tokens;
 
-pub(crate) use super::{hello, public, sign, signing_key};
+pub(crate) use crate::tests::{hello, public, sign, signing_key};
 use crate::{
     Limits, Options, RouteId,
     hub::Hub,

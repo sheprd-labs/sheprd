@@ -134,6 +134,19 @@ impl SheprdWindow {
         let font = self.chat_font();
         let theme = self.theme.clone();
         let shortcuts = crate::text_shortcuts::Store::current(cx);
+        // What a composer about to be made starts with: the draft its chat
+        // kept, read before the panes are borrowed.
+        let drafts: Vec<(String, (String, u64))> = self
+            .chats
+            .panes()
+            .filter(|pane| {
+                pane.available() && pane.composer.is_none() && pane.input() == ChatInput::Composer
+            })
+            .filter_map(|pane| {
+                let pane_id = &pane.target.pane_id;
+                Some((pane_id.clone(), self.restored_chat_draft(pane_id, cx)?))
+            })
+            .collect();
         for pane in self.chats.panes_mut() {
             if !pane.available() {
                 continue;
@@ -165,10 +178,17 @@ impl SheprdWindow {
                     changed = true;
                     let composer = cx.new(MultilineInput::new);
                     let pane_id = pane.target.pane_id.clone();
+                    pane.draft_seen = None;
+                    if let Some((_, (text, version))) = drafts.iter().find(|(id, _)| *id == pane_id)
+                    {
+                        composer.update(cx, |input, cx| input.set_text_at(text, text.len(), cx));
+                        pane.draft_seen = Some(*version);
+                    }
                     pane.composer_typed = Some(cx.subscribe_in(
                         &composer,
                         window,
                         move |this, _, _: &crate::multiline_input::Changed, window, cx| {
+                            this.save_chat_draft(&pane_id, cx);
                             this.close_chat_menu_on_typing(&pane_id, window, cx);
                         },
                     ));

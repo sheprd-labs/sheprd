@@ -437,7 +437,7 @@ impl SheprdWindow {
                         // Only a page tab shows behind the section; the system
                         // browser, or a page that did not open, leaves it be.
                         let opened =
-                            self.open_workspace_page(&endpoint, &workspace, url, window, cx);
+                            self.open_workspace_page(&endpoint, &workspace, url, true, window, cx);
                         if opened == crate::browser::PageOpened::Tab {
                             self.leave_activity_section(id, cx);
                         }

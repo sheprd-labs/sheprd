@@ -11,6 +11,7 @@ mod fleet;
 mod hosts;
 mod links;
 mod mods;
+mod phone;
 mod relay;
 mod remote;
 mod settings;
@@ -292,6 +293,7 @@ fn named_window(request: &Request) -> Option<u64> {
         Request::Remote(call) => call.caller.window,
         Request::Mod(call) => call.caller.window,
         Request::Fleet(call) => call.caller.window,
+        Request::Phone(call) => call.caller.window,
     }
 }
 
@@ -306,6 +308,7 @@ fn serve(incoming: socket::Incoming, state: &mut State, cx: &mut App) {
             | Request::Cloud(_)
             | Request::Remote(_)
             | Request::Fleet(_)
+            | Request::Phone(_)
             | Request::Chat(super::protocol::Call {
                 op: super::protocol::chat::ChatOp::New {
                     prompt: Some(_),
@@ -326,6 +329,7 @@ fn serve(incoming: socket::Incoming, state: &mut State, cx: &mut App) {
         .request
         .via()
         .and_then(|via| relay::refusal(via, cx))
+        .or_else(|| relay::lent(&incoming.request, cx))
     {
         incoming.respond(refusal);
         return;
@@ -357,6 +361,7 @@ fn serve(incoming: socket::Incoming, state: &mut State, cx: &mut App) {
         Request::Cloud(call) => cloud::serve(call, incoming, &mut state.watches, cx),
         Request::Remote(call) => remote::serve(call, incoming, &mut state.watches, cx),
         Request::Fleet(call) => fleet::serve(call, incoming, &mut state.watches, cx),
+        Request::Phone(call) => phone::serve(call, incoming, &mut state.watches, cx),
         Request::Mod(call) => incoming.respond(mods::serve(call, cx)),
     }
 }

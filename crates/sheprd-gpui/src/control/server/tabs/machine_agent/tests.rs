@@ -36,3 +36,25 @@ fn a_finished_command_hands_back_its_status_and_output() {
     assert_eq!(info.stdout, "partial\n");
     assert_eq!(info.device, "vm");
 }
+
+#[test]
+fn only_a_borrowers_peek_skips_the_claim() {
+    let peek = TabOp::MachinePeek {
+        name: "default".to_owned(),
+        path: "/tmp/x.png".to_owned(),
+    };
+    let lent = Caller {
+        via: Some(crate::control::protocol::Via::Lend {
+            borrower: "studio".to_owned(),
+            owner: "a person watching".to_owned(),
+        }),
+        ..Caller::default()
+    };
+    assert!(!needs_claim(&lent, &peek));
+    assert!(needs_claim(&Caller::default(), &peek));
+    let shot = TabOp::MachineScreenshot {
+        name: "default".to_owned(),
+        path: "/tmp/x.png".to_owned(),
+    };
+    assert!(needs_claim(&lent, &shot));
+}

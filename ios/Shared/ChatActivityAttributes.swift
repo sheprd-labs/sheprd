@@ -25,6 +25,9 @@ struct ChatActivityAttributes: ActivityAttributes {
 
     var content: ActivitySealable<ChatActivityFacts>
 
+    static let sharedGroupKey = "liveActivitySharedGeneration"
+    static var sharedGroup: String? { LiveActivityStyleSetting.store?.string(forKey: sharedGroupKey) }
+
     init(facts: ChatActivityFacts) {
         content = .plain(facts)
     }
@@ -50,6 +53,11 @@ struct ChatActivityAttributes: ActivityAttributes {
     /// computer's key opens may be the test this phone started on itself
     /// (`SelfTestActivity`), which only its own key opens.
     func opened(_ state: ContentState) -> SealedChatActivity.Opened? {
+        if case let .sharedCard(card) = content {
+            guard PushRelaySetting.isOn, let group = Self.sharedGroup, card.belongs(to: group),
+                  case let .sharedState(snapshot) = state else { return nil }
+            return snapshot.opened(group: group, keys: NotifyKey.activityKeys(), generic: LiveActivityStyleSetting.current.asksGeneric)
+        }
         let sealed = content.plain == nil || state.plain == nil
         if let opened = SealedChatActivity.open(
             attributes: content,

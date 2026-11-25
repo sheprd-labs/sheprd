@@ -11,7 +11,6 @@
 //! Nothing here holds a key or decides anything: the child and the other
 //! computer's daemon do.
 
-mod fleet;
 pub(super) mod link;
 mod render;
 
@@ -79,16 +78,12 @@ enum Step {
     /// The code exchange is under way.
     Exchanging(Found),
     /// Both screens show `code`; `claimed` once the other computer asks
-    /// its user. The claim waits until the fleet `offer` is `decided`. A
-    /// pairing link's `code` is empty until the claim brings it.
+    /// its user. A pairing link's `code` is empty until the claim brings
+    /// it.
     Code {
         computer: Found,
         code: String,
         claimed: bool,
-        offer: fleet::Offer,
-        /// The pairing's token, hashed, for a bundle bound to it.
-        pairing: String,
-        decided: bool,
     },
     /// Allowed: checking the machine through its relays, then saving it.
     Saving(String),
@@ -308,12 +303,10 @@ impl SheprdWindow {
                     cx,
                 );
             }
-            PairOutput::Code {
-                code,
-                computer,
-                fleet,
-                pairing,
-            } => {
+            // Pairing is pairing: the claim goes at once, so the other
+            // computer shows Allow while this one shows the code. Joining
+            // a fleet is Settings > Fleet's, later.
+            PairOutput::Code { code, computer, .. } => {
                 let Some(found) = setup.step.computer().cloned() else {
                     return;
                 };
@@ -324,11 +317,10 @@ impl SheprdWindow {
                     },
                     code,
                     claimed: false,
-                    offer: fleet::offer(cx, fleet.as_ref()),
-                    pairing,
-                    decided: false,
                 };
-                self.nearby_claim_unasked();
+                if let Some(pairing) = &setup.pairing {
+                    pairing.claim(None);
+                }
             }
             PairOutput::Claimed { code: claimed_code } => {
                 if let Step::Code { claimed, code, .. } = &mut setup.step {

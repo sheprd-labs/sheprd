@@ -3,6 +3,7 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    io::Read,
     time::Instant,
 };
 
@@ -139,6 +140,10 @@ impl Translator for Bridge {
             Some(kind) => self.event(kind, message),
             None => Vec::new(),
         }
+    }
+
+    fn read_long(line: &mut dyn Read) -> Option<Value> {
+        super::long::read(line)
     }
 }
 

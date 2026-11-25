@@ -148,6 +148,7 @@ struct SessionSheet: View {
         switch agent {
         case "opencode": "OpenCode"
         case "kimi": "Kimi Code"
+        case "muse": "Muse Code"
         default: agent.prefix(1).uppercased() + agent.dropFirst()
         }
     }

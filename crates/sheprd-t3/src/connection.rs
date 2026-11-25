@@ -88,6 +88,11 @@ impl<S: Read + Write> Connection<S> {
         }
     }
 
+    /// The stream under the socket, such as to set its read timeout.
+    pub fn stream(&self) -> &S {
+        self.socket.get_ref()
+    }
+
     /// Sends a call or a stream request for `tag`; returns its request id.
     pub fn request(&mut self, tag: &str, payload: Value) -> Result<String> {
         self.next += 1;

@@ -8,15 +8,24 @@ import Foundation
 /// (`crates/sheprd-remote-control/src/apns/relayed.rs`), which only this
 /// phone's notify key for that computer opens.
 public enum ActivitySealable<Value: Codable & Hashable & Sendable>: Codable, Hashable, Sendable {
+    case sharedCard(SharedActivityCard)
+    case sharedState(SharedActivitySnapshot)
     case plain(Value)
     case sealed(String)
 
     private enum Keys: String, CodingKey {
-        case sealed
+        case sealed, shared
     }
 
     public init(from decoder: Decoder) throws {
-        if let sealed = try decoder.container(keyedBy: Keys.self).decodeIfPresent(String.self, forKey: .sealed) {
+        let box = try decoder.container(keyedBy: Keys.self)
+        if box.contains(.shared) {
+            if let card = try? box.decode(SharedActivityCard.self, forKey: .shared) {
+                self = .sharedCard(card)
+            } else {
+                self = .sharedState(try box.decode(SharedActivitySnapshot.self, forKey: .shared))
+            }
+        } else if let sealed = try box.decodeIfPresent(String.self, forKey: .sealed) {
             self = .sealed(sealed)
         } else {
             self = .plain(try Value(from: decoder))
@@ -25,6 +34,12 @@ public enum ActivitySealable<Value: Codable & Hashable & Sendable>: Codable, Has
 
     public func encode(to encoder: Encoder) throws {
         switch self {
+        case let .sharedCard(card):
+            var container = encoder.container(keyedBy: Keys.self)
+            try container.encode(card, forKey: .shared)
+        case let .sharedState(state):
+            var container = encoder.container(keyedBy: Keys.self)
+            try container.encode(state, forKey: .shared)
         case let .plain(value):
             try value.encode(to: encoder)
         case let .sealed(text):
@@ -68,6 +83,17 @@ public enum SealedChatActivity {
     public struct Opened: Equatable, Sendable {
         public let facts: ChatActivityFacts
         public let state: ChatActivityState
+
+        // Only the computer authenticated by the fixed attributes can supply
+        // a new pane for its host card. Token registration always uses facts().
+        init(facts: ChatActivityFacts, state: ChatActivityState) {
+            if let focus = state.focus, focus.computerId == facts.computerId {
+                self.facts = focus
+            } else {
+                self.facts = facts
+            }
+            self.state = state
+        }
     }
 
     /// The attributes alone, for routing an activity's token: sealed ones
@@ -76,6 +102,7 @@ public enum SealedChatActivity {
     /// another's.
     public static func facts(_ attributes: ActivitySealable<ChatActivityFacts>, keys: [Key]) -> (ChatActivityFacts, Key?)? {
         switch attributes {
+        case .sharedCard, .sharedState: return nil
         case let .plain(facts):
             return (facts, nil)
         case let .sealed(text):
@@ -108,6 +135,7 @@ public enum SealedChatActivity {
               let (facts, key) = facts(attributes, keys: keys)
         else { return nil }
         switch state {
+        case .sharedCard, .sharedState: return nil
         case let .plain(state):
             guard case .none = key else { return nil }
             return Opened(facts: facts, state: state)
@@ -118,7 +146,7 @@ public enum SealedChatActivity {
         }
     }
 
-    private static func open<Value: Decodable>(_ text: String, with key: Key) -> Value? {
+    static func open<Value: Decodable>(_ text: String, with key: Key) -> Value? {
         guard let sealed = Base64URL.decode(text),
               let plaintext = try? NotificationSeal.open(sealed, device: key.device, info: info, agree: key.agree)
         else { return nil }

@@ -75,7 +75,7 @@ fn exit_codes_say_what_is_missing() {
 
 #[test]
 fn the_script_tries_the_command_line_then_app_bundles() {
-    let script = fetch::script(fetch::INSTALL);
+    let script = script(fetch::INSTALL);
     assert!(script.contains("exec \"$sheprd\" update install --confirmed --json"));
     let sheprd = script.find(" sheprd ").unwrap();
     let bundle = script.find("/Applications/Sheprd.app").unwrap();

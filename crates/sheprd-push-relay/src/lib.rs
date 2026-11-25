@@ -6,8 +6,8 @@
 //!
 //! - Daemons hold [`Handle`]s, which the phone seals to the relay's key. The
 //!   relay opens one in memory for each push and stores no push token.
-//! - Payloads pass through, sealed by the daemon, and are neither stored nor
-//!   logged. Nothing here may log a token, a handle, or a payload.
+//! - Payloads stay sealed by the daemon. Opted-in shared cards keep current
+//!   ciphertext and coordination metadata in bounded process memory. Nothing here may log a token, a handle, or a payload.
 //! - The APNs topic and host come from the relay's own config, never from a
 //!   caller.
 //!
@@ -42,6 +42,7 @@ pub mod metrics;
 mod options;
 pub mod relay;
 mod serve;
+mod shared;
 pub mod store;
 pub mod web;
 

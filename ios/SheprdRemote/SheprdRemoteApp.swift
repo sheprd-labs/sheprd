@@ -18,7 +18,6 @@ struct SheprdRemoteApp: App {
                 .modifier(AppLock())
                 .modifier(Appearance())
                 .onOpenURL { model.open($0) }
-                .task { model.tokens.start() }
                 .onChange(of: model.fleet.waiting, initial: true) { _, _ in
                     // While the app is in front, the badge follows the live
                     // counts; pushes set it otherwise, from the same counts.
@@ -27,6 +26,7 @@ struct SheprdRemoteApp: App {
                 .onChange(of: phase, initial: true) { _, phase in
                     switch phase {
                     case .active:
+                        model.tokens.refreshSharedTokens()
                         model.fleet.activate()
                         model.nearby.start()
                         // Registering is idempotent: a computer that lost

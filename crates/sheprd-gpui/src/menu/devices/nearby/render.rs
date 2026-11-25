@@ -1,7 +1,7 @@
 //! Drawing Nearby Sheprd: the computers found, then the code both screens
 //! show, then the wait for the other computer's answer.
 
-use super::{Found, NearbySetup, Step, fleet::Offer};
+use super::{Found, NearbySetup, Step};
 use crate::SheprdWindow;
 use crate::fonts::StyledFont;
 use crate::i18n::fl;
@@ -60,12 +60,7 @@ impl SheprdWindow {
                 computer,
                 code,
                 claimed,
-                offer,
-                decided,
-                ..
-            } => body
-                .child(self.nearby_code(computer, code, *claimed))
-                .children(self.nearby_fleet(computer, offer, *decided, cx)),
+            } => body.child(self.nearby_code(computer, code, nearby_status(computer, *claimed))),
             Step::Saving(name) => body.child(
                 div()
                     .debug_selector(|| "nearby-setup-status".into())
@@ -176,18 +171,15 @@ impl SheprdWindow {
         list
     }
 
-    /// The code both screens show, and what to do on the other computer.
-    fn nearby_code(&self, computer: &Found, code: &str, claimed: bool) -> Div {
+    /// The code both screens show, and `status`, what happens next.
+    fn nearby_code(&self, computer: &Found, code: &str, status: String) -> Div {
         let theme = &self.theme;
         // A link's code comes with the claim's answer.
         if code.is_empty() {
             return div()
                 .debug_selector(|| "nearby-setup-code".into())
                 .text_color(rgb(theme.muted))
-                .child(fl!(
-                    "devices-nearby-claiming",
-                    computer = computer.name.as_str()
-                ));
+                .child(status);
         }
         let spaced = match code.split_at_checked(3) {
             Some((first, second)) => format!("{first} {second}"),
@@ -211,90 +203,17 @@ impl SheprdWindow {
                     .font_weight(FontWeight::SEMIBOLD)
                     .child(spaced),
             )
-            .child(div().text_color(rgb(theme.muted)).child(if claimed {
-                fl!("devices-nearby-waiting", computer = computer.name.as_str())
-            } else {
-                fl!("devices-nearby-claiming", computer = computer.name.as_str())
-            }))
+            .child(div().text_color(rgb(theme.muted)).child(status))
     }
+}
 
-    /// What pairing does for the fleet: a note, or the choice the claim
-    /// waits for.
-    fn nearby_fleet(
-        &self,
-        computer: &Found,
-        offer: &Offer,
-        decided: bool,
-        cx: &mut Context<Self>,
-    ) -> Option<Div> {
-        let theme = &self.theme;
-        let name = computer.name.as_str();
-        let text = match offer {
-            Offer::None => return None,
-            Offer::Same => fl!("devices-nearby-fleet-same", computer = name),
-            Offer::Other(_) => fl!("devices-nearby-fleet-other", computer = name),
-            Offer::Invite(ours) => fl!(
-                "devices-nearby-fleet-invite",
-                computer = name,
-                computers = ours.computers,
-                hosts = ours.hosts
-            ),
-            Offer::Join(theirs) => fl!(
-                "devices-nearby-fleet-join",
-                computer = name,
-                computers = theirs.computers,
-                hosts = theirs.hosts
-            ),
-            Offer::Found => fl!("devices-nearby-fleet-found", computer = name),
-        };
-        let yes = match offer {
-            Offer::Invite(_) => fl!("devices-nearby-fleet-add"),
-            Offer::Join(_) => fl!("devices-nearby-fleet-join-button"),
-            _ => fl!("devices-nearby-fleet-create"),
-        };
-        let choice = |id: &'static str, label: String, primary: bool, join: bool| {
-            div()
-                .id(id)
-                .debug_selector(move || id.into())
-                .role(Role::Button)
-                .aria_label(SharedString::from(label.clone()))
-                .px(px(12.))
-                .py(px(6.))
-                .rounded(px(crate::config::corners::CONTROL))
-                .bg(rgb(theme.active))
-                .when(primary, |button| {
-                    button.text_color(crate::menu::accent(theme))
-                })
-                .cursor_pointer()
-                .child(label)
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    cx.stop_propagation();
-                    this.choose_nearby_fleet(join, cx);
-                }))
-        };
-        let asking = offer.asks() && !decided;
-        Some(
-            div()
-                .debug_selector(|| "nearby-setup-fleet".into())
-                .flex()
-                .flex_col()
-                .gap(px(8.))
-                .child(div().text_color(rgb(theme.subtext())).child(text))
-                .when(asking, |line| {
-                    line.child(
-                        div()
-                            .flex()
-                            .flex_wrap()
-                            .gap(px(8.))
-                            .child(choice("nearby-setup-fleet-yes", yes, true, true))
-                            .child(choice(
-                                "nearby-setup-fleet-no",
-                                fl!("devices-nearby-fleet-pair-only"),
-                                false,
-                                false,
-                            )),
-                    )
-                }),
-        )
+/// What happens next once the code shows: the claim going through the
+/// relays, or the other computer's answer once it was asked (`claimed`).
+fn nearby_status(computer: &Found, claimed: bool) -> String {
+    let computer = computer.name.as_str();
+    if claimed {
+        fl!("devices-nearby-waiting", computer = computer)
+    } else {
+        fl!("devices-nearby-claiming", computer = computer)
     }
 }

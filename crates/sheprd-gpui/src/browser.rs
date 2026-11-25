@@ -55,6 +55,7 @@ mod popup;
 #[cfg(any(target_os = "macos", windows))]
 mod preview;
 mod px0;
+mod remote_machine_tab;
 #[cfg(any(target_os = "macos", windows))]
 mod shown_pages;
 #[cfg(target_os = "macos")]

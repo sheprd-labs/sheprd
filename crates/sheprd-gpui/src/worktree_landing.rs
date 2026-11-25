@@ -51,20 +51,46 @@ impl Landing {
             Self::Agent(kind) => Some(kind),
         }
     }
+}
 
-    /// The installed agent this landing needs, a chat's by its CLI.
-    fn needs(self) -> Option<AgentKind> {
-        match self {
-            Self::Terminal => None,
-            Self::Agent(kind) => Some(kind),
-            Self::Chat(agent) => AgentKind::parse(agent.name()),
-        }
+/// The Herdr terminal agent corresponding to chat `agent`, if one exists.
+fn terminal_agent(agent: Agent) -> Option<AgentKind> {
+    match agent {
+        Agent::Antigravity => Some(AgentKind::Antigravity),
+        Agent::Claude => Some(AgentKind::Claude),
+        Agent::Codex => Some(AgentKind::Codex),
+        Agent::Copilot => Some(AgentKind::Copilot),
+        Agent::Gemini | Agent::Muse => None,
+        Agent::Kimi => Some(AgentKind::Kimi),
+        Agent::Opencode => Some(AgentKind::Opencode),
+        Agent::Pi => Some(AgentKind::Pi),
     }
 }
 
 /// The chat `herdr-acp` runs for `kind`, if it runs one.
+#[cfg(test)]
 fn chat_agent(kind: AgentKind) -> Option<Agent> {
-    kind.name().parse().ok()
+    match kind {
+        AgentKind::Antigravity => Some(Agent::Antigravity),
+        AgentKind::Claude => Some(Agent::Claude),
+        AgentKind::Codex => Some(Agent::Codex),
+        AgentKind::Copilot => Some(Agent::Copilot),
+        AgentKind::Kimi => Some(Agent::Kimi),
+        AgentKind::Opencode => Some(Agent::Opencode),
+        AgentKind::Pi => Some(Agent::Pi),
+        _ => None,
+    }
+}
+
+/// Non-fetcher binaries that show chat `agent` is installed on a host.
+fn chat_binaries(agent: Agent) -> impl Iterator<Item = &'static str> {
+    let native = terminal_agent(agent).map(AgentKind::binary);
+    let acp = agent
+        .candidates()
+        .iter()
+        .map(|(program, _)| *program)
+        .filter(|program| *program != "npx");
+    native.into_iter().chain(acp)
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -209,6 +235,12 @@ pub(crate) struct Picker {
     /// The installed agents, in [`AgentKind::ALL`] order; `None` while the
     /// host is being looked at.
     installed: Option<Vec<AgentKind>>,
+    /// Chat agents reported by `herdr-acp agents`, in [`Agent::ALL`] order;
+    /// takes precedence over `installed_chats` when known.
+    probed_chats: Option<Vec<Agent>>,
+    /// Chat agents found by the dialog's host lookup, in [`Agent::ALL`]
+    /// order, used until `probed_chats` answers.
+    installed_chats: Option<Vec<Agent>>,
     host: Host,
     /// Set when the dialog closes, ending a lookup still running.
     cancelled: Arc<AtomicBool>,
@@ -228,6 +260,8 @@ impl Picker {
             chosen,
             chats,
             installed: None,
+            probed_chats: None,
+            installed_chats: None,
             host,
             cancelled: Arc::new(AtomicBool::new(false)),
         };
@@ -235,23 +269,49 @@ impl Picker {
         picker
     }
 
+    fn available_chats(&self) -> Option<&[Agent]> {
+        self.probed_chats
+            .as_deref()
+            .or(self.installed_chats.as_deref())
+    }
+
+    fn reconcile_chosen(&mut self) {
+        match self.chosen {
+            Landing::Terminal => {}
+            Landing::Agent(kind) => {
+                if self
+                    .installed
+                    .as_ref()
+                    .is_some_and(|installed| !installed.contains(&kind))
+                {
+                    self.chosen = Landing::Terminal;
+                }
+            }
+            Landing::Chat(agent) => {
+                if !self.chats {
+                    self.chosen = terminal_agent(agent)
+                        .filter(|kind| {
+                            self.installed
+                                .as_ref()
+                                .is_none_or(|installed| installed.contains(kind))
+                        })
+                        .map_or(Landing::Terminal, Landing::Agent);
+                } else if self
+                    .available_chats()
+                    .is_some_and(|agents| !agents.contains(&agent))
+                {
+                    self.chosen = Landing::Terminal;
+                }
+            }
+        }
+    }
+
     /// Show or hide the chat row, as whether a chat can start changes while
     /// the dialog is open. A chosen chat that can no longer start lands in
     /// its agent's terminal, or the shell where the host lacks the agent.
     pub(crate) fn allow_chats(&mut self, chats: bool) {
         self.chats = chats;
-        if chats || !matches!(self.chosen, Landing::Chat(_)) {
-            return;
-        }
-        self.chosen = self
-            .chosen
-            .needs()
-            .filter(|kind| {
-                self.installed
-                    .as_ref()
-                    .is_none_or(|installed| installed.contains(kind))
-            })
-            .map_or(Landing::Terminal, Landing::Agent);
+        self.reconcile_chosen();
     }
 
     /// Whether the host is still being looked at.
@@ -259,23 +319,49 @@ impl Picker {
         self.installed.is_none()
     }
 
-    /// Take the host's agents. One the host lacks cannot be chosen, so a
-    /// remembered one that is missing lands in the terminal instead. A host
-    /// that could not be looked at offers every agent rather than none; the
-    /// start then reports one that is missing.
+    /// Take the host's installed terminal agents, deriving their matching chat
+    /// agents when no `herdr-acp agents` probe has answered.
+    #[cfg(test)]
     pub(crate) fn offer(&mut self, installed: sheprd_client::Result<Vec<AgentKind>>) {
-        let installed = installed.unwrap_or_else(|error| {
-            tracing::warn!(%error, "Cannot look up the host's agents");
-            AgentKind::ALL.to_vec()
+        let found = installed.map(|kinds| {
+            let chats = Agent::ALL
+                .iter()
+                .copied()
+                .filter(|agent| kinds.iter().any(|&kind| chat_agent(kind) == Some(*agent)))
+                .collect();
+            (kinds, chats)
         });
-        if self
-            .chosen
-            .needs()
-            .is_some_and(|kind| !installed.contains(&kind))
-        {
-            self.chosen = Landing::Terminal;
-        }
+        self.offer_found(found);
+    }
+
+    /// Take the host's terminal and chat agents. One the host lacks cannot be
+    /// chosen, so a remembered one that is missing lands in the terminal
+    /// instead. A host that could not be looked at offers every agent rather
+    /// than none; the start then reports one that is missing.
+    pub(crate) fn offer_found(
+        &mut self,
+        found: sheprd_client::Result<(Vec<AgentKind>, Vec<Agent>)>,
+    ) {
+        let (installed, chats) = found.unwrap_or_else(|error| {
+            tracing::warn!(%error, "Cannot look up the host's agents");
+            (AgentKind::ALL.to_vec(), Agent::ALL.to_vec())
+        });
         self.installed = Some(installed);
+        self.installed_chats = Some(chats);
+        self.reconcile_chosen();
+    }
+
+    /// Take the chat agents `herdr-acp agents` found on the host, in
+    /// [`Agent::ALL`] order.
+    pub(crate) fn offer_chats(&mut self, agents: Vec<Agent>) {
+        self.probed_chats = Some(
+            Agent::ALL
+                .iter()
+                .copied()
+                .filter(|agent| agents.contains(agent))
+                .collect(),
+        );
+        self.reconcile_chosen();
     }
 
     /// The landings to show, the terminal first. While the host is looked
@@ -290,20 +376,15 @@ impl Picker {
             .collect()
     }
 
-    /// The chats to show, in [`AgentKind::ALL`] order: one per installed
-    /// agent `herdr-acp` runs, none where no chat can start. While the host
-    /// is looked at, a chosen chat shows alone.
+    /// The chats to show, in [`Agent::ALL`] order: every available chat agent
+    /// on the host, none where no chat can start. While the host is looked at,
+    /// a chosen chat shows alone.
     pub(crate) fn offered_chats(&self) -> Vec<Landing> {
         if !self.chats {
             return Vec::new();
         }
-        match &self.installed {
-            Some(installed) => installed
-                .iter()
-                .copied()
-                .filter_map(chat_agent)
-                .map(Landing::Chat)
-                .collect(),
+        match self.available_chats() {
+            Some(agents) => agents.iter().copied().map(Landing::Chat).collect(),
             None => match self.chosen {
                 Landing::Chat(_) => vec![self.chosen],
                 _ => Vec::new(),
@@ -321,14 +402,30 @@ impl Picker {
     }
 }
 
-/// The agents installed on `host`, in [`AgentKind::ALL`] order.
-fn installed(host: &Host, cancelled: &AtomicBool) -> sheprd_client::Result<Vec<AgentKind>> {
-    let binaries = AgentKind::ALL.map(AgentKind::binary);
+/// The terminal and chat agents installed on `host`.
+fn installed_on(
+    host: &Host,
+    cancelled: &AtomicBool,
+) -> sheprd_client::Result<(Vec<AgentKind>, Vec<Agent>)> {
+    let mut binaries: Vec<&str> = AgentKind::ALL.map(AgentKind::binary).into_iter().collect();
+    for agent in Agent::ALL {
+        for binary in chat_binaries(*agent) {
+            if !binaries.contains(&binary) {
+                binaries.push(binary);
+            }
+        }
+    }
     let found = host.installed_programs(&binaries, cancelled)?;
-    Ok(AgentKind::ALL
+    let terminal = AgentKind::ALL
         .into_iter()
         .filter(|kind| found.iter().any(|binary| binary == kind.binary()))
-        .collect())
+        .collect();
+    let chats = Agent::ALL
+        .iter()
+        .copied()
+        .filter(|agent| chat_binaries(*agent).any(|bin| found.iter().any(|binary| binary == bin)))
+        .collect();
+    Ok((terminal, chats))
 }
 
 /// A Herdr agent name for `kind` that no other agent uses: Herdr's names
@@ -428,11 +525,15 @@ impl SheprdWindow {
             return None;
         }
         let host = crate::teleport::host_for(&selected.connection.target).ok()?;
-        let picker = Picker::new(host.clone(), Remembered::landing(cx), self.may_start_chat());
+        let mut picker = Picker::new(host.clone(), Remembered::landing(cx), self.may_start_chat());
+        if let Some(agents) = self.probed_chat_agents() {
+            picker.offer_chats(agents);
+        }
+        self.probe_chat_agents(cx);
         let cancelled = picker.cancelled.clone();
         let lookup = cx.background_executor().spawn({
             let cancelled = cancelled.clone();
-            async move { installed(&host, &cancelled) }
+            async move { installed_on(&host, &cancelled) }
         });
         cx.spawn(async move |this, cx| {
             let result = lookup.await;
@@ -441,7 +542,7 @@ impl SheprdWindow {
                 if let Some(picker) = &mut this.menu.landing
                     && Arc::ptr_eq(&picker.cancelled, &cancelled)
                 {
-                    picker.offer(result);
+                    picker.offer_found(result);
                     cx.notify();
                 }
             });
@@ -451,11 +552,15 @@ impl SheprdWindow {
     }
 
     /// Brings the open dialog's chat row up to date with whether a chat can
-    /// start, such as once the search for the program ends.
+    /// start and which chat agents `herdr-acp agents` found on the host.
     pub(crate) fn refresh_landing_chats(&mut self) {
         let chats = self.may_start_chat();
+        let agents = self.probed_chat_agents();
         if let Some(picker) = &mut self.menu.landing {
             picker.allow_chats(chats);
+            if let Some(agents) = agents {
+                picker.offer_chats(agents);
+            }
         }
     }
 

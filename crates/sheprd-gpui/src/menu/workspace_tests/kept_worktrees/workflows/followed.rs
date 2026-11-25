@@ -19,6 +19,7 @@ fn keep_another(
             key: Path::new(MAIN).join(".git").display().to_string(),
             label: "app".into(),
             linked: true,
+            root: String::new(),
         }),
     );
     let location = Location::core_terminal(Panes::single(TerminalId::new("t2").unwrap()), false);

@@ -336,6 +336,33 @@ read from standard input. Paired phones learn the relay from the computer.
 
 Logs hold no addresses, routes, or payloads.
 
+### Investigating a temporary outage
+
+On the phone, open Settings > Relays and pull to refresh. Diagnostics keeps
+its last 64 checks locally across app launches, including failed checks after
+recovery. Expand Recent checks or use Share relay diagnostics while offline.
+The report includes the relay address, timestamp, elapsed time, HTTP status,
+and failure category (DNS, TLS, timeout, invalid relay info, or protocol
+version). It excludes response bodies, headers, and credentials. Clear
+diagnostics removes the saved history. Checks run when this screen opens or
+is refreshed; a successful `/v1/info` check does not test WebSocket dialing,
+the end-to-end tunnel, or whether a computer is listening.
+
+For the server side, collect both the relay and Caddy logs. A 502/503 can
+come from the reverse proxy even when the relay address is correct. On the
+droplet:
+
+```sh
+cd /opt/sheprd-relay
+docker compose --env-file compose.env ps
+docker compose --env-file compose.env logs --no-color --timestamps --since 48h --tail 1000 relay caddy
+```
+
+Use the timestamps from the phone report to select the incident window.
+These commands only read state; do not restart the service before collecting
+it. Phone diagnostics do not download operator logs or require the dashboard
+token. Sharing the report reveals the relay addresses it checked.
+
 ## Updating
 
 On a droplet, run the start script again: it verifies `:latest` and moves

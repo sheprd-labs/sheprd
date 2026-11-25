@@ -41,12 +41,13 @@ struct ProximityCard: View {
                 Text(spaced(code))
                     .font(.system(size: 54, weight: .semibold, design: .rounded).monospacedDigit())
                     .accessibilityLabel(code.map(String.init).joined(separator: " "))
-                Text("\(computer.name) shows a code too. Choose **Allow** there if they match.")
+                Text("\(computer.name) shows a code too. Choose **Allow** there if they match. Pairing also shares your speaking voice and key with a device that has none.")
                     .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 Button(role: .destructive, action: close) { Text("They don't match").frame(maxWidth: .infinity) }
                     .buttonStyle(.glass).controlSize(.large)
             case let .paired(name):
                 Label("Paired with \(name)", systemImage: "checkmark.circle.fill").font(.title3.bold()).foregroundStyle(.green)
+                if pairing.voiceExchangeFailed { Text("Paired. The voice account could not be shared. Connect it in Settings → Voice.") }
                 // The card closes on its own unless the computer pairs the
                 // phone with its hosts too; then the close button does.
                 if let paired = pairing.paired {

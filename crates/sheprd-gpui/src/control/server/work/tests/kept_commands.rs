@@ -30,6 +30,7 @@ fn kept(
             key: format!("{folder}/.git"),
             label: "tools".into(),
             linked: true,
+            root: String::new(),
         }),
     );
     let terminal = TerminalId::new("t-kept").unwrap();

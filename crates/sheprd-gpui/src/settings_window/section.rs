@@ -17,6 +17,7 @@ pub(super) enum Section {
     Tabs,
     Code,
     Notifications,
+    Voice,
     TextShortcuts,
     Integrations,
     Plugins,
@@ -70,6 +71,18 @@ impl Group {
 }
 
 impl Section {
+    pub(super) fn name(self) -> &'static str {
+        match self {
+            Self::Fleet => "fleet",
+            Self::Tabs => "tabs",
+            Self::TextShortcuts => "text-shortcuts",
+            _ => self
+                .message()
+                .strip_prefix("settings-section-")
+                .unwrap_or(self.message()),
+        }
+    }
+
     /// The section list's order: General first, outside every group, as the
     /// catch-all people look in when they do not know where a setting lives;
     /// then each group's pages together, groups in [`Group::ALL`] order. Users
@@ -85,6 +98,7 @@ impl Section {
         Self::Tabs,
         Self::Code,
         Self::Notifications,
+        Self::Voice,
         Self::TextShortcuts,
         Self::Integrations,
         Self::Plugins,
@@ -114,6 +128,7 @@ impl Section {
             Self::Chat => "settings-section-chat",
             Self::Code => "settings-section-code",
             Self::Notifications => "settings-section-notifications",
+            Self::Voice => "settings-section-voice",
             Self::TextShortcuts => "settings-text-shortcuts-section",
             Self::Integrations => "settings-section-integrations",
             Self::Plugins => "settings-section-plugins",
@@ -138,6 +153,7 @@ impl Section {
             Self::Code => "settings-lead-code",
             Self::Integrations => "settings-lead-integrations",
             Self::Plugins => "settings-lead-plugins",
+            Self::Voice => "settings-voice-lead",
             Self::TextShortcuts => "settings-text-shortcuts-lead",
             #[cfg(feature = "cloud")]
             Self::CloudDevices => "settings-lead-cloud-devices",
@@ -162,7 +178,7 @@ impl Section {
             | Self::Fonts
             | Self::StatusBar
             | Self::Chat => Some(Group::Appearance),
-            Self::Tabs | Self::Code | Self::Notifications | Self::TextShortcuts => {
+            Self::Tabs | Self::Code | Self::Notifications | Self::Voice | Self::TextShortcuts => {
                 Some(Group::Behaviour)
             }
             Self::Integrations | Self::Plugins => Some(Group::Connect),
@@ -187,6 +203,7 @@ impl Section {
             Self::Chat => "icons/chat.svg",
             Self::Code => "icons/vscode.svg",
             Self::Notifications => "icons/bell.svg",
+            Self::Voice => "icons/pulse.svg",
             Self::TextShortcuts => "icons/note.svg",
             Self::Integrations => "icons/agent-generic.svg",
             Self::Plugins => "icons/plug.svg",

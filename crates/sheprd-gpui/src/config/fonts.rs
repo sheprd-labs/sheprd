@@ -365,13 +365,20 @@ fn resolves_platform_alias(family: &str) -> bool {
     }
 }
 
+fn is_symbols_only(family: &str) -> bool {
+    // i18n: data
+    const SYMBOLS_PREFIX: &str = "symbols nerd font";
+    family
+        .get(..SYMBOLS_PREFIX.len())
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(SYMBOLS_PREFIX))
+}
+
 /// Ranks an installed Nerd Font family for the automatic cascade. Symbols-only
 /// faces carry the icon ranges without replacing any text glyph, and `Mono`
 /// variants keep every icon inside a single terminal cell, so both come first.
 fn fallback_rank(family: &str) -> u8 {
     let lowercase = family.to_lowercase();
-    // i18n: data
-    let symbols = lowercase.starts_with("symbols nerd font");
+    let symbols = is_symbols_only(family);
     let mono = lowercase.ends_with(" mono");
     match (symbols, mono) {
         (true, true) => 0,
@@ -394,6 +401,23 @@ pub fn symbol_fallbacks(installed: impl IntoIterator<Item = String>) -> Vec<Stri
     families.sort_by_key(|family| fallback_rank(family));
     families.truncate(MAX_DETECTED_FALLBACKS);
     families
+}
+
+/// Orders the automatic cascade of the sidebar, tab, and interface faces.
+/// Symbols-only faces cannot claim letters, so they lead. Native CJK faces come
+/// before patched text Nerd Fonts, which may claim Hangul with half-width
+/// advances even when their glyphs need the full width. A CJK face that maps
+/// the Private Use Area may then draw an icon a patched face also has; only
+/// the terminal draws prompts, and it keeps the icon cascade alone.
+pub(super) fn interface_fallbacks(detected: &[String], cjk: &[String]) -> Vec<String> {
+    let (symbols, patched_text): (Vec<_>, Vec<_>) =
+        detected.iter().partition(|family| is_symbols_only(family));
+    symbols
+        .into_iter()
+        .chain(cjk)
+        .chain(patched_text)
+        .cloned()
+        .collect()
 }
 
 impl Config {
@@ -481,11 +505,10 @@ impl Config {
         if terminal.fallbacks.is_none() {
             terminal.fallbacks = Some(detected.clone());
         }
-        // Icons first, so a CJK family that also maps the Private Use Area
-        // never draws a prompt icon.
+        let interface = interface_fallbacks(&detected, &cjk);
         for face in [sidebar, tabs, ui] {
             if face.fallbacks.is_none() {
-                face.fallbacks = Some(detected.iter().chain(&cjk).cloned().collect());
+                face.fallbacks = Some(interface.clone());
             }
         }
     }

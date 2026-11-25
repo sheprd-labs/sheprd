@@ -143,19 +143,7 @@ fn recover(core: &Core, endpoint: &EndpointId, terminals: &[Terminal]) -> Result
     {
         return Err(Error::Moved.into());
     }
-    let mut argv = vec![
-        record.program.clone(),
-        "--resume".to_owned(),
-        record.session.clone(),
-    ];
-    if record.adapter {
-        argv.push("--acp".to_owned());
-    }
-    argv.push(record.agent.clone());
-    if !record.args.is_empty() {
-        argv.push("--".to_owned());
-        argv.extend(record.args.iter().cloned());
-    }
+    let argv = launch_argv(&record);
     let generation = record.generation.to_string();
     let overrides = serde_json::to_string(&record.env)?;
     let mut env: BTreeMap<&str, &str> = record
@@ -239,3 +227,31 @@ fn lost(record: &Record, terminal: &Terminal) -> bool {
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests;
+
+/// What a relaunch runs: the chat program continuing the record's session,
+/// in its thread when it kept one. A thread id the program would refuse is
+/// left out, so the chat is still restored, as a new thread.
+pub(super) fn launch_argv(record: &Record) -> Vec<String> {
+    let mut argv = vec![
+        record.program.clone(),
+        "--resume".to_owned(),
+        record.session.clone(),
+    ];
+    let thread = record.thread.as_ref().filter(|thread| {
+        thread
+            .parse::<sheprd_chat_protocol::thread::ThreadId>()
+            .is_ok()
+    });
+    if let Some(thread) = thread {
+        argv.extend(["--thread".to_owned(), thread.clone()]);
+    }
+    if record.adapter {
+        argv.push("--acp".to_owned());
+    }
+    argv.push(record.agent.clone());
+    if !record.args.is_empty() {
+        argv.push("--".to_owned());
+        argv.extend(record.args.iter().cloned());
+    }
+    argv
+}

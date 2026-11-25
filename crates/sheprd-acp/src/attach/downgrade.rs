@@ -5,8 +5,15 @@
 //! change only right after the one before it, so an unknown change cannot
 //! simply be left out. It is replaced with one the client knows that alters
 //! nothing: the attached-client count, as it already stands.
+//!
+//! An entry kind the client cannot decode is sent as the notice it stands
+//! for, in snapshots and in the changes that carry entries.
 
-use sheprd_chat_protocol::{Change, REVISION, ServerMessage};
+use sheprd_chat_protocol::{Change, Entry, EntryKind, REVISION, ServerMessage, Transcript};
+
+/// The revision that added threads: `Change::Thread`, `Transcript::thread`,
+/// and `EntryKind::Handoff`.
+const THREADS: u32 = 5;
 
 #[derive(Debug)]
 pub(crate) struct Downgrade {
@@ -36,8 +43,14 @@ impl Downgrade {
             return Some(message);
         }
         match message {
-            ServerMessage::Snapshot { cursor, transcript } => {
+            ServerMessage::Snapshot {
+                cursor,
+                mut transcript,
+            } => {
                 self.clients = Some(transcript.clients);
+                if self.revision < THREADS {
+                    before_threads(&mut transcript);
+                }
                 Some(ServerMessage::Snapshot { cursor, transcript })
             }
             ServerMessage::Change { change, cursor } => {
@@ -48,6 +61,12 @@ impl Downgrade {
                     }
                     change if self.revision < since(&change) => Change::Clients {
                         count: self.clients?,
+                    },
+                    Change::Push { entry } if self.revision < THREADS => Change::Push {
+                        entry: entry_before_threads(entry),
+                    },
+                    Change::Replace { entry } if self.revision < THREADS => Change::Replace {
+                        entry: entry_before_threads(entry),
                     },
                     change => change,
                 };
@@ -65,7 +84,28 @@ fn since(change: &Change) -> u32 {
         Change::Harnesses { .. } => 2,
         Change::PullRequest { .. } => 3,
         Change::Brief { .. } => 4,
+        Change::Thread { .. } => THREADS,
         _ => 0,
+    }
+}
+
+/// `transcript` as a client before threads reads it.
+fn before_threads(transcript: &mut Transcript) {
+    transcript.thread = None;
+    for entry in &mut transcript.entries {
+        if let EntryKind::Handoff(handoff) = &entry.kind {
+            entry.kind = handoff.as_notice();
+        }
+    }
+}
+
+fn entry_before_threads(entry: Entry) -> Entry {
+    match &entry.kind {
+        EntryKind::Handoff(handoff) => Entry {
+            id: entry.id,
+            kind: handoff.as_notice(),
+        },
+        _ => entry,
     }
 }
 

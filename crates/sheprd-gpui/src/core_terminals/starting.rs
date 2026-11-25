@@ -53,6 +53,7 @@ impl SheprdWindow {
                 self.end_core_terminal(&host, info.id);
             }
             Purpose::Tab {
+                focus,
                 scope,
                 workspace,
                 group,
@@ -67,7 +68,9 @@ impl SheprdWindow {
                     return;
                 };
                 self.sync_core_views(cx);
-                self.show_browser_tab_in(group, id, window, cx);
+                if focus {
+                    self.show_browser_tab_in(group, id, window, cx);
+                }
             }
             Purpose::Split { tab, at, axis } => {
                 self.place_split(tab, &at, axis, (host, info.id), window, cx)

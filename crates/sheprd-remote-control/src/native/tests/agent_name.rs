@@ -19,6 +19,7 @@ fn home_with(agent: Option<&str>, summary: Option<&str>) -> Home {
         .into_iter()
         .collect();
     Home::project(Sources {
+        labels: &Default::default(),
         checkouts: &Default::default(),
         recognized: &Default::default(),
         computer: "Studio",

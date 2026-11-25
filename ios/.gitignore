@@ -22,3 +22,6 @@ xcuserdata/
 
 # The fleet log library tools/build-fleet-ffi.sh builds from Rust.
 SheprdRemoteCore/Frameworks/
+
+# Taken by tools/store_screenshots.sh, uploaded to App Store Connect.
+AppStore/screenshots/

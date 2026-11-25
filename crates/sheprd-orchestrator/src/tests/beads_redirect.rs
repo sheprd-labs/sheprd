@@ -24,6 +24,7 @@ fn projects_sharing_a_database_read_one_source() {
     for project in [&owner, &git, &plain] {
         std::fs::create_dir_all(project.join(".beads")).unwrap();
     }
+    std::fs::write(owner.join(".beads/metadata.json"), "{}").unwrap();
     gix::init(&git).unwrap();
     for project in [&git, &plain] {
         std::fs::write(project.join(".beads/redirect"), "../owner/.beads\n").unwrap();

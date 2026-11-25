@@ -1,4 +1,5 @@
 use super::*;
+use crate::auth::SECRET_LEN;
 use crate::auth::pairing::{APPROVAL_TTL_MS, TOKEN_TTL_MS, matching_code};
 
 fn claim(pairings: &mut Pairings, offer: &Offer, seed: u8, now_ms: u64) -> Result<Claim> {
@@ -34,7 +35,10 @@ fn a_token_expires_after_sixty_seconds() {
     let offer = pairings.mint(T0, &origins(), FINGERPRINT).unwrap();
     assert_eq!(
         pairings.state(&offer.id, T0 + TOKEN_TTL_MS - 1).unwrap(),
-        PairingState::Waiting { expires_in_ms: 1 }
+        PairingState::Waiting {
+            expires_in_ms: 1,
+            nearby_code: None,
+        }
     );
     let error = claim(&mut pairings, &offer, 1, T0 + TOKEN_TTL_MS).unwrap_err();
     assert!(matches!(error, Error::ExpiredToken));
@@ -309,7 +313,8 @@ fn the_facade_reports_and_cancels_the_dialogs_pairing() {
     assert_eq!(
         auth.pairing(&offer.id, T0 + 10_000).unwrap(),
         PairingState::Waiting {
-            expires_in_ms: TOKEN_TTL_MS - 10_000
+            expires_in_ms: TOKEN_TTL_MS - 10_000,
+            nearby_code: None,
         }
     );
     auth.cancel(&offer.id).unwrap();
@@ -344,4 +349,29 @@ fn an_approval_for_another_code_denies_the_pairing() {
     ));
     assert_eq!(auth.pairing(&offer.id, T0).unwrap(), PairingState::Denied);
     assert_eq!(auth.devices().len(), 0);
+}
+
+#[test]
+fn the_dialog_learns_a_nearby_code_before_the_claim() {
+    // Both screens show the code at once: the dialog learns it as soon as
+    // the nearby exchange agreed on it, not when the claim arrives.
+    let mut pairings = Pairings::default();
+    let offer = pairings.mint(T0, &origins(), FINGERPRINT).unwrap();
+    pairings
+        .set_nearby(&[7; SECRET_LEN], "906492".into(), T0 + 1_000)
+        .unwrap();
+    assert!(matches!(
+        pairings.state(&offer.id, T0 + 2_000).unwrap(),
+        PairingState::Waiting { nearby_code: Some(code), .. } if code == "906492"
+    ));
+    // An expired nearby token's code is no longer shown.
+    assert!(matches!(
+        pairings
+            .state(&offer.id, T0 + 1_000 + TOKEN_TTL_MS)
+            .unwrap(),
+        PairingState::Waiting {
+            nearby_code: None,
+            ..
+        } | PairingState::Expired
+    ));
 }

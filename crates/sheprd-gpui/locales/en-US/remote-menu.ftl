@@ -2,17 +2,17 @@
 # phones it opens.
 
 # What a screen reader says for the button.
-remote-menu-pair-label = Pair a phone for remote control
+remote-menu-pair-label = Pair a phone or computer for remote control
 remote-menu-phones-label =
     { $count ->
         [0] Remote control phones, none connected
        *[other] Remote control phones, { $count } connected
     }
 # The button's text before any phone is paired.
-remote-menu-pair-phone = Pair phone
+remote-menu-pair-phone = Pair device
 # The list's heading, in capitals.
 remote-menu-phones = PHONES
-remote-menu-pair = Pair a phone…
+remote-menu-pair = Pair device…
 remote-menu-settings = Settings
 # Over the list while the service runs a build without a developer ID and
 # the macOS firewall is on.

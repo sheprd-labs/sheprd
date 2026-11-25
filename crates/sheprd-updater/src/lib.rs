@@ -268,6 +268,10 @@ impl Updater {
     pub fn start(channel: UpdateChannel) -> Self {
         let mut updater = Self::default();
         updater.channel = channel;
+        if cfg!(feature = "mas") {
+            updater.state = State::Disabled(Disabled::AppStore);
+            return updater;
+        }
         let Some(key) = option_env!("HERDR_UPDATE_PUBLIC_KEY") else {
             return updater;
         };
@@ -741,6 +745,11 @@ fn worker(
 }
 
 pub fn run_helper(args: &[OsString]) -> Option<ExitCode> {
+    // The App Store replaces this bundle itself; no argument may make this
+    // copy swap it.
+    if cfg!(feature = "mas") {
+        return None;
+    }
     #[cfg(target_os = "linux")]
     if let Some(code) = linux::run_helper(args) {
         return Some(code);

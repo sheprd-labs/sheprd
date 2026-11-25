@@ -143,7 +143,7 @@ impl SheprdWindow {
         if let Some(run) = script.running {
             heading = heading.child(self.automation_action_button(
                 "automations-stop",
-                "icons/x.svg",
+                "icons/close.svg",
                 fl!("automations-stop-run"),
                 host,
                 Action::Stop { run },

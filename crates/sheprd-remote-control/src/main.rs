@@ -5,7 +5,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 use sheprd_remote_control::{
-    app::{enroll, favorites, push_status, read, relay_enroll, shortcuts, tags},
+    app::{enroll, favorites, presence, push_status, read, relay_enroll, shortcuts, tags},
     control::{self, DeviceId},
     desktop, fleet,
     server::{self, FleetAction, Invocation},
@@ -37,6 +37,16 @@ fn main() -> ExitCode {
                 None => Ok(()),
             });
         }
+        Ok(Invocation::Presence {
+            state_dir,
+            device,
+            near,
+        }) => {
+            return host(state_dir, |state_dir| {
+                presence::set(state_dir, DeviceId(device), near)?;
+                Ok(())
+            });
+        }
         Ok(Invocation::Revoke { state_dir, device }) => {
             return host(state_dir, |state_dir| {
                 enroll::revoke(state_dir, DeviceId(device))?;
@@ -48,6 +58,24 @@ fn main() -> ExitCode {
                 let offer = read_offer(offer, MAX_INPUT)?;
                 print_json(&relays(state_dir, offer)?)
             });
+        }
+        Ok(Invocation::Labels { command, json }) => {
+            let Some(dir) = enroll::default_state_dir() else {
+                return fail(&sheprd_remote_control::app::Error::NoStateDir);
+            };
+            return match command.run(&dir) {
+                Ok(tags) if json => match print_json(&serde_json::json!({"tags":tags})) {
+                    Ok(()) => ExitCode::SUCCESS,
+                    Err(error) => fail(&error),
+                },
+                Ok(tags) => {
+                    for tag in tags {
+                        println!("{tag}");
+                    }
+                    ExitCode::SUCCESS
+                }
+                Err(error) => fail(&error),
+            };
         }
         Ok(Invocation::Favorites { state_dir, offer }) => {
             return host(state_dir, |state_dir| {

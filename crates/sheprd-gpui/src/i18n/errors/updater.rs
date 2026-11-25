@@ -202,6 +202,7 @@ impl Localize for sheprd_updater::Disabled {
     fn localize(&self) -> String {
         match self {
             // keep-sorted start
+            Self::AppStore => fl!("error-updater-disabled-app-store"),
             Self::LocalBuild => fl!("error-updater-disabled-local-build"),
             Self::Platform => fl!("error-updater-disabled-platform"),
             Self::Secondary => fl!("error-updater-disabled-secondary"),

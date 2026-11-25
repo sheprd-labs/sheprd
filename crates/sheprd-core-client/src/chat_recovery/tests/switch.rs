@@ -72,6 +72,7 @@ fn the_switched_agents_session_makes_the_held_record_live_again() {
                 env: BTreeMap::new(),
                 program: "/bin/sheprd-acp".into(),
                 session: "new-session".into(),
+                thread: None,
             },
         )
     });

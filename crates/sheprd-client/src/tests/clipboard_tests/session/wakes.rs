@@ -105,7 +105,7 @@ fn a_liveness_request_deferred_by_an_image_is_sent_when_the_image_ends() {
     let mut prefix = [0; 4];
     server.read_exact(&mut prefix).unwrap();
     // The image is now part written, so the probe must wait for its end.
-    client.handle.check_liveness();
+    client.handle.check_liveness(Suspicion::Slept);
     let mut payload = vec![0; u32::from_le_bytes(prefix) as usize];
     server.read_exact(&mut payload).unwrap();
     assert!(
@@ -149,7 +149,7 @@ fn a_stalled_image_sleeps_past_the_health_deadline_it_defers() {
     event(&client);
     event(&client);
     // An unanswered probe puts the health deadline `liveness` away.
-    client.handle.check_liveness();
+    client.handle.check_liveness(Suspicion::Slept);
     assert!(
         matches!(receive(&mut server), ClientMessage::EndpointControl { kind, .. } if kind == "endpoint.health.ping.v1")
     );

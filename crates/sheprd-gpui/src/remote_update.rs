@@ -20,6 +20,8 @@ mod tests;
 mod window;
 
 pub use error::Error;
+/// The script that runs another machine's Sheprd command line.
+pub(crate) use fetch::script;
 
 use crate::{automations::Machine, teleport::Host};
 use gpui::Task;

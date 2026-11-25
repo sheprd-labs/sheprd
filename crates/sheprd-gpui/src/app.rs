@@ -321,7 +321,7 @@ pub(crate) fn run() -> std::process::ExitCode {
         return exit;
     }
     // A build with the `moonframe` feature opens the Luau window on a plain
-    // launch, unless the user chose the classic one; everything else stays
+    // launch, when the user chose Moonframe; everything else stays
     // the app's own.
     #[cfg(feature = "moonframe")]
     if crate::luau_window::wanted(&args, crate::luau_window::chosen) {

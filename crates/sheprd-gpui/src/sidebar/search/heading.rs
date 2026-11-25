@@ -163,7 +163,7 @@ impl SheprdWindow {
                         }))
                         .child(
                             svg()
-                                .path("icons/x.svg")
+                                .path("icons/close.svg")
                                 .size(px(icon))
                                 .text_color(rgb(theme.muted)),
                         ),

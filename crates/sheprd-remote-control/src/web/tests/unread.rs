@@ -114,6 +114,7 @@ fn a_core_agent_read_stays_read_until_it_finishes_again() {
                 panes: Vec::new(),
                 zoomed: false,
                 agent: Some(TerminalAgent {
+                    boot: "b".into(),
                     name: None,
                     status: AgentStatus::Done,
                     pane: "core:x-61".into(),

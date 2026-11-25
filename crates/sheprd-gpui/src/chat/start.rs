@@ -181,11 +181,12 @@ pub(crate) fn tab_params(
     agent: Agent,
     program: Option<&Path>,
     extra: &BTreeMap<String, String>,
+    focus: bool,
 ) -> serde_json::Value {
     let mut params = json!({
         "workspace_id": workspace,
         "label": agent.display_name(),
-        "focus": true,
+        "focus": focus,
     });
     let mut env: serde_json::Map<String, serde_json::Value> = extra
         .iter()
@@ -217,6 +218,7 @@ pub(crate) struct Starting {
     deadline: Instant,
     endpoint: (u64, u64),
     endpoint_id: String,
+    focus: bool,
     request: String,
 }
 
@@ -320,6 +322,18 @@ impl SheprdWindow {
         }
         let mut env = self.config.chat.env.clone();
         if let Some(brief) = brief {
+            if let Some(parent) = &brief.parent
+                && let Ok(value) = serde_json::to_string(parent)
+            {
+                env.insert(
+                    sheprd_chat_protocol::ENDPOINT_ENV.to_owned(),
+                    brief.endpoint.to_string(),
+                );
+                env.insert(
+                    sheprd_chat_protocol::brief::Delegation::ENV.to_owned(),
+                    value,
+                );
+            }
             env.insert(
                 super::brief::FILE_ENV.to_owned(),
                 brief.file.to_string_lossy().into_owned(),
@@ -368,6 +382,16 @@ impl SheprdWindow {
         beside: Option<&str>,
         carry: Option<&Settings>,
     ) -> Result<(), Error> {
+        self.start_chat_with_focus(agent, beside, carry, true)
+    }
+
+    pub(crate) fn start_chat_with_focus(
+        &mut self,
+        agent: Agent,
+        beside: Option<&str>,
+        carry: Option<&Settings>,
+        focus: bool,
+    ) -> Result<(), Error> {
         if !self.config.features.acp_chats {
             return Err(Error::Disabled);
         }
@@ -405,6 +429,7 @@ impl SheprdWindow {
             agent,
             program.as_deref(),
             &self.chat_env(carry),
+            focus,
         );
         let endpoint = &self.endpoints[self.selected_endpoint];
         let request = endpoint
@@ -420,6 +445,7 @@ impl SheprdWindow {
             deadline: Instant::now() + DEADLINE,
             endpoint: (self.selection_epoch, endpoint.generation),
             endpoint_id: endpoint.id.clone(),
+            focus,
             request,
         });
         Ok(())
@@ -431,7 +457,7 @@ impl SheprdWindow {
         let started = match self.core_chat_group_tab(None, cx) {
             Some(tab) => self.start_core_chat_in_tab(agent, tab, None, cx),
             None if self.kept_in_front().is_some() => {
-                self.start_kept_core_chat(agent, None, None, cx)
+                self.start_kept_core_chat(agent, None, None, true, cx)
             }
             None => self.start_chat(agent, None, None),
         };
@@ -453,7 +479,7 @@ impl SheprdWindow {
             return;
         }
         if self.kept_in_front().is_some() {
-            if let Err(error) = self.start_kept_core_chat(agent, None, Some(group), cx) {
+            if let Err(error) = self.start_kept_core_chat(agent, None, Some(group), true, cx) {
                 self.flash_chat_error(&error, cx);
             }
             cx.notify();
@@ -475,7 +501,7 @@ impl SheprdWindow {
     }
 
     /// Runs every tick: once the tab exists, types the line that starts the
-    /// chat and shows the tab.
+    /// chat and, for an interactive launch, shows its tab.
     pub(super) fn poll_chat_start(&mut self, cx: &mut Context<Self>) {
         let Some(starting) = &self.chats.starting else {
             return;
@@ -540,7 +566,9 @@ impl SheprdWindow {
             });
         match typed {
             Ok(tab) => {
-                self.navigate_endpoint(&starting.endpoint_id, NavigationTarget::Tab(&tab), cx);
+                if starting.focus {
+                    self.navigate_endpoint(&starting.endpoint_id, NavigationTarget::Tab(&tab), cx);
+                }
                 cx.notify();
             }
             Err(error) => {

@@ -9,9 +9,9 @@ use unicode_width::UnicodeWidthChar;
 
 #[derive(Clone)]
 pub(super) struct Tile {
-    letters: SharedString,
-    background: u32,
-    foreground: u32,
+    pub(super) letters: SharedString,
+    pub(super) background: u32,
+    pub(super) foreground: u32,
 }
 
 impl Tile {

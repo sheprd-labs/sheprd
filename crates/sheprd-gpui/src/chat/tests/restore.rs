@@ -41,6 +41,7 @@ fn record(endpoint: &str, pane: &str) -> Record {
         pane: pane.to_owned(),
         session: "0c6f0c39-3c1e-4b7e-9a51-6d1b8e2d7f10".to_owned(),
         socket: abs(SOCKET),
+        thread: None,
     }
 }
 
@@ -459,6 +460,12 @@ fn the_typed_line_resumes_the_exact_session_and_quotes_each_word() {
             .unwrap()
             .ends_with("'--resume' '0c6f0c39-3c1e-4b7e-9a51-6d1b8e2d7f10' '--acp' 'codex'")
     );
+    // A chat that kept a thread goes on in it.
+    let thread = sheprd_chat_protocol::thread::ThreadId::random();
+    chat.thread = Some(thread);
+    assert!(plan::line(program, &chat).unwrap().ends_with(&format!(
+        "'--resume' '0c6f0c39-3c1e-4b7e-9a51-6d1b8e2d7f10' '--thread' '{thread}' '--acp' 'codex'"
+    )));
     // Nothing that could break out of its quotes is typed.
     assert_eq!(plan::line(Path::new("/odd'path/herdr-acp"), &chat), None);
     assert_eq!(plan::line(Path::new("/odd\npath/herdr-acp"), &chat), None);

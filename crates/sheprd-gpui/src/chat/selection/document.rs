@@ -330,6 +330,11 @@ fn project(
                 Cell::default(),
                 crate::chat::text::turn(turn),
             ),
+            EntryKind::Handoff(handoff) => builder.plain(
+                Region::Body(0),
+                Cell::default(),
+                crate::chat::text::handoff(handoff),
+            ),
             EntryKind::Tool(_) | EntryKind::Image { .. } => {}
         },
     }

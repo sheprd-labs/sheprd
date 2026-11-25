@@ -101,6 +101,9 @@ final class AppModel {
     /// A tab to switch to, from a Control or an intent; the root view
     /// shows it and clears it.
     var pendingTab: RootTab?
+    /// Whether `pendingTab` opens at its root, as an agent's open does:
+    /// the pages on top of it close. Cleared with `pendingTab`.
+    var pendingTabRoot = false
     /// Something to tell the person once, such as a first prompt that
     /// did not go; the root view shows it and clears it.
     var notice: String?
@@ -246,6 +249,8 @@ final class AppModel {
     let tagFilter = TagFilterStore()
     let agentScopeStore = AgentScopeStore()
     let shortcuts = ShortcutStore()
+    /// Agents on paired computers driving the app, where each is allowed.
+    let agents: AgentControl
     let termKeys = TermKeyStore()
     let bluetooth = NearbyBluetooth()
     /// Bluetooth presence with the computers that have it on.
@@ -265,6 +270,7 @@ final class AppModel {
         pushTests = PushTests(sessions: sessions, tokens: tokens)
         activityTest = ActivityTest(tokens: tokens)
         fleet = Fleet(sessions: sessions)
+        agents = AgentControl()
         hostLinks = HostLinks(sessions: sessions)
         fleetMembership = FleetMembership(sessions: sessions)
         var loaded = false
@@ -277,6 +283,7 @@ final class AppModel {
         }
         // Property observers do not run during `init`.
         tokens.computers = computers
+        fleet.agentsAllowed = { [agents] in agents.allows($0) }
         fleet.sync(computers)
         // Every relay a paired computer named is kept, so it is there to
         // pick from, and to dial, when that computer cannot be asked.
@@ -309,6 +316,10 @@ final class AppModel {
             self?.fleetMembership.online(computer)
         }
         fleet.onTags = { [weak self] in self?.tagsArrived($0, for: $1) }
+        fleet.onDrive = { [weak self] id, command, computer in
+            guard let self else { return }
+            agents.perform(id, command, from: computer, model: self)
+        }
         fleet.onTagsAnswer = { [weak self] in self?.tagsAnswered($0, for: $1) }
         shortcuts.perform = { [weak fleet] actions in
             for action in actions {
@@ -334,6 +345,26 @@ final class AppModel {
             Task { @MainActor in self?.fleet.networkChanged() }
         }
         paths.start(queue: .main)
+    }
+
+    /// The computers the lists show: the paired ones, or the demo's while
+    /// it runs. Settings and pairing still read `computers`.
+    var shownComputers: [Computer] { fleet.demo ? DemoFleet.computers : computers }
+
+    /// Whether there is anything to list: a paired computer or the demo.
+    /// Until then the app shows only its offer to install, pair, or explore
+    /// the demo, with no search, buttons, or tabs leading nowhere.
+    var hasComputers: Bool { !shownComputers.isEmpty }
+
+    /// Shows the demo's made-up computers until one is paired (`DemoFleet`).
+    func startDemo() {
+        guard computers.isEmpty else { return }
+        fleet.startDemo()
+    }
+
+    func endDemo() {
+        fleet.endDemo()
+        fleet.sync(computers)
     }
 
     /// Keeps `computer`; whether it was saved.
@@ -464,6 +495,9 @@ final class AppModel {
         computers.removeAll { $0.device == computer.device }
         save()
         try? NotifyKey.forget(computer.fingerprint)
+        if ActivityGrouping.shared(for: computer.fingerprint) {
+            Task { await tokens.groupingChanged(sharedChanged: true) }
+        }
         hostLinks.forget(computer)
         collapsed.computers.forget(computer.device)
         shortcuts.offline(computer.device)

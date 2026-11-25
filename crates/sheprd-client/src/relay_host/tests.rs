@@ -65,6 +65,10 @@ fn a_relay_machine_gets_the_proxy_identity_and_its_own_known_hosts() {
         "IdentityFile=\"/Users/me/Library/Application Support/100%%h/remote/desktop/id_ed25519\""
     );
     assert!(values.contains(&"IdentitiesOnly=yes"));
+    // The user's agent never sees the pairing key (`AddKeysToAgent yes`
+    // would hand it over, and gpg-agent then asks a passphrase).
+    assert!(values.contains(&"IdentityAgent=none"));
+    assert!(values.contains(&"AddKeysToAgent=no"));
     assert!(values.contains(&"StrictHostKeyChecking=yes"));
     assert!(values.contains(
         // OpenSSH expands `%h` to the machine's host name: a file each.

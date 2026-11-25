@@ -47,7 +47,7 @@ There are three ways to get an agent running:
 
 - **In a terminal.** Open a tab (Cmd-T on macOS, Ctrl+Shift+T on Linux and Windows) and run your agent CLI as usual, for example `claude` or `codex`. Split with **Split Right** or **Split Down** to run several side by side.
 - **In a new worktree.** Pick the agent in the **Opens in** row, as above.
-- **As a chat.** A tab group's **…** menu lists **New Chat** with one row per supported agent (Claude, Codex, Copilot, Gemini, Kimi Code, OpenCode, Pi). Sheprd draws the conversation natively. The agent itself must be installed. See [Chat](chat.md).
+- **As a chat.** A tab group's **…** menu lists **New Chat** with one row per supported agent (Antigravity, Claude, Codex, Copilot, Gemini, Kimi Code, Muse Code, OpenCode, Pi). Sheprd draws the conversation natively. The agent itself must be installed. See [Chat](chat.md).
 
 Agents report their state to the daemon: working, blocked (waiting on you), done, or idle. You see it on tabs and sidebar rows, and as a count on the macOS Dock icon or the Windows taskbar button. [Notifications](notifications.md) covers toasts, system notifications and sounds.
 

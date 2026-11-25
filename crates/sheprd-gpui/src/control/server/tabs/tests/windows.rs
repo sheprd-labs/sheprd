@@ -110,7 +110,7 @@ fn devices_open_in_the_shown_workspace_at_once(cx: &mut gpui::TestAppContext) {
 }
 
 #[gpui::test]
-fn a_tab_for_another_workspace_waits_for_the_switch(cx: &mut gpui::TestAppContext) {
+fn a_tab_for_another_workspace_opens_without_switching(cx: &mut gpui::TestAppContext) {
     let (view, cx) = window(cx);
     let address = socket::test_address();
     let server = socket::Server::bind(&address.path).unwrap();
@@ -121,25 +121,11 @@ fn a_tab_for_another_workspace_waits_for_the_switch(cx: &mut gpui::TestAppContex
     let (call, incoming, waiting) = queued(&server, TabOp::Devices, caller);
     let mut watches = Watches::default();
     cx.cx.update(|cx| serve(call, incoming, &mut watches, cx));
-    // Nothing opens while the window still shows w0.
-    cx.cx.update(|cx| {
-        watches.serve(cx);
-        assert_eq!(watches.0.len(), 1);
-        assert!(
-            cx.try_global::<Store>()
-                .is_none_or(|store| store.tabs().count() == 0)
-        );
+    view.read_with(cx, |view, _| {
+        assert!(view.pending_navigation.is_none());
+        assert!(view.shows_workspace(0, "w0"));
     });
-    // The daemon's next snapshot says the switch landed.
-    cx.cx.update(|cx| {
-        view.update(cx, |view, _| {
-            let mut shown = snapshot(2);
-            shown.focused_workspace_id = Some("w1".into());
-            view.live.snapshot = Some(Arc::new(shown));
-        });
-        watches.serve(cx);
-        assert!(watches.0.is_empty());
-    });
+    assert!(watches.0.is_empty());
     assert!(matches!(
         waiting.join().unwrap().unwrap(),
         Response::Tab {
@@ -185,4 +171,38 @@ fn requests_for_unknown_workspaces_and_bad_paths_are_refused(cx: &mut gpui::Test
         ));
     }
     assert!(watches.0.is_empty());
+}
+
+#[cfg(target_os = "macos")]
+#[gpui::test]
+fn inspecting_an_unloaded_page_never_selects_its_workspace(cx: &mut gpui::TestAppContext) {
+    let (view, cx) = window(cx);
+    let id = open(&view, cx, "w1", Some(web("https://a.test/"))).into();
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("picture.png");
+    let address = socket::test_address();
+    let server = socket::Server::bind(&address.path).unwrap();
+    let mut watches = Watches::default();
+    cx.deactivate_window();
+    for op in [
+        TabOp::Text { id },
+        TabOp::Screenshot {
+            id,
+            path: file.to_str().unwrap().into(),
+        },
+    ] {
+        let (call, incoming, waiting) = queued(&server, op, Caller::default());
+        cx.cx.update(|cx| serve(call, incoming, &mut watches, cx));
+        assert!(matches!(
+            waiting.join().unwrap().unwrap(),
+            Response::Error {
+                code: ErrorCode::WindowBusy,
+                ..
+            }
+        ));
+        view.read_with(cx, |view, _| {
+            assert!(view.pending_navigation.is_none());
+            assert!(view.shows_workspace(0, "w0"));
+        });
+    }
 }

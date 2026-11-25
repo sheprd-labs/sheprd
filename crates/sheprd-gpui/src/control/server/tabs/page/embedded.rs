@@ -1,10 +1,8 @@
-//! The page commands of builds that show pages. A page lives in a window
-//! once that window has shown its tab; a command for a page no window has
-//! made shows the tab first, and the answer waits for the page.
+//! Text and image requests load a native page without selecting its tab.
 use super::{MAX_TEXT_JSON, bounded_text, page_tab};
 use crate::window::main_window::MainWindow;
 use crate::{
-    browser::TabId,
+    browser::{Tab, TabId},
     control::{
         protocol::{
             Caller, ErrorCode, Response,
@@ -12,7 +10,7 @@ use crate::{
         },
         server::{
             Watches, socket,
-            tabs::{reveal, windows},
+            tabs::{showing, windows},
         },
     },
 };
@@ -29,6 +27,31 @@ fn holder(caller: &Caller, id: TabId, cx: &App) -> Option<MainWindow> {
             .read_with(cx, |view, _| view.has_page(id))
             .unwrap_or(false)
     })
+}
+
+fn inspection_window(caller: &Caller, tab: &Tab, cx: &mut App) -> Result<MainWindow, Response> {
+    if let Some(handle) = holder(caller, tab.id, cx) {
+        return Ok(handle);
+    }
+    let (handle, _) = showing(caller, tab, cx).ok_or_else(|| {
+        Response::error(ErrorCode::NotFound, "No window holds the page's workspace")
+    })?;
+    handle
+        .update(cx, |view, window, cx| {
+            // This Wry version activates the application when it constructs a Mac
+            // webview. A loaded page can be inspected even while Sheprd is inactive.
+            #[cfg(target_os = "macos")]
+            if !window.is_window_active() {
+                return Err(Response::error(
+                    ErrorCode::WindowBusy,
+                    "The page has not loaded yet and its window is inactive",
+                ));
+            }
+            view.prepare_page_for_inspection(tab, window, cx)
+                .map_err(|error| Response::error(ErrorCode::Failed, error.to_string()))
+        })
+        .map_err(|_| Response::error(ErrorCode::NoWindow, "The window closed"))??;
+    Ok(handle)
 }
 
 fn not_loaded(id: u64) -> Response {
@@ -77,11 +100,10 @@ pub(in crate::control::server::tabs) fn text(
         Ok(tab) => tab,
         Err(response) => return incoming.respond(response),
     };
-    if holder(&caller, tab.id, cx).is_none()
-        && let Err(response) = reveal(&caller, &tab, cx)
-    {
-        return incoming.respond(response);
-    }
+    let handle = match inspection_window(&caller, &tab, cx) {
+        Ok(handle) => handle,
+        Err(response) => return incoming.respond(response),
+    };
     // The page answers on a platform callback, which may be any thread.
     let answer: Arc<Mutex<Option<String>>> = Arc::default();
     let mut asked = false;
@@ -110,7 +132,6 @@ pub(in crate::control::server::tabs) fn text(
                     )),
                 };
             }
-            let handle = holder(&caller, tab_id, cx)?;
             let slot = answer.clone();
             let done = move |raw: String| {
                 *slot.lock().unwrap_or_else(PoisonError::into_inner) = Some(raw);

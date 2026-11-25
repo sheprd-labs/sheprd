@@ -102,7 +102,7 @@ impl SheprdWindow {
             .kept_checkout_inputs()
             .into_iter()
             .map(|(_, input)| input);
-        if !self.local_git_endpoint() {
+        if !self.local_git_endpoint(self.selected_endpoint) {
             return kept.collect();
         }
         self.live
@@ -122,10 +122,9 @@ impl SheprdWindow {
 
     /// Local, owned daemon sockets only: the same trust boundary the PR lookup
     /// uses, because both run Git against the user's own checkouts.
-    fn local_git_endpoint(&self) -> bool {
-        self.selected_endpoint == 0
-            && self.live.local_daemon_peer
-            && self.live.status.is_connected()
+    pub(crate) fn local_git_endpoint(&self, index: usize) -> bool {
+        let live = self.live_at(index);
+        index == 0 && live.local_daemon_peer && live.status.is_connected()
     }
 
     /// The checkout the chrome acts on: the focused workspace's, when it is one
@@ -151,7 +150,7 @@ impl SheprdWindow {
                 .find(|(id, _)| id == front)
                 .map(|(_, input)| input);
         }
-        if !self.local_git_endpoint() {
+        if !self.local_git_endpoint(self.selected_endpoint) {
             return None;
         }
         let snapshot = self.live.snapshot.as_ref()?;
@@ -270,7 +269,13 @@ impl SheprdWindow {
     ) -> Option<std::cell::Ref<'_, crate::pull_request::PullRequest>> {
         // The Git probe only tracks this machine's checkouts, read with its
         // main account.
-        let input = self.git.tracked()?;
+        self.checkout_pull_request(self.git.tracked()?)
+    }
+
+    pub(crate) fn checkout_pull_request(
+        &self,
+        input: &crate::pull_request::Input,
+    ) -> Option<std::cell::Ref<'_, crate::pull_request::PullRequest>> {
         let view = crate::pull_request::View {
             origin: crate::pull_request::Origin::Local,
             login: self.main_tokens()?.key(),

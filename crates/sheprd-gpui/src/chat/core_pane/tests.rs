@@ -124,6 +124,17 @@ fn a_chat_terminal_runs_the_program_with_its_endpoint_and_label() {
     let fixed = (Agent::Codex, AgentChoice::Fixed);
     let older = super::spawn(fixed, Path::new("/opt/herdr-acp"), &endpoint, &extra);
     assert_eq!(older.argv, ["/opt/herdr-acp", "codex"]);
+    // Antigravity accepts `--choose` so chats can switch agents when idle.
+    let antigravity = super::spawn(
+        (Agent::Antigravity, AgentChoice::Open),
+        Path::new("/opt/herdr-acp"),
+        &endpoint,
+        &extra,
+    );
+    assert_eq!(
+        antigravity.argv,
+        ["/opt/herdr-acp", "--choose", "antigravity"]
+    );
     assert_eq!(
         spawn.env,
         [

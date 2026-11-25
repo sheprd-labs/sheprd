@@ -22,7 +22,7 @@ public struct Computer: Codable, Hashable, Identifiable, Sendable {
     public var keyKind: KeyKind
     public var keyData: Data
     /// Whether this phone proves it is near the computer over Bluetooth, so
-    /// the computer holds alerts while you are at it. Off until chosen.
+    /// the computer holds alerts while you are at it. On by default.
     public var presence: Bool
     /// The paired computer that vouched for this one's fingerprint when it
     /// paired the phone with one of its hosts; `nil` when paired directly.
@@ -49,8 +49,8 @@ public struct Computer: Codable, Hashable, Identifiable, Sendable {
         fingerprint = try c.decode(Fingerprint.self, forKey: .fingerprint)
         keyKind = try c.decode(KeyKind.self, forKey: .keyKind)
         keyData = try c.decode(Data.self, forKey: .keyData)
-        // Records saved before presence existed have it off.
-        presence = try c.decodeIfPresent(Bool.self, forKey: .presence) ?? false
+        // Older records use the default; preserve an explicitly saved choice.
+        presence = try c.decodeIfPresent(Bool.self, forKey: .presence) ?? true
         // Records saved before host pairing were all paired directly.
         via = try c.decodeIfPresent(Fingerprint.self, forKey: .via)
         // Records saved before tags existed have none.
@@ -70,7 +70,7 @@ public struct Computer: Codable, Hashable, Identifiable, Sendable {
         fingerprint: Fingerprint,
         keyKind: KeyKind,
         keyData: Data,
-        presence: Bool = false,
+        presence: Bool = true,
         via: Fingerprint? = nil,
         tags: [String] = [],
         tagsUpdatedMs: UInt64 = 0,

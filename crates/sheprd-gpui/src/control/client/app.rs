@@ -149,6 +149,8 @@ pub(super) fn window(command: WindowCommand, context: &Context) -> crate::Result
 
 pub(super) fn ui(command: UiCommand, context: &Context) -> crate::Result<Output> {
     let op = match command {
+        UiCommand::Settings(page) => UiOp::Settings { page },
+        UiCommand::Guide { text, highlight } => UiOp::Guide { text, highlight },
         UiCommand::Traces => UiOp::Traces {},
         UiCommand::TracesFilter(filter) => UiOp::TracesFilter { filter },
         UiCommand::Sidebar(switch) => UiOp::Sidebar { switch },
@@ -160,6 +162,19 @@ pub(super) fn ui(command: UiCommand, context: &Context) -> crate::Result<Output>
         UiCommand::AgentGroup(name) => UiOp::AgentGroup { name },
     };
     match context.call(Request::Ui, op)? {
+        Response::App {
+            reply: Reply::SettingsTargets { pages, rows },
+        } => Output::data(
+            format!(
+                "Pages: {}\n{}",
+                pages.join(", "),
+                rows.iter()
+                    .map(|row| format!("{}\t{}\t{}", row.id, row.page, row.title))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ),
+            &serde_json::json!({"pages": pages, "rows": rows}),
+        ),
         Response::App {
             reply:
                 Reply::Traces {

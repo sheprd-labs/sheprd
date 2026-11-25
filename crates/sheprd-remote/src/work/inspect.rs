@@ -46,11 +46,14 @@ pub fn identity(
             "--path-format=absolute",
             "--git-common-dir",
             "--git-dir",
+            "--show-toplevel",
         ],
         cancelled,
     )?;
     let mut lines = dirs.lines();
-    let (Some(common), Some(own), None) = (lines.next(), lines.next(), lines.next()) else {
+    let (Some(common), Some(own), Some(root), None) =
+        (lines.next(), lines.next(), lines.next(), lines.next())
+    else {
         return Err(Error::Output { step: Step::List });
     };
     let branch = match git(
@@ -80,6 +83,7 @@ pub fn identity(
         key: common.to_owned(),
         label,
         linked: common != own,
+        root: root.to_owned(),
     })
 }
 

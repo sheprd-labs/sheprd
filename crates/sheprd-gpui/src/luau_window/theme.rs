@@ -1,6 +1,5 @@
-//! Moonframe's widgets in Sheprd's colors and font. Luau's text, buttons and
-//! status bar draw from the toolkit's theme, so without this a mod's rows stay
-//! in Moonframe's own look beside Sheprd's panes.
+//! Moonframe's widgets in Sheprd's colors and font. Luau text and buttons
+//! use the toolkit theme alongside Sheprd's native views.
 
 use {
     crate::embed::Palette,

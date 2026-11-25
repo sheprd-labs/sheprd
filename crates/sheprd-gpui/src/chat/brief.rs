@@ -28,6 +28,8 @@ pub(crate) struct Brief {
     pub(crate) file: PathBuf,
     /// The agent of the chat that asked, when it is one.
     pub(crate) from: Option<Agent>,
+    pub(crate) endpoint: sheprd_chat_protocol::EndpointId,
+    pub(crate) parent: Option<sheprd_chat_protocol::brief::Delegation>,
 }
 
 impl Brief {
@@ -42,11 +44,33 @@ impl Brief {
         file.write_all(text.as_bytes()).map_err(Error::Write)?;
         file.as_file().sync_all().map_err(Error::Write)?;
         let (_, file) = file.keep().map_err(|error| Error::Keep(error.error))?;
-        Ok(Self { file, from })
+        Ok(Self {
+            file,
+            from,
+            endpoint: sheprd_chat_protocol::EndpointId::random(),
+            parent: None,
+        })
+    }
+
+    /// Best effort on the background thread that writes or removes this brief.
+    /// Chats also work with remote control disabled or an older daemon.
+    pub(crate) fn report_launch(&self, label: Option<String>) {
+        use sheprd_remote_control::control;
+        if let Some(owner) = &self.parent
+            && let Ok(dir) = crate::remote::state_dir()
+        {
+            let request = control::Request::DelegatedLaunch {
+                owner: owner.clone(),
+                child: self.endpoint.clone(),
+                label,
+            };
+            let _ = control::request(&control::address(&dir), &request);
+        }
     }
 
     /// Deletes the file of a brief whose chat did not start. Blocking.
     pub(crate) fn discard(&self) {
+        self.report_launch(None);
         if let Err(error) = std::fs::remove_file(&self.file) {
             tracing::warn!(%error, "A brief no chat read stays in the temporary folder");
         }

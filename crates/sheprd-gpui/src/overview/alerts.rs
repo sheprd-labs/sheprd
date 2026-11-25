@@ -271,7 +271,7 @@ fn clear_all(
     let (foreground, surface) = (look.theme.foreground, look.theme.surface);
     // It does more than its place suggests, so it says so.
     let hint = SharedString::from(fl!("overview-alerts-clear-hint"));
-    pill(id.to_owned(), "icons/x.svg", label, look)
+    pill(id.to_owned(), "icons/close.svg", label, look)
         .flex_none()
         .tooltip(move |_, cx| {
             cx.new(|_| crate::usage::Hint {

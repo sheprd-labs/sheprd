@@ -5,7 +5,7 @@
 //! named after it. A phone then lists Herdr 2 workspaces under their
 //! repository beside Herdr 1's.
 
-use super::{UNLISTED, spaces::repository_name};
+use super::spaces::repository_name;
 use crate::hub::Layout;
 use sheprd_client::protocol::ClientShellWorktree;
 use std::{
@@ -36,11 +36,13 @@ impl Checkouts {
     /// of its folder. The group of terminals no tab holds has no one folder.
     pub(super) fn fill(&mut self, layout: &mut Layout, now: Instant) {
         for workspace in &mut layout.workspaces {
-            if workspace.id == UNLISTED || workspace.cwd.is_empty() || workspace.worktree.is_some()
-            {
+            if workspace.worktree.is_some() {
                 continue;
             }
-            let Some(checkout) = self.checkout(&workspace.cwd, now) else {
+            let Some(checkout) = workspace
+                .checkout_folder()
+                .and_then(|cwd| self.checkout(cwd, now))
+            else {
                 continue;
             };
             workspace.worktree = Some(checkout.worktree);

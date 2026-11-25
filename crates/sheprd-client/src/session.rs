@@ -272,6 +272,7 @@ impl Session {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Pace {
     pub(crate) idle_wait: Duration,
+    /// How long a probe after a sleep may go unanswered.
     pub(crate) liveness: Duration,
     pub(crate) partial_frame: Duration,
 }
@@ -308,7 +309,7 @@ pub(crate) struct Signals<'a> {
     /// Ends the connection without flushing or replaying anything.
     pub(crate) stop: &'a AtomicBool,
     /// Asks an SSH link for an immediate health probe.
-    pub(crate) liveness: &'a AtomicBool,
+    pub(crate) liveness: &'a crate::liveness::Request,
     pub(crate) pace: Pace,
 }
 
@@ -387,7 +388,9 @@ pub(crate) fn run_connection(
         // A liveness request waits for the same boundary rather than being lost.
         if !partial_out && let Some(health) = &mut session.health {
             let now = Instant::now();
-            let probe = liveness.swap(false, Ordering::AcqRel) && health.probe(now, pace.liveness);
+            let probe = liveness
+                .take()
+                .is_some_and(|suspicion| health.probe(now, suspicion.timeout(pace)));
             if health.tick(now)? || probe {
                 write_message(
                     &mut stream,
@@ -552,7 +555,7 @@ pub(crate) fn run_connection(
         // and cut off by the bound does not wait for the frame's tail.
         // Nor may a refused activation that an image or frame deferred.
         let timeout = if (queued.is_none() && !commands.is_empty())
-            || (!partial_out && session.health.is_some() && liveness.load(Ordering::Acquire))
+            || (!partial_out && session.health.is_some() && liveness.pending())
             || (!partial_out && reader.started.is_none() && session.resend_ready())
         {
             Duration::ZERO

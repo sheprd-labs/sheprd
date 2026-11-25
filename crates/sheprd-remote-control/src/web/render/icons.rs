@@ -27,6 +27,7 @@ pub(crate) enum Agent {
     Gemini,
     Generic,
     Grok,
+    Muse,
     OpenCode,
     Pi,
 }
@@ -43,6 +44,7 @@ impl Agent {
                 Self::Gemini => include_str!("../../../../../assets/icons/agent-gemini.svg"),
                 Self::Generic => include_str!("../../../../../assets/icons/agent-generic.svg"),
                 Self::Grok => include_str!("../../../../../assets/icons/agent-grok.svg"),
+                Self::Muse => include_str!("../../../../../assets/icons/agent-muse.svg"),
                 Self::OpenCode => include_str!("../../../../../assets/icons/agent-opencode.svg"),
                 Self::Pi => include_str!("../../../../../assets/icons/agent-pi.svg"),
             }

@@ -33,6 +33,8 @@ pub(crate) enum Preference {
     ShowNetworkQuality(bool),
     ShowGpuLoad(bool),
     ShowSidebarGpuLoad(bool),
+    /// `sidebar_load`: each host's load in the Moonframe sidebar, compact or detailed.
+    SidebarLoad(status_bar::Detail),
     AgentCheckpoints(bool),
     ShowListeningPorts(bool),
     ShowAgentsHeader(bool),
@@ -186,6 +188,9 @@ impl Config {
                 Preference::ShowGpuLoad(value) => (None, "show_gpu_load", Some(value.into())),
                 Preference::ShowSidebarGpuLoad(value) => {
                     (None, "show_sidebar_gpu_load", Some(value.into()))
+                }
+                Preference::SidebarLoad(detail) => {
+                    (None, "sidebar_load", Some(detail.name().into()))
                 }
                 Preference::AgentCheckpoints(value) => {
                     (None, "agent_checkpoints", Some(value.into()))

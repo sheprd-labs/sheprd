@@ -104,10 +104,12 @@ fn a_whole_turn_reaches_the_transcript_through_the_bridge() {
         output: stdout_writer,
     };
     let config = Config {
+        antigravity_auth_method: None,
         agent: "Claude".to_owned(),
         choices: None,
         cwd: PathBuf::from("/work"),
         exit_with_agent: false,
+        gemini_auth_method: None,
         harness: Some(crate::agents::Agent::Claude),
         history: None,
         known: Default::default(),
@@ -119,6 +121,7 @@ fn a_whole_turn_reaches_the_transcript_through_the_bridge() {
         require_load: false,
         settings: None,
         sheprd: None,
+        thread: None,
     };
     let mut session = Session::new(config, outbox, |_| {});
     session.start();

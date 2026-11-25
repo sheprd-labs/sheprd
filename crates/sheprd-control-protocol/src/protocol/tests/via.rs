@@ -88,3 +88,21 @@ fn client_names_must_be_printable_and_bounded() {
     assert!(!mcp(Some(&"x".repeat(MAX_CLIENT_NAME + 1))).is_valid());
     assert!(!mcp(Some("evil\u{1b}[2J")).is_valid());
 }
+
+#[test]
+fn a_lent_caller_needs_short_printable_names() {
+    let lend = |borrower: &str, owner: &str| Via::Lend {
+        borrower: borrower.to_owned(),
+        owner: owner.to_owned(),
+    };
+    assert!(lend("studio", "pane:w1-2").is_valid());
+    assert!(!lend("", "pane:w1-2").is_valid());
+    assert!(!lend("studio", "pane\n").is_valid());
+    assert!(!lend(&"a".repeat(MAX_LEND_NAME + 1), "x").is_valid());
+    let caller = Caller {
+        via: Some(lend("studio", "pane:1")),
+        ..Caller::default()
+    };
+    let text = serde_json::to_string(&caller).unwrap();
+    assert_eq!(serde_json::from_str::<Caller>(&text).unwrap(), caller);
+}

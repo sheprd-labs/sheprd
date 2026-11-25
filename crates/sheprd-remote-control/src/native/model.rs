@@ -2,6 +2,7 @@
 //! requests the web app's lists draw, as typed JSON instead of markup.
 //! Chat types are `sheprd_chat_protocol`'s own; nothing here mirrors them.
 
+use crate::web::labels::{self, Snapshot};
 use crate::{
     ansi::{self, Color, Style},
     control::{
@@ -70,6 +71,8 @@ pub(crate) struct Home {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Workspace {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) labels: Vec<String>,
     pub(crate) id: String,
     pub(crate) label: String,
     pub(crate) branch: Option<String>,
@@ -155,6 +158,8 @@ pub(crate) struct PullRequest {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Chat {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) labels: Vec<String>,
     pub(crate) pane: String,
     pub(crate) tab: String,
     pub(crate) title: String,
@@ -265,6 +270,8 @@ pub(crate) struct Pane {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub(crate) struct TerminalAgent {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) labels: Vec<String>,
     pub(crate) name: Option<String>,
     pub(crate) status: AgentStatus,
     /// Its pane was starred on some device (`control::favorites`).
@@ -448,6 +455,7 @@ fn chat(
     row: &ChatRow,
     summaries: &mut HashMap<String, Summary>,
     favorites: &Favorites,
+    labels: &Snapshot,
     unread: &BTreeSet<String>,
 ) -> Chat {
     let summary = summaries.remove(&row.pane);
@@ -466,6 +474,10 @@ fn chat(
         .filter(|_| !row.named)
         .unwrap_or_else(|| row.title.clone());
     Chat {
+        labels: labels
+            .get(&labels::chat_key(row.endpoint.as_str()))
+            .cloned()
+            .unwrap_or_default(),
         pane: row.pane.clone(),
         tab: row.tab.clone(),
         title,
@@ -480,6 +492,7 @@ fn chat(
 fn terminal(
     terminal: &hub::Terminal,
     favorites: &Favorites,
+    labels: &Snapshot,
     unread: &BTreeSet<String>,
 ) -> Terminal {
     Terminal {
@@ -500,6 +513,10 @@ fn terminal(
             })
             .collect(),
         agent: terminal.agent.as_ref().map(|agent| TerminalAgent {
+            labels: labels
+                .get(&labels::terminal_key(agent))
+                .cloned()
+                .unwrap_or_default(),
             name: agent.name.clone(),
             status: agent.status,
             favorite: favorites.contains(&agent.pane),
@@ -525,6 +542,7 @@ pub(crate) struct Sources<'a> {
     pub(crate) computer: &'a str,
     pub(crate) favorites: &'a Favorites,
     pub(crate) fingerprint: &'a str,
+    pub(crate) labels: &'a Snapshot,
     pub(crate) layout: &'a Layout,
     pub(crate) load: Option<Load>,
     pub(crate) summaries: HashMap<String, Summary>,
@@ -564,6 +582,7 @@ impl Home {
             computer,
             favorites,
             fingerprint,
+            labels,
             layout,
             load,
             mut summaries,
@@ -579,6 +598,10 @@ impl Home {
             .workspaces
             .iter()
             .map(|workspace| Workspace {
+                labels: labels::worktree_key(workspace)
+                    .and_then(|key| labels.get(&key))
+                    .cloned()
+                    .unwrap_or_default(),
                 id: workspace.id.clone(),
                 label: workspace.label.clone(),
                 branch: workspace.branch.clone(),
@@ -601,12 +624,12 @@ impl Home {
                 chats: workspace
                     .chats
                     .iter()
-                    .map(|row| chat(row, &mut summaries, favorites, unread))
+                    .map(|row| chat(row, &mut summaries, favorites, labels, unread))
                     .collect(),
                 terminals: workspace
                     .terminals
                     .iter()
-                    .map(|row| terminal(row, favorites, unread))
+                    .map(|row| terminal(row, favorites, labels, unread))
                     .collect(),
             })
             .collect();

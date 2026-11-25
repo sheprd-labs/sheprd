@@ -66,6 +66,7 @@ impl Localize for app::Error {
             Self::Unexpected => fl!("error-remote-control-unexpected"),
             Self::UnknownUser => fl!("error-remote-control-unknown-user"),
             Self::Unsupported => fl!("error-remote-control-unsupported"),
+            Self::Voice(error) => error.to_string(),
             // keep-sorted end
         }
     }

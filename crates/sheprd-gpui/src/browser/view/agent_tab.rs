@@ -98,7 +98,10 @@ impl SheprdWindow {
         workspace: &str,
         cx: &mut Context<Self>,
     ) {
-        if self.shows_workspace(index, workspace) {
+        if index == self.selected_endpoint && self.focus_kept_workspace(workspace, cx) {
+            return;
+        }
+        if self.shows_workspace(index, workspace) && self.kept_in_front().is_none() {
             return;
         }
         if index != self.selected_endpoint {

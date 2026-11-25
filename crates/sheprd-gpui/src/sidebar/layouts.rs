@@ -15,6 +15,14 @@ use crate::config::Theme;
 use gpui::{prelude::*, *};
 
 impl Fold {
+    pub(super) fn glyph(collapsed: bool) -> &'static str {
+        if collapsed {
+            crate::direction::glyph("\u{25b8}")
+        } else {
+            "\u{25be}"
+        }
+    }
+
     /// The fold chevron, sized by the caller. Clicking it never selects the
     /// row it sits on.
     pub(super) fn element(self, theme: &Theme) -> Stateful<Div> {
@@ -32,11 +40,7 @@ impl Fold {
             .text_color(rgb(muted))
             .hover(move |style| style.text_color(rgb(foreground)))
             .cursor_pointer()
-            .child(label_text(if collapsed {
-                crate::direction::glyph("\u{25b8}")
-            } else {
-                "\u{25be}"
-            }))
+            .child(label_text(Self::glyph(collapsed)))
             .on_click(move |event, window, cx| {
                 cx.stop_propagation();
                 toggle(event, window, cx);

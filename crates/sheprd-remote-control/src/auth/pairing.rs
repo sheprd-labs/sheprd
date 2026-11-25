@@ -198,6 +198,11 @@ impl Open {
         match &self.phase {
             Phase::Waiting => PairingState::Waiting {
                 expires_in_ms: self.shown_until().saturating_sub(now_ms),
+                nearby_code: self
+                    .nearby
+                    .as_ref()
+                    .filter(|nearby| nearby.live(now_ms))
+                    .map(|nearby| nearby.code.clone()),
             },
             Phase::Claimed { device, code, .. } => PairingState::Claimed {
                 device_name: device.name.clone(),

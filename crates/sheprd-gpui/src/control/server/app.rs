@@ -288,7 +288,21 @@ pub(super) fn window(call: Call<WindowOp>, cx: &mut App) -> Response {
 }
 
 pub(super) fn ui(call: Call<UiOp>, cx: &mut App) -> Response {
+    if matches!(call.op, UiOp::Settings { .. } | UiOp::Guide { .. }) {
+        let handle = match window_for(&call.caller, cx) {
+            Ok(handle) => handle,
+            Err(response) => return response,
+        };
+        let source = match handle.update(cx, |_, _, cx| cx.entity().downgrade()) {
+            Ok(source) => source,
+            Err(_) => return Response::error(ErrorCode::NoWindow, "The window closed"),
+        };
+        return crate::settings_window::guidance::apply(source, call.op, cx);
+    }
     in_window(&call.caller, cx, |view, window, cx| match call.op {
+        UiOp::Settings { .. } | UiOp::Guide { .. } => {
+            Response::error(ErrorCode::InvalidRequest, "Invalid UI operation")
+        }
         UiOp::Traces {} => traces_reply(view),
         UiOp::TracesFilter { filter } => {
             use crate::control::protocol::app::TraceFilter;

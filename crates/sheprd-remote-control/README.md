@@ -94,8 +94,10 @@ Without a valid `herdr-app` document, Herdr 2 tabs in Sheprd's kept tabs keep
 their workspace and split membership. The file is read beside the explicit
 remote `--state-dir`
 (for example, `gpui/browser-tabs.json` beside `gpui/remote`), using the
-desktop state context instead of the service environment. Only tabs for the
-selected local Herdr 1 endpoint are used. The workspaces Sheprd keeps for
+desktop state context instead of the service environment. The daemon reads Herdr 1 tabs for its primary
+socket and the named local sessions it follows. A named session keeps its
+own workspace IDs and saved tab scope when the phone renames or splits a tab.
+This keeps a phone-created chat under its project after desktop adoption. The workspaces Sheprd keeps for
 Herdr 2 terminals in the same file come first, in the user's order, with
 their names and folders, even before they hold a tab. A tab or chat a phone
 starts in a workspace is labelled with it (`sheprd.workspace`): the daemon
@@ -547,6 +549,13 @@ daemon never sees the token inside. The app registers them with
 older daemon may answer `own_key`, which the app shows as unknown. The
 environment picks one of the two relays compiled in, `push.sheprd.org` and
 `push-sandbox.sheprd.org`; no device can name another host.
+
+A phone requests a single Live Activity for overlapping work on this host
+with `POST /api/apns?single=true`. Omitting the query selects separate
+activities. The authenticated device's registration keeps the preference.
+Entering Private ends the phone’s existing cards. Its next registrations carry
+a new `epoch` UUID so the host can restart ongoing work on a fresh card.
+Older hosts ignore the query, and older phones keep receiving per-pane cards.
 
 A registration that leaves out `push_to_start` or `alert` keeps the one
 stored; an explicit `null` clears it (`apns::Update`). The app sends

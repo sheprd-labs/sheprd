@@ -208,6 +208,18 @@ impl Host {
         self.window.clone().into()
     }
 
+    /// Stock layouts place the standalone title bar over the whole window.
+    #[cfg(feature = "moonframe")]
+    pub(crate) fn layout_main(&self, split_header: bool, cx: &mut App) -> AnyView {
+        self.window.update(cx, |view, cx| {
+            if view.hosted_full_header.is_some() != split_header {
+                view.hosted_full_header = split_header.then_some(false);
+                cx.notify();
+            }
+        });
+        self.main()
+    }
+
     /// What holds the keyboard for the terminals and pages.
     pub fn focus_handle(&self, cx: &App) -> gpui::FocusHandle {
         self.window.read(cx).focus.clone()

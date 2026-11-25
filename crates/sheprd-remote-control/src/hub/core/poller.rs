@@ -21,6 +21,8 @@ pub(super) struct Shared {
 
 #[derive(Default)]
 pub(super) struct Poller {
+    sessions: Option<std::sync::Arc<crate::hub::sessions::Sessions>>,
+    pub(super) named_scopes: std::collections::BTreeMap<String, String>,
     /// The core `doc` came from: versions count per core, so a wiped core
     /// can reach the old number with another document.
     boot: String,
@@ -44,6 +46,13 @@ pub(super) struct Poller {
 }
 
 impl Poller {
+    pub(super) fn following(sessions: std::sync::Arc<crate::hub::sessions::Sessions>) -> Self {
+        Self {
+            sessions: Some(sessions),
+            ..Self::default()
+        }
+    }
+
     /// Takes the answer to reading the desktop's document. Only a core
     /// that says there is none clears the spaces: a slow answer says
     /// nothing about the document, and dropping them would make every
@@ -111,7 +120,12 @@ impl Poller {
     /// What Sheprd keeps for this core: the shared document once written,
     /// else `scope`'s saved tabs.
     pub(super) fn kept<'a>(&'a self, scope: Option<&'a str>) -> Option<Kept<'a>> {
-        kept(self.shared(), self.saved.as_ref(), scope)
+        kept(
+            self.shared(),
+            self.saved.as_ref(),
+            scope,
+            &self.named_scopes,
+        )
     }
 
     pub(super) fn project(
@@ -121,6 +135,9 @@ impl Poller {
         tabs: Option<&Path>,
         scope: Option<&str>,
     ) -> Layout {
+        if let Some(sessions) = &self.sessions {
+            self.named_scopes = sessions.local_scopes();
+        }
         if let Some(tabs) = tabs {
             self.refresh_saved(tabs);
         }
@@ -129,10 +146,15 @@ impl Poller {
                 .iter()
                 .map(|terminal| (terminal.address.as_str(), &terminal.labels)),
         );
-        if let Some(scope) = scope
+        if !replacements.is_empty()
             && let Some((_, Some(saved))) = &mut self.saved
         {
-            saved.remap(scope, &replacements);
+            for scope in scope
+                .into_iter()
+                .chain(self.named_scopes.values().map(String::as_str))
+            {
+                saved.remap(scope, &replacements);
+            }
         }
         if let Some((_, Some(spaces))) = &mut self.doc {
             spaces.remap(&replacements);
@@ -161,7 +183,7 @@ impl Poller {
         self.replacements = replacements;
         let terminals = terminals.as_slice();
         let shared = self.shared.as_ref().and_then(|(_, shared)| shared.as_ref());
-        let kept = kept(shared, self.saved.as_ref(), scope);
+        let kept = kept(shared, self.saved.as_ref(), scope, &self.named_scopes);
         let mut layout = match &self.doc {
             Some((_, Some(spaces))) => {
                 let mut layout = spaces.project(boot, terminals, kept, &mut self.names);
@@ -196,6 +218,22 @@ impl Poller {
             .map(|tab| tab.id)
     }
 
+    /// Whether the file owns this pane beside the current shared document.
+    pub(super) fn local_tab_holds(&self, scope: Option<&str>, id: &str, address: &str) -> bool {
+        let Some(kept) = self.kept(scope) else {
+            return false;
+        };
+        let target = format!("{}{id}", super::saved::LOCAL_TAB);
+        kept.tabs().into_iter().any(|tab| {
+            tab.target == target
+                && tab
+                    .panes
+                    .terminals()
+                    .into_iter()
+                    .any(|pane| pane.as_str() == address)
+        })
+    }
+
     /// The workspace of `scope`'s saved tab `tab`.
     pub(super) fn saved_workspace(&self, scope: &str, tab: u64) -> Option<String> {
         self.saved
@@ -220,12 +258,14 @@ fn kept<'a>(
     shared: Option<&'a Shared>,
     saved: Option<&'a (SystemTime, Option<SavedTabs>)>,
     scope: Option<&'a str>,
+    named: &'a std::collections::BTreeMap<String, String>,
 ) -> Option<Kept<'a>> {
-    if let Some(shared) = shared {
-        return Some(Kept::Doc {
-            spaces: &shared.spaces,
-            tabs: &shared.tabs,
-        });
-    }
-    Kept::file(saved.and_then(|(_, saved)| saved.as_ref()), scope)
+    let saved = saved.and_then(|(_, saved)| saved.as_ref());
+    let doc = shared.map(|s| (&s.spaces, s.tabs.as_slice()));
+    (doc.is_some() || saved.is_some()).then_some(Kept {
+        doc,
+        file: saved,
+        primary: scope,
+        named,
+    })
 }

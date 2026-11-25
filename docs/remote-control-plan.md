@@ -608,15 +608,15 @@ push-to-start on a device with a real key, and an app icon.
 
 ## Sheprd
 
-- **Settings > Remote control**: a Pair a phone card first, then the
+- **Settings > Remote control**: a Pair device card first, then the
   toggle, port, addresses served (LAN, Tailscale when present), certificate
   (own CA or user files) with its fingerprint, notification defaults, device
   idle expiry, and paired devices with last seen and Revoke.
 - **Title bar**, before the GitHub account, while remote control runs: a
-  "Pair phone" button until a phone is paired, then a phone with the number
+  "Pair device" button until a phone is paired, then a phone with the number
   connected now (green while any is). It opens the list of phones, each with
   Disconnect (the revoke confirmation: a phone signs back in with its key,
-  so only revoking keeps it out), plus Pair a phone and Settings.
+  so only revoking keeps it out), plus Pair device and Settings.
 - **Remote control dialog**: the QR drawn as GPUI quads from a `qrcode`
   matrix, a 60-second countdown ring, the URL and CA fingerprint, then the
   approval step with the matching code. Reachable from the palette, the

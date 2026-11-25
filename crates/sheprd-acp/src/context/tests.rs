@@ -1,18 +1,26 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::*;
+use crate::context::*;
 
+mod device;
 mod launch;
 mod memory;
 mod phone_app;
 
 /// The built-in text for a person at `origin`.
 fn describe(origin: Origin) -> String {
-    Prompts::default().render(Kind::of(origin), &Facts::default(), Some(origin))
+    Prompts::default().render(Kind::of(origin.clone()), &Facts::default(), Some(origin))
 }
 
 const PHONE: Origin = Origin::new(Device::PhoneApp, Via::Relay);
 const DESKTOP: Origin = Origin::new(Device::Desktop, Via::Local);
+
+#[test]
+fn direct_context_never_adds_sheprd_text_to_a_persons_prompt() {
+    let mut context = Context::direct();
+    assert_eq!(context.before(Some(PHONE)), None);
+    assert_eq!(context.before(Some(DESKTOP)), None);
+}
 
 #[test]
 fn the_system_prompt_goes_once_with_the_first_prompt() {
@@ -29,7 +37,7 @@ fn the_system_prompt_goes_once_with_the_first_prompt() {
 }
 
 #[test]
-fn the_origin_is_told_again_only_when_it_changes() {
+fn each_prompt_identifies_its_device_without_repeating_the_place_guide() {
     let mut context = Context::default();
     assert!(
         context
@@ -37,15 +45,27 @@ fn the_origin_is_told_again_only_when_it_changes() {
             .unwrap()
             .contains("desktop app")
     );
-    assert_eq!(context.before(Some(DESKTOP)), None);
+    assert!(
+        context
+            .before(Some(DESKTOP))
+            .unwrap()
+            .contains("This message came from")
+    );
     // A client that does not say where it is leaves the last origin standing.
     assert_eq!(context.before(None), None);
     assert!(context.before(Some(PHONE)).unwrap().contains("relay"));
-    assert_eq!(context.before(Some(PHONE)), None);
+    assert!(
+        !context
+            .before(Some(PHONE))
+            .unwrap()
+            .contains("Their screen is small")
+    );
     // The same phone on another network is still the same device.
-    assert_eq!(
-        context.before(Some(Origin::new(Device::PhoneApp, Via::Lan))),
-        None
+    assert!(
+        !context
+            .before(Some(Origin::new(Device::PhoneApp, Via::Lan)))
+            .unwrap()
+            .contains("Their screen is small")
     );
     assert!(context.before(Some(DESKTOP)).is_some());
     assert!(context.before(Some(PHONE)).is_some());
@@ -88,9 +108,14 @@ fn the_desktop_moving_between_this_computer_and_ssh_is_told() {
     let mut context = Context::default();
     assert!(context.before(Some(DESKTOP)).is_some());
     let remote = Origin::new(Device::Desktop, Via::Remote);
-    let sent = context.before(Some(remote)).unwrap();
+    let sent = context.before(Some(remote.clone())).unwrap();
     assert!(sent.contains("cannot open files or folders"));
-    assert_eq!(context.before(Some(remote)), None);
+    assert!(
+        !context
+            .before(Some(remote))
+            .unwrap()
+            .contains("cannot open files or folders")
+    );
     assert!(
         context
             .before(Some(DESKTOP))
@@ -112,7 +137,12 @@ fn a_continued_chat_tells_only_what_the_agent_has_not_heard() {
         Facts::default(),
         told.clone(),
     );
-    assert_eq!(context.before(Some(PHONE)), None);
+    assert!(
+        !context
+            .before(Some(PHONE))
+            .unwrap()
+            .contains("<instructions>")
+    );
     assert!(context.before(Some(DESKTOP)).is_some());
 
     // Instructions edited since go out once more.
@@ -145,7 +175,12 @@ fn a_replayed_note_counts_as_told() {
         Told::default(),
     );
     context.heard(&note_with("Be brief.", PHONE));
-    assert_eq!(context.before(Some(PHONE)), None);
+    assert!(
+        !context
+            .before(Some(PHONE))
+            .unwrap()
+            .contains("<instructions>")
+    );
 }
 
 #[test]
@@ -163,7 +198,12 @@ fn instructions_reverted_since_go_out_again_whatever_the_replay_order() {
         sent.contains("<instructions>\nA\n</instructions>"),
         "{sent}"
     );
-    assert_eq!(context.before(Some(PHONE)), None);
+    assert!(
+        !context
+            .before(Some(PHONE))
+            .unwrap()
+            .contains("<instructions>")
+    );
 }
 
 #[test]
@@ -362,10 +402,11 @@ fn the_intro_names_where_the_person_is_even_when_unchanged() {
         "{second}"
     );
     assert!(second.contains("You are Codex."), "{second}");
-    // A client that does not say keeps the last place told.
+    // An unidentified client must not inherit the last phone.
     context.switched("Claude");
     let third = context.before(None).unwrap();
-    assert!(third.contains("Typed on their phone or tablet"), "{third}");
+    assert!(third.contains("Typed in a Sheprd client"), "{third}");
+    assert!(third.contains("No phone target is identified"));
 }
 
 #[test]

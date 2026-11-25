@@ -31,6 +31,7 @@ settings-machines-gb = { $size } GB
 settings-machines-guide = Set up for agents
 settings-machines-memory = Memory
 settings-machines-open = Open
+settings-machines-review-deletion = Review deletion of { $name }…
 settings-machines-running = Running
 settings-machines-saving = Saving…
 settings-machines-shut-down = Shut down

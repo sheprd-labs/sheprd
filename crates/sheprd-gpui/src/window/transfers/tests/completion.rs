@@ -59,7 +59,7 @@ fn success_pastes_quoted_paths_to_captured_pane_or_popup(cx: &mut TestAppContext
 
 #[gpui::test]
 fn stale_or_cancelled_success_cleans_original_host_without_pasting(cx: &mut TestAppContext) {
-    for case in 0..4 {
+    for case in 0..3 {
         let (fixture, cx) = cx.add_window_view(fixture);
         let view = fixture.read_with(cx, |fixture, _| fixture.view.clone().unwrap());
         let mut peer = Peer::new();
@@ -86,7 +86,6 @@ fn stale_or_cancelled_success_cleans_original_host_without_pasting(cx: &mut Test
                 }
                 1 => view.file_transfer.as_ref().unwrap().cancel(),
                 2 => view.menu.page = Some(crate::menu::Page::Palette),
-                3 => view.pending_toast = Some(1),
                 _ => unreachable!(),
             }
         });

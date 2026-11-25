@@ -150,3 +150,42 @@ fn unused_stays_a_valid_name() {
     assert!(found.as_str().len() <= crate::machine::MAX_NAME_BYTES);
     assert_ne!(found, long);
 }
+
+/// A machine made from an image of a set-up machine starts without its
+/// guide, and keeps the note for the images saved from it.
+#[test]
+fn a_ready_image_makes_a_machine_without_a_guide() {
+    let root = tempfile::tempdir().unwrap();
+    let source = machine(root.path(), "work");
+    fs::write(source.join(READY), "").unwrap();
+    let images = root.path().join("images");
+    save_in(&source, &name("work"), &images, &name("base")).unwrap();
+    let image = images.join("base");
+    assert!(image.join(READY).is_file());
+    let machines = root.path().join("machines");
+    create_in(&image, &name("base"), &machines, &name("one"), b"new").unwrap();
+    assert!(machines.join("one").join(READY).is_file());
+    assert!(!machines.join("one").join(GUIDE).exists());
+}
+
+/// An image without the note, as every image saved before it was kept, may
+/// be set up or not: its machine's guide waits for the agent to say.
+#[test]
+fn an_image_without_the_note_makes_a_quiet_guide() {
+    let root = tempfile::tempdir().unwrap();
+    let source = machine(root.path(), "work");
+    let images = root.path().join("images");
+    save_in(&source, &name("work"), &images, &name("base")).unwrap();
+    let machines = root.path().join("machines");
+    create_in(
+        &images.join("base"),
+        &name("base"),
+        &machines,
+        &name("one"),
+        b"new",
+    )
+    .unwrap();
+    let made = machines.join("one");
+    assert_eq!(fs::read(made.join(GUIDE)).unwrap(), FROM_IMAGE);
+    assert!(!made.join(READY).exists());
+}

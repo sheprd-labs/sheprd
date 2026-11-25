@@ -46,3 +46,19 @@ fn a_hosted_window_leaves_its_title_bar_end_to_the_host(cx: &mut TestAppContext)
 
 mod devices;
 mod titlebar;
+
+#[gpui::test]
+fn zen_hides_the_hosted_status_bar_and_restores_it(cx: &mut TestAppContext) {
+    let (view, cx) = hosted(cx);
+    view.update_in(cx, |view, window, cx| {
+        view.status_bar_visible = true;
+        view.command(crate::Command::ToggleZenMode, window, cx);
+        let sizes = view.region_sizes(window);
+        assert!(sizes.zen);
+        assert_eq!(sizes.status_bar, 0.);
+        view.command(crate::Command::ToggleZenMode, window, cx);
+        let sizes = view.region_sizes(window);
+        assert!(!sizes.zen);
+        assert!(sizes.status_bar > 0.);
+    });
+}

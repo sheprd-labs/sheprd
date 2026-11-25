@@ -144,7 +144,7 @@ impl SheprdWindow {
             .when(running, |heading| {
                 heading.child(self.automation_action_button(
                     "automations-stop-run",
-                    "icons/x.svg",
+                    "icons/close.svg",
                     fl!("automations-stop-run"),
                     host,
                     Action::Stop { run },

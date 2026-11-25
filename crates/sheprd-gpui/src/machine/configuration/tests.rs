@@ -22,4 +22,5 @@ fn an_address_is_locally_administered_and_unicast() {
     }
 }
 
+mod guide;
 mod installer;

@@ -1,5 +1,6 @@
 //! Large files travel on an independent SSH stream; the daemon input lane stays
-//! responsive. Only completed copies can paste paths, into their captured target.
+//! responsive. Only completed copies can paste paths, into their captured target,
+//! which may sit in a tab the window no longer shows.
 // i18n: migrated
 
 use super::{SheprdWindow, pending_input::Delivery};
@@ -132,20 +133,19 @@ impl SheprdWindow {
                         InputTarget::Popup(_) => true,
                     }
             })
-            && self
-                .live
-                .surface
-                .as_ref()
-                .is_none_or(|surface| match &transfer.target {
-                    InputTarget::Pane(id) => {
-                        surface.popup.is_none()
-                            && surface.panes.iter().any(|pane| &pane.pane_id == id)
-                    }
-                    InputTarget::Popup(id) => surface
+            // A pane only has to still exist: switching to another tab, or a
+            // popup opening over it, leaves the copy running, and the paste
+            // goes to the pane by its ID, shown or not. A popup lives only
+            // while it is open.
+            && match &transfer.target {
+                InputTarget::Pane(_) => true,
+                InputTarget::Popup(id) => self.live.surface.as_ref().is_none_or(|surface| {
+                    surface
                         .popup
                         .as_ref()
-                        .is_some_and(|popup| &popup.terminal_id == id),
-                })
+                        .is_some_and(|popup| &popup.terminal_id == id)
+                }),
+            }
     }
 
     pub(crate) fn poll_file_transfer(&mut self, cx: &mut Context<Self>) {
@@ -263,9 +263,10 @@ impl SheprdWindow {
                     let current = this.file_transfer_current(transfer);
                     let cancelled = transfer.cancelled.load(Ordering::Acquire) || !current;
                     let error = match &result {
-                        Ok(paths)
-                            if !cancelled && this.menu.page.is_none() && this.input_ready() =>
-                        {
+                        // The paths go to the captured pane by its ID, so a
+                        // tab switch still waiting for its frame, which leaves
+                        // the shown tab unready for input, does not refuse them.
+                        Ok(paths) if !cancelled && this.menu.page.is_none() => {
                             let text = super::file_drop::quote_paths(
                                 &paths.iter().map(PathBuf::from).collect::<Vec<_>>(),
                             );

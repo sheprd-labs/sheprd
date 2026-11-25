@@ -176,29 +176,62 @@ pub async fn refuse_banned(State(shared): State<Shared>, request: Request, next:
 
 fn refused(reason: Refused) -> Response {
     match reason {
-        Refused::Banned => StatusCode::FORBIDDEN.into_response(),
+        Refused::Banned => (
+            StatusCode::FORBIDDEN,
+            [
+                (crate::endpoint::BAN_HEADER, "1"),
+                ("cache-control", "no-store"),
+            ],
+        )
+            .into_response(),
         Refused::PerAddress => StatusCode::TOO_MANY_REQUESTS.into_response(),
         Refused::Total => StatusCode::SERVICE_UNAVAILABLE.into_response(),
     }
 }
 
-/// Sends a challenge and reads the peer's proof: the nonce it signed over,
-/// and its hello. `None` when the peer does not answer in time or sends
-/// something else.
-async fn challenge(socket: &mut WebSocket) -> Option<([u8; NONCE_LEN], Hello)> {
+/// Only invalid application data earns a strike. A cancelled relay race,
+/// lost cellular connection, or handshake deadline is not evidence of abuse.
+async fn challenge(
+    socket: &mut WebSocket,
+    hub: &Arc<Hub>,
+    address: IpAddr,
+) -> Option<([u8; NONCE_LEN], Hello)> {
     let mut nonce = [0; NONCE_LEN];
     getrandom::fill(&mut nonce).ok()?;
-    let challenge = ToPeer::Challenge {
-        nonce: URL_SAFE_NO_PAD.encode(nonce),
-        version: PROTOCOL,
+    let exchange = async {
+        let challenge = ToPeer::Challenge {
+            nonce: URL_SAFE_NO_PAD.encode(nonce),
+            version: PROTOCOL,
+        };
+        if !send(socket, &challenge).await {
+            return None;
+        }
+        loop {
+            match socket.recv().await {
+                Some(Ok(Message::Text(text))) => {
+                    let hello = serde_json::from_str(&text).ok();
+                    if hello.is_none() {
+                        hub.offend(address, Offense::Malformed);
+                    }
+                    return hello;
+                }
+                Some(Ok(Message::Binary(_))) => {
+                    hub.offend(address, Offense::Malformed);
+                    return None;
+                }
+                // Axum automatically responds to pings; control frames do
+                // not replace the hello or extend its absolute deadline.
+                Some(Ok(Message::Ping(_) | Message::Pong(_))) => {}
+                Some(Ok(Message::Close(_)) | Err(_)) | None => return None,
+            }
+        }
     };
-    if !send(socket, &challenge).await {
-        return None;
-    }
-    match timeout(HELLO_TIMEOUT, socket.recv()).await {
-        Ok(Some(Ok(Message::Text(text)))) => Some((nonce, serde_json::from_str(&text).ok()?)),
-        _ => None,
-    }
+    // Bound the send as well as the receive, including a stream of pings.
+    timeout(HELLO_TIMEOUT, exchange)
+        .await
+        .ok()
+        .flatten()
+        .map(|hello| (nonce, hello))
 }
 
 async fn listen(
@@ -226,9 +259,8 @@ async fn listen(
 }
 
 async fn serve_listener(mut socket: WebSocket, hub: Arc<Hub>, address: IpAddr, host: Arc<str>) {
-    let Some((nonce, hello)) = challenge(&mut socket).await else {
-        hub.offend(address, Offense::Malformed);
-        return close(socket, code::PROTOCOL).await;
+    let Some((nonce, hello)) = challenge(&mut socket, &hub, address).await else {
+        return close_within(socket, code::PROTOCOL, HELLO_TIMEOUT).await;
     };
     let token = hello.token.as_deref().unwrap_or_default().as_bytes();
     let Some((key, signature)) = hello.decode() else {
@@ -346,9 +378,8 @@ async fn serve_dialer(
     host: Arc<str>,
     route: RouteId,
 ) {
-    let Some((nonce, hello)) = challenge(&mut socket).await else {
-        hub.offend(address, Offense::Malformed);
-        return close(socket, code::PROTOCOL).await;
+    let Some((nonce, hello)) = challenge(&mut socket, &hub, address).await else {
+        return close_within(socket, code::PROTOCOL, HELLO_TIMEOUT).await;
     };
     let Some((key, signature)) = hello.decode() else {
         hub.offend(address, Offense::Malformed);

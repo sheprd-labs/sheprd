@@ -49,6 +49,7 @@ impl Localize for Error {
                 path = path.display().to_string(),
                 error = source.to_string()
             ),
+            Self::Remote(error) => error.localize(),
             Self::Suspended(name) => fl!("error-machine-suspended", name = name.as_str()),
             Self::Unsupported => fl!("error-machine-unsupported"),
             Self::Write { path, source } => fl!(
@@ -125,6 +126,55 @@ impl Localize for crate::machine::install::Error {
             ),
             Error::NotSupported => fl!("error-machine-install-not-supported"),
             Error::Status(status) => fl!("error-machine-install-status", status = *status),
+        }
+    }
+}
+
+impl Localize for crate::machine::remote::Error {
+    fn localize(&self) -> String {
+        use crate::machine::remote::Error;
+        match self {
+            Error::Answer { host, source } => fl!(
+                "error-machine-remote-answer",
+                host = host.as_str(),
+                error = source.to_string()
+            ),
+            Error::Base64(source) => {
+                fl!("error-machine-remote-base64", error = source.to_string())
+            }
+            Error::Decode(source) => {
+                fl!("error-machine-remote-decode", error = source.to_string())
+            }
+            Error::Encode(source) => {
+                fl!("error-machine-remote-encode", error = source.to_string())
+            }
+            Error::Missing(host) => fl!("error-machine-remote-missing", host = host.as_str()),
+            Error::NotPng => fl!("error-machine-remote-not-png"),
+            Error::NotRunning(host) => {
+                fl!("error-machine-remote-not-running", host = host.as_str())
+            }
+            Error::Refused { host, message } => fl!(
+                "error-machine-remote-refused",
+                host = host.as_str(),
+                message = message.as_str()
+            ),
+            Error::Request { host, source } => fl!(
+                "error-machine-remote-request",
+                host = host.as_str(),
+                error = source.to_string()
+            ),
+            Error::Run { host, source } => fl!(
+                "error-machine-remote-run",
+                host = host.as_str(),
+                error = source.to_string()
+            ),
+            Error::TooLarge(host) => fl!("error-machine-remote-too-large", host = host.as_str()),
+            Error::TooOld(host) => fl!("error-machine-remote-too-old", host = host.as_str()),
+            Error::Write { path, source } => fl!(
+                "error-machine-write",
+                path = path.display().to_string(),
+                error = source.to_string()
+            ),
         }
     }
 }

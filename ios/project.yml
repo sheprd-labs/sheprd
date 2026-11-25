@@ -17,7 +17,7 @@ settings:
     CURRENT_PROJECT_VERSION: 1
     # Set your own team here or in Xcode (Signing & Capabilities).
     DEVELOPMENT_TEAM: ""
-    MARKETING_VERSION: 0.1.0
+    MARKETING_VERSION: 1.0.0
     SWIFT_STRICT_CONCURRENCY: complete
     SWIFT_VERSION: "6.0"
     TARGETED_DEVICE_FAMILY: "1,2"
@@ -229,6 +229,27 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: so.pen.herdr.remote.notifications
         SHEPRD_FILTERS_REPEATS: "NO"
 
+  SheprdRemoteTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [SheprdRemoteTests]
+    dependencies:
+      - target: SheprdRemote
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+
+  SheprdRemoteUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [SheprdRemoteUITests]
+    dependencies:
+      - target: SheprdRemote
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: SheprdRemote
+
   SheprdRemoteWidgets:
     type: app-extension
     platform: iOS
@@ -266,6 +287,8 @@ schemes:
     build:
       targets:
         SheprdRemote: all
+    test:
+      targets: [SheprdRemoteTests, SheprdRemoteUITests]
     run:
       config: Debug
     archive:

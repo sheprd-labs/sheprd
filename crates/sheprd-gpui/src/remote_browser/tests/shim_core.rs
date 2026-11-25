@@ -48,7 +48,7 @@ fn labels(home: &tempfile::TempDir) -> (Vec<String>, Vec<(String, String)>) {
 #[test]
 fn in_a_herdr_2_terminal_a_request_is_labels_on_that_terminal() {
     let address = format!("https://example.com/{}", "a".repeat(100));
-    let (home, output) = run(&["browser", "open", "--no-focus", &address]);
+    let (home, output) = run(&["browser", "open", &address]);
     assert!(output.status.success(), "{output:?}");
     let (args, labels) = labels(&home);
     assert_eq!(&args[..2], ["label", "t3"]);

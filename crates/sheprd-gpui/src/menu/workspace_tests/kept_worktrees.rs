@@ -51,6 +51,7 @@ fn window<'a>(
                     key: Path::new(MAIN).join(".git").display().to_string(),
                     label: "app".into(),
                     linked,
+                    root: folder.into(),
                 }),
             );
             let location =
@@ -377,6 +378,7 @@ fn another_hosts_kept_workspace_runs_its_git_on_that_host(cx: &mut TestAppContex
                     key: "/home/me/app/.git".into(),
                     label: "app".into(),
                     linked: true,
+                    root: String::new(),
                 }),
             );
             view.dismiss_menu(window, cx);

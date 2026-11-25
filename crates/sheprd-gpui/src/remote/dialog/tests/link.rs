@@ -8,6 +8,7 @@ fn linking_daemon(_: &Path, request: &Request) -> Result<Response, control::Erro
         Request::Pair => Response::Offer(offer()),
         Request::Pairing { .. } => Response::Pairing(PairingState::Waiting {
             expires_in_ms: 60_000,
+            nearby_code: None,
         }),
         Request::PairLink { .. } => Response::PairLink {
             link: "sheprd-pair:abc".into(),

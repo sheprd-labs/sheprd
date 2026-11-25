@@ -477,6 +477,16 @@ impl Store {
         Some(id)
     }
 
+    pub(crate) fn open_location(
+        &mut self,
+        scope: Scope,
+        workspace: &str,
+        location: Location,
+    ) -> Option<TabId> {
+        self.opened_before(&scope, workspace, None, &location)
+            .or_else(|| self.open(scope, workspace, Some(location), None))
+    }
+
     /// Opens a tab for the strips, or returns `None` when the app already
     /// holds the most it keeps.
     pub(crate) fn open(

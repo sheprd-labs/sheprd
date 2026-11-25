@@ -9,6 +9,7 @@ pub(crate) struct Stores {
     agent_skill: crate::agent_skill::AgentSkill,
     app_rename: crate::app_rename::AppRename,
     browser_tabs: crate::browser::Store,
+    chat_drafts: crate::chat::drafts::Drafts,
     chat_modes: crate::chat::modes::Remembered,
     dispatch_history: crate::dispatch::History,
     fan_out_journal: crate::fan_out::Journal,
@@ -51,6 +52,7 @@ impl Stores {
             agent_skill: read(personal, crate::agent_skill::AgentSkill::load),
             app_rename: read(personal, crate::app_rename::AppRename::load),
             browser_tabs,
+            chat_drafts: read(personal, crate::chat::drafts::Drafts::load),
             chat_modes: read(personal, crate::chat::modes::Remembered::load),
             dispatch_history: read(personal, crate::dispatch::History::load),
             fan_out_journal: read(personal, crate::fan_out::Journal::load),
@@ -90,6 +92,7 @@ impl Stores {
         self.dispatch_history.install(cx);
         self.worktree_landing.install(cx);
         self.chat_modes.install(cx);
+        self.chat_drafts.install(cx);
         self.fan_out_journal.install(cx);
         self.agent_skill.install_global(cx);
         self.app_rename.install(cx);

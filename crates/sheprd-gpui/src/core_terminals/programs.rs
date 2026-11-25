@@ -35,6 +35,7 @@ impl SheprdWindow {
             return Err(crate::Error::StaleWorkspace);
         }
         let purpose = Purpose::Tab {
+            focus: true,
             group: None,
             scope: scope_of(self),
             workspace: id.to_owned(),

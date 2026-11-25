@@ -24,6 +24,8 @@ public enum TermWait: Hashable, Sendable {
         switch link {
         case let .offline(reason)?:
             self = .unreachable(reason)
+        case let .relayBanned(relay)?:
+            self = .unreachable("\(relay.host) banned your network address.")
         case .revoked?:
             self = .unreachable("This phone is no longer paired with the computer.")
         case .outdated?:

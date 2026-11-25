@@ -29,6 +29,7 @@ fn teleport_opens_from_a_kept_workspace(cx: &mut gpui::TestAppContext) {
                     key: "/src/app/.git".into(),
                     label: "app".into(),
                     linked: true,
+                    root: String::new(),
                 }),
             );
             view.endpoints.push(crate::endpoint::Endpoint::new(

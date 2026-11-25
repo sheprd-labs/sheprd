@@ -56,6 +56,7 @@ fn the_shown_panes_branch_comes_from_the_shared_checkout_reader(cx: &mut TestApp
                 key: "/src/app/.git".into(),
                 label: "app".into(),
                 linked: true,
+                root: String::new(),
             }),
         );
         tab
@@ -71,6 +72,10 @@ fn the_shown_panes_branch_comes_from_the_shared_checkout_reader(cx: &mut TestApp
             assert_eq!(input.checkout.as_deref(), Some(FOLDER));
             // An empty group still needs the workspace's current checkout.
             view.core_terminals.shown = None;
+            view.refresh_core_session(cx);
+            assert!(view.core_terminals.checkouts.get(FOLDER).is_some());
+            // The persisted folder continues to drive metadata after last close.
+            Store::update(cx, |store| store.close(tab));
             view.refresh_core_session(cx);
             assert!(view.core_terminals.checkouts.get(FOLDER).is_some());
         });

@@ -3,6 +3,7 @@ import SwiftUI
 
 /// What the app is creating, shown as a sheet over every tab.
 enum Creating: Identifiable, Hashable {
+    case project(device: String)
     /// A workspace, on `device` when the person came from that computer,
     /// as a new worktree of the checkout in `folder` when they came from
     /// its repository, in that repository's Herdr `session` when its
@@ -14,6 +15,7 @@ enum Creating: Identifiable, Hashable {
 
     var id: String {
         switch self {
+        case let .project(device): "project/\(device)"
         case let .workspace(device, folder, session): "workspace/\(device ?? "")/\(folder ?? "")/\(session ?? "")"
         case let .chat(device, workspace, _, _): "chat/\(device)/\(workspace)"
         }
@@ -450,7 +452,7 @@ extension AppModel {
 
 /// The first prompt of a new workspace or chat: the form's last row, which
 /// grows with what is typed.
-private struct FirstPromptField: View {
+struct FirstPromptField: View {
     /// The row the form scrolls to as the field grows.
     static let id = "first-prompt"
 
@@ -467,7 +469,7 @@ extension View {
     /// Keeps the first prompt's row in view as it grows: a form does not
     /// scroll a growing field out from under the keyboard by itself, so its
     /// new lines were typed out of sight.
-    fileprivate func followsFirstPrompt(_ prompt: String) -> some View {
+    func followsFirstPrompt(_ prompt: String) -> some View {
         ScrollViewReader { proxy in
             onChange(of: prompt) {
                 proxy.scrollTo(FirstPromptField.id, anchor: .bottom)

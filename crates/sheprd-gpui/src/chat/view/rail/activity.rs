@@ -357,7 +357,7 @@ impl SheprdWindow {
                 theme.ink(theme.palette[3]),
             ),
             ActivityState::Finished => ("icons/status-solid-done.svg", theme.ink(theme.palette[2])),
-            ActivityState::Failed => ("icons/x.svg", theme.ink(theme.palette[1])),
+            ActivityState::Failed => ("icons/error.svg", theme.ink(theme.palette[1])),
             ActivityState::Killed => ("icons/status-outline-idle.svg", theme.muted),
         };
         svg()

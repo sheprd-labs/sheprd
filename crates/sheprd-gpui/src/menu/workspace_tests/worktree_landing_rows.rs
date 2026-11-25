@@ -73,3 +73,44 @@ fn no_chat_row_while_chats_are_off(cx: &mut gpui::TestAppContext) {
     assert!(cx.debug_bounds("worktree-landing-terminal-row").is_some());
     assert!(cx.debug_bounds("worktree-landing-chat-row").is_none());
 }
+
+#[gpui::test]
+fn probed_chat_agents_show_in_chat_row(cx: &mut gpui::TestAppContext) {
+    let (view, cx) = cx.add_window_view(sidebar::layout_tests::fixture_window);
+    cx.simulate_resize(gpui::size(gpui::px(900.), gpui::px(700.)));
+    cx.update(|window, cx| {
+        Remembered::record(Landing::Chat(Agent::Antigravity), cx);
+        view.update(cx, |view, cx| {
+            let snapshot = std::sync::Arc::make_mut(view.live.snapshot.as_mut().unwrap());
+            snapshot.workspaces = sidebar::layout_tests::snapshot(7).workspaces;
+            view.live.status = crate::state::ConnectionStatus::Connected;
+            view.config.features.acp_chats = true;
+            view.endpoints[0].connection.target = sheprd_client::ConnectTarget::Local;
+            view.live.local_daemon_peer = true;
+            view.endpoints[0].live = view.live.clone();
+            view.chats.program = crate::chat::Program::Found("/opt/herdr-acp".into());
+            let endpoint = view.endpoints[0].id.clone();
+            view.chats.agents.record(
+                &endpoint,
+                vec![
+                    Agent::Antigravity,
+                    Agent::Claude,
+                    Agent::Gemini,
+                    Agent::Muse,
+                ],
+            );
+            view.open_workspace_menu("w3", Default::default(), window, cx);
+            view.open_workspace_dialog(WorkspaceAction::NewWorktree, window, cx);
+            let picker = view.menu.landing.as_mut().unwrap();
+            assert_eq!(picker.chosen, Landing::Chat(Agent::Antigravity));
+        });
+        window.draw(cx).clear(cx);
+    });
+    assert!(
+        cx.debug_bounds("worktree-landing-chat-antigravity")
+            .is_some()
+    );
+    assert!(cx.debug_bounds("worktree-landing-chat-claude").is_some());
+    assert!(cx.debug_bounds("worktree-landing-chat-gemini").is_some());
+    assert!(cx.debug_bounds("worktree-landing-chat-muse").is_some());
+}

@@ -11,7 +11,7 @@
 //! notifications = "generic"    # or "excerpt": a short excerpt in each push
 //! live_activities = "detailed" # or "generic": no chat names or steps
 //! device_idle_days = 30         # 0 never forgets a device
-//! presence = false             # hold phone alerts while its owner is at this Mac
+//! presence = true              # hold phone alerts while its owner is at this computer
 //! push_relay = true            # iPhone pushes through push.sheprd.org, the only way they go
 //! relays = ["https://relay.example.org"]  # reach this computer from any network
 //! github_hosts = ["ghe.example.com"]       # Enterprise Server hosts besides gh's
@@ -63,8 +63,10 @@ pub struct RemoteConfig {
     pub live_activities: ActivityDetail,
     pub notifications: Privacy,
     pub port: u16,
-    /// Whether paired iPhones near this Mac over Bluetooth hold their
-    /// alerts while the desktop is in use (`herdr-nearby`, macOS only).
+    /// Whether paired iPhones near this computer over Bluetooth hold their
+    /// alerts while the desktop is in use (`sheprd-nearby`), here and on
+    /// the hosts this app pairs them with. On by default: a phone is
+    /// for when its owner is away.
     pub presence: bool,
     /// Whether iPhone alerts and Live Activities go through the Sheprd push
     /// relay, sealed (`docs/apns-relay-plan.md`, Opt-in). It is the only way
@@ -94,7 +96,7 @@ impl Default for RemoteConfig {
             live_activities: ActivityDetail::default(),
             notifications: Privacy::default(),
             port: DEFAULT_PORT,
-            presence: false,
+            presence: true,
             push_relay: true,
             relays: Vec::new(),
             // keep-sorted end

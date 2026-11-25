@@ -37,6 +37,7 @@ pub(super) fn status() -> Status {
         connected: 1,
         relays: Default::default(),
         github_asks: 0,
+        voice_asks: 0,
     }
 }
 

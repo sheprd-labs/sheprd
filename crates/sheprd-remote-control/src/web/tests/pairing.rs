@@ -128,6 +128,9 @@ async fn a_phone_pairs_with_the_desktops_approval_and_signs_in() {
     let origins: Value = serde_json::from_str(&origins).unwrap();
     assert_eq!(origins["origins"], json!(state.origins()));
 
+    #[cfg(unix)]
+    voice_exchange(&state, &claim_id, &token, dir.path()).await;
+
     // Revoking from the desktop ends the session at once.
     control(
         &state,
@@ -188,4 +191,73 @@ async fn registered_live_activity_tokens_are_read_without_deadlock() {
     .unwrap();
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].0, device);
+}
+
+#[cfg(unix)]
+async fn voice_exchange(state: &Shared, claim: &str, bearer: &str, dir: &std::path::Path) {
+    control(state, Request::Status);
+    let desktop = state.clone();
+    let store = crate::app::voice::Accounts::isolated(dir.into());
+    let worker = tokio::spawn(async move {
+        loop {
+            if let Response::VoiceAsks { asks } = control(&desktop, Request::VoiceAsks) {
+                for ask in asks {
+                    let answer = store.exchange(ask.offer).unwrap();
+                    control(
+                        &desktop,
+                        Request::VoiceAnswer {
+                            id: ask.id,
+                            answer: Some(answer),
+                        },
+                    );
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+        }
+    });
+    let route = "/api/v2/pair/voice";
+    let ask = |has_account, account: Value| {
+        let mut request = post(
+            route,
+            json!({"claim":claim,"has_account":has_account,"account":account}),
+        );
+        request.headers_mut().insert(
+            header::AUTHORIZATION,
+            format!("Bearer {bearer}").parse().unwrap(),
+        );
+        request
+    };
+    let unsigned = post(route, json!({"claim":claim,"has_account":false}));
+    assert_eq!(send(state, unsigned).await.0, StatusCode::UNAUTHORIZED);
+    let mut browser = ask(false, Value::Null);
+    browser
+        .headers_mut()
+        .insert(header::ORIGIN, ORIGIN.parse().unwrap());
+    assert_eq!(send(state, browser).await.0, StatusCode::UNAUTHORIZED);
+    let (status, _, body) = send(state, ask(true, Value::Null)).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        serde_json::from_str::<Value>(&body).unwrap(),
+        json!({"account":null,"wants_account":true})
+    );
+    let original = json!({"provider":"openai","voice":"marin","key":"fixture-key"});
+    let (status, _, _) = send(state, ask(true, original.clone())).await;
+    assert_eq!(status, StatusCode::OK);
+    let (_, _, body) = send(state, ask(true, Value::Null)).await;
+    assert_eq!(
+        serde_json::from_str::<Value>(&body).unwrap(),
+        json!({"account":null,"wants_account":false})
+    );
+    let other = json!({"provider":"deepgram","voice":"aura-2-thalia-en","key":"other-fixture"});
+    assert_eq!(send(state, ask(true, other)).await.0, StatusCode::OK);
+    let (status, headers, body) = send(state, ask(false, Value::Null)).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+    assert_eq!(
+        serde_json::from_str::<Value>(&body).unwrap()["account"],
+        original
+    );
+    let (_, _, poll) = send(state, get(&format!("/api/pair/claim/{claim}"))).await;
+    assert!(!poll.contains("fixture-key"));
+    worker.abort();
 }

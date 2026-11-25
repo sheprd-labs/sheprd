@@ -29,6 +29,7 @@ fn shown_remote_checkout_is_host_scoped_and_never_a_local_git_input(cx: &mut Tes
             key: "/remote/.git".into(),
             label: "repo".into(),
             linked: true,
+            root: String::new(),
         };
         view.core_terminals.seed_checkout_for_test(
             folder,
@@ -134,6 +135,7 @@ fn ssh_only_prefetch_and_menu_use_the_hosts_account_without_local_git(cx: &mut T
                         key: "/remote/.git".into(),
                         label: "api".into(),
                         linked: true,
+                        root: String::new(),
                     }),
                 );
             let location =

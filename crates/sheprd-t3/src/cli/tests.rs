@@ -78,3 +78,6 @@ fn server_text_cannot_drive_the_terminal() {
     assert_eq!(plain("a\tb\nc\u{9b}d"), "a\u{fffd}b\u{fffd}c\u{fffd}d");
     assert_eq!(plain("é 日本"), "é 日本");
 }
+
+mod new;
+mod steer;

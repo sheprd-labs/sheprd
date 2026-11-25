@@ -90,37 +90,35 @@ struct UnreadDot: View {
     }
 }
 
-/// Above Home's list while any agent is unread: shows only those, or
-/// marks them all read.
-struct UnreadBar: View {
+/// Shows the scoped unread count beside Home's filters. Keep the menu
+/// available at zero while filtering, so the full list is always reachable.
+struct UnreadMenu: View {
     @Environment(AppModel.self) private var model
-    /// The unread agents among those the filters leave.
     var unread: [PaneKey]
     @Binding var only: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
-            Button {
-                withAnimation(.snappy) { only.toggle() }
-            } label: {
-                Text("Unread \(unread.count)")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 12).padding(.vertical, 6)
-                    .foregroundStyle(only ? Color.white : Color.primary)
-                    .background(only ? AnyShapeStyle(.tint) : AnyShapeStyle(.fill.tertiary), in: .capsule)
-            }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(only ? .isSelected : [])
-            Spacer(minLength: 0)
-            Button("Mark All Read") {
+        Menu {
+            Toggle("Unread Only", isOn: $only.animation(.snappy))
+            Button("Mark All Read", systemImage: "envelope.open") {
                 model.setRead(true, unread)
                 withAnimation(.snappy) { only = false }
             }
-            .font(.subheadline)
             .disabled(unread.isEmpty)
+        } label: {
+            HStack(spacing: 5) {
+                UnreadDot(unread: !unread.isEmpty)
+                    .tint(Color.accentColor)
+                Text(unread.count, format: .number)
+                    .font(.footnote.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+            }
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(Color.accentColor.opacity(only ? 0.15 : 0), in: Capsule())
         }
-        .listRowBackground(Color.clear)
-        .listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4))
-        .listRowSeparator(.hidden)
+        .accessibilityLabel("Unread \(unread.count)")
+        .accessibilityValue(only ? Text("Unread Only") : Text("All Agents"))
     }
 }

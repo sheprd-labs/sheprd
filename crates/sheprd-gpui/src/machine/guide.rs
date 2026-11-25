@@ -4,8 +4,12 @@
 //! through the agent and moves on by itself; signing in is the one it cannot
 //! see until the agent runs, so the user says when it is done.
 //!
-//! A machine made from an image starts with its guide open (the `GUIDE`
-//! file in its folder), and Settings opens it for any machine. The guide
+//! A machine just installed starts with its guide open (the `GUIDE` file in
+//! its folder), and Settings opens it for any machine. One made from an image
+//! whose agent was seen set up has none; one made from an image saved before
+//! Sheprd kept that note opens it quietly ([`Opening::Quiet`]), as the image
+//! may well be set up. Once an agent answers with both permissions, its
+//! machine is marked ready, and so is every image saved from it. The guide
 //! lives here, in memory, so every window showing the machine agrees.
 
 use super::{Name, Status, agent, image, status, store};
@@ -14,11 +18,24 @@ use gpui::{App, AsyncApp};
 use std::{
     cell::{Cell, RefCell},
     collections::HashMap,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 /// How often a waiting step asks the agent again.
 const EVERY: Duration = Duration::from_secs(2);
+/// How long a quiet guide waits, while its machine runs, for the agent to
+/// say whether it is needed before it shows anyway.
+const QUIET: Duration = Duration::from_secs(60);
+
+/// How a guide opens.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Opening {
+    /// At once: the user asked for it, or the machine was just installed.
+    Shown,
+    /// Out of sight until the agent answers: closed for good if the machine
+    /// is set up already, shown if it is not or does not answer in [`QUIET`].
+    Quiet,
+}
 
 /// Where a machine's setup stands. Declared in the order the steps come.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -66,6 +83,14 @@ struct Guide {
     /// failed ask keeps it, as the agent restarts to take a permission.
     permissions: Option<(bool, bool)>,
     asking: bool,
+    /// Not shown yet: see [`Opening::Quiet`].
+    quiet: bool,
+    /// Opened quietly and not asked for since: the agent's first answer
+    /// settles it, even after [`QUIET`] showed it.
+    from_image: bool,
+    /// Since when a quiet guide has seen its machine running without a
+    /// break: a stop or a suspend starts the wait over.
+    running_since: Option<Instant>,
     saving: bool,
     saved: Option<Name>,
     failure: Option<String>,
@@ -90,10 +115,12 @@ fn with<T>(name: &Name, change: impl FnOnce(&mut Guide) -> T) -> Option<T> {
     GUIDES.with(|guides| guides.borrow_mut().get_mut(name).map(change))
 }
 
-/// Machine `name`'s guide, if it is open.
+/// Machine `name`'s guide, if it is open and not quiet.
 pub(crate) fn shown(name: &Name) -> Option<Shown> {
     GUIDES.with(|guides| {
-        guides.borrow().get(name).map(|guide| Shown {
+        let guides = guides.borrow();
+        let guide = guides.get(name).filter(|guide| !guide.quiet);
+        guide.map(|guide| Shown {
             step: Step::of(guide.signed_in, guide.permissions, guide.saved.is_some()),
             saving: guide.saving,
             saved: guide.saved.clone(),
@@ -102,11 +129,14 @@ pub(crate) fn shown(name: &Name) -> Option<Shown> {
     })
 }
 
-/// Opens machine `name`'s guide, and starts asking its agent.
-pub(crate) fn begin(name: &Name, cx: &mut App) {
+/// Opens machine `name`'s guide as `opening` says, and starts asking its
+/// agent. Asking for one open quietly shows it.
+pub(crate) fn begin(name: &Name, opening: Opening, cx: &mut App) {
     let fresh = GUIDES.with(|guides| {
         let mut guides = guides.borrow_mut();
-        if guides.contains_key(name) {
+        if let Some(guide) = guides.get_mut(name) {
+            guide.quiet &= opening == Opening::Quiet;
+            guide.from_image &= opening == Opening::Quiet;
             return None;
         }
         let generation = OPENED.get() + 1;
@@ -115,6 +145,8 @@ pub(crate) fn begin(name: &Name, cx: &mut App) {
             name.clone(),
             Guide {
                 generation,
+                quiet: opening == Opening::Quiet,
+                from_image: opening == Opening::Quiet,
                 ..Guide::default()
             },
         );
@@ -204,20 +236,88 @@ fn finish(name: &Name, saved: Result<Name, String>, cx: &mut App) {
     cx.refresh_windows();
 }
 
+/// Notes off the main thread that machine `name`'s agent is set up.
+fn mark_ready(name: &Name, cx: &mut App) {
+    let name = name.clone();
+    cx.background_executor()
+        .spawn(async move {
+            if let Err(error) = store::mark_ready(&name) {
+                tracing::warn!(%name, %error, "Cannot note that a machine is set up for agents");
+            }
+        })
+        .detach();
+}
+
+/// What the agent's answer did to a guide.
+#[derive(Debug, PartialEq, Eq)]
+enum Answered {
+    /// Nothing to show differently.
+    Same,
+    /// A step moved on, or a quiet guide shows.
+    Changed { ready: bool },
+    /// A guide opened quietly found its machine set up already: it closes
+    /// for good.
+    Settled,
+}
+
+impl Guide {
+    /// Takes the agent's answer, `permissions` when it gave one.
+    fn answered(&mut self, permissions: Option<(bool, bool)>) -> Answered {
+        let Some(permissions) = permissions else {
+            return Answered::Same;
+        };
+        let ready = permissions == (true, true);
+        let quiet = std::mem::take(&mut self.quiet);
+        // The first answer of a guide opened quietly speaks for the image,
+        // however long the agent took to give it.
+        if ready && self.from_image && self.permissions.is_none() {
+            return Answered::Settled;
+        }
+        self.signed_in = true;
+        let before = self.permissions.replace(permissions);
+        if before == Some(permissions) && !quiet {
+            return Answered::Same;
+        }
+        Answered::Changed {
+            ready: ready && before != Some(permissions),
+        }
+    }
+
+    /// Shows a quiet guide whose machine has run for [`QUIET`] without a
+    /// break at `now`, the agent never answering; whether it did.
+    fn waited(&mut self, running: bool, now: Instant) -> bool {
+        if !running {
+            self.running_since = None;
+        }
+        if !self.quiet || !running {
+            return false;
+        }
+        let since = *self.running_since.get_or_insert(now);
+        self.quiet = now.duration_since(since) < QUIET;
+        !self.quiet
+    }
+}
+
 /// Asks machine `name`'s agent where setup stands, every [`EVERY`] while
 /// it runs, until its guide closes, opens again anew, or needs the agent no
 /// more.
 fn watch(name: Name, generation: u64, cx: &mut App) {
     cx.spawn(async move |cx: &mut AsyncApp| {
         loop {
-            let ask = cx.update(|_| {
-                let waiting = with(&name, |guide| {
+            let ask = cx.update(|cx| {
+                let running = status(&name) == Status::Running;
+                let (waiting, shows) = with(&name, |guide| {
                     (guide.generation == generation).then(|| {
-                        !guide.asking
-                            && Step::of(guide.signed_in, guide.permissions, false) < Step::Save
+                        let shows = guide.waited(running, Instant::now());
+                        let waiting = !guide.asking
+                            && Step::of(guide.signed_in, guide.permissions, false) < Step::Save;
+                        (waiting, shows)
                     })
                 })??;
-                Some(waiting && status(&name) == Status::Running)
+                if shows {
+                    cx.refresh_windows();
+                }
+                Some(waiting && running)
             });
             match ask {
                 None => break,
@@ -227,22 +327,29 @@ fn watch(name: Name, generation: u64, cx: &mut App) {
                         agent::hello(&name, cx)
                     });
                     let answer = asked.await;
+                    let permissions = answer
+                        .ok()
+                        .map(|hello| (hello.accessibility, hello.screen_recording));
                     cx.update(|cx| {
-                        let changed = with(&name, |guide| {
-                            if guide.generation != generation {
-                                return false;
-                            }
-                            guide.asking = false;
-                            let before = guide.permissions;
-                            if let Ok(hello) = &answer {
-                                guide.signed_in = true;
-                                guide.permissions =
-                                    Some((hello.accessibility, hello.screen_recording));
-                            }
-                            before != guide.permissions
+                        let answered = with(&name, |guide| {
+                            (guide.generation == generation).then(|| {
+                                guide.asking = false;
+                                guide.answered(permissions)
+                            })
                         });
-                        if changed == Some(true) {
-                            cx.refresh_windows();
+                        match answered.flatten() {
+                            None | Some(Answered::Same) => {}
+                            Some(Answered::Changed { ready }) => {
+                                if ready {
+                                    mark_ready(&name, cx);
+                                }
+                                cx.refresh_windows();
+                            }
+                            Some(Answered::Settled) => {
+                                tracing::info!(%name, "A machine made from an image was set up already; its guide closes");
+                                mark_ready(&name, cx);
+                                close(&name, cx);
+                            }
                         }
                     });
                 }

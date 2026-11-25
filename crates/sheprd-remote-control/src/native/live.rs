@@ -4,6 +4,7 @@
 //! writes typed ones, so it is tested without a WebSocket.
 
 use super::{
+    drive::Seat,
     home,
     model::{self, ChatSnapshot},
     wire::{ByeReason, ClientMessage, MAX_SCROLL_LINES, ServerMessage, Step, TermSize, View},
@@ -159,12 +160,26 @@ pub(crate) async fn run(
     outbound: Outbound,
 ) {
     let mut views = Views::default();
+    let seat = Seat::new(&state.drivers);
     let lost = access_lost(&state, token.expose_secret(), &device);
     tokio::pin!(lost);
     loop {
         tokio::select! {
             message = inbound.recv() => match message {
                 Some(message) => {
+                    state.drivers.touch(seat.id, now_ms());
+                    let message = match message {
+                        ClientMessage::AgentControl { allowed } => {
+                            tracing::info!(allowed, "a phone set whether agents may drive it");
+                            seat.allow(allowed, &device, &outbound);
+                            continue;
+                        }
+                        ClientMessage::Driven { id, outcome } => {
+                            state.drivers.answer(seat.id, id, outcome);
+                            continue;
+                        }
+                        message => message,
+                    };
                     if let Some((error, view)) = handle(&state, &device, &mut views, message, &outbound) {
                         // The phone shows it on the view; this says why a
                         // view never came when only the computer is at hand.
@@ -214,6 +229,8 @@ fn handle(
             let background = background && matches!(view, View::Chat { .. });
             (view, since, size, background)
         }
+        // `run` takes them before they get here.
+        ClientMessage::AgentControl { .. } | ClientMessage::Driven { .. } => return None,
         ClientMessage::TermScroll { pane, lines } => {
             let refused = |message| Some((message, Some(View::Term { pane: pane.clone() })));
             if lines == 0 {
@@ -341,6 +358,7 @@ async fn follow_home(state: Shared, device: DeviceId, out: Outbound) {
     let mut load = state.load.clone();
     let mut tags = state.tags.subscribe();
     let mut shortcuts = state.shortcuts.subscribe();
+    let mut labels = state.labels.subscribe();
     let mut favorites = state.favorites.subscribe();
     let mut opened = state.opened.changed();
     let mut lending = state.lending.watch();
@@ -369,6 +387,7 @@ async fn follow_home(state: Shared, device: DeviceId, out: Outbound) {
                 changed = pull_requests.changed() => if changed.is_err() { return } else { break },
                 changed = tags.changed() => if changed.is_err() { return } else { break },
                 changed = shortcuts.changed() => if changed.is_err() { return } else { break },
+                changed = labels.changed() => if changed.is_err() { return } else { break },
                 changed = favorites.changed() => if changed.is_err() { return } else { break },
                 changed = opened.changed() => if changed.is_err() { return } else { break },
                 changed = previews.changed() => if changed.is_err() { return } else { break },

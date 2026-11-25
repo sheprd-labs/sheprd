@@ -8,7 +8,9 @@ pub mod cloud;
 pub mod events;
 pub mod fleet;
 pub mod hosts;
+pub mod lend;
 pub mod mods;
+pub mod phone;
 pub mod remote;
 pub mod settings;
 pub mod tabs;
@@ -36,8 +38,10 @@ pub enum Placement {
 /// 15: `machine` `agent`, `exec`, `screenshot`, `click`, `type`, and `key`.
 /// 16: `via` on the caller and on feedback, for requests `sheprd mcp` relays.
 /// 17: `chat` `favorite`.
-/// 18: `fleet`. 19: `chat` `new` `prompt`.
-pub const PROTOCOL_VERSION: u32 = 19;
+/// 18: `fleet`. 19: `chat` `new` `prompt`. 20: `phone`. 21: Settings navigation and agent guidance.
+/// 22: `machine` `start` and `on` (a virtual Mac on another computer),
+/// `via` `lend`, and `lending`.
+pub const PROTOCOL_VERSION: u32 = 22;
 
 /// Older apps and clients know only tabs, so a tab is left off the wire.
 fn is_tab(placement: &Placement) -> bool {
@@ -73,6 +77,7 @@ macro_rules! relay {
             Request::Cloud(call) => $($borrow)+ call.caller.via,
             Request::Remote(call) => $($borrow)+ call.caller.via,
             Request::Fleet(call) => $($borrow)+ call.caller.via,
+            Request::Phone(call) => $($borrow)+ call.caller.via,
             Request::Mod(call) => $($borrow)+ call.caller.via,
         }
     };
@@ -121,6 +126,8 @@ pub enum Request {
     Mod(Call<mods::ModOp>),
     #[serde(rename = "fleet")]
     Fleet(Call<fleet::FleetOp>),
+    #[serde(rename = "phone")]
+    Phone(Call<phone::Ask>),
 }
 
 /// A `herdr-gpui://` link the shell started a second copy of the app with.
@@ -152,6 +159,7 @@ impl Request {
             Self::Cloud(call) => call.op.wait_seconds(),
             Self::Remote(call) => call.op.wait_seconds(),
             Self::Fleet(call) => call.op.wait_seconds(),
+            Self::Phone(_) => phone::WAIT_SECONDS,
             _ => 0,
         };
         wait.min(MAX_WAIT_SECONDS)
@@ -221,17 +229,39 @@ pub enum Via {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         client: Option<String>,
     },
+    /// `sheprd machine lend`, run over SSH by another computer's Sheprd
+    /// that borrows a virtual Mac here. `borrower` names that computer and
+    /// `owner` the pane or terminal there that asked; together they hold a
+    /// reservation, which never equals a local pane's. The app refuses
+    /// everything but virtual Mac requests from it, and those too while it
+    /// does not lend.
+    Lend { borrower: String, owner: String },
 }
 
 /// The longest MCP client name a request carries.
 pub const MAX_CLIENT_NAME: usize = 64;
+/// The longest borrower or owner name a lent request carries.
+pub const MAX_LEND_NAME: usize = 128;
 
 impl Via {
+    /// The borrowing computer and its owner, for a lent request.
+    pub fn lend(&self) -> Option<(&str, &str)> {
+        match self {
+            Self::Lend { borrower, owner } => Some((borrower, owner)),
+            Self::Mcp { .. } => None,
+        }
+    }
+
     /// Whether the relay respects the bounds above.
     pub fn is_valid(&self) -> bool {
         match self {
             Self::Mcp { client } => client.as_deref().is_none_or(|name| {
                 name.len() <= MAX_CLIENT_NAME && !name.chars().any(char::is_control)
+            }),
+            Self::Lend { borrower, owner } => [borrower, owner].iter().all(|name| {
+                !name.is_empty()
+                    && name.len() <= MAX_LEND_NAME
+                    && !name.chars().any(char::is_control)
             }),
         }
     }
@@ -369,6 +399,9 @@ pub enum Response {
     },
     Fleet {
         reply: fleet::Reply,
+    },
+    Phone {
+        answer: phone::Answer,
     },
     Error {
         code: ErrorCode,

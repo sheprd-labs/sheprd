@@ -69,7 +69,7 @@ struct HostsTests {
         #expect(computer.origins == ["https://b:7443", "https://c:7443"])
         #expect(computer.fingerprint == Self.devbox)
         #expect(computer.keyKind == .software && computer.keyData == Data([1, 2, 3]))
-        #expect(!computer.presence)
+        #expect(computer.presence)
         #expect(computer.via == Self.laptop)
     }
 
@@ -106,6 +106,22 @@ struct HostsTests {
         // Devbox is paired with a key this phone does not hold.
         #expect(pairings.offers(held: []).map(\.host) == ["ssh:devbox", "coder:ws1", "ssh:old"])
         #expect(pairings.offers(held: [Self.computer(Self.devbox)]).map(\.host) == ["coder:ws1", "ssh:old"])
+    }
+
+    @Test func hidesAnOfferedComputerAlreadyOnThePhone() {
+        var direct = Self.computer(Self.devbox)
+        direct.name = "m4max"
+        let offer = HostLink(host: "ssh:studio-profile", name: "M4Max", state: .offered)
+        let other = Self.link("ssh:lab", .offered)
+        var pairings = HostPairings()
+        _ = pairings.update([offer, other], vouching: Self.laptop, held: [direct], at: Self.start)
+        #expect(pairings.offers(held: [direct]) == [other])
+        #expect(pairings.offers(held: []) == [offer, other])
+
+        // Once the host supplies a key, two computers can share a name.
+        let distinct = HostLink(host: offer.host, name: offer.name, state: Self.paired(fingerprint: Self.laptop))
+        _ = pairings.update([distinct], vouching: Self.laptop, held: [direct], at: Self.start)
+        #expect(pairings.offers(held: [direct]) == [distinct])
     }
 
     @Test func followsAPostedKeyUntilTheHostHoldsIt() {

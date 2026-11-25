@@ -34,7 +34,69 @@ use sheprd_apns::{SealedPush, Sealer};
 /// Text no shorter than this is left alone when cutting to fit.
 const MIN_TEXT: usize = 8;
 
+/// Assigned before spawning the sender, so retries and reordered tasks retain
+/// the host's original ordering. Unix microseconds survive daemon restarts.
+pub(crate) fn revision() -> u64 {
+    use std::{
+        sync::atomic::{AtomicU64, Ordering},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+    static LAST: AtomicU64 = AtomicU64::new(0);
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_micros() as u64;
+    let prior = LAST.update(Ordering::Relaxed, Ordering::Relaxed, |last| {
+        now.max(last + 1)
+    });
+    now.max(prior + 1)
+}
+
 impl Live {
+    pub(super) fn shared_push(&self, device: &PublicKey, revision: u64) -> Result<SealedPush> {
+        use sha2::{Digest, Sha256};
+        // Hash the random card key. A pane, machine identity or label must
+        // never become a cleartext correlation key.
+        let digest = Sha256::digest(self.pane.as_bytes());
+        let run = u64::from_be_bytes(digest[..8].try_into().unwrap_or_default());
+        let mut live = self.clone();
+        loop {
+            let built = SealedPush::build(device, seal::ACTIVITY_INFO, &[] as &[&str], |sealer| {
+                let agents = live.state.detail.agents.as_ref();
+                let end = matches!(live.event, Event::End { .. });
+                let latest = agents
+                    .and_then(|p| p.latest.as_ref())
+                    .map(|label| sealed_field(sealer, label))
+                    .transpose()?;
+                let body = serde_json::to_vec(&json!({
+                    "revision": revision, "run": run, "end": end,
+                    "restored": live.pane.rsplit('/').next().is_some_and(|s| s.starts_with("restored-")),
+                    "working": live.state.working, "waiting": live.state.waiting,
+                    "question": live.state.phase == super::Phase::Question,
+                    "question_revision": live.state.detail.question_revision,
+                    "done": agents.map_or(usize::from(end), |p| p.done),
+                    "total": agents.map_or(1, |p| p.total),
+                    "state": sealed_field(sealer, &live.state)?, "latest": latest
+                }))?;
+                // Leave room to combine another member's encrypted label and
+                // the relay's ActivityKit envelope, even on a start.
+                if body.len() > 2850 {
+                    return Err(Error::PayloadTooLarge { len: body.len() });
+                }
+                Ok(Push {
+                    body,
+                    priority: self.priority(),
+                    collapse_id: None,
+                    push_type: PushType::LiveActivity,
+                })
+            });
+            match built {
+                Err(Error::PayloadTooLarge { .. }) if live.shorten() => {}
+                result => return result,
+            }
+        }
+    }
+
     /// The push for this change at `now_s`, sealed to `device`, with its
     /// longest text cut until it fits.
     pub(crate) fn sealed_push(&self, device: &PublicKey, now_s: u64) -> Result<SealedPush> {
@@ -98,6 +160,10 @@ impl Live {
         texts.extend(state.detail.activity.as_mut());
         texts.extend(state.question.as_mut());
         texts.extend(state.summary.as_mut());
+        texts.extend(state.detail.agents.as_mut().and_then(|a| a.latest.as_mut()));
+        if let Some(focus) = &mut state.detail.focus {
+            texts.extend([&mut focus.chat_title, &mut focus.workspace]);
+        }
         if let Event::Start { attributes, .. } = &mut self.event {
             texts.extend([&mut attributes.chat_title, &mut attributes.workspace]);
         }

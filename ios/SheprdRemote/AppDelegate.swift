@@ -19,6 +19,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUser
         AppLock.migrate()
         PushRelaySetting.applyDefault()
         LiveActivityStyleSetting.migrate()
+        // ActivityKit can wake a locked phone without creating a SwiftUI scene.
+        model.tokens.start()
         AppModel.current = model
         UNUserNotificationCenter.current().delegate = self
         Task { await NotificationCategories.register(.finished) }

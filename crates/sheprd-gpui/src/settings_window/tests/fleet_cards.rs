@@ -28,7 +28,7 @@ fn reach(cx: &mut VisualTestContext, standing: Standing) {
                 }),
             );
         }
-        Fleet::reach(cx, window, &reachable);
+        Fleet::reach(cx, window, &reachable, &Default::default());
     });
     cx.run_until_parked();
     draw(cx);

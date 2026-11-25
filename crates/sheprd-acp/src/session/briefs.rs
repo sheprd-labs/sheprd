@@ -20,6 +20,15 @@ pub(super) struct Briefs {
 }
 
 impl<R: FnMut(Update)> Session<R> {
+    /// Set before accepting subscribers, only for a launch with a brief.
+    pub(crate) fn link_delegation(&mut self, text: &str) {
+        use sheprd_chat_protocol::brief::{DelegatedTask, Delegation};
+        self.transcript.delegation = std::env::var(Delegation::ENV)
+            .ok()
+            .and_then(|value| serde_json::from_str(&value).ok())
+            .map(|parent| DelegatedTask::new(parent, text));
+    }
+
     /// Keeps briefs in `dir`, and marks the continued session's earlier
     /// prompts that were briefs.
     pub(crate) fn keep_briefs(&mut self, dir: PathBuf) {

@@ -35,6 +35,19 @@ struct RepositoriesTests {
         #expect(home.repositories[0].workspaces.map(\.id) == ["c", "a", "d"])
     }
 
+    @Test func identifiesTheProjectAndCheckoutInTheWorkspaceSummary() {
+        var workspace = Self.workspace("t3", worktree: .init(key: "k", label: "moonframe", linked: true))
+        workspace.branch = "worktree/green-valley-52fb"
+        #expect(workspace.repositoryName == "moonframe")
+        #expect(workspace.checkoutSubtitle == "worktree/green-valley-52fb")
+
+        workspace.branch = nil
+        #expect(workspace.checkoutSubtitle == "t3")
+        workspace.worktree = nil
+        #expect(workspace.repositoryName == "t3")
+        #expect(workspace.checkoutSubtitle == nil)
+    }
+
     @Test func decodesAHomeFromAnOlderComputer() throws {
         let json = Data(#"{"computer":"c","fingerprint":"f","connected":true,"waiting":0,"workspaces":[{"id":"w","label":"l","cwd":"/","chats":[],"terminals":[]}]}"#.utf8)
         let home = try JSONDecoder().decode(Home.self, from: json)
@@ -77,6 +90,12 @@ struct RepositoriesTests {
         let checkout = home.sessionGroups[0].repositories[0].ownCheckout
         #expect(checkout?.id == "b")
         #expect(checkout?.session == "work")
+    }
+
+    @Test func aRenamedGroupOfUnassignedTerminalsOffersNoProjectWorktree() {
+        var group = Self.workspace("core:terminals")
+        group.label = "iOS top space"
+        #expect(Self.home([group]).repositories.first?.ownCheckout == nil)
     }
 
     @Test func listsOneNamedSessionAsBeforeSessionsWereNamed() {

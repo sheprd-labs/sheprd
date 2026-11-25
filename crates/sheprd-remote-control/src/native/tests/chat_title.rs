@@ -14,6 +14,7 @@ fn title(named: bool, first_prompt: Option<&str>) -> String {
         ..Summary::default()
     };
     let home = Home::project(Sources {
+        labels: &Default::default(),
         checkouts: &Default::default(),
         recognized: &Default::default(),
         computer: "Studio",

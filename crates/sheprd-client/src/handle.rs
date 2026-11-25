@@ -36,8 +36,8 @@ pub(crate) struct HandleInner {
     /// The theme this connection last queued in full. Queued, not acknowledged:
     /// it only spares the daemon repeats and lets later changes go as diffs.
     pub(crate) last_queued_theme: Mutex<Option<HostTheme>>,
-    /// Set to have the worker ping an SSH link now; see `check_liveness`.
-    pub(crate) liveness: Arc<AtomicBool>,
+    /// Asks the worker to ping an SSH link now; see `check_liveness`.
+    pub(crate) liveness: Arc<crate::liveness::Request>,
 }
 impl Drop for HandleInner {
     fn drop(&mut self) {
@@ -152,11 +152,13 @@ impl ClientHandle {
         self.inner.commands.wake();
     }
     /// Have an SSH connection prove it is still alive: ping the host now and
-    /// fail the connection if it stays silent for a few seconds, rather than
-    /// waiting for the routine check of a quiet link. Use it when the link may
-    /// have died unnoticed, as across a sleep. A local connection ignores it.
-    pub fn check_liveness(&self) {
-        self.inner.liveness.store(true, Ordering::Release);
+    /// fail the connection if it stays silent past the deadline `suspicion`
+    /// sets, rather than waiting for the routine check of a quiet link. Use it
+    /// when the link may have died unnoticed, as across a sleep or a network
+    /// change. The stronger of two requests not yet sent wins. A local
+    /// connection ignores it.
+    pub fn check_liveness(&self, suspicion: crate::Suspicion) {
+        self.inner.liveness.ask(suspicion);
         self.inner.commands.wake();
     }
     pub fn is_disconnected(&self) -> bool {

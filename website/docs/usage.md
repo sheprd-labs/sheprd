@@ -36,7 +36,7 @@ The activity bar's **Usage** section shows every host's plan limits, one card pe
 
 A service shows when its sign-in is found. There are two kinds.
 
-**The agent's own sign-in on the host.** Codex, Claude, Kiro, Doubao, and Pi are found from their own login with nothing to set. For a remote host the sign-in is read over SSH and never copied off it. Usage follows the selected host, including SSH hosts and, on Windows, WSL distributions. SSH hosts and WSL distributions need `python3` or `jq` to read JSON sign-in files.
+**The agent's own sign-in on the host.** Antigravity, Codex, Claude, Kiro, Doubao, and Pi are found from their own login with nothing to set. For a remote host the sign-in is read over SSH and never copied off it. Usage follows the selected host, including SSH hosts and, on Windows, WSL distributions. SSH hosts and WSL distributions need `python3` or `jq` to read JSON sign-in files.
 
 **A key or cookie you set on this machine.** Other services read an API key, token, or cookie from `config-gpui.local.toml`, or from the environment variables that service's CLI uses:
 

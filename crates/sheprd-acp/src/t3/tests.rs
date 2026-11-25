@@ -12,9 +12,9 @@ fn recorded() -> Vec<ServerFrame> {
 }
 
 #[test]
-fn a_live_turn_reaches_the_chat_as_it_happens_read_only() {
+fn a_live_turn_reaches_the_chat_as_it_happens() {
     // Request 2 was the thread's stream in the recording.
-    let mut follower = Follower::new("2".to_owned());
+    let mut follower = Follower::new("2".to_owned(), Vec::new());
     assert!(!follower.ready());
     let mut seen = Vec::new();
     for frame in recorded() {
@@ -22,6 +22,7 @@ fn a_live_turn_reaches_the_chat_as_it_happens_read_only() {
             Step::Changed(transcript) => seen.push(*transcript),
             Step::Same => {}
             Step::Ended(reason) => panic!("the stream ended: {reason}"),
+            Step::Acked { .. } => panic!("nothing was sent"),
         }
     }
     assert!(follower.ready());
@@ -29,7 +30,7 @@ fn a_live_turn_reaches_the_chat_as_it_happens_read_only() {
     assert!(seen.len() > 2, "{} transcripts", seen.len());
     let first = &seen[0];
     let last = seen.last().unwrap();
-    assert!(first.read_only && last.read_only);
+    assert!(!first.read_only && !last.read_only);
     assert_eq!(last.agent, "fakeacp in T3 Code");
     assert!(last.entries.len() > first.entries.len());
     assert!(last.entries.iter().any(|entry| matches!(
@@ -46,7 +47,7 @@ fn a_live_turn_reaches_the_chat_as_it_happens_read_only() {
 
 #[test]
 fn other_requests_frames_change_nothing_and_an_exit_ends_the_stream() {
-    let mut follower = Follower::new("2".to_owned());
+    let mut follower = Follower::new("2".to_owned(), Vec::new());
     let other = ServerFrame::Chunk {
         request_id: "1".to_owned(),
         values: vec![serde_json::json!({"kind": "synchronized"})],
@@ -65,7 +66,7 @@ fn other_requests_frames_change_nothing_and_an_exit_ends_the_stream() {
 
 #[test]
 fn an_attached_client_sees_the_threads_status_change() {
-    let mut follower = Follower::new("2".to_owned());
+    let mut follower = Follower::new("2".to_owned(), Vec::new());
     let mut seen = Vec::new();
     for frame in recorded() {
         if let Step::Changed(transcript) = follower.frame(frame) {
@@ -80,7 +81,7 @@ fn an_attached_client_sees_the_threads_status_change() {
     let mut mirror = Mirror::new(working.clone(), None);
     let (outbox, queue) = bounded(16);
     mirror.input(Input::Attach(crate::session::Attach {
-        conn: crate::session::ConnId(1),
+        conn: ConnId(1),
         local: false,
         outbox,
         since: None,
@@ -138,7 +139,14 @@ fn a_server_that_never_answers_a_ping_ends_the_stream() {
         .set_read_timeout(Some(Duration::from_millis(50)))
         .unwrap();
     let (updates, changes) = bounded(4);
-    follow(connection, Follower::new("2".to_owned()), &updates);
+    let (_orders, queue) = bounded(1);
+    follow(
+        connection,
+        Follower::new("2".to_owned(), Vec::new()),
+        &updates,
+        &queue,
+        Duration::ZERO,
+    );
     drop(stream);
     assert_eq!(
         changes.try_recv().unwrap(),
@@ -147,3 +155,5 @@ fn a_server_that_never_answers_a_ping_ends_the_stream() {
     // The worker gave up after one unanswered ping, then let the socket go.
     assert_eq!(server.join().unwrap(), 1);
 }
+
+mod steer;

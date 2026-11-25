@@ -43,6 +43,9 @@ pub struct Transcript {
     /// Prompts another agent wrote, oldest first (revision 4).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub briefs: Vec<crate::Brief>,
+    /// Parent turn for the initial agent-authored brief.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delegation: Option<crate::brief::DelegatedTask>,
     /// How many attached clients watch, not counting the program's own view.
     #[serde(default)]
     pub clients: u32,
@@ -85,6 +88,10 @@ pub struct Transcript {
     /// Older entries were dropped to keep the transcript bounded.
     #[serde(default)]
     pub truncated: bool,
+    /// The thread this conversation is, and where each agent began; `None`
+    /// for a chat that keeps no thread, and from programs before threads.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thread: Option<crate::thread::Thread>,
     /// The prompt turn running now.
     #[serde(default)]
     pub turn: Option<Turn>,
@@ -219,6 +226,9 @@ pub enum EntryKind {
     Tool(Tool),
     /// How a prompt turn ended: how long it took and what it used.
     Turn(TurnSummary),
+    /// Another agent took over the conversation, and what it was handed.
+    /// Clients before protocol revision 5 get a [`Self::Notice`] instead.
+    Handoff(HandedOver),
     /// Something the program says about the session, or an imported system event.
     Notice {
         /// Historical questions and answers, never actionable permission requests.
@@ -250,7 +260,7 @@ impl EntryKind {
             | Self::Agent { text }
             | Self::Thought { text }
             | Self::Notice { text, .. } => Some(text),
-            Self::Image { .. } | Self::Tool(_) | Self::Turn(_) => None,
+            Self::Image { .. } | Self::Tool(_) | Self::Turn(_) | Self::Handoff(_) => None,
         }
     }
 
@@ -260,7 +270,59 @@ impl EntryKind {
             | Self::Agent { text }
             | Self::Thought { text }
             | Self::Notice { text, .. } => Some(text),
-            Self::Image { .. } | Self::Tool(_) | Self::Turn(_) => None,
+            Self::Image { .. } | Self::Tool(_) | Self::Turn(_) | Self::Handoff(_) => None,
+        }
+    }
+}
+
+/// An agent taking over the conversation: the divider clients draw where
+/// it began.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct HandedOver {
+    /// The agent that held the conversation before, when one did.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<crate::Agent>,
+    /// Entries handed over, in full or cut.
+    pub kept: usize,
+    /// Entries left out of the handoff for length.
+    pub omitted: usize,
+    /// It continued its own earlier session and was handed only what
+    /// happened since it last took part.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub resumed: bool,
+    pub to: crate::Agent,
+}
+
+impl HandedOver {
+    /// What a client before revision 5 shows instead, as a notice.
+    pub fn notice_text(&self) -> String {
+        let what = if self.resumed {
+            "what happened since it last took part"
+        } else {
+            "the conversation so far"
+        };
+        let mut text = format!(
+            "{} continues this conversation and gets {what} with your next prompt",
+            self.to.display_name()
+        );
+        if self.omitted > 0 {
+            text.push_str(&format!(
+                ": {} entries, {} more left out for length.",
+                self.kept, self.omitted
+            ));
+        } else {
+            text.push('.');
+        }
+        text
+    }
+
+    /// The entry as a client before revision 5 reads it.
+    pub fn as_notice(&self) -> EntryKind {
+        EntryKind::Notice {
+            answers: Vec::new(),
+            details: None,
+            level: NoticeLevel::Info,
+            text: self.notice_text(),
         }
     }
 }

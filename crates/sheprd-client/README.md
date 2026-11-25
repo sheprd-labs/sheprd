@@ -508,9 +508,11 @@ The worker owns and kills/reaps its SSH child on every exit, including cancellat
 and handshake failure; no GUI-thread join occurs. Quiet SSH connections send
 `endpoint.health.ping.v1` after five seconds and expire ten seconds after an
 unanswered probe. `ClientHandle::check_liveness` sends a probe at once instead,
-or brings an outstanding one's deadline forward, and that probe expires after
-three seconds; callers use it when a link may have died unnoticed, as across a
-sleep. Local connections ignore it. Any complete inbound message satisfies a
+or brings an outstanding one's deadline forward. Its `Suspicion` sets the
+deadline: after a sleep (`Slept`) the probe expires after three seconds; after
+a network change (`NetworkChanged`) it gets a routine ping's ten, since a link
+that survived a short stall may still be retransmitting. Callers use it when a
+link may have died unnoticed. Local connections ignore it. Any complete inbound message satisfies a
 probe, independently of the initial-snapshot deadline. As with local connections, continuously drain
 events: event backpressure pauses transport processing, including health checks.
 

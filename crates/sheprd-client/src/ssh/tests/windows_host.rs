@@ -166,3 +166,19 @@ fn a_windows_host_with_herdr_core_alone_is_its_own_setup() {
         Some(HostProbe::Running)
     );
 }
+
+/// A real Windows SSH host, named by `SHEPRD_TEST_WINDOWS_SSH`: the discovery
+/// probe's whole answer arrives, up to its done marker (#1563).
+#[test]
+#[ignore = "needs a Windows SSH host named in SHEPRD_TEST_WINDOWS_SSH"]
+fn a_windows_host_answers_the_whole_probe() {
+    let target = std::env::var("SHEPRD_TEST_WINDOWS_SSH").unwrap();
+    let mut probe = command(&target, &powershell::probe_command("default"));
+    probe.stderr(Stdio::piped());
+    let (_, output, _) = run_with_stderr(&mut probe, PROBE_TIMEOUT, || false).unwrap();
+    assert!(
+        lines(&output).any(|line| line == PROBE_DONE.as_bytes()),
+        "{}",
+        String::from_utf8_lossy(&output)
+    );
+}

@@ -486,7 +486,10 @@ impl SheprdWindow {
         // shown, since the Herdr tab opens in the focused workspace.
         if error.core_missing()
             && let Purpose::Tab {
-                scope, workspace, ..
+                scope,
+                workspace,
+                focus: true,
+                ..
             } = &purpose
             && self
                 .browser_key()

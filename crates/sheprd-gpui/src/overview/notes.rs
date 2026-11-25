@@ -102,7 +102,7 @@ impl SheprdWindow {
             )
             .when(dismissable, |line| {
                 line.child(
-                    super::view::pill(name, "icons/x.svg", fl!("overview-reply-cancel"), look)
+                    super::view::pill(name, "icons/close.svg", fl!("overview-reply-cancel"), look)
                         .on_click(cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
                             if this.overview.replies.cancel(id) {

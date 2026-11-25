@@ -110,6 +110,7 @@ fn restore_from_a_core_terminal_opens_its_kept_checkouts_checkpoints(
                     key: "/src/tools/.git".into(),
                     label: "tools".into(),
                     linked: false,
+                    root: String::new(),
                 }),
             );
             let terminal = TerminalId::new("t1").unwrap();

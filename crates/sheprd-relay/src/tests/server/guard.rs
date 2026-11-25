@@ -50,14 +50,34 @@ fn points_fade_a_point_a_minute() {
     let guard = guard();
     let start = Instant::now();
     let address = ip(PUBLIC);
-    // One a minute never adds up: a phone retrying too fast, say.
+    // Two points every two minutes never add up.
     for minute in 0..120 {
-        let now = start + Duration::from_secs(60 * minute);
-        assert!(guard.offend(address, Offense::Limited, now).is_none());
+        let now = start + Duration::from_secs(120 * minute);
+        assert!(guard.offend(address, Offense::Probe, now).is_none());
     }
     // A burst does.
-    let now = start + Duration::from_secs(60 * 120);
-    assert!(offend_until_banned(&guard, address, Offense::Limited, now) <= BAN_POINTS);
+    let now = start + Duration::from_secs(120 * 120);
+    assert!(offend_until_banned(&guard, address, Offense::Probe, now) <= BAN_POINTS);
+}
+
+#[test]
+fn capacity_pressure_neither_bans_nor_adds_to_other_offenses() {
+    let guard = guard();
+    let now = Instant::now();
+    let address = ip(PUBLIC);
+    guard.offend(address, Offense::Malformed, now);
+    for _ in 0..1_000 {
+        for offense in [Offense::Limited, Offense::ConnectionCap] {
+            assert!(guard.offend(address, offense, now).is_none());
+        }
+    }
+    assert!(!guard.banned(address, now));
+    assert!(guard.bans(now).is_empty());
+    let remaining = offend_until_banned(&guard, address, Offense::Malformed, now);
+    assert_eq!(
+        remaining,
+        BAN_POINTS.div_ceil(points(Offense::Malformed)) - 1
+    );
 }
 
 #[test]
@@ -252,14 +272,14 @@ fn a_full_table_still_bans_new_offenders() {
     use crate::guard::MAX_RECORDS;
     let guard = guard();
     let now = Instant::now();
-    // Fill every slot with a different public address holding one point,
+    // Fill every slot with a different public address holding probe points,
     // as an attacker with many /64s could.
     for index in 0..MAX_RECORDS {
         let index = u32::try_from(index).unwrap();
         let address = IpAddr::from(std::net::Ipv6Addr::from(
             (0x2001_0db8_u128 << 96) | (u128::from(index) << 64),
         ));
-        guard.offend(address, Offense::Limited, now);
+        guard.offend(address, Offense::Probe, now);
     }
     // A new one is still counted and banned, rather than ignored.
     let late = ip("203.0.113.99");

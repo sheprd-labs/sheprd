@@ -36,7 +36,7 @@ pub(super) const INSTALL: &[&str] = &["update", "install", "--confirmed", "--jso
 /// on its `PATH` (Homebrew's, `~/.local/bin`, packages), else the app's
 /// executable in a macOS bundle. Older installs still name it `herdr-gpui`
 /// or `Herdr.app`.
-pub(super) fn script(args: &[&str]) -> String {
+pub(crate) fn script(args: &[&str]) -> String {
     let args = args.join(" ");
     format!(
         // i18n: data

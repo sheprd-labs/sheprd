@@ -361,7 +361,7 @@ impl SheprdWindow {
             return;
         };
         let endpoint = self.endpoints[self.selected_endpoint].id.clone();
-        let opened = self.open_workspace_page(&endpoint, &workspace, url, window, cx);
+        let opened = self.open_workspace_page(&endpoint, &workspace, url, true, window, cx);
         // The system browser leaves the section shown; a tab is behind it.
         if opened == crate::browser::PageOpened::Tab {
             self.activity.pick(ActivityPanel::Workspaces);

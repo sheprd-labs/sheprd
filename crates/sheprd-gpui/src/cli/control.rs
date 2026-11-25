@@ -14,6 +14,7 @@ mod machine_agent;
 mod mcp;
 mod memory;
 mod mods;
+mod phone;
 mod remote;
 mod settings;
 mod tabs;
@@ -38,6 +39,7 @@ pub use hosts::{
 pub use mcp::{McpClient, McpCommand};
 pub use memory::{MemoryAdd, MemoryCommand};
 pub use mods::ModCommand;
+pub use phone::{PhoneCommand, PhoneTarget};
 pub use remote::RemoteCommand;
 pub use settings::{
     CaffeineCommand, ConfigCommand, IntegrationsCommand, KeybindsCommand, LanguageCommand,
@@ -81,6 +83,7 @@ pub enum ControlCommand {
     Review,
     Chat(ChatCommand),
     Px0,
+    Labels(sheprd_remote_control::control::labels::Command),
     Notes(NotesCommand),
     Memory(MemoryCommand),
     /// `sheprd mcp`: an MCP server on stdio, or a client's configuration.
@@ -121,6 +124,8 @@ pub enum ControlCommand {
     Fleet(FleetCommand),
     /// The mods the window runs; `check` runs here.
     Mod(ModCommand),
+    /// Agents driving a paired phone's app.
+    Phone(PhoneCommand),
     Search {
         files: bool,
         query: String,
@@ -202,6 +207,10 @@ pub const FAMILIES: &[(&str, &str)] = &[
         "Native views of herdr-acp chats: start one, list them, show or hide one",
     ),
     ("px0", "Open px0 on the caller's local checkout"),
+    (
+        "labels",
+        "Manage agent and worktree tags shown on paired phones",
+    ),
     ("notes", "Notes kept on worktrees"),
     (
         "memory",
@@ -261,6 +270,10 @@ pub const FAMILIES: &[(&str, &str)] = &[
     (
         "fleet",
         "Your computers and phones as one fleet: members, hosts, removing",
+    ),
+    (
+        "phone",
+        "Show the person a screen or a note in the phone app, or read its screen",
     ),
     (
         "mod",
@@ -397,6 +410,11 @@ fn command(family: &'static str, args: &mut Args) -> Result<ControlCommand, CliE
             tabs::open_only(args)?;
             ControlCommand::Px0
         }
+        "labels" => ControlCommand::Labels(
+            sheprd_remote_control::control::labels::Command::parse(args.take_all()).map_err(
+                |_| CliError::InvalidValue(sheprd_remote_control::control::labels::USAGE),
+            )?,
+        ),
         "notes" => ControlCommand::Notes(work::notes(args)?),
         "memory" => ControlCommand::Memory(memory::memory(args)?),
         #[cfg(feature = "mcp")]
@@ -434,6 +452,7 @@ fn command(family: &'static str, args: &mut Args) -> Result<ControlCommand, CliE
         "automation" => ControlCommand::Automation(hosts::automation(args)?),
         "remote" => ControlCommand::Remote(remote::remote(args)?),
         "fleet" => ControlCommand::Fleet(fleet::fleet(args)?),
+        "phone" => ControlCommand::Phone(phone::phone(args)?),
         "mod" => ControlCommand::Mod(mods::command(args)?),
         "search" => {
             let files = match args.verb().as_ref().and_then(|verb| verb.to_str()) {

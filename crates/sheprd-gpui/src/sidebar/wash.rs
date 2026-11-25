@@ -18,14 +18,14 @@ pub(super) const SELECTED_ALPHA: u32 = 0x38;
 const DIM_OPACITY: f32 = 0.55;
 
 /// A colour and how strongly it shows.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) struct Wash {
     pub(super) color: u32,
     pub(super) alpha: u32,
 }
 
 /// What one host's rows get: a wash, a dimming, both, or neither.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub(super) struct HostMark {
     pub(super) wash: Option<Wash>,
     pub(super) dim: bool,

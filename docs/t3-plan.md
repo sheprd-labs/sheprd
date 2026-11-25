@@ -45,6 +45,11 @@ came from, and `sheprd-t3` pins the versions it was tested against.
 | Local sign-in | Sheprd offers to run `t3 auth pairing create` itself only after the user confirms, and only for the server it found on this computer. Remote servers pair from a pasted link or code. |
 | Remote servers | Over the routes Sheprd already has: a saved SSH, cloud, or WSL host forwards the port; T3's own LAN, Tailscale, and T3 Connect addresses are accepted as typed. |
 | Versions | Refuse a server whose `orchestrationProtocol` is not 2 or whose snapshot `schemaVersion` is unknown, with a message naming both versions, rather than guessing. |
+| Role beside Sheprd's own chats (2026-11-21) | T3 is an optional backend next to `sheprd-acp` chats, never a replacement; `sheprd-acp` chats stay the default. Whenever a T3 server is running, Sheprd can show its threads, steer them, and create new ones in it. Sheprd never starts, installs, or patches T3: it uses a server that already answers. |
+| Command ids | A dispatched command's `commandId` is `sheprd:<chat command id>`, and a prompt's `messageId` adds `:message`. T3 keeps a receipt per `commandId` and answers a repeat with the first answer (`Orchestrator.ts:11742`, recorded in `steer.json`), so a client sending the same chat command again never applies it twice; `sheprd-acp t3` also keeps T3's last 256 answers and gives a repeat the first answer rather than judging it again. Commands go to T3 one at a time, each judged once the thread shows the one before (a Stop right after a prompt stops the run the prompt started), waiting at most two seconds. |
+| Steering a thread | Prompts are `message.dispatch`, run now or queued behind the running turn as chat prompts are; Cancel is `run.interrupt` with `holdQueue`; an approval is answered with T3's decisions (`accept`, `acceptForSession`, `decline`, `cancel`, or the ones the request names); one question at a time is answered by question id with the option's value. A chat's files go into the prompt as paths, since T3 takes uploads only and the server is on this computer. Several questions at once, modes, and queued-prompt edits stay in T3 for now. |
+| Starting a thread | The project for a checkout is the one whose root is its repository's main folder, found in the thread list by path, else created with `projects.mutate {type: "project.create"}` (`rpc.ts:1251`; T3's own client creates projects there, not through `dispatchCommand`, and refuses a second project for one root). The repository is read from the `.git` folder or file alone, with no `git` process. A linked worktree, such as one Sheprd made, becomes `existing_worktree`; `--base REF [--branch NAME]` asks T3 for a new worktree, which it puts under its own home; anything else is `root`. The model is the one asked for, else the project's default, else the first ready provider's default. Without a title T3 names the thread from its first message. A repeated launch `commandId` answers the same thread (`resumed: true`). |
+| Model choices | The thread's model is a `model` setting listing its provider's models from `server.getConfig`, and, with more than one usable provider, a `provider` setting (shown as Agent) picks another; a model of the same provider is `thread.model-selection.set`, another provider is `provider.switch` with its default model, as T3's own client decides. Providers that are disabled, in error, or have no model are not offered. |
 
 ## The `sheprd-t3` daemon
 
@@ -88,8 +93,17 @@ Each phase is its own pull request.
 2. **Show threads.** The daemon, the `Keeper`, a T3 section in the sidebar
    and the activity bar, opening a thread as a chat (read-only).
 3. **Steer.** Prompts, cancel, approvals, model and provider switch.
-4. **Start threads.** New thread in a T3 project from Sheprd's new-chat
-   flow, with T3's worktree strategy.
+   Done in `sheprd_t3::steer` and `sheprd-acp t3`, which now takes a chat's
+   commands, and `sheprd-t3 send` and `stop` for scripts, tested against
+   `fixtures/steer.json` (T3 Code 0.1.9).
+4. **Start threads.** Whenever a T3 server is running, a new thread from
+   scratch: the project for a checkout found by path or created
+   (`project.create`), then `orchestration.launchThread` with T3's
+   workspace strategy; then from Sheprd's new-chat flow. Done in
+   `sheprd_t3::launch`, `sheprd-t3 new`, and `sheprd-acp t3 --new`, which
+   starts a thread and follows it in its pane, tested against
+   `fixtures/launch.json` (T3 Code 0.1.9). The new-chat flow is the app's
+   part, below.
 5. **Remote and phone.** T3 servers on saved hosts; T3 threads in Sheprd
    Remote through the remote control daemon.
 

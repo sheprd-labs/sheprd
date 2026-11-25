@@ -155,6 +155,10 @@ final class RemoteClient: Sendable {
         return try await send("GET", "/api/pair/claim/\(escaped)")
     }
 
+    func pairVoice<Body: Encodable, Answer: Decodable>(_ body: Body, bearer: String) async throws -> Answer {
+        try await send("POST", "/api/v2/pair/voice", body: body, bearer: bearer, timeout: 18)
+    }
+
     /// Whether this address answers at all, within three seconds.
     func ping() async -> Bool {
         (try? await fingerprint()) != nil
@@ -207,6 +211,12 @@ final class RemoteClient: Sendable {
     /// The agents and folders a new workspace or chat may use.
     func newOptions(bearer: String) async throws -> NewOptions {
         try await send("GET", "/api/v2/new", bearer: bearer)
+    }
+
+    func createProject(_ project: NewProjectRequest, bearer: String) async throws -> String {
+        struct Answer: Decodable { let path: String }
+        let answer: Answer = try await send("POST", "/api/v2/projects", body: project, bearer: bearer, timeout: 260)
+        return answer.path
     }
 
     /// Creating waits up to ten seconds for the chat's program to report in.
@@ -560,8 +570,12 @@ final class RemoteClient: Sendable {
         )
     }
 
-    func registerAPNs(_ registration: API.APNsRegistration, bearer: String) async throws -> API.APNsAnswer {
-        try await send("POST", "/api/apns", body: registration, bearer: bearer)
+    func registerAPNs(_ registration: API.APNsRegistration, singleActivity: Bool, epoch: UUID?, bearer: String) async throws -> API.APNsAnswer {
+        // Older computers ignore the query and continue accepting all the tokens.
+        var query = singleActivity ? ["single=true"] : []
+        if let epoch { query.append("epoch=" + epoch.uuidString) }
+        let path = query.isEmpty ? "/api/apns" : "/api/apns?" + query.joined(separator: "&")
+        return try await send("POST", path, body: registration, bearer: bearer)
     }
 
     /// Asks the computer to send this phone a sealed test alert carrying `id`.

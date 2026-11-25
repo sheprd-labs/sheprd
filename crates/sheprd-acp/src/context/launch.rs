@@ -53,12 +53,17 @@ pub(super) fn guide(sheprd: &Path, agent: &str, running: &Running) -> String {
     format!(
         "You are {agent} running in a Sheprd chat (`sheprd-acp`), not in {agent}'s own \
          terminal interface{setup}.\n\
+         Keep the person's workspace, tab, and keyboard focus while you work. Only switch focus \
+         or open a visible split or panel when they ask you to show it.\n\
          When the person asks you to start another agent, such as in a new Herdr workspace, \
          tab, or worktree, start a chat like this one unless they ask for another kind: \
-         create the workspace or tab with `herdr`, then run `{sheprd} chat new --pane PANE` \
+         create the workspace or tab with `herdr` and `--no-focus`, then run `{sheprd} chat new --pane PANE` \
          with the id of a pane in it. With no agent named, that starts {agent} with this \
          chat's model, thinking, and permission mode. Name another agent \
          (`{sheprd} chat new codex --pane PANE`) only when asked to, and do not run an \
-         agent's terminal command there instead.\n"
+         agent's terminal command there instead. For delegated work, pass --prompt or \
+         --prompt-file with a short, distinct task name on the first line. This groups those \
+         agents on your turn's iOS Live Activity. Give native sub-agents distinct task names \
+         too, so the person can tell which one finished.\n"
     )
 }

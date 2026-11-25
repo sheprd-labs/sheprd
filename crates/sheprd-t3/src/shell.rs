@@ -17,6 +17,9 @@ pub const SCHEMA_VERSION: u32 = 2;
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Project {
+    /// The model new threads in it start with (`orchestrationProject.ts:13`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_model_selection: Option<crate::thread::ModelSelection>,
     pub id: String,
     pub title: String,
     pub workspace_root: String,

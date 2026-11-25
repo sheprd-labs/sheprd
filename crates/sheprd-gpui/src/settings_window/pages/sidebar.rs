@@ -5,7 +5,7 @@ use super::{SettingsWindow, on_value, ui};
 use crate::{
     config::{
         AgentsPlacement, ChangeCounts, Config, DeviceFooter, LayoutMode, SelectMode,
-        SidebarOverrides, preferences::Preference,
+        SidebarOverrides, preferences::Preference, status_bar::Detail,
     },
     i18n::{self, fl},
     settings_window::{
@@ -415,6 +415,23 @@ impl SettingsWindow {
                         self.config.show_sidebar_gpu_load,
                         Preference::ShowSidebarGpuLoad(!self.config.show_sidebar_gpu_load),
                         cx,
+                    )),
+            )
+            .child(
+                ui::row(theme, "sidebar-load", fl!("settings-sidebar-load"))
+                    .description(fl!("settings-sidebar-load-description"))
+                    .control(ui::segmented(
+                        theme,
+                        "sidebar-load-detail",
+                        &[
+                            (Detail::Compact, fl!("settings-status-bar-compact")),
+                            (Detail::Detailed, fl!("settings-status-bar-detailed")),
+                        ],
+                        Some(self.config.sidebar_load),
+                        true,
+                        on_value(cx, |this, detail, _, cx| {
+                            this.save_preference(Preference::SidebarLoad(detail), cx)
+                        }),
                     )),
             )
             .child(ui::section(

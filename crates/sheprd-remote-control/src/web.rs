@@ -19,6 +19,7 @@ mod github;
 mod hosts;
 mod indicators;
 mod kept;
+pub(crate) mod labels;
 mod log;
 mod nearby;
 mod origins;
@@ -93,8 +94,11 @@ pub(crate) struct State {
     pub(crate) computer: String,
     /// Streams open per device.
     pub(crate) connected: Mutex<HashMap<DeviceId, usize>>,
+    /// Phones agents may drive, and drives waiting for them.
+    pub(crate) drivers: crate::native::drive::Drivers,
     /// This computer's favorite agents, which its phones and desktops share.
     pub(crate) favorites: Favorites,
+    pub(crate) labels: labels::Labels,
     pub(crate) fingerprint: String,
     /// The fleet, when its key could be read or made.
     pub(crate) fleet: Option<Arc<crate::fleet::Fleet>>,
@@ -124,6 +128,7 @@ pub(crate) struct State {
     pub(crate) push: Option<Sender>,
     /// How the last APNs push of each kind went.
     pub(crate) pushes: crate::apns::Ledger,
+    pub(crate) launches: crate::server::live::Launches,
     /// The relays this computer listens on, when any are set.
     pub(crate) relay: Option<Arc<crate::relay::Relays>>,
     /// How often each address may write a phone's error to the log.
@@ -280,6 +285,7 @@ pub(crate) fn router(state: Shared) -> Router {
             "/api/v2/fleet/sync",
             post(fleet::sync).layer(DefaultBodyLimit::max(fleet::MAX_SYNC_BODY)),
         )
+        .route("/api/v2/pair/voice", post(api::pair_voice))
         .route("/api/v2/github/token", get(crate::native::github::token))
         .route("/api/v2/home", get(crate::native::get_home))
         .route("/api/v2/hosts", get(hosts::list))

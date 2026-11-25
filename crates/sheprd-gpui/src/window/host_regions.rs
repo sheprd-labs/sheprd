@@ -12,17 +12,26 @@ use gpui::{AnyElement, AnyView, Context, Div, Empty, Window, div, prelude::*, px
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Region {
     ActivityBar,
+    /// Leaves a button slot above Settings for the Moonframe editor.
+    ActivityBarWithEditor,
+    Build,
+    SidebarActions,
+    Worktrees,
+    Agents,
     /// The device picker under the sidebar's lists, as the sidebar ends with
     /// it, while `[sidebar] device_footer` shows it.
     Devices,
     /// The row over the activity bar and sidebar: the traffic lights' room,
     /// and Back and Forward.
     Header,
+    FullHeader,
     /// Menus, toasts and what else draws over the window, in its coordinates,
     /// so the host paints it over the whole window, outside its layout. It takes
     /// no clicks of its own.
     Overlay,
     Sidebar,
+    /// The workspaces heading and sidebar toggle over the list or rail.
+    SidebarTitle,
     StatusBar,
     /// What ends the title bar: the checkout's changes and branch, the
     /// account, and the details toggle. The tab strips leave its room free.
@@ -33,13 +42,20 @@ pub enum Region {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Sizes {
     pub activity_bar: f32,
+    pub build: f32,
     /// The device picker's height, or zero while it is hidden.
     pub devices: f32,
     pub header: f32,
+    pub full_header: bool,
     /// The window's height, which the left column's sections share.
     pub height: f32,
     /// The column holding the activity bar and sidebar.
     pub left: f32,
+    /// Whether the layout needs the complete sidebar (device tree, nested agents or rail).
+    pub sidebar_region: bool,
+    /// Zen mode leaves only the focused content.
+    pub zen: bool,
+    pub sidebar_title: f32,
     pub status_bar: f32,
     /// The title bar's end, as last drawn.
     pub titlebar: f32,
@@ -54,15 +70,32 @@ impl SheprdWindow {
             } else {
                 0.
             },
+            build: if env!("HERDR_BUILD_WORKTREE") == "1" && !self.zen_layout() {
+                crate::worktree_banner::HEIGHT
+            } else {
+                0.
+            },
             devices: if self.device_footer_shown() {
                 crate::sidebar::DEVICE_FOOTER_HEIGHT
             } else {
                 0.
             },
             header: crate::titlebar::HEIGHT,
+            full_header: self.hosted_full_header == Some(true),
             height: f32::from(window.viewport_size().height),
             left: self.sidebar_column_width(width).unwrap_or(0.),
-            status_bar: if self.status_bar_visible {
+            sidebar_region: self.sidebar_mode() != SidebarMode::Expanded
+                || !self.device_footer_shown()
+                || self
+                    .mods
+                    .entries()
+                    .any(|(_, entry)| entry.places().contains(&sheprd_mods::Place::Sidebar))
+                || !self.config.layout.mode.lists_workspaces()
+                || (self.config.show_agents
+                    && self.config.agents_placement == crate::config::AgentsPlacement::Nested),
+            zen: self.zen_layout(),
+            sidebar_title: self.activity_title_height(),
+            status_bar: if self.status_bar_visible && !self.zen_layout() {
                 self.status_bar_height()
             } else {
                 0.
@@ -89,15 +122,39 @@ impl SheprdWindow {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         match region {
-            Region::ActivityBar if self.activity_bar_leads() => self
-                .region_root()
-                .child(self.render_activity_bar(cx))
-                .into_any_element(),
+            Region::ActivityBar | Region::ActivityBarWithEditor if self.activity_bar_leads() => {
+                self.region_root()
+                    .child(self.activity_bar_with_slot(region == Region::ActivityBarWithEditor, cx))
+                    .into_any_element()
+            }
             // On the sidebar's fill, as the sidebar ends with it.
             Region::Devices if self.device_footer_shown() => self
-                .region_root()
-                .bg(self.fill().panel(self.theme.sidebar_background()))
+                .sidebar_list_root()
                 .child(self.render_device_footer(cx))
+                .into_any_element(),
+            Region::Worktrees | Region::Agents => {
+                let indicators = self.sidebar_view.read(cx).indicators();
+                let width = self.expanded_sidebar_width(window);
+                let root = self.sidebar_list_root().relative();
+                if region == Region::Agents {
+                    root.child(self.render_agent_section(indicators, width, window, cx))
+                        .into_any_element()
+                } else {
+                    let (list, drag) = self.sidebar_worktrees(indicators, width, window, cx);
+                    root.child(list).child(drag).into_any_element()
+                }
+            }
+            Region::SidebarActions => self
+                .sidebar_list_root()
+                .child(self.sidebar_actions(cx))
+                .into_any_element(),
+            Region::Build if !self.zen_layout() => self
+                .region_root()
+                .children(self.render_worktree_banner())
+                .into_any_element(),
+            Region::FullHeader => self
+                .region_root()
+                .child(self.render_titlebar(window, cx))
                 .into_any_element(),
             Region::Header => self
                 .region_root()
@@ -111,6 +168,10 @@ impl SheprdWindow {
                 root.into_any_element()
             }
             Region::Sidebar => self.render_sidebar_region(window, cx),
+            Region::SidebarTitle if self.activity_bar_leads() => self
+                .region_root()
+                .child(self.panel_title(ActivityPanel::Workspaces, cx))
+                .into_any_element(),
             Region::StatusBar if self.status_bar_visible => self
                 .region_root()
                 .child(self.render_status_bar(cx))
@@ -187,7 +248,7 @@ impl SheprdWindow {
         root.extend(self.render_toasts(window, cx));
         root.extend(self.render_file_transfer(window, cx));
         root.extend(self.render_menu_leaving(window, cx));
-        // The layout draws the device picker itself.
+        // A custom Luau picker handles the sheet it opened.
         if self.menu.page.is_some() && !self.hosted_picker_open() {
             root.extend([self.render_menu(window, cx).into_any_element()]);
         }

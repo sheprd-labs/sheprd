@@ -17,6 +17,8 @@ use sheprd_client::protocol::{ClientMessage as DaemonMessage, ClientPaneInputEve
 
 fn brief() -> Brief {
     Brief {
+        endpoint: "00112233445566778899aabbccddeeff".parse().unwrap(),
+        parent: None,
         file: PathBuf::from("/tmp/sheprd-brief-1.md"),
         from: Some(Agent::Claude),
     }
@@ -24,20 +26,32 @@ fn brief() -> Brief {
 
 #[gpui::test]
 fn a_brief_rides_in_the_tab_and_its_line(cx: &mut gpui::TestAppContext) {
+    use sheprd_chat_protocol::{EndpointId, brief::Delegation};
+    let parent = Delegation {
+        endpoint: EndpointId::random(),
+        started_ms: 42,
+    };
     let mut peer = MockPeer::advertising(&["tab.create"]);
     let (view, cx) = cx.add_window_view(fixture_window);
     cx.update(|_, cx| {
         view.update(cx, |view, cx| {
             super::start::local_window(view, &peer, cx);
-            view.chats.brief = Some(brief());
-            view.start_chat(Agent::Codex, None, None).unwrap();
+            view.chats.brief = Some(Brief {
+                parent: Some(parent.clone()),
+                ..brief()
+            });
+            view.start_chat_with_focus(Agent::Codex, None, None, false)
+                .unwrap();
             view.chats.brief = None;
         })
     });
     let tab = peer.request();
+    assert_eq!(tab["params"]["focus"], false);
     assert_eq!(
         tab["params"]["env"],
-        json!({"HERDR_ACP": "/opt/herdr-acp", FILE_ENV: "/tmp/sheprd-brief-1.md"})
+        json!({"HERDR_ACP": "/opt/herdr-acp", FILE_ENV: "/tmp/sheprd-brief-1.md",
+                (Delegation::ENV): serde_json::to_string(&parent).unwrap(),
+                (sheprd_chat_protocol::ENDPOINT_ENV): brief().endpoint.as_str()})
     );
     let created = json!({"result":{"type":"tab_created",
         "tab":{"tab_id":"w1:t9"},"root_pane":{"pane_id":"w1:p9"}}});
@@ -46,6 +60,7 @@ fn a_brief_rides_in_the_tab_and_its_line(cx: &mut gpui::TestAppContext) {
             let id = tab["id"].as_str().unwrap().to_owned();
             view.live.script_response = Some((id, Some(Ok(created))));
             view.poll_chat_start(cx);
+            assert!(view.pending_navigation.is_none());
             assert!(view.flash.is_none(), "{:?}", view.flash);
         })
     });

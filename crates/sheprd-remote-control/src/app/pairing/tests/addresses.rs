@@ -35,6 +35,7 @@ fn changing_address_preserves_token_deadline_and_in_flight_poll() {
         &poll,
         Ok(Response::Pairing(PairingState::Waiting {
             expires_in_ms: 20_000,
+            nearby_code: None,
         })),
         now + POLL,
     );

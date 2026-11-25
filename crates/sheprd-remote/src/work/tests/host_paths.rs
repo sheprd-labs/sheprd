@@ -25,6 +25,16 @@ fn opening_checks_the_repository_on_the_supplied_host() {
     let tree = create(&host, &fixture.herdr2(), &new, &never()).unwrap();
     let checkout = identity(&host, &tree.path, &never()).unwrap();
     assert!(checkout.linked);
+    assert_eq!(
+        fs::canonicalize(&checkout.root).unwrap(),
+        fs::canonicalize(&tree.path).unwrap()
+    );
+    let nested = Path::new(&tree.path).join("src");
+    fs::create_dir(&nested).unwrap();
+    assert_eq!(
+        identity(&host, nested.to_str().unwrap(), &never()).unwrap(),
+        checkout
+    );
     assert_eq!(checkout.branch.as_deref(), Some("feature"));
     assert_eq!(
         checkout.key,

@@ -75,6 +75,7 @@ pub(in crate::settings_window) enum DropdownField {
     ToastEnabled,
     ToastPosition,
     QuietHours,
+    SpeechVoice,
     RemoteBind,
 }
 
@@ -87,6 +88,7 @@ impl DropdownField {
             Self::Language => "general-language-control",
             Self::ToastEnabled => "notif-show-control",
             Self::ToastPosition => "notif-position-control",
+            Self::SpeechVoice => "voice-choice",
             Self::QuietHours => "notif-quiet-hours-control",
             Self::RemoteBind => "remote-bind-control",
         }
@@ -141,6 +143,10 @@ impl SettingsWindow {
                     self.accept_layout_choice(*mode, cx);
                 }
                 cx.notify();
+                return;
+            }
+            DropdownField::SpeechVoice => {
+                self.pick_voice(index, cx);
                 return;
             }
             DropdownField::RemoteBind => {
@@ -356,6 +362,9 @@ impl SettingsWindow {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.voice_sheet_key(event, window, cx) {
+            return;
+        }
         let key = event.keystroke.key.as_str();
         if let Some(open) = &mut self.dropdown {
             if !matches!(key, "up" | "down" | "enter" | "escape") {

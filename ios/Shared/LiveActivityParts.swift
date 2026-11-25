@@ -84,7 +84,9 @@ struct TurnProgress: View {
 
     var body: some View {
         Group {
-            if state.phase == .finished {
+            if let agents = state.agents {
+                ProgressView(value: agents.fraction)
+            } else if state.phase == .finished {
                 ProgressView(value: 1)
             } else if let fraction = state.planFraction {
                 ProgressView(value: fraction)

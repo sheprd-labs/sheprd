@@ -31,7 +31,7 @@ extension AppModel {
     /// a computer the tag filter leaves, in the chosen repository or
     /// workspace. Read once per list, not per row.
     func agentListFilter() -> (Computer, Home.Workspace) -> Bool {
-        let shown = tagFilter.shown(among: computers)
+        let shown = tagFilter.shown(among: shownComputers)
         let scope = agentScope
         return { computer, workspace in
             shown.contains(computer.device) && scope?.contains(workspace, on: computer.device) != false
@@ -41,7 +41,7 @@ extension AppModel {
     /// The homes of the computers the tag filter leaves, which the scopes
     /// offered and applied come from.
     var shownHomes: [(device: String, home: Home)] {
-        let shown = tagFilter.shown(among: computers)
+        let shown = tagFilter.shown(among: shownComputers)
         return fleet.machines.compactMap { machine in
             guard shown.contains(machine.id), let home = machine.home else { return nil }
             return (machine.id, home)
@@ -56,7 +56,7 @@ struct AgentFilterMenu: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let computers = model.computers
+        let computers = model.shownComputers
         let tags = ComputerTags.all(in: computers)
         let tag = ComputerTags.active(model.tagFilter.tag, among: computers)
         let device = ComputerTags.active(device: model.tagFilter.device, tag: tag, among: computers)
@@ -128,7 +128,7 @@ struct AgentFilterMenu: View {
         let workspace = place.workspace
         let name = workspace.label == choice.name ? workspace.branch ?? workspace.label : workspace.label
         guard Set(choice.places.map(\.device)).count > 1,
-              let computer = model.computers.first(where: { $0.device == place.device }) else { return name }
+              let computer = model.shownComputers.first(where: { $0.device == place.device }) else { return name }
         return "\(name) · \(model.displayName(computer))"
     }
 }

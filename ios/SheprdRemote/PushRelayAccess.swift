@@ -50,6 +50,7 @@ final class PushRelayAccess {
         /// is not kept beside its handle.
         let key: String
         let handle: String
+        let group: String?
         /// When the credential it carries expires, after which the push
         /// relay refuses it and it needs no revoking.
         let expires: Date
@@ -68,6 +69,11 @@ final class PushRelayAccess {
     private(set) var lastError: String?
     private var stored: Stored
     private var attesting: Task<PushRelayCredential, any Error>?
+    func retire(group: String) async {
+        let handles = stored.handles.filter { $0.group == group && $0.expires > Date() }.map(\.handle)
+        await revoke(handles, in: environment)
+    }
+
     /// The push relay refused a handle made with the current credential:
     /// attest again before making more, rather than wait for renewal.
     private var renewNow = false
@@ -108,15 +114,16 @@ final class PushRelayAccess {
 
     /// The handle for `token` of `kind` under `credential`: the one made
     /// before, or a new one.
-    func handle(for token: String, kind: PushRelayKind, credential: PushRelayCredential) -> String? {
+    func handle(for token: String, kind: PushRelayKind, credential: PushRelayCredential, group: String? = nil, slot: String? = nil) -> String? {
         // The setting may have gone off while a sync waited: a handle made
         // now would miss `turnedOff`'s revocations.
         guard PushRelaySetting.isOn else { return nil }
-        let digest = SHA256.hash(data: Data("\(kind.rawValue)|\(token.lowercased())|\(credential.credential)".utf8))
+        let scope = group.map { "|"+$0+"|"+(slot ?? "") } ?? ""
+        let digest = SHA256.hash(data: Data("\(kind.rawValue)|\(token.lowercased())|\(credential.credential)\(scope)".utf8))
         let key = Base64URL.encode(Data(digest))
         if let made = stored.handles.first(where: { $0.key == key }) { return made.handle }
-        guard let handle = try? credential.handle(token: token, kind: kind) else { return nil }
-        stored.handles.append(Made(key: key, handle: handle, expires: credential.expires))
+        guard let handle = try? credential.handle(token: token, kind: kind, group: group, slot: slot) else { return nil }
+        stored.handles.append(Made(key: key, handle: handle, group: group, expires: credential.expires))
         stored.handles.removeAll { $0.expires <= Date() }
         let evicted = stored.handles.prefix(max(0, stored.handles.count - Self.maxHandles)).map(\.handle)
         stored.handles.removeFirst(evicted.count)

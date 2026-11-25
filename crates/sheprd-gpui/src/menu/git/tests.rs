@@ -107,6 +107,19 @@ fn a_cached_pull_request_is_named_and_only_an_open_one_can_be_opened(cx: &mut Te
             let pr = crate::pull_request::fixture().unwrap();
             view.seed_pr(input.clone(), pr, std::time::Instant::now());
             assert_eq!(view.git_pull_request().map(|pr| pr.number), Some(8));
+            let other = crate::pull_request::Input {
+                branch: "other".into(),
+                ..input.clone()
+            };
+            assert!(view.checkout_pull_request(&other).is_none());
+            let mut other_pr = crate::pull_request::fixture().unwrap();
+            other_pr.base_ref_name = "release".into();
+            view.seed_pr(other.clone(), other_pr, std::time::Instant::now());
+            assert_eq!(
+                view.checkout_pull_request(&other).unwrap().base_ref_name,
+                "release"
+            );
+            assert_ne!(view.git_pull_request().unwrap().base_ref_name, "release");
             assert_eq!(
                 view.git_rows().last().map(|(_, label)| label.clone()),
                 Some("Open pull request #\u{2068}8\u{2069}".into())

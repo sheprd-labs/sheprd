@@ -13,7 +13,7 @@ use super::{
     agents::{listed::Listed, status_style, status_text},
     layout::{HeaderCase, Highlight},
 };
-use crate::{config::Theme, preferences::AgentSort, system_load::Sample, window::SheprdWindow};
+use crate::{config::Theme, preferences::AgentSort, window::SheprdWindow};
 use gpui::App;
 use serde_json::{Value, json};
 use sheprd_client::protocol::{AgentStatus, ClientShellSnapshot};
@@ -71,6 +71,8 @@ pub struct Stamp {
     agent_read: Arc<crate::agent_read::Sets>,
     agent_sort: AgentSort,
     agents_list: bool,
+    /// The chats holding a draft, replaced only as one comes or goes.
+    chat_drafts: Arc<crate::chat::drafts::Marks>,
     /// The chat whose turns the layout shows; see `chat::turns`.
     chat_turns: Option<crate::chat::turns::TurnsStamp>,
     connected: bool,
@@ -85,12 +87,15 @@ pub struct Stamp {
     metrics: SidebarMetrics,
     /// Whether Back and Forward fit the left column's header.
     navigation: bool,
+    moonframe_tools: bool,
     panel: ActivityPanel,
     section: bool,
     sidebar_visible: bool,
     snapshot: Option<Arc<ClientShellSnapshot>>,
     /// The status bar's connection message; see `connection_message`.
     status: Option<String>,
+    /// Which of the status bar's buttons show, and how.
+    status_bar: crate::config::status_bar::StatusBar,
     status_bar_visible: bool,
     theme: u32,
 }
@@ -106,6 +111,7 @@ impl PartialEq for Stamp {
             && Arc::ptr_eq(&self.agent_read, &other.agent_read)
             && self.agent_sort == other.agent_sort
             && self.agents_list == other.agents_list
+            && Arc::ptr_eq(&self.chat_drafts, &other.chat_drafts)
             && self.chat_turns == other.chat_turns
             && self.connected == other.connected
             && self.details_visible == other.details_visible
@@ -113,11 +119,13 @@ impl PartialEq for Stamp {
             && self.devices == other.devices
             && self.merged == other.merged
             && self.metrics == other.metrics
+            && self.moonframe_tools == other.moonframe_tools
             && self.navigation == other.navigation
             && self.panel == other.panel
             && self.section == other.section
             && self.sidebar_visible == other.sidebar_visible
             && self.status == other.status
+            && self.status_bar == other.status_bar
             && self.status_bar_visible == other.status_bar_visible
             && self.theme == other.theme
     }
@@ -150,12 +158,13 @@ fn panel_id(panel: ActivityPanel) -> &'static str {
 
 /// An agent as the window's agents list labels it: the place it runs (its
 /// workspace, and its tab when that earns a place), its pane's name, the
-/// word its integration chose for its status, and whether it has a reply no
-/// one read (`crate::agent_read`).
+/// word its integration chose for its status, whether it has a reply no
+/// one read (`crate::agent_read`), and whether its chat holds a draft not
+/// sent (`crate::chat::drafts`).
 fn agent_state(
     agent: &Listed<'_>,
     show_state: bool,
-    unread: bool,
+    (unread, drafted): (bool, bool),
     (endpoint, host): (&str, Option<&str>),
 ) -> Value {
     let place = agent.place();
@@ -166,6 +175,7 @@ fn agent_state(
     };
     json!({
         "core": agent.is_core(),
+        "drafted": drafted,
         "endpoint": endpoint,
         "focused": agent.focused(),
         "host": host,
@@ -210,6 +220,9 @@ fn layout_state(name: &str, metrics: &SidebarMetrics) -> Value {
     json!({
         "child_details": metrics.child_details,
         "child_indent": metrics.child_indent,
+        "card_indent": metrics.card_indent,
+        "header_padding": metrics.header_padding,
+        "footer_padding": metrics.footer_padding,
         "gap": metrics.gap,
         "name": name,
         // How far rows step in under a device's header, as several devices
@@ -261,13 +274,6 @@ fn build_state() -> Value {
     })
 }
 
-fn load_state(sample: Option<&Sample>) -> Value {
-    json!({
-        "cpu": sample.and_then(|sample| sample.cpu),
-        "memory": sample.and_then(|sample| sample.memory).map(|memory| memory.percent()),
-    })
-}
-
 impl SheprdWindow {
     /// Whether a host's state may have changed; see [`Stamp`].
     pub(crate) fn hosted_stamp(&self) -> Stamp {
@@ -275,6 +281,7 @@ impl SheprdWindow {
             agent_read: self.agent_read.clone(),
             agent_sort: self.agent_sort,
             agents_list: self.hosted_agents_list(),
+            chat_drafts: self.chat_drafts.clone(),
             chat_turns: self.hosted_chat_turns_stamp(),
             connected: self.live.status.is_connected(),
             details_visible: self.details_visible,
@@ -282,12 +289,14 @@ impl SheprdWindow {
             devices: self.hosted_devices_stamp(),
             merged: self.merged_worktrees().len(),
             panel: self.activity_panel(),
-            section: self.activity_section().is_some(),
+            section: self.activity_section().is_some() || self.mod_app().is_some(),
             metrics: self.hosted_metrics(),
+            moonframe_tools: self.config.features.moonframe_tools,
             navigation: self.navigation_fits_sidebar(self.viewport_width),
             sidebar_visible: self.sidebar_visible,
             snapshot: self.live.snapshot.clone(),
             status: self.connection_message(),
+            status_bar: self.config.status_bar,
             status_bar_visible: self.status_bar_visible,
             theme: self.theme.background,
         }
@@ -318,7 +327,13 @@ impl SheprdWindow {
                 let unread = agent
                     .favorite_key()
                     .is_some_and(|key| self.agent_read.contains(&endpoint.id, &key));
-                Some(agent_state(&agent, shows, unread, (&endpoint.id, host)))
+                let drafted = self.drafted(index, &agent);
+                Some(agent_state(
+                    &agent,
+                    shows,
+                    (unread, drafted),
+                    (&endpoint.id, host),
+                ))
             })
             .collect()
     }
@@ -374,6 +389,10 @@ impl SheprdWindow {
             },
             main: json!({
                 "agents": self.hosted_agents(),
+                "sidebar_title_height": self.activity_title_height(),
+                "sidebar_line_height": super::line_height(&self.config.sidebar),
+                "primary_label": crate::i18n::fl!("sidebar-primary").to_string(),
+                "hosts_folded": self.hosts_folded(cx),
                 // Whether the sidebar lists agents in a list of their own,
                 // as the window's own sidebar does.
                 "agents_list": self.hosted_agents_list(),
@@ -386,14 +405,21 @@ impl SheprdWindow {
                 "merged": self.merged_worktrees().len(),
                 "layout": layout_state(self.config.layout.mode.name(), &self.hosted_metrics()),
                 "connected": self.live.status.is_connected(),
+                "moonframe_tools": self.config.features.moonframe_tools,
                 "details_visible": self.details_visible,
                 "panel": panel_id(self.activity_panel()),
                 "panels": panels,
-                "section": self.activity_section().is_some(),
+                "section": self.activity_section().is_some() || self.mod_app().is_some(),
                 "navigation_in_header": self.navigation_fits_sidebar(self.viewport_width),
                 "sidebar_visible": self.sidebar_visible,
                 // The classic status bar's message, absent when it shows none.
                 "status": self.connection_message(),
+                // The Theme and Commands buttons: `label`, `icon` or `hidden`,
+                // as `[status_bar] theme` and `shortcuts` set them.
+                "status_bar": {
+                    "commands": self.config.status_bar.shortcuts.name(),
+                    "theme": self.config.status_bar.theme.name(),
+                },
                 "status_bar_visible": self.status_bar_visible,
                 "usage": self.hosted_usage(),
             "workspaces": self.hosted_workspaces(cx),

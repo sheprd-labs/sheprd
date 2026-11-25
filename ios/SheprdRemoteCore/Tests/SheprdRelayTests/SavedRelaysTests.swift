@@ -150,7 +150,7 @@ struct SavedRelaysTests {
         #expect(RelayReach.read(status: 200, body: Data(#"{"protocol":1,"websocket":false}"#.utf8)) == .noWebSocket)
         #expect(RelayReach.read(status: 200, body: Data(#"{"protocol":2,"websocket":true}"#.utf8)) == .notARelay)
         #expect(RelayReach.read(status: 200, body: Data("<html>".utf8)) == .notARelay)
-        #expect(RelayReach.read(status: 404, body: info) == .notARelay)
+        #expect(RelayReach.read(status: 404, body: info) == .unreachable)
     }
 
     @Test func anAnswerLongerThanARelaysIsNotReadToItsEnd() async throws {

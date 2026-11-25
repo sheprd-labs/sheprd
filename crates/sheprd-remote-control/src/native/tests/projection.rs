@@ -36,6 +36,7 @@ fn pull_requests(boot: &str, branch: &str) -> PullRequests {
 
 fn project(summaries: HashMap<String, Summary>, pull_requests: &PullRequests) -> Home {
     Home::project(Sources {
+        labels: &Default::default(),
         checkouts: &Default::default(),
         recognized: &Default::default(),
         computer: "Studio",

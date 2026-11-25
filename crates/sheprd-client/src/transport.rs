@@ -13,7 +13,7 @@ pub use std::os::unix::net::UnixStream as Stream;
 pub(crate) use std::os::unix::net::UnixListener as Listener;
 
 #[cfg(windows)]
-pub use windows::{Stream, available as pipe_available};
+pub use windows::{Stream, available as pipe_available, overlapped_output};
 
 #[cfg(windows)]
 mod overlapped;

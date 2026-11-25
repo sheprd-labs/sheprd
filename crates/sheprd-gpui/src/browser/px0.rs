@@ -19,7 +19,18 @@ pub(super) struct Pages {
 
 impl SheprdWindow {
     pub(crate) fn px0_root(&self) -> Option<String> {
-        let root = self.local_editor_root()?;
+        let (_, workspace) = self.browser_key()?;
+        self.px0_root_at(self.selected_endpoint, &workspace)
+    }
+
+    pub(crate) fn px0_root_at(&self, index: usize, workspace: &str) -> Option<String> {
+        if self.endpoints.get(index)?.connection.target.is_remote() {
+            return None;
+        }
+        let root = self.workspace_root_at(index, workspace)?;
+        if !std::path::Path::new(root.as_ref()).is_absolute() {
+            return None;
+        }
         (root.len() <= 4096 && !root.chars().any(char::is_control)).then(|| root.into_owned())
     }
 

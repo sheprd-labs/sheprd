@@ -172,3 +172,40 @@ fn buttons_that_fit_are_kept() {
     assert_eq!(opened["options"][0]["name"], "Allow once");
     assert_eq!(opened["permission"], 7);
 }
+
+#[test]
+fn shared_reports_seal_routes_and_finish_labels_after_redaction() {
+    let mut live = start("private");
+    let Event::Start { attributes, .. } = &live.event else {
+        unreachable!()
+    };
+    live.state.detail.focus = Some(attributes.clone());
+    live.state.detail.agents = Some(AgentProgress {
+        done: 1,
+        total: 2,
+        latest: Some("private worker".into()),
+    });
+    for generic in [false, true] {
+        let mut report = live.clone();
+        if generic {
+            report = report.redacted(
+                crate::push::Privacy::Generic,
+                crate::app::config::ActivityDetail::Generic,
+            );
+        }
+        let push = report.shared_push(&phone().public_key(), 123).unwrap();
+        let report: Value = serde_json::from_slice(&push.push().body).unwrap();
+        for hidden in ["private", "w1-p3", "studio", "Claude"] {
+            assert!(!report.to_string().contains(hidden));
+        }
+        assert_eq!(report["done"], 1);
+        let state = open(&report["state"]);
+        assert_eq!(state["focus"]["pane"], "w1-p3");
+        if generic {
+            assert!(report["latest"].is_null());
+            assert!(state["permission"].is_null());
+        } else {
+            assert_eq!(open(&report["latest"]), "private worker");
+        }
+    }
+}

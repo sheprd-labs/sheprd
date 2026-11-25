@@ -108,7 +108,7 @@ the tool, and the handoff says so instead of naming it.
 
 ## Protocol
 
-Revision 3 of the attach wire:
+Revision 5 of the attach wire (4 went to briefs):
 
 - `Transcript::thread`: the `ThreadId` and the segments, so every client
   shows where each agent began.
@@ -119,6 +119,27 @@ Revision 3 of the attach wire:
 
 Older clients get a `Notice` entry in place of `Handoff` and no `thread`
 field, as revision 2 did for `Change::Harnesses`.
+
+## Status
+
+- Phases 1 and 2 merged (#1230, #1362): switching while idle, the handoff
+  builder (`sheprd_chat_protocol::handoff`), switch back by resume.
+- The thread record and transcript file (`feat/threads-record`):
+  `sheprd_chat_protocol::thread` holds `ThreadId`, `Segment`, `Thread`, the
+  on-disk `Record`, and the transcript file (`thread::file`). Revision 5 of
+  the attach wire carries `Transcript::thread`, `Change::Thread`, and
+  `EntryKind::Handoff`, which replaced the notice phase 2 pushed; older
+  clients get that notice instead. `sheprd-acp --thread ID` continues a
+  thread, and both restore paths (Herdr 1's typed line, Herdr 2's recovery
+  relaunch) pass it. The remote control daemon still reads revision 4, so
+  phones keep seeing notices until phase 6.
+
+As built, the restore record keeps its single agent and session, the
+segment a restore continues, plus the thread id: records stay readable in
+both directions across versions, and segments live in the thread record
+only. `--thread` needs `--resume` or `--load` until phase 4 lets a thread
+with no pane continue from its last segment. Threads are not yet pruned or
+deleted; phase 4 adds archive and delete.
 
 ## Phases
 
@@ -153,9 +174,10 @@ Each phase is its own pull request.
 - Picking the model by plan usage (separate from picking the agent).
 - An LLM-written summary as the handoff.
 
-## Open questions
+## Resolved questions
 
-- Should a switch with a queued prompt send the handoff and the prompt as
-  one turn (T3 does) or the handoff first? Proposal: one turn.
-- Do kept threads count against the restore record directory's existing
-  listing bounds, or get their own directory? Proposal: their own.
+- A switch with a queued prompt sends the handoff and the prompt as one
+  turn, as T3 does: the handoff is a block of the next prompt, never a turn
+  of its own.
+- Kept threads get their own directory, `threads` beside `restore`, so they
+  never count against the restore records' listing bounds.

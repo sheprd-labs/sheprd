@@ -397,6 +397,9 @@ impl SheprdWindow {
             "enter" if self.menu.page == Some(Page::RemoteUpdate) => {
                 self.remote_update_enter(window, cx);
             }
+            "enter" if self.menu.page == Some(Page::BorrowMachine) => {
+                self.answer_borrow(crate::machine::borrow::Answer::Once, window, cx);
+            }
             #[cfg(feature = "cloud")]
             "enter" if self.menu.page == Some(Page::CreateCloud) => {
                 self.confirm_create_cloud(window, cx);

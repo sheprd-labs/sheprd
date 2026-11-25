@@ -43,11 +43,11 @@ mod payload;
 pub(crate) mod push_relay_revoke;
 mod recipient;
 mod redact;
-mod relayed;
+pub(crate) mod relayed;
 mod terminal;
 mod tokens;
 
-pub(crate) use decide::{computer_id, decide};
+pub(crate) use decide::{LINGER_S, computer_id, current, decide};
 #[cfg(test)]
 pub(crate) use delivery::Relays;
 pub(crate) use delivery::{Delivery, Sent};
@@ -55,7 +55,9 @@ pub(crate) use ledger::{Kind, Ledger};
 pub(crate) use pacer::Pacer;
 #[cfg(test)]
 pub(crate) use payload::ATTRIBUTES_TYPE;
-pub(crate) use payload::{Alert, Attributes, ContentState, Detail, Event, Live, Phase};
+pub(crate) use payload::{
+    AgentProgress, Alert, Attributes, ContentState, Detail, Event, Live, Phase,
+};
 pub(crate) use recipient::Handle;
 pub(crate) use recipient::Recipient;
 pub(crate) use sheprd_apns::{DeviceToken, Priority, Push, PushType, seal};

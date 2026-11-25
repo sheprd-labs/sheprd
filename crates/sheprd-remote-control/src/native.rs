@@ -6,6 +6,7 @@
 pub(crate) mod changes;
 mod convert;
 mod create;
+pub(crate) mod drive;
 pub(crate) mod github;
 mod live;
 mod model;
@@ -94,6 +95,7 @@ fn home(state: &Shared, device: &DeviceId) -> Home {
         computer: &state.computer,
         favorites: &favorites,
         fingerprint: &state.fingerprint,
+        labels: &state.labels.current(),
         layout: &layout,
         load: *state.load.borrow(),
         summaries,

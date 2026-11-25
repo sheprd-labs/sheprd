@@ -3,7 +3,7 @@
 //!
 //! [`Caller::via`]: crate::control::protocol::Caller::via
 
-use crate::control::protocol::{Caller, ErrorCode, Response, Via};
+use crate::control::protocol::{Caller, ErrorCode, Request, Response, Via, tabs::TabOp};
 use crate::{SheprdWindow, i18n::fl, window::Flash};
 use gpui::{App, Context};
 
@@ -17,7 +17,45 @@ pub(super) fn refusal(via: &Via, cx: &App) -> Option<Response> {
     }
     match via {
         Via::Mcp { .. } => mcp(cx),
+        // What it may ask depends on the request: see [`lent`].
+        Via::Lend { .. } => None,
     }
+}
+
+/// The answer refusing a request another computer relays through
+/// `sheprd machine lend`, or `None` when the app serves it: only virtual
+/// Mac work, and while lending is off only listing and releasing, so the
+/// borrower learns why and can let go. Tart and other programs' VMs are
+/// checked where a slot is taken, off the main thread.
+pub(super) fn lent(request: &Request, cx: &App) -> Option<Response> {
+    let Some(Via::Lend { .. }) = request.via() else {
+        return None;
+    };
+    let op = match request {
+        Request::Tab(call) if call.op.lendable() => &call.op,
+        _ => {
+            return Some(Response::error(
+                ErrorCode::InvalidRequest,
+                "Another computer may only ask for virtual Mac work here",
+            ));
+        }
+    };
+    if matches!(op, TabOp::MachineList | TabOp::MachineRelease { .. }) || lends(cx) {
+        return None;
+    }
+    Some(Response::error(
+        ErrorCode::Unsupported,
+        "This computer does not lend its virtual Macs: `[machine] lend` is off in its config",
+    ))
+}
+
+/// Whether `[machine] lend` is on, as the frontmost window read it; on
+/// without a window, as it is by default.
+pub(super) fn lends(cx: &App) -> bool {
+    super::main_windows(cx)
+        .first()
+        .and_then(|handle| handle.read(cx).ok())
+        .is_none_or(|view| view.config.machine.lend)
 }
 
 /// Says who asked, once a relayed request opened a dialog: the dialog names

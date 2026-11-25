@@ -127,14 +127,17 @@ impl Page {
     /// Hides the page, first taking the keyboard back from it: a hidden view
     /// would go on receiving keys.
     pub(crate) fn hide(&self) {
+        #[cfg(target_os = "macos")]
         self.shown.set(false);
+        #[cfg(not(target_os = "macos"))]
+        let was_shown = self.shown.replace(false);
         #[cfg(target_os = "macos")]
         {
             self.router.release_keyboard();
             self.router.set_shown(false);
         }
         #[cfg(not(target_os = "macos"))]
-        if let Some(view) = self.web() {
+        if was_shown && let Some(view) = self.web() {
             let _ = view.focus_parent();
         }
         self.set_visible(false);

@@ -26,6 +26,7 @@ impl Fixture {
         }
         if beads {
             std::fs::create_dir(checkout.join(".beads")).unwrap();
+            std::fs::write(checkout.join(".beads/metadata.json"), "{}").unwrap();
         }
         Self { dir, checkout }
     }

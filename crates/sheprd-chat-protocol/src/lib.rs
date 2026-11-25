@@ -16,8 +16,10 @@ mod media;
 mod model;
 pub mod naming;
 mod origin;
+mod private;
 pub mod restore;
 mod settings;
+pub mod thread;
 mod wire;
 
 pub use agents::{Agent, UnknownAgent};

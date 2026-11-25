@@ -442,28 +442,34 @@ fn info_is_read_again_while_scanning() {
 }
 
 #[test]
-fn stopping_the_scan_lets_go_of_all_but_the_one_being_paired() {
+fn stopping_the_scan_lets_go_of_the_one_being_paired_too() {
+    // Add Device closed mid-pairing sends no `disconnect`: a computer kept
+    // here would never be discovered or listed again.
     let mut central = scanning();
     let id = listed(&mut central, "Studio");
     let other = "/org/bluez/hci0/dev_BB";
     central.input(Input::Discovered(other.into()));
     central.command(Command::Connect(id.clone()));
-    let steps = central.command(Command::Scan(false));
-    assert_eq!(
-        steps,
-        [
-            act(Action::Discover(false)),
-            act(Action::Disconnect(other.into())),
-        ]
-    );
-    // Disconnecting it now, with no scan, closes its link and unlists it.
-    assert_eq!(
-        central.command(Command::Disconnect(id.clone())),
-        [act(Action::Disconnect(DEVICE.into()))]
-    );
-    assert_eq!(
-        central.command(Command::Connect(id.clone())),
-        [emit(Event::PeripheralDisconnected { peripheral: id })]
+    let mut steps = central.command(Command::Scan(false));
+    steps.sort_by_key(|step| format!("{step:?}"));
+    let mut expected = vec![
+        act(Action::Discover(false)),
+        act(Action::Disconnect(DEVICE.into())),
+        act(Action::Disconnect(other.into())),
+        emit(Event::PeripheralDisconnected {
+            peripheral: id.clone(),
+        }),
+    ];
+    expected.sort_by_key(|step| format!("{step:?}"));
+    assert_eq!(steps, expected);
+    // The next page's scan finds and lists it again.
+    central.command(Command::Scan(true));
+    let again = listed(&mut central, "Studio");
+    assert!(
+        central
+            .command(Command::Connect(again))
+            .iter()
+            .all(|step| !matches!(step, Step::Emit(Event::PeripheralDisconnected { .. })))
     );
 }
 

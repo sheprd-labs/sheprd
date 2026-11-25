@@ -41,7 +41,8 @@ pub(crate) enum Start {
     /// Only join a core that already runs.
     Join,
     /// Start the user's `herdr-core`, else the bundled one. The window asks
-    /// for this only when no Herdr 1 is installed, or the user did.
+    /// for this when no Herdr 1 is installed, when the user did, or for a
+    /// tab saved with herdr-core panes, whose core a reboot stopped.
     IfMissing,
 }
 
@@ -167,6 +168,15 @@ impl Hub {
         };
     }
 
+    /// Connects for a tab saved with this core's panes: starts the core when
+    /// none runs, as after a reboot, but after a failure waits the retry
+    /// interval as a join does, since restored tabs ask on every tick.
+    pub(crate) fn connect_restored(&mut self) {
+        if !self.cooling() {
+            self.connect(Start::IfMissing);
+        }
+    }
+
     /// Whether the last attempt failed within the retry interval, so asking
     /// again now would dial too soon.
     pub(crate) fn cooling(&self) -> bool {
@@ -221,7 +231,12 @@ fn join(start: Start) -> Result<CoreBackend, Error> {
         Ok(core) => return Ok(CoreBackend::new(core, SCROLLBACK)),
         Err(error) => error,
     };
-    if start == Start::Join || !matches!(first, sheprd_core_client::Error::Connect { .. }) {
+    // The App Store build only joins: a core it started would inherit its
+    // sandbox, and with it every shell and agent in its terminals.
+    if start == Start::Join
+        || cfg!(feature = "mas")
+        || !matches!(first, sheprd_core_client::Error::Connect { .. })
+    {
         return Err(first.into());
     }
     let binary = crate::bundled::locate(PROGRAM).ok_or(Error::NotBundled)?;

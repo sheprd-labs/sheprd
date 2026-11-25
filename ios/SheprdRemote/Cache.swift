@@ -54,6 +54,14 @@ struct Cache: Sendable {
         return try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
     }
 
+    func lastLinkStatus(_ device: String) -> LinkStatus? {
+        read(LinkStatus.self, at: computerFolder(device).appending(path: "link-status.json"))
+    }
+
+    func save(linkStatus: LinkStatus, for device: String) {
+        write(linkStatus, to: computerFolder(device).appending(path: "link-status.json"))
+    }
+
     func save(home: Home, device: String) {
         write(home, to: computerFolder(device).appending(path: "home.json"))
     }

@@ -94,16 +94,17 @@ impl SheprdWindow {
         endpoint: &str,
         workspace: &str,
         link: &Link,
+        focus: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<crate::browser::PageOpened> {
         match link {
             Link::Page(url) => {
-                Some(self.open_workspace_page(endpoint, workspace, url.clone(), window, cx))
+                Some(self.open_workspace_page(endpoint, workspace, url.clone(), focus, window, cx))
             }
             // Opened once the tunnel is up, later.
             Link::Tunnel(key) => {
-                self.open_tunneled_page(endpoint, workspace, key.clone(), window, cx);
+                self.open_tunneled_page(endpoint, workspace, key.clone(), focus, window, cx);
                 None
             }
         }
@@ -171,7 +172,7 @@ pub(crate) fn chips(
                 .hover(|style| style.text_color(rgb(foreground)).underline())
                 .on_click(cx.listener(move |this, _, window, cx| {
                     cx.stop_propagation();
-                    this.open_port_link(&endpoint, &workspace, &link, window, cx);
+                    this.open_port_link(&endpoint, &workspace, &link, true, window, cx);
                 }));
             div()
                 .flex()
@@ -265,11 +266,12 @@ impl SheprdWindow {
         endpoint: &str,
         workspace: &str,
         key: Key,
+        focus: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if let Some(local) = self.tunnels.local(&key) {
-            self.open_local_port(endpoint, workspace, local, window, cx);
+            self.open_local_port(endpoint, workspace, local, focus, window, cx);
             return;
         }
         let Some(preferred) = self.tunnels.begin(&key) else {
@@ -287,7 +289,7 @@ impl SheprdWindow {
             let _ = this.update_in(cx, |this, window, cx| match result {
                 Ok(tunnel) => {
                     if let Some(local) = this.tunnels.finish(key, tunnel) {
-                        this.open_local_port(&endpoint, &workspace, local, window, cx);
+                        this.open_local_port(&endpoint, &workspace, local, focus, window, cx);
                     }
                 }
                 Err(error) => {
@@ -314,12 +316,13 @@ impl SheprdWindow {
         endpoint: &str,
         workspace: &str,
         local: u16,
+        focus: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         match WebUrl::try_from(format!("http://127.0.0.1:{local}/").as_str()) {
             Ok(url) => {
-                self.open_workspace_page(endpoint, workspace, url, window, cx);
+                self.open_workspace_page(endpoint, workspace, url, focus, window, cx);
             }
             Err(error) => self.show_flash(Flash::warning(error.to_string()), cx),
         }

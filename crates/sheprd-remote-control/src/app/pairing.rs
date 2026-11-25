@@ -35,6 +35,9 @@ pub enum Phase {
         qr: Arc<Qr>,
         deadline: Instant,
         lifetime: Duration,
+        /// `PairingState::Waiting::nearby_code`: a nearby phone or computer
+        /// shows this code and claims next.
+        nearby_code: Option<String>,
     },
     /// A phone claimed the QR: the user compares codes and answers.
     Claimed {
@@ -332,6 +335,7 @@ impl Pairing {
                 lifetime,
                 qr: Arc::new(qr),
                 offer,
+                nearby_code: None,
             },
             Err(error) => Phase::Failed {
                 message: error.to_string(),
@@ -349,13 +353,17 @@ impl Pairing {
                     lifetime,
                     ..
                 },
-                PairingState::Waiting { expires_in_ms },
+                PairingState::Waiting {
+                    expires_in_ms,
+                    nearby_code,
+                },
             ) => Phase::Showing {
                 // The daemon's clock decides when the token stops working.
                 deadline: now + Duration::from_millis(expires_in_ms),
                 offer,
                 qr,
                 lifetime,
+                nearby_code,
             },
             (
                 Phase::Showing { offer, .. },

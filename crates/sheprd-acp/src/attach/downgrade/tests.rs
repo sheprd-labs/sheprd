@@ -127,3 +127,77 @@ fn a_client_before_pull_requests_gets_the_count_in_their_place() {
 }
 
 mod briefs;
+
+fn handoff_entry() -> Entry {
+    Entry {
+        id: sheprd_chat_protocol::EntryId(4),
+        kind: EntryKind::Handoff(sheprd_chat_protocol::HandedOver {
+            from: Some(sheprd_chat_protocol::Agent::Claude),
+            kept: 3,
+            omitted: 0,
+            resumed: false,
+            to: sheprd_chat_protocol::Agent::Codex,
+        }),
+    }
+}
+
+#[test]
+fn a_client_before_threads_gets_handoffs_as_notices_and_no_thread() {
+    use sheprd_chat_protocol::{
+        Agent,
+        thread::{Thread, ThreadId},
+    };
+    let mut downgrade = Downgrade::new(4);
+    let epoch = Cursor::new_epoch();
+    let thread = Thread::new(ThreadId::random(), Agent::Claude);
+    let mut transcript = Transcript::new("Codex");
+    transcript.clients = 1;
+    transcript.entries.push(handoff_entry());
+    transcript.thread = Some(thread.clone());
+    let Some(ServerMessage::Snapshot { transcript, .. }) =
+        downgrade.message(ServerMessage::Snapshot {
+            cursor: epoch,
+            transcript: Box::new(transcript),
+        })
+    else {
+        panic!("no snapshot");
+    };
+    assert_eq!(transcript.thread, None);
+    let EntryKind::Notice { text, .. } = &transcript.entries[0].kind else {
+        panic!("not a notice");
+    };
+    assert!(text.starts_with("Codex continues this conversation"));
+
+    let Some(ServerMessage::Change {
+        change: Change::Push { entry },
+        ..
+    }) = downgrade.message(change(
+        Change::Push {
+            entry: handoff_entry(),
+        },
+        1,
+        epoch,
+    ))
+    else {
+        panic!("no push");
+    };
+    assert!(matches!(entry.kind, EntryKind::Notice { .. }));
+    assert_eq!(
+        downgrade.message(change(Change::Thread { thread }, 2, epoch)),
+        Some(change(Change::Clients { count: 1 }, 2, epoch))
+    );
+}
+
+#[test]
+fn a_client_of_threads_gets_handoffs_as_they_are() {
+    let mut downgrade = Downgrade::new(REVISION);
+    let epoch = Cursor::new_epoch();
+    let push = change(
+        Change::Push {
+            entry: handoff_entry(),
+        },
+        1,
+        epoch,
+    );
+    assert_eq!(downgrade.message(push.clone()), Some(push));
+}

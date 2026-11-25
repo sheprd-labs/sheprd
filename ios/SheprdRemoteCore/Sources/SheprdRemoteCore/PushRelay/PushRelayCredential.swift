@@ -127,6 +127,7 @@ public struct PushRelayCredential: Codable, Equatable, Sendable {
     public func handle(
         token: String,
         kind: PushRelayKind,
+        group: String? = nil, slot: String? = nil,
         id: String = PushRelayCredential.newHandleId(),
         ephemeral: P256.KeyAgreement.PrivateKey = P256.KeyAgreement.PrivateKey(),
         nonce: AES.GCM.Nonce = AES.GCM.Nonce()
@@ -140,7 +141,7 @@ public struct PushRelayCredential: Codable, Equatable, Sendable {
         else { throw Failure.relayKey }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-        let plaintext = try encoder.encode(Opened(credential: credential, id: id, kind: kind, token: token))
+        let plaintext = try encoder.encode(Opened(credential: credential, id: id, kind: kind, token: token, group: group, slot: slot))
         let sealed = try NotificationSeal.seal(
             plaintext, to: key, info: PushRelayKind.handleInfo, ephemeral: ephemeral, nonce: nonce
         )
@@ -161,6 +162,8 @@ public struct PushRelayCredential: Codable, Equatable, Sendable {
         let id: String
         let kind: PushRelayKind
         let token: String
+        let group: String?
+        let slot: String?
     }
 }
 

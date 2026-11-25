@@ -206,6 +206,20 @@ impl SheprdWindow {
         let focused = selected && agent.focused();
         let star = self.agent_star(index, &agent, cx);
         let unread = self.unread_dot(index, &agent, cx);
+        let draft = self.draft_pencil(index, &agent, unread.is_some());
+        // The text ends before the pencil rather than running under it.
+        let narrowed;
+        let row_cx = match draft {
+            Some(_) => {
+                narrowed = RowContext {
+                    width: row_cx.width
+                        - crate::sidebar::agents::drafted::draft_reserve(unread.is_some()),
+                    ..*row_cx
+                };
+                &narrowed
+            }
+            None => row_cx,
+        };
         Cell::new(
             rows,
             RowData::Agent(AgentRow {
@@ -230,6 +244,7 @@ impl SheprdWindow {
         .row()
         .when_some(star, |row, star| row.relative().child(star))
         .when_some(unread, |row, dot| row.relative().child(dot))
+        .when_some(draft, |row, pencil| row.relative().child(pencil))
         .when(gap > 0., |row| row.mt(px(gap)))
         .id(SharedString::from(format!("agent-{endpoint_id}-{id}")))
         .role(Role::ListItem)

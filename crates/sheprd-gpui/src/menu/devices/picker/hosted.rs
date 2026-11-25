@@ -66,7 +66,10 @@ impl SheprdWindow {
     /// Whether a host's layout draws the open picker, rather than the window:
     /// the list itself, not a session's editor over it.
     pub(crate) fn hosted_picker_open(&self) -> bool {
-        self.hosted && self.menu.page == Some(Page::Devices) && self.menu.session_edit.is_none()
+        self.hosted
+            && self.menu.hosted_picker
+            && self.menu.page == Some(Page::Devices)
+            && self.menu.session_edit.is_none()
     }
 
     /// The footer, and the picker while it is open, for a host's layout.
@@ -279,6 +282,7 @@ impl SheprdWindow {
             return self.dismiss_menu(window, cx);
         }
         if self.open_menu(window, cx) {
+            self.menu.hosted_picker = true;
             self.menu.page = Some(Page::Devices);
             self.menu.selected = Some(0);
         }

@@ -66,6 +66,7 @@ fn core_layout(status: sheprd_client::protocol::AgentStatus) -> Layout {
                 panes: Vec::new(),
                 zoomed: false,
                 agent: Some(TerminalAgent {
+                    boot: "b".into(),
                     name: None,
                     status,
                     pane: "core:x-61".into(),

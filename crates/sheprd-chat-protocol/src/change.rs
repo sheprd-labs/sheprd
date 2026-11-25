@@ -91,6 +91,11 @@ pub enum Change {
     Brief {
         brief: crate::Brief,
     },
+    /// The thread's segments changed: an agent took over, or its session
+    /// or model is now known.
+    Thread {
+        thread: crate::thread::Thread,
+    },
 }
 
 impl Transcript {
@@ -109,6 +114,12 @@ impl Transcript {
                     && entry.id <= last
                 {
                     return Err(Error::EntryOrder { id: entry.id, last });
+                }
+                if matches!(entry.kind, EntryKind::User { .. })
+                    && let Some(task) = self.delegation.as_mut()
+                    && std::mem::replace(&mut task.prompted, true)
+                {
+                    self.delegation = None;
                 }
                 self.entries.push(entry.clone());
             }
@@ -174,6 +185,10 @@ impl Transcript {
             Change::Harnesses { harnesses } => self.harnesses.clone_from(harnesses),
             Change::PullRequest { pull_request } => self.add_pull_request(pull_request)?,
             Change::Brief { brief } => self.add_brief(*brief)?,
+            Change::Thread { thread } => {
+                thread.validate()?;
+                self.thread = Some(thread.clone());
+            }
         }
         Ok(())
     }

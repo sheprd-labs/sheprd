@@ -90,6 +90,11 @@ pub(crate) struct ActivityToken {
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Registration {
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) single_activity: bool,
+    /// Changes when the phone ends all cards (for example on entering Private).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) activity_epoch: Option<uuid::Uuid>,
     #[serde(default)]
     pub(crate) activities: Vec<ActivityToken>,
     /// How much this phone's activities may say.

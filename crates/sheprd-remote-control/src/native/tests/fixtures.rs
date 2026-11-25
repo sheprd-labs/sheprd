@@ -155,6 +155,7 @@ fn home() -> Home {
         }],
     };
     let mut home = Home::project(Sources {
+        labels: &Default::default(),
         checkouts: &Default::default(),
         recognized: &Default::default(),
         computer: "MacBook Pro",

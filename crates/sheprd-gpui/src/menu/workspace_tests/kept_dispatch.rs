@@ -74,6 +74,7 @@ fn window_on(
                     key: KEY.into(),
                     label: "app".into(),
                     linked: true,
+                    root: String::new(),
                 }),
             );
             let location =

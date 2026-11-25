@@ -132,10 +132,11 @@ fn description(skill: &str) -> &str {
 }
 
 #[test]
-fn the_skill_teaches_the_split_the_kit_and_page_results() {
+fn the_skill_teaches_background_previews_the_kit_and_page_results() {
     for taught in [
-        "A local file opens in a split next to your terminal",
-        "--tab",
+        "Files and web addresses open in a background tab",
+        "--beside",
+        "--focus",
         "/.herdr/kit.css",
         "HerdrKit.scenario(",
         "HerdrKit.variants(",

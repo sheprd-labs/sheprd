@@ -120,6 +120,34 @@ fn non_utf8_paths_are_accepted_where_paths_go() {
 }
 
 #[test]
+fn thread_keeps_a_continued_session_in_its_thread() {
+    let id = sheprd_chat_protocol::thread::ThreadId::random();
+    let options = run(&["--resume", "abc", "--thread", &id.to_string(), "claude"]);
+    assert_eq!(options.thread, Some(id));
+    assert_eq!(run(&["claude"]).thread, None);
+    assert_eq!(
+        parse(args(&["--resume", "abc", "--thread", "nope", "claude"])),
+        Err(Error::InvalidThread("nope".to_owned()))
+    );
+    // Until a thread can be continued without its session, it takes one.
+    assert_eq!(
+        parse(args(&["--thread", &id.to_string(), "claude"])),
+        Err(Error::ThreadWithoutLoad)
+    );
+    assert_eq!(
+        parse(args(&[
+            "--resume",
+            "abc",
+            "--thread",
+            &id.to_string(),
+            "--",
+            "my-agent"
+        ])),
+        Err(Error::ThreadWithoutLoad)
+    );
+}
+
+#[test]
 fn resume_loads_a_session_and_requires_it() {
     let options = run(&["--resume", "abc", "--acp", "claude"]);
     assert_eq!(options.load.as_deref(), Some("abc"));

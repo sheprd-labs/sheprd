@@ -10,7 +10,7 @@ fn only_pane_input_captures_its_explicit_destination_before_queueing() {
             next_request: AtomicU64::new(1),
             image_busy: Arc::new(AtomicBool::new(false)),
             last_queued_theme: Default::default(),
-            liveness: Arc::new(AtomicBool::new(false)),
+            liveness: Default::default(),
         }),
     };
     handle

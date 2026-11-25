@@ -1,5 +1,6 @@
-//! A client of T3 Code (`pingdotgg/t3code`): its threads, read over the same
-//! WebSocket protocol its own apps use, and shown as Sheprd chats.
+//! A client of T3 Code (`pingdotgg/t3code`): its threads, read and steered
+//! over the same WebSocket protocol its own apps use, and shown as Sheprd
+//! chats.
 //!
 //! T3 Code keeps running the agents and owning the threads; this crate only
 //! reads and steers them (`docs/t3-plan.md`). The protocol has no published
@@ -14,12 +15,15 @@ mod error;
 mod fixtures;
 pub mod frame;
 pub mod http;
+pub mod launch;
 pub mod shell;
+pub mod steer;
 pub mod thread;
 pub mod token;
 pub mod transcript;
 
 pub use error::{Error, Result};
 
-/// The T3 Code release this client's fixtures were recorded from.
-pub const TESTED: &str = "0.1.7";
+/// The newest T3 Code release this client's fixtures were recorded from
+/// (`fixtures/README.md` names each file's).
+pub const TESTED: &str = "0.1.9";

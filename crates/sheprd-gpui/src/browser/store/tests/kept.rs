@@ -127,7 +127,7 @@ fn the_last_folder_and_user_name_survive_serialization() {
     assert!(!store.follow_kept_folder(&scope, &id, ""));
     assert!(!store.follow_kept_folder(&scope, &id, &"x".repeat(5000)));
     assert!(store.follow_kept_folder(&scope, &id, "/work/repo"));
-    assert_eq!(store.kept_workspace(&scope, &id).unwrap().label, "repo");
+    assert_eq!(store.kept_workspace(&scope, &id).unwrap().label, "old");
     assert!(!store.follow_kept_folder(&scope, &id, "/work/repo"));
     store.rename_kept(&scope, &id, "My project");
     assert!(store.follow_kept_folder(&scope, &id, "/work/final"));

@@ -31,6 +31,16 @@ impl Pane {
             Self::Body => "settings-body-thumb",
         }
     }
+
+    /// The sections area is inside the navigation panel's padding. Keep its
+    /// content inset, but let the overlay thumb reach the panel edge like the
+    /// body thumb reaches the settings content edge.
+    fn inset(self) -> f32 {
+        match self {
+            Self::Sections => INSET - super::navigation::NAVIGATION_PADDING,
+            Self::Body => INSET,
+        }
+    }
 }
 
 /// What a thumb drags: the pane it scrolls.
@@ -96,7 +106,7 @@ impl SettingsWindow {
                 .id(pane.selector())
                 .debug_selector(move || pane.selector().into())
                 .absolute()
-                .inset_e(px(INSET))
+                .inset_e(px(pane.inset()))
                 .top(px(thumb.left))
                 .w(px(WIDTH))
                 .h(px(thumb.width))

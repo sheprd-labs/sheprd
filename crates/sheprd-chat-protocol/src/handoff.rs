@@ -242,7 +242,10 @@ fn line(kind: &EntryKind) -> Option<String> {
             Author::Agent => "Agent: [a picture]".to_owned(),
         },
         EntryKind::Tool(tool) => tool_line(tool),
-        EntryKind::Thought { .. } | EntryKind::Turn(_) | EntryKind::Notice { .. } => return None,
+        EntryKind::Thought { .. }
+        | EntryKind::Turn(_)
+        | EntryKind::Notice { .. }
+        | EntryKind::Handoff(_) => return None,
     };
     Some(cap(&line))
 }

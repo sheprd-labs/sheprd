@@ -321,7 +321,11 @@ pub(in crate::chat) fn settle(
 /// space keeps it out of the history of shells that honor that.
 pub(in crate::chat) fn line(program: &Path, record: &restore::Record) -> Option<String> {
     let program = program.to_str()?;
+    let thread = record.thread.map(|thread| thread.to_string());
     let mut words = vec![program, "--resume", record.session.as_str()];
+    if let Some(thread) = &thread {
+        words.extend(["--thread", thread.as_str()]);
+    }
     if record.adapter {
         words.push("--acp");
     }

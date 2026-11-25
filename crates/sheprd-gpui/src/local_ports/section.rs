@@ -107,6 +107,7 @@ impl SheprdWindow {
                     &owned.endpoint,
                     &owned.workspace,
                     &Link::Page(url),
+                    true,
                     window,
                     cx,
                 );

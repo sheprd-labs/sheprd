@@ -773,9 +773,10 @@ connections).
     devices, and encrypted current addresses.
   - `l2cap` (read): the PSM of the fallback channel, when it is on.
 - Advertising runs only while the pairing dialog is open, or while presence
-  is on (opt-in) for at least one paired device. The advertisement carries
-  only the service UUID, which iOS background scanning needs. The
-  computer's name and identity never appear unauthenticated.
+  is on (on by default; can be turned off) for at least one paired device.
+  The advertisement carries only the service UUID, which iOS background
+  scanning needs. The computer's name and identity never appear
+  unauthenticated.
 
 ### Flow on the phone
 
@@ -788,8 +789,11 @@ connections).
 
 ## Bluetooth after pairing
 
-All of this is opt-in per device, under Settings > Remote control on both
-sides.
+Presence is on by default on both sides: per computer on the phone
+(Settings > Notifications > Hold Alerts at the Desk, and on each
+computer's page) and on the desktop (Settings > Remote control, "Hold
+phone alerts while I'm here", `[remote] presence`). Saved choices are
+preserved when turned off.
 
 - **Presence: notifications follow you.**
   - The phone keeps a background Bluetooth connection to each paired
@@ -822,8 +826,12 @@ sides.
 
 ### Presence, exactly
 
-Opt-in on the desktop with `[remote] presence = true` (Settings > Remote
-control, "Hold phone alerts while I'm here"); macOS only for now.
+On by default for newly paired computers on the phone and for older phone
+records without a saved presence setting. Saved choices are preserved; the
+phone switch is Settings > Notifications > Hold Alerts at the Desk.
+On by default on the desktop, `[remote] presence` (Settings > Remote
+control, "Hold phone alerts while I'm here"), which `presence = false`
+turns off.
 
 - **Advertising.** While remote control runs with presence on, Sheprd
   keeps `sheprd-nearby` running and sends it
@@ -897,6 +905,16 @@ control, "Hold phone alerts while I'm here"); macOS only for now.
     wins, and they go in order once the mark is lifted or lapses.
   - A clear drops the held alert for its chat and still goes.
   - Live Activity pushes are never held.
+- **Linked hosts.** The SSH and cloud machines this computer paired the
+  phone with hold its alerts too, as the phone's owner is at this
+  computer whichever host an agent runs on.
+  - Each change and renewal of a device's mark also goes to every host
+    the device is paired with (`devices` lists the phone's id on each),
+    by running `sheprd-remote-control presence --device ID --near|--away`
+    there over the app's shared SSH connection.
+  - One run per host at a time; the newest mark per device wins while
+    one runs. A failed run is retried after 30 s, and a host that cannot
+    be reached lets a near mark lapse after 120 s, as here.
 - **Fixture.** `Fixtures/presence/prove.json` holds both sides from fixed
   values.
   - **The hello:** `device_id`, `hint_day`, and `hint`.
@@ -1200,8 +1218,9 @@ That fallback waits for its throughput spike to run on a device.
   phone, under their own info.
 - **Wake:** state restoration relaunches the app when a computer comes
   back in range.
-- **Settings:** off by default on both sides, a switch per computer on
-  the phone and `[remote] presence` on the desktop.
+- **Settings:** on by default on both sides (preserved if turned off), a
+  switch per computer on the phone (Settings > Notifications > Hold Alerts
+  at the Desk) and `[remote] presence` on the desktop.
 - **Checked:** against shared fixtures (the signed bytes, the signature
   encoding, the sealed addresses) and unit tests on each side.
 - **Needs a device:** the Bluetooth path itself.

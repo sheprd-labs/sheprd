@@ -189,3 +189,14 @@ fn a_path_change_is_weaker_than_the_network_coming_back() {
         Some(Trigger::NetworkRestored)
     );
 }
+
+#[test]
+fn only_a_sleep_asks_a_live_link_to_answer_within_seconds() {
+    use sheprd_client::Suspicion;
+    assert_eq!(Trigger::Sleep.suspicion(), Suspicion::Slept);
+    assert_eq!(
+        Trigger::NetworkRestored.suspicion(),
+        Suspicion::NetworkChanged
+    );
+    assert_eq!(Trigger::PathChanged.suspicion(), Suspicion::NetworkChanged);
+}

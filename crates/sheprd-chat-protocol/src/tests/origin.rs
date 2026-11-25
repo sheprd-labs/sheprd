@@ -1,6 +1,6 @@
 use serde_json::json;
 
-use super::*;
+use crate::*;
 
 #[test]
 fn a_prompt_carries_its_origin_and_reads_without_one() {
@@ -41,4 +41,15 @@ fn only_this_machine_opens_its_paths() {
     assert!(!Origin::new(Device::Desktop, Via::Remote).opens_paths());
     assert!(!Origin::new(Device::PhoneApp, Via::Tailscale).opens_paths());
     assert!(!Origin::new(Device::PhoneWeb, Via::Local).opens_paths());
+}
+
+#[test]
+fn phone_identity_round_trips_and_is_optional_for_old_clients() {
+    let mut origin = Origin::new(Device::PhoneApp, Via::Relay);
+    origin.phone = Some("phone-a".into());
+    let value = serde_json::to_value(&origin).unwrap();
+    assert_eq!(value["phone"], "phone-a");
+    assert_eq!(serde_json::from_value::<Origin>(value).unwrap(), origin);
+    let old: Origin = serde_json::from_value(json!({"device":"phone_app", "via":"lan"})).unwrap();
+    assert_eq!(old.phone, None);
 }

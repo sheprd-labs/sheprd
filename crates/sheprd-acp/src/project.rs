@@ -30,6 +30,7 @@ const MAX_SKIPPED: usize = 1024;
 
 pub(crate) mod activity;
 mod claude_code;
+pub(crate) mod models;
 pub(crate) mod opencode;
 mod subagents;
 pub(crate) mod todos;
@@ -129,6 +130,18 @@ impl Projector {
                     level,
                     text: bounded(text.into()),
                 },
+            },
+        }
+    }
+
+    /// Another agent took over the conversation.
+    pub(crate) fn handoff(&mut self, handoff: sheprd_chat_protocol::HandedOver) -> Change {
+        self.close();
+        let id = self.next_id();
+        Change::Push {
+            entry: Entry {
+                id,
+                kind: EntryKind::Handoff(handoff),
             },
         }
     }

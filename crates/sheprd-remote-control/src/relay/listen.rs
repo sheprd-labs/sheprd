@@ -27,7 +27,6 @@ pub(super) async fn run(
 ) {
     let mut wait = FIRST;
     loop {
-        relays.set_status(&endpoint, Status::Connecting);
         let result = tokio::select! {
             result = session(&relays, &endpoint, &served, &mut wait) => result,
             _ = stopped.wait_for(|stop| *stop) => {

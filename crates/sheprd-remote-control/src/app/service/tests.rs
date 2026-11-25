@@ -340,6 +340,7 @@ fn status(version: &str) -> Response {
         devices: 0,
         connected: 0,
         github_asks: 0,
+        voice_asks: 0,
         relays: Default::default(),
     })
 }

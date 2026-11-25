@@ -421,16 +421,34 @@ fn run_with_stderr(
     timeout: Duration,
     cancelled: impl Fn() -> bool,
 ) -> Result<(std::process::ExitStatus, Vec<u8>, Vec<u8>)> {
+    #[cfg(unix)]
     let mut child = ChildGuard(
         command
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .spawn()?,
     );
+    #[cfg(unix)]
     let stdout = child.0.stdout.take().ok_or(Error::Closed)?;
+    #[cfg(unix)]
     let stderr = match child.0.stderr.take() {
         Some(stderr) => Some(failure::drain(stderr)?),
         None => None,
+    };
+    // OpenSSH for Windows' `ssh.exe` stops delivering output into a
+    // synchronous pipe once its stdin has ended, on stderr as on stdout (a
+    // Windows host's PowerShell writes progress there); see
+    // `overlapped_output`. So stderr is always read here, and a caller that
+    // wanted it discarded ignores its tail.
+    #[cfg(windows)]
+    let (mut child, stdout, stderr) = {
+        let (stdout, out) = crate::overlapped_output()?;
+        let (stderr, err) = crate::overlapped_output()?;
+        let child = command.stdin(Stdio::null()).stdout(out).stderr(err).spawn();
+        // The caller's command holds the child's ends until replaced, and an
+        // exited child must read as closed.
+        command.stdout(Stdio::null()).stderr(Stdio::null());
+        (ChildGuard(child?), stdout, Some(failure::drain(stderr)?))
     };
     // The pipe reaches EOF once the child exits or the guard kills it.
     let reader = std::thread::Builder::new()

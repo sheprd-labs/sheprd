@@ -84,6 +84,8 @@ pub enum ParseError {
     CorePair,
     #[error("{0} needs a value")]
     Missing(&'static str),
+    #[error("presence needs --near or --away")]
+    NoPresence,
     #[error("{option} names no relay: put it after a --relay")]
     NoRelay { option: &'static str },
     #[error("--state-dir is required")]
@@ -120,6 +122,13 @@ pub enum Invocation {
     PushStatus {
         state_dir: Option<PathBuf>,
     },
+    /// Marks a device near or away, for Sheprd on the computer the phone
+    /// is near (`app::presence`).
+    Presence {
+        state_dir: Option<PathBuf>,
+        device: String,
+        near: bool,
+    },
     /// Revokes a device that other computer enrolled.
     Revoke {
         state_dir: Option<PathBuf>,
@@ -130,6 +139,10 @@ pub enum Invocation {
     Relays {
         state_dir: Option<PathBuf>,
         offer: bool,
+    },
+    Labels {
+        command: crate::control::labels::Command,
+        json: bool,
     },
     /// Reads this computer's favorite agents, making the change
     /// (`control::favorites::Change`) given on standard input, if any.
@@ -207,6 +220,8 @@ Usage: sheprd-remote-control serve --state-dir DIR [options]
        sheprd-remote-control revoke --device ID [--state-dir DIR]
        sheprd-remote-control relay-enroll [--state-dir DIR] < REQUEST.json
        sheprd-remote-control push-status [--state-dir DIR]
+       sheprd-remote-control presence --device ID --near|--away [--state-dir DIR]
+       sheprd-remote-control labels [list|add TAG|rename OLD NEW|remove TAG] [--worktree] [--pane ID | --workspace ID] [--json]
        sheprd-remote-control tags [--offer] [--state-dir DIR] [< TAGS.json]
        sheprd-remote-control shortcuts [--offer] [--state-dir DIR] [< SHORTCUTS.json]
        sheprd-remote-control favorites [--offer] [--state-dir DIR] [< CHANGE.json]
@@ -274,6 +289,9 @@ push-status prints how the daemon running here sends iPhone pushes, as
 JSON (its mode, and how the last alert and Live Activity push went), so
 Sheprd on another computer can show it; it prints nothing when no daemon
 answers.
+presence --near marks a phone near Sheprd on another computer, so the
+daemon here holds its alerts too until presence --away, or until two
+minutes pass without another --near; Sheprd there runs it over SSH.
 relays --offer takes {\"source\", \"relays\"}, the relays Sheprd on
 another computer listens on, replacing what that computer shared before:
 the daemon listens on them too, beside its own [remote] relays.
@@ -315,6 +333,26 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Invocation, Par
                 Invocation::Enroll { state_dir } => Invocation::PushStatus { state_dir },
                 other => other,
             });
+        }
+        Some("presence") => return parse_presence(args),
+        Some("labels") => {
+            let mut words = Vec::new();
+            let mut json = false;
+            for word in args {
+                if word == "--help" || word == "-h" {
+                    return Ok(Invocation::Help);
+                }
+                if word == "--json" {
+                    json = true;
+                } else {
+                    words.push(word);
+                }
+            }
+            let command =
+                crate::control::labels::Command::parse(words).map_err(|_| ParseError::Value {
+                    option: crate::control::labels::USAGE,
+                })?;
+            return Ok(Invocation::Labels { command, json });
         }
         Some("favorites") => {
             return parse_edited(args, |state_dir, offer| Invocation::Favorites {
@@ -561,6 +599,39 @@ fn parse_host(
     Ok(Invocation::Revoke {
         state_dir,
         device: device.ok_or(ParseError::Missing("--device"))?,
+    })
+}
+
+/// `presence --device ID --near|--away [--state-dir DIR]`.
+fn parse_presence(mut args: impl Iterator<Item = OsString>) -> Result<Invocation, ParseError> {
+    let (mut state_dir, mut device, mut near) = (None, None, None);
+    while let Some(arg) = args.next() {
+        let name = arg.to_str().unwrap_or_default().to_owned();
+        match name.as_str() {
+            "--state-dir" => {
+                state_dir = Some(PathBuf::from(
+                    args.next().ok_or(ParseError::Missing("--state-dir"))?,
+                ));
+            }
+            "--device" => {
+                device = Some(
+                    args.next()
+                        .ok_or(ParseError::Missing("--device"))?
+                        .into_string()
+                        .ok()
+                        .filter(|device| !device.is_empty())
+                        .ok_or(ParseError::Value { option: "--device" })?,
+                );
+            }
+            "--near" | "--away" if near.is_none() => near = Some(name == "--near"),
+            "-h" | "--help" => return Ok(Invocation::Help),
+            _ => return Err(ParseError::Unknown(name)),
+        }
+    }
+    Ok(Invocation::Presence {
+        state_dir,
+        device: device.ok_or(ParseError::Missing("--device"))?,
+        near: near.ok_or(ParseError::NoPresence)?,
     })
 }
 

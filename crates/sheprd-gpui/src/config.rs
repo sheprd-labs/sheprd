@@ -37,6 +37,7 @@ mod github;
 mod herdr_2;
 mod keybindings;
 mod layout;
+mod machine;
 mod notifications;
 mod omarchy;
 mod opensandbox;
@@ -97,6 +98,7 @@ pub(crate) use github::MAX_ACCOUNTS;
 pub use github::{EnterpriseAccount, GitHubAccount, GitHubConfig};
 pub(crate) use herdr_2::HERDR_2_SCROLLBACK;
 pub use layout::{Density, Layout, LayoutMode, Style};
+pub use machine::MachineConfig;
 pub(crate) use notifications::NotificationDelivery;
 pub use notifications::{
     BellConfig, ClipboardToast, ClipboardToastPosition, NotificationConfig, QuietHours, SoundConfig,
@@ -240,6 +242,8 @@ pub struct Config {
     pub layout: Layout,
     pub(crate) link_handlers: crate::link_handlers::Handlers,
     pub(crate) link_plugins: Vec<crate::link_handlers::Plugin>,
+    /// Lending virtual Macs to the user's other computers, and borrowing.
+    pub machine: MachineConfig,
     /// Configured families, sorted, that font resolution found no installed
     /// family for; `diagnostic` reports them.
     pub(crate) missing_fonts: Vec<String>,
@@ -297,6 +301,10 @@ pub struct Config {
     pub sidebar: FontConfig,
     /// Daemon sidebar rows, falling back to defaults when invalid.
     pub sidebar_layout: SidebarLayout,
+    /// How the Moonframe sidebar shows each host's load: shares beside its
+    /// name, or lines under it with the sparklines and meters. Compact by
+    /// default.
+    pub sidebar_load: status_bar::Detail,
     /// Spacing overrides, host colours, and selection marking for the sidebar.
     pub sidebar_style: SidebarStyle,
     /// Wheel scrollback draws panes between rows, following the OS deltas.
@@ -457,6 +465,7 @@ impl Default for Config {
             layout: Layout::default(),
             link_handlers: crate::link_handlers::Handlers::default(),
             link_plugins: Vec::new(),
+            machine: MachineConfig::default(),
             missing_fonts: Vec::new(),
             missing_weight: None,
             mods: crate::mods::Config::default(),
@@ -485,6 +494,7 @@ impl Default for Config {
             show_window_controls: cfg!(target_os = "linux"),
             sidebar: font(monospace, 12.0),
             sidebar_layout: SidebarLayout::default(),
+            sidebar_load: status_bar::Detail::Compact,
             sidebar_style: SidebarStyle::default(),
             smooth_scroll: true,
             sound: SoundConfig::default(),
@@ -553,6 +563,7 @@ struct Settings {
     layout: Layout,
     link_handlers: Vec<crate::link_handlers::Handler>,
     link_plugins: Vec<crate::link_handlers::Plugin>,
+    machine: MachineConfig,
     mods: crate::mods::Config,
     notifications: NotificationSettings,
     open_files_in: FileTarget,
@@ -577,6 +588,7 @@ struct Settings {
     show_system_load: Option<bool>,
     show_window_controls: Option<bool>,
     sidebar: sidebar_style::SidebarSettings,
+    sidebar_load: Option<status_bar::Detail>,
     smooth_scroll: Option<bool>,
     sound: SoundConfig,
     sprites: SpritesConfig,
@@ -912,6 +924,7 @@ impl Config {
         config.show_window_controls = settings
             .show_window_controls
             .unwrap_or(cfg!(target_os = "linux"));
+        config.sidebar_load = settings.sidebar_load.unwrap_or(status_bar::Detail::Compact);
         config.smooth_scroll = settings.smooth_scroll.unwrap_or(true);
         // keep-sorted end
         settings.mods.validate()?;
@@ -939,6 +952,7 @@ impl Config {
         config.link_handlers = crate::link_handlers::Handlers::compile(settings.link_handlers)?;
         crate::link_handlers::validate_plugins(&settings.link_plugins)?;
         config.link_plugins = settings.link_plugins;
+        config.machine = settings.machine;
         config.code = settings.code;
         settings.px0.check()?;
         config.px0 = settings.px0;

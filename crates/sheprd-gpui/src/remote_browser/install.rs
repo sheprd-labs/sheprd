@@ -17,6 +17,9 @@ pub(super) const SHIM: &str = concat!(
     "#!/bin/sh\ncore_work() {\nexec python3 - \"$@\" <<'SHEPRD_WORK_PY'\n",
     include_str!("../remote_work/shim.py"),
     "\nSHEPRD_WORK_PY\n}\n",
+    "find_remote_control() {\n",
+    crate::remote::program::find_program!(),
+    "}\n",
     include_str!("herdr-gpui.sh"),
 );
 /// Where agents on the host run the shim from; their shell expands `~`.

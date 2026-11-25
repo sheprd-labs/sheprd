@@ -1,6 +1,5 @@
 //! Many people behind one address, as in a household or a carrier's NAT:
-//! a ban earned by running into limits refuses new work but leaves open
-//! sessions and listeners alone, and each side of a session pays only for
+//! running into limits never bans the address, and each side pays only for
 //! what it sends, slowed rather than banned over its budget.
 
 use super::*;
@@ -37,10 +36,11 @@ fn session(hub: &Arc<Hub>, listener: IpAddr, dialer: IpAddr, seed: u8) -> Sessio
     session
 }
 
-/// Runs into limits until `address` is banned.
-fn ban_for_limits(hub: &Arc<Hub>, address: IpAddr) {
-    while !hub.is_banned(address) {
+/// Repeated pressure from several clients sharing an address.
+fn hit_limits(hub: &Arc<Hub>, address: IpAddr) {
+    for _ in 0..100 {
         hub.offend(address, Offense::Limited);
+        hub.offend(address, Offense::ConnectionCap);
     }
 }
 
@@ -51,18 +51,18 @@ async fn ended(session: &Session) -> bool {
 }
 
 #[tokio::test]
-async fn a_ban_for_limits_alone_keeps_open_sessions_and_listeners() {
+async fn limits_alone_keep_sessions_listeners_and_new_work_available() {
     let hub = hub();
     let household = ip("203.0.113.40");
     let computer = session(&hub, household, ip("198.51.100.50"), 140);
     let on_phone = session(&hub, ip("198.51.100.51"), household, 141);
-    ban_for_limits(&hub, household);
-    assert!(hub.is_banned(household));
+    hit_limits(&hub, household);
+    assert!(!hub.is_banned(household));
     assert!(!hub.is_evicted(household));
     assert!(!ended(&computer).await);
     assert!(!ended(&on_phone).await);
     assert_eq!(hub.metrics.read(Gauge::Listeners), 2);
-    // Its listener still takes dials; the address may not listen anew.
+    // Its listener still takes dials; another computer may listen too.
     let route = RouteId::of(signing_key(140).verifying_key());
     let waiting = hub
         .dial(route, public(&phone()), ip("198.51.100.52"))
@@ -70,7 +70,7 @@ async fn a_ban_for_limits_alone_keeps_open_sessions_and_listeners() {
         .unwrap();
     assert!(hub.open(waiting.slot).is_some());
     let fresh = RouteId::of(signing_key(142).verifying_key());
-    assert!(hub.register(fresh, household).is_err());
+    assert!(hub.register(fresh, household).is_ok());
 }
 
 #[tokio::test]
@@ -78,16 +78,18 @@ async fn a_ban_any_severe_offense_led_to_ends_everything() {
     let hub = hub();
     let toxic = ip("203.0.113.41");
     let computer = session(&hub, toxic, ip("198.51.100.53"), 143);
-    // Mostly limits, but one malformed message among them.
-    hub.offend(toxic, Offense::Malformed);
-    ban_for_limits(&hub, toxic);
+    // Capacity pressure is harmless, but repeated malformed messages are not.
+    hit_limits(&hub, toxic);
+    for _ in 0..crate::guard::BAN_POINTS {
+        hub.offend(toxic, Offense::Malformed);
+    }
     assert!(hub.is_evicted(toxic));
     assert!(ended(&computer).await);
     assert_eq!(hub.metrics.read(Gauge::Listeners), 0);
 }
 
 #[tokio::test]
-async fn a_listener_banned_for_limits_may_still_accept_over_websocket() {
+async fn limits_do_not_block_http_discovery_or_websocket_accepts() {
     let options = Options {
         behind_proxy: true,
         ..options(Limits::default())
@@ -106,10 +108,10 @@ async fn a_listener_banned_for_limits_may_still_accept_over_websocket() {
         }
     };
     let household = ip("203.0.113.42");
-    ban_for_limits(&hub, household);
+    hit_limits(&hub, household);
     assert_eq!(
         send("/v1/info".to_owned(), "203.0.113.42").await,
-        StatusCode::FORBIDDEN
+        StatusCode::OK
     );
     // Not refused for the ban: past it, the request is no WebSocket.
     let accept = send(format!("/v1/accept/{session}"), "203.0.113.42").await;
@@ -162,29 +164,31 @@ async fn a_side_over_budget_is_slowed_and_its_peer_is_not_charged() {
 }
 
 #[tokio::test]
-async fn work_kept_through_a_ban_for_limits_is_still_counted() {
+async fn work_kept_through_capacity_pressure_is_still_counted() {
     let hub = hub();
     let household = ip("203.0.113.46");
     let computer = session(&hub, household, ip("198.51.100.56"), 146);
-    ban_for_limits(&hub, household);
+    hit_limits(&hub, household);
     // Its transfer still counts toward the budget ...
     let budget = Limits::default().max_transfer_per_hour;
     hub.charge(household, budget + 1);
     assert!(hub.over_budget(household));
     assert!(!hub.is_evicted(household));
     assert!(!ended(&computer).await);
-    // ... and misbehaving turns the ban into one that ends its work.
-    hub.offend(household, Offense::Malformed);
+    // ... and repeated malformed messages still end its work.
+    for _ in 0..crate::guard::BAN_POINTS {
+        hub.offend(household, Offense::Malformed);
+    }
     assert!(hub.is_evicted(household));
     assert!(ended(&computer).await);
 }
 
 #[tokio::test]
-async fn overrunning_the_budget_during_a_ban_for_limits_evicts() {
+async fn overrunning_the_budget_after_capacity_pressure_evicts() {
     let hub = hub();
     let household = ip("203.0.113.47");
     let computer = session(&hub, household, ip("198.51.100.57"), 147);
-    ban_for_limits(&hub, household);
+    hit_limits(&hub, household);
     let overrun = Limits::default().max_transfer_per_hour * crate::guard::OVERRUN;
     hub.charge(household, overrun + 1);
     assert!(hub.is_evicted(household));

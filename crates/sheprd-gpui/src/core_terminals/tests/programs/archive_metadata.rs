@@ -9,6 +9,7 @@ fn archive_success_survives_missing_metadata_and_a_pruned_terminal_view(cx: &mut
         key: "/fixture/repo/.git".into(),
         label: "app".into(),
         linked: true,
+        root: String::new(),
     };
     let (view, cx, tab) = window_with_split(cx, &["archive", "shell"]);
     let terminal = id("archive");

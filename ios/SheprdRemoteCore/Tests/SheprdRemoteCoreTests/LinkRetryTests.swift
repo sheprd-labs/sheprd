@@ -92,3 +92,143 @@ struct LinkUnreachableTests {
         await link.stop()
     }
 }
+
+/// Relay ban checks run alongside retries and cancel when the network changes.
+struct LinkRelayBanTests {
+    private actor BanProbe {
+        var relay: RelayEndpoint?
+        var started = 0
+        var cancelled = 0
+        private var waitForRelease = false
+        private var ignoreCancellation = false
+        private var waiters: [CheckedContinuation<Void, Never>] = []
+
+        func configure(relay: RelayEndpoint?, waitForRelease: Bool = false, ignoreCancellation: Bool = false) {
+            self.relay = relay
+            self.waitForRelease = waitForRelease
+            self.ignoreCancellation = ignoreCancellation
+        }
+
+        func check() async -> RelayEndpoint? {
+            started += 1
+            if waitForRelease {
+                if ignoreCancellation {
+                    await withCheckedContinuation { waiters.append($0) }
+                } else {
+                    await withTaskCancellationHandler {
+                        await withCheckedContinuation { waiters.append($0) }
+                    } onCancel: {
+                        Task { await self.cancelWaiters() }
+                    }
+                    if Task.isCancelled {
+                        cancelled += 1
+                        return nil
+                    }
+                }
+            }
+            return relay
+        }
+
+        func release() {
+            let pending = waiters
+            waiters.removeAll()
+            pending.forEach { $0.resume() }
+        }
+
+        private func cancelWaiters() {
+            let pending = waiters
+            waiters.removeAll()
+            pending.forEach { $0.resume() }
+        }
+    }
+
+    @Test func aSlowRelayBanCheckDoesNotDelayReconnectOnNetworkChange() async {
+        let computer = FakeComputer()
+        let probe = BanProbe()
+        await probe.configure(relay: nil, waitForRelease: true)
+        var io = await computer.io()
+        io.bannedRelay = { await probe.check() }
+        let link = ComputerLink(fingerprint: mac, origins: ["https://lan"], io: io)
+        await link.start()
+
+        let offline = await collect(link) { $0.contains { if case .status(.offline) = $0 { true } else { false } } }
+        #expect(offline.contains { if case .status(.offline) = $0 { true } else { false } })
+        await until { await probe.started == 1 }
+
+        await computer.setPing("https://lan", mac)
+        await link.networkChanged()
+        let online = await collect(link) { $0.contains(.status(.online(origin: "https://lan"))) }
+        #expect(online.contains(.status(.online(origin: "https://lan"))))
+        await until { await probe.cancelled == 1 }
+        #expect(await probe.cancelled == 1)
+        await link.stop()
+    }
+
+    @Test func aConfirmedRelayBanUpdatesStatusWhilePausedAndClearsWhenOnline() async throws {
+        let relay = try #require(RelayEndpoint("relay.example.org"))
+        let computer = FakeComputer()
+        let probe = BanProbe()
+        await probe.configure(relay: relay, waitForRelease: true)
+        var io = await computer.io()
+        io.bannedRelay = { await probe.check() }
+        let link = ComputerLink(fingerprint: mac, origins: ["https://lan"], io: io)
+        await link.start()
+
+        _ = await collect(link) { $0.contains { if case .status(.offline) = $0 { true } else { false } } }
+        await until { await probe.started == 1 }
+        await probe.release()
+
+        let banned = await collect(link) { $0.contains(.status(.relayBanned(relay))) }
+        #expect(banned.contains(.status(.relayBanned(relay))))
+
+        await computer.setPing("https://lan", mac)
+        await link.networkChanged()
+        let online = await collect(link) { $0.contains(.status(.online(origin: "https://lan"))) }
+        #expect(online.contains(.status(.online(origin: "https://lan"))))
+        await link.stop()
+    }
+
+    @Test func aStaleRelayBanCheckCannotOverwriteOnline() async throws {
+        let relay = try #require(RelayEndpoint("relay.example.org"))
+        let computer = FakeComputer()
+        let probe = BanProbe()
+        await probe.configure(relay: relay, waitForRelease: true, ignoreCancellation: true)
+        var io = await computer.io()
+        io.bannedRelay = { await probe.check() }
+        let link = ComputerLink(fingerprint: mac, origins: ["https://lan"], io: io)
+        await link.start()
+
+        _ = await collect(link) { $0.contains { if case .status(.offline) = $0 { true } else { false } } }
+        await until { await probe.started == 1 }
+
+        await computer.setPing("https://lan", mac)
+        await link.networkChanged()
+        _ = await collect(link) { $0.contains(.status(.online(origin: "https://lan"))) }
+
+        await probe.release()
+        await computer.emit(.error("marker"))
+        let after = await collect(link) { $0.contains(.event(.error("marker"))) }
+        #expect(!after.contains(.status(.relayBanned(relay))))
+        await link.stop()
+    }
+
+    @Test func aLiftedRelayBanReturnsToOffline() async throws {
+        let relay = try #require(RelayEndpoint("relay.example.org"))
+        let computer = FakeComputer()
+        let probe = BanProbe()
+        await probe.configure(relay: relay)
+        var io = await computer.io()
+        io.bannedRelay = { await probe.check() }
+        let link = ComputerLink(fingerprint: mac, origins: ["https://lan"], io: io)
+        await link.start()
+
+        let banned = await collect(link) { $0.contains(.status(.relayBanned(relay))) }
+        #expect(banned.contains(.status(.relayBanned(relay))))
+
+        await probe.configure(relay: nil)
+        await link.networkChanged()
+        let offline = await collect(link) { $0.contains { if case .status(.offline) = $0 { true } else { false } } }
+        #expect(offline.contains { if case .status(.offline) = $0 { true } else { false } })
+        await link.stop()
+    }
+}

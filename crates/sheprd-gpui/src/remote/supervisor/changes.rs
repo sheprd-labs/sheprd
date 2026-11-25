@@ -43,6 +43,37 @@ pub(crate) struct Changes {
 }
 
 impl Supervisor {
+    pub(super) fn poll_voice(cx: &mut App) {
+        let executor = cx.background_executor().clone();
+        let supervisor = cx.global_mut::<Self>();
+        if supervisor.voice_polling
+            || !matches!(&supervisor.health, Health::Running(status) if status.voice_asks > 0)
+        {
+            return;
+        }
+        let Some(address) = supervisor.address.clone() else {
+            return;
+        };
+        let send = supervisor.send;
+        supervisor.voice_polling = true;
+        let job = executor.spawn(async move {
+            let Ok(Response::VoiceAsks { asks }) = send(&address, &Request::VoiceAsks) else {
+                return;
+            };
+            for ask in asks {
+                let answer = crate::voice::accounts()
+                    .ok()
+                    .and_then(|store| store.exchange(ask.offer).ok());
+                let _ = send(&address, &Request::VoiceAnswer { id: ask.id, answer });
+            }
+        });
+        cx.spawn(async move |cx| {
+            job.await;
+            cx.update(|cx| cx.global_mut::<Self>().voice_polling = false);
+        })
+        .detach();
+    }
+
     /// Whether remote control is on, so phones may start work here.
     pub(crate) fn enabled(cx: &App) -> bool {
         cx.try_global::<Self>()

@@ -101,9 +101,20 @@ fn an_open_reaches_the_window_as_typed() {
         request.action,
         Action::Open {
             address: "localhost:3000/app?x=1".into(),
-            focus: true
+            focus: false
         }
     );
+}
+
+#[test]
+fn an_explicit_focus_request_reaches_the_window() {
+    let host = Host::new();
+    let output = host.run(&["browser", "open", "--focus", "localhost:3000"], &[]);
+    assert!(output.status.success(), "{output:?}");
+    assert!(matches!(
+        request(&host).action,
+        Action::Open { focus: true, .. }
+    ));
 }
 
 #[test]
@@ -215,4 +226,24 @@ fn help_lists_what_works_from_a_host() {
         assert!(text.contains("sheprd browser open"), "{args:?}");
     }
     assert!(Path::new(&host.herdr()).exists());
+}
+
+#[test]
+fn labels_reach_the_hosts_remote_control_with_quoted_names() {
+    let host = Host::new();
+    let bin = host.dir.path().join(".local/bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    std::fs::copy(host.herdr(), bin.join("sheprd-remote-control")).unwrap();
+    let home = host.dir.path().to_str().unwrap();
+    let output = host.run(
+        &["--json", "labels", "add", "Release prep", "--worktree"],
+        &[("HOME", home)],
+    );
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let forwarded = std::fs::read_to_string(bin.join("sheprd-remote-control.args")).unwrap();
+    assert_eq!(forwarded, "labels\nadd\nRelease prep\n--worktree\n--json\n");
 }

@@ -6,7 +6,6 @@ use std::{
     io::{ErrorKind, Read},
     net::{IpAddr, ToSocketAddrs},
     process::Child,
-    process::ChildStderr,
     sync::atomic::{AtomicBool, Ordering},
     sync::mpsc::{self, Receiver},
     thread,
@@ -173,7 +172,7 @@ const DIAGNOSE_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// Drain the child's stderr for its whole life, so a chatty remote can never
 /// fill the pipe and stall `ssh`, and hand over the tail once it closes.
-pub(super) fn drain(stderr: ChildStderr) -> Result<Receiver<Vec<u8>>> {
+pub(super) fn drain(stderr: impl Read + Send + 'static) -> Result<Receiver<Vec<u8>>> {
     let (tx, rx) = mpsc::sync_channel(1);
     thread::Builder::new()
         .name("herdr-ssh-stderr".into())

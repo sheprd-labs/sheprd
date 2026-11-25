@@ -55,6 +55,9 @@ pub struct Handle {
     pub id: String,
     pub kind: Kind,
     pub token: DeviceToken,
+    /// Random phone generation and pairing slot (or card nonce for a token bind).
+    pub group: Option<String>,
+    pub slot: Option<String>,
 }
 
 /// The relay's private keys, newest first.
@@ -97,7 +100,14 @@ impl Keyring {
         let sealed = URL_SAFE_NO_PAD.decode(sealed).ok()?;
         let opened = seal::open(key, &sealed, seal::HANDLE_INFO).ok()?;
         let handle: Handle = serde_json::from_slice(&opened).ok()?;
-        valid_id(&handle.id).then_some(handle)
+        let scoped = match (&handle.group, &handle.slot) {
+            (None, None) => true,
+            (Some(group), Some(slot)) => {
+                handle.kind != Kind::Alert && valid_id(group) && valid_id(slot)
+            }
+            _ => false,
+        };
+        (valid_id(&handle.id) && scoped).then_some(handle)
     }
 }
 

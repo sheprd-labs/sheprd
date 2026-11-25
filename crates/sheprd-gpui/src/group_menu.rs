@@ -266,7 +266,7 @@ impl SheprdWindow {
                 else {
                     return;
                 };
-                self.open_port_link(&endpoint, &workspace, &link, window, cx);
+                self.open_port_link(&endpoint, &workspace, &link, true, window, cx);
             }
             Action::Close => self.close_group_tab(group, window, cx),
             Action::CloseOthers => {

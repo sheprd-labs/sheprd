@@ -145,6 +145,27 @@ impl Delivery {
         }
     }
 
+    pub(crate) async fn shared(
+        &self,
+        recipient: &Recipient,
+        key: Option<&PublicKey>,
+        live: &Live,
+        revision: u64,
+        now: u64,
+    ) -> Sent {
+        let (Self::Relay(relays), Recipient::Handle(handle), Some(key)) = (self, recipient, key)
+        else {
+            return Sent::Unsent;
+        };
+        if relays.is_down(handle.environment(), now) {
+            return Sent::Unreachable;
+        }
+        let Ok(push) = live.shared_push(key, revision) else {
+            return Sent::Unsent;
+        };
+        relays.post(handle, &push, now).await
+    }
+
     /// Sends `live` to `recipient` at `now_ms`. Through the relay it is
     /// sealed to `key`, the phone's notify key, and goes nowhere without
     /// one; an update during a relay outage is dropped.

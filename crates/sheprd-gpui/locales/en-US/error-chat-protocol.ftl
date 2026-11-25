@@ -24,5 +24,6 @@ error-chat-protocol-pull-request-limit = { $count } pull requests are already ke
 error-chat-protocol-question-answers-limit = question answers in entry { $id } exceed their count or text limit
 error-chat-protocol-restore = a chat's restore record could not be used
 error-chat-protocol-settings-limit = chat settings of { $bytes } bytes exceed the limit
+error-chat-protocol-thread = a chat thread could not be used
 error-chat-protocol-unknown-entry = no entry { $id }
 error-chat-protocol-unknown-permission = no pending permission request { $id }

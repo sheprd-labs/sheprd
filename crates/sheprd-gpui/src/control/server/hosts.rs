@@ -176,7 +176,7 @@ impl Place {
 }
 
 /// The host named by ID, else by label.
-fn named<'a>(
+pub(super) fn named<'a>(
     view: &'a SheprdWindow,
     name: &str,
 ) -> Result<&'a crate::endpoint::Endpoint, Response> {

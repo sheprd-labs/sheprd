@@ -69,7 +69,7 @@ short: when its plan has hit a limit, is 80% used, or is half used and on
 pace to run out before it resets, the button starts the installed agent with
 the most room instead, and its tooltip says why. Usage comes from the status
 bar's last reading of the selected host, matched by name (Claude, Codex,
-Copilot, Gemini, Kimi Code, OpenCode, Pi); every window counts, so a weekly limit
+Copilot, Gemini, Kimi Code, Muse Code, OpenCode, Pi); every window counts, so a weekly limit
 running out matters even when a session window is fuller. An agent without
 a reading, or whose limits have reset since, counts as having room, and one
 tight plan never replaces another. With usage turned off
@@ -106,8 +106,8 @@ In a Herdr 2 (herdr-core) tab, starting a chat from the tab strip's launcher
 or the group menu opens a new chat tab in that group, using the terminal's
 current folder. The requested group stays with the start while the agent
 launches, even if you switch to the editor meanwhile. This leaves room for an editor in another group without
-adding a terminal beside the chat. `sheprd chat new --pane` can still split
-a core pane explicitly; a tab can hold several chats and plain terminals. The window picks the chat's endpoint before `sheprd-acp` starts:
+adding a terminal beside the chat. `sheprd chat new --pane` starts a background tab in that
+pane's workspace and folder; a tab can hold several chats and plain terminals. The window picks the chat's endpoint before `sheprd-acp` starts:
 it passes the id in `HERDR_ACP_ENDPOINT` and labels the terminal `acp=<id>`
 in herdr-core. Because herdr-core keeps the label, the chat view comes back
 after a restart and appears in every window that shows the pane.
@@ -301,7 +301,7 @@ Limitations:
   folder could be handed the old chat.
 - A chat whose shell folder differs from the chat's own (started with
   `--cwd`) is not continued.
-- Only the built-in agents (`claude`, `codex`, `copilot`, `gemini`, `kimi`,
+- Only the built-in agents (`antigravity`, `claude`, `codex`, `copilot`, `gemini`, `kimi`, `muse`,
   `opencode`, `pi`) started without extra agent arguments. Custom commands
   are not continued.
 - `[chat.env]` variables are not set again: typing their values into a shell
@@ -713,6 +713,8 @@ GitHub CLI's credentials rather than SSH, and stops rather than turning
 off signing when a commit needs a key (`phone.md` and `remote.md`; the
 iPhone and iPad app's `phone-app.md` follows `phone.md`, so says it once
 through it). An older program ignores the origin field, and an older client sends none.
+Antigravity receives direct prompts without these annotations or Sheprd's
+prompt templates and memory notes.
 The transcript shows only the person's words, and keeps what went ahead of
 them in the user entry's optional `note`: the note and, on a live prompt, a
 handed-over conversation; on a replay or a restored log, the note alone. The
@@ -779,6 +781,22 @@ a Herdr 2 terminal gets the options in its argv. `sheprd-acp` sends the
 brief as the chat's first prompt and marks it as the agent's, which clients
 show as a brief rather than the person's words, and deletes the file. A
 start that fails deletes it too.
+
+On iOS, a chat and its delegated workers share a progress count. By default
+all concurrent work on a computer shares one Live Activity. In Settings >
+Notifications > Live Activities, choose **One per host** to combine work
+across that host’s worktrees, **One for all hosts** to combine work across
+paired computers through the push relay, or **One per agent** to show each independent
+chat or terminal agent on its own card. You can set a phone-wide default
+and override it for individual hosts.
+It counts native subagents and local chats started with a brief, including
+chats in another Herdr space and the native subagents they start. A chat
+counts as soon as its launch is registered. Its coordinator can finish
+first and the activity stays open for the workers. The count advances when a task finishes,
+fails, or stops. The latest outcome names the task when notification
+privacy permits. Give each brief a distinct task name on its first line.
+Tapping the card opens the chat or terminal it shows. A pending question
+takes priority on a shared card.
 
 A brief is not yet sent to a chat on an SSH host or another machine's
 Herdr 2: the file is on this machine, so `chat new` refuses with exit 8

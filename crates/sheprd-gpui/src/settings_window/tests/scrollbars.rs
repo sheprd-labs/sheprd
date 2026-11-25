@@ -33,8 +33,40 @@ fn overflowing_panes_show_a_thumb_that_drags_them(cx: &mut TestAppContext) {
             (thumb.top() - area.top()).abs() < px(1.),
             "{pane} starts at the top"
         );
-        assert!(thumb.right() <= area.right(), "{pane} sits inside the pane");
+        let expected_right = if pane == "settings-sections-thumb" {
+            // The navigation list is padded, but its thumb belongs at the
+            // panel edge rather than beside the padded row content.
+            cx.debug_bounds("settings-navigation-resize")
+                .unwrap()
+                .right()
+                - px(4.)
+        } else {
+            area.right() - px(3.)
+        };
+        assert!(
+            (thumb.right() - expected_right).abs() <= px(1.),
+            "{pane} is aligned: thumb={thumb:?}, area={area:?}, expected_right={expected_right:?}"
+        );
     }
+
+    // The sections thumb lives beyond the padded list bounds, so verify that
+    // it still owns the navigation scroll gesture rather than only painting
+    // in the expected place.
+    let thumb = cx.debug_bounds("settings-sections-thumb").unwrap();
+    // The resize grip owns the few pixels where the panel edge and the thumb
+    // meet; begin on the thumb's scrollable side.
+    let from = point(thumb.left() + px(1.), thumb.center().y);
+    let to = from + point(px(0.), px(120.));
+    cx.simulate_mouse_down(from, MouseButton::Left, Default::default());
+    cx.simulate_mouse_move(to, Some(MouseButton::Left), Default::default());
+    cx.simulate_mouse_move(to, Some(MouseButton::Left), Default::default());
+    cx.simulate_mouse_up(to, MouseButton::Left, Default::default());
+    draw(cx);
+    let navigation_scrolled = view.read_with(cx, |view, _| view.navigation_scroll.offset().y);
+    assert!(
+        navigation_scrolled < px(0.),
+        "the sections list scrolled: {navigation_scrolled:?}"
+    );
 
     // Dragging the body's thumb down scrolls the body, and the thumb follows.
     let thumb = cx.debug_bounds("settings-body-thumb").unwrap();

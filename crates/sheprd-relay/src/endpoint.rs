@@ -314,3 +314,6 @@ pub struct QuicInfo {
 
 /// The relay protocol version this crate speaks.
 pub const PROTOCOL: u8 = 1;
+
+/// On HTTP 403, distinguishes an address ban from a proxy or origin policy.
+pub const BAN_HEADER: &str = "sheprd-relay-banned";

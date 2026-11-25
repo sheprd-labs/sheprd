@@ -246,9 +246,7 @@ struct GitHubSettingsRow: View {
     @State private var login: String?
 
     var body: some View {
-        NavigationLink {
-            GitHubSettingsView().makesRoomForConnectionToast()
-        } label: {
+        NavigationLink(value: AgentSettingsPage.github) {
             LabeledContent {
                 if let login { Text(verbatim: login) }
             } label: {

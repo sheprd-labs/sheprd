@@ -263,13 +263,14 @@ fn start_open(
             port.link(listed.origin)
         });
     if let Some(link) = link {
-        let how = view.open_port_link(&place.endpoint, &place.workspace, &link, window, cx);
+        let how = view.open_port_link(&place.endpoint, &place.workspace, &link, false, window, cx);
         return Ok(Opening::Answered(opened(port, &place, how)));
     }
     if local(view, &place) {
         let url = WebUrl::try_from(format!("http://localhost:{port}/").as_str())
             .map_err(|error| Response::error(ErrorCode::InvalidUrl, error.to_string()))?;
-        let how = view.open_workspace_page(&place.endpoint, &place.workspace, url, window, cx);
+        let how =
+            view.open_workspace_page(&place.endpoint, &place.workspace, url, false, window, cx);
         return Ok(Opening::Answered(opened(port, &place, Some(how))));
     }
     let target = forwarding_target(view, &place)?.to_owned();
@@ -319,7 +320,8 @@ fn open_forwarded(
         )),
         State::Listening { .. } => {
             let url = forward.url()?;
-            let how = view.open_workspace_page(&place.endpoint, &place.workspace, url, window, cx);
+            let how =
+                view.open_workspace_page(&place.endpoint, &place.workspace, url, false, window, cx);
             Some(opened(port.get(), place, Some(how)))
         }
     }

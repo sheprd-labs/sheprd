@@ -425,6 +425,39 @@ impl<'a> Probe<'a> {
         self.security("find-generic-password", service, account)
     }
 
+    /// Whether a macOS keychain generic password exists on the probed host,
+    /// checked by metadata only (without `-w`) so macOS never prompts for
+    /// Keychain access.
+    pub fn keychain_exists(&mut self, service: &str, account: Option<&str>) -> bool {
+        if !self.is_macos() {
+            return false;
+        }
+        let mut args = vec!["find-generic-password", "-s", service];
+        if let Some(account) = account {
+            args.extend(["-a", account]);
+        }
+        match self.exec {
+            Exec::Local => {
+                let mut command = sheprd_client::new_command("/usr/bin/security");
+                command.args(&args);
+                output(&mut command, STEP_TIMEOUT, "check a keychain item")
+                    .is_ok_and(|(success, _)| success)
+            }
+            Exec::Remote(shell) => shell
+                .run(
+                    &format!(
+                        "security {} >/dev/null 2>&1",
+                        args.iter()
+                            .map(|arg| quote(arg))
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    ),
+                    STEP_TIMEOUT,
+                )
+                .is_ok_and(|output| output.success),
+        }
+    }
+
     /// Whether the probe may touch data another app keeps for itself on this
     /// Mac, such as its folder under `~/Library/Application Support`, either
     /// directly or through a command it runs. macOS counts a child's reads

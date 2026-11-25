@@ -32,6 +32,8 @@ struct Left {
 
 #[derive(Debug, Default)]
 pub(super) struct Thread {
+    /// The agent that held the conversation before the current one.
+    before: Option<Agent>,
     /// The conversation's first prompt, kept for handoffs once the
     /// transcript drops its oldest entries.
     first_prompt: Option<String>,
@@ -210,6 +212,16 @@ impl Thread {
             // The handoff, if any, reached it: the agent is caught up.
             self.undelivered = None;
         }
+    }
+
+    /// The agent that held the conversation before the current one.
+    pub(super) fn before(&self) -> Option<Agent> {
+        self.before
+    }
+
+    /// `agent` leaves the conversation for another.
+    pub(super) fn leaving(&mut self, agent: Option<Agent>) {
+        self.before = agent;
     }
 
     /// The handoff to send ahead of the next prompt, once.

@@ -74,6 +74,7 @@ fn spawn_for(view: &Entity<SheprdWindow>, cx: &mut VisualTestContext, workspace:
     let mut spawn = Spawn::default();
     view.update(cx, |view, cx| {
         let purpose = Purpose::Tab {
+            focus: true,
             group: None,
             scope: scope(),
             workspace: workspace.into(),

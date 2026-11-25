@@ -4,7 +4,7 @@ pub enum Error {
     // keep-sorted start
     #[error("could not keep the relay keys")]
     Auth(#[from] crate::auth::Error),
-    #[error("the relay could not be reached")]
+    #[error(transparent)]
     Client(#[from] sheprd_relay::client::Error),
     #[error("a desktop's SSH session failed")]
     Ssh(#[source] std::io::Error),

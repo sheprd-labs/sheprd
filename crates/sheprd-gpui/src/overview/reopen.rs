@@ -237,6 +237,7 @@ impl SheprdWindow {
         };
         self.start_core_program(
             crate::core_terminals::Purpose::Tab {
+                focus: true,
                 group: None,
                 scope,
                 workspace,

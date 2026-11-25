@@ -159,6 +159,7 @@ fn a_local_worktree_is_read_without_a_shell() {
     let main = dir.path().join("app");
     let linked = dir.path().join("linked");
     std::fs::create_dir_all(main.join(".beads")).unwrap();
+    std::fs::write(main.join(".beads/metadata.json"), "{}").unwrap();
     let git = |args: &[&str]| {
         let status = std::process::Command::new("git")
             .arg("-C")

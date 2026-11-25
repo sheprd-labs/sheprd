@@ -1,16 +1,17 @@
 //! Banning toxic clients, with nothing to set up.
 //!
 //! Each address (an IPv4 address, or an IPv6 /64, as the rate limits key
-//! them) earns points for each [`Offense`]: hitting limits, probing,
-//! forged proofs, malformed messages, and moving far too much. Points fade by one a minute; at [`BAN_POINTS`] the address is banned,
+//! them) earns points for probing, forged proofs, malformed messages, and
+//! moving far too much. Capacity and rate limits refuse excess work without
+//! ban points: legitimate clients sharing an address can hit them together.
+//! Points fade by one a minute; at [`BAN_POINTS`] the address is banned,
 //! for 10 minutes, then an hour, then a day if it keeps at it.
 //!
 //! A banned address is refused before any new work (before the QUIC
-//! handshake, before any HTTP route). Whether the hub also ends what it
-//! has open depends on why: a ban that any [`severe`] offense led to ends
-//! its sessions and listeners, but one earned only by running into limits
-//! leaves them alone, since a household or a carrier's NAT can run into
-//! limits together without anyone misbehaving.
+//! handshake, before any HTTP route). Offenses that earn ban points also
+//! end its sessions and listeners. Capacity pressure leaves existing work
+//! alone, since a household or a carrier's NAT can run into limits together
+//! without anyone misbehaving.
 //!
 //! Each side of a session is charged for the bytes it sends. An address
 //! over its hourly budget has its sessions slowed to [`SLOW`], not banned;
@@ -70,11 +71,9 @@ pub const OVERRUN: u64 = 4;
 #[must_use]
 pub const fn points(offense: Offense) -> u32 {
     match offense {
-        // One point, fading one a minute: only a burst adds up. The rate
-        // limits catch a phone retrying too fast, so a refused dial costs
-        // nothing of its own: a phone whose computer is off, retrying with
-        // backoff, never gets its household's shared address banned.
-        Offense::ConnectionCap | Offense::Limited => 1,
+        // The limit already refuses the excess work. A burst of desktop
+        // reconnects or clients behind one NAT is not evidence of abuse.
+        Offense::ConnectionCap | Offense::Limited => 0,
         Offense::Probe => 2,
         Offense::BadProof | Offense::Malformed => 3,
         Offense::Bandwidth => BAN_POINTS,
@@ -436,6 +435,9 @@ impl Guard {
     /// Counts `offense` against `address`; a ban it caused, or made evict,
     /// newly.
     pub fn offend(&self, address: IpAddr, offense: Offense, now: Instant) -> Option<Duration> {
+        if points(offense) == 0 {
+            return None;
+        }
         self.record(address, now, severe(offense), |record, _| {
             if record.banned(now) {
                 // Open work kept through a ban for limits: misbehaving now

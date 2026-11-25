@@ -24,55 +24,65 @@ struct HomeTab: View {
             agents: unreadOnly ? agents.filter(\.unread) : agents
         )
         Group {
-            if query.isEmpty { self.chats(sections, unread: unread) } else { SearchResults(query: query, workspacesAsRoutes: true) }
+            // With no search field, a search left from before the last
+            // computer went must not hide the offer to pair.
+            if query.isEmpty || !model.hasComputers {
+                self.chats(sections)
+            } else {
+                SearchResults(query: query, workspacesAsRoutes: true)
+            }
         }
-        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Workspaces, chats, terminals")
+        .searchable($query, when: model.hasComputers)
+        .onChange(of: model.hasComputers) { _, has in
+            if !has { query = "" }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { window?.home = true }
         .onDisappear { window?.home = false }
         #if DEBUG
         .task { if let text = UserDefaults.standard.string(forKey: "homeSearch") { query = text } }
         #endif
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) { AgentSortMenu(sort: $sort) }
-            ToolbarItem(placement: .topBarLeading) { AgentFilterMenu() }
-            if query.isEmpty, sections.count > 1 {
-                ToolbarItem(placement: .topBarTrailing) {
-                    let shown = sections.map { ChatList.key($0, sort: sort) }
-                    let folded = model.collapsed.home.allCollapsed(shown)
-                    Button(
-                        folded ? "Expand All" : "Collapse All",
-                        systemImage: folded ? "rectangle.expand.vertical" : "rectangle.compress.vertical"
-                    ) {
-                        withAnimation(.snappy) { model.collapsed.home.toggleAll(shown) }
-                    }
+        .toolbar { if model.hasComputers { toolbar(sections, unread: unread) } }
+    }
+
+    @ToolbarContentBuilder
+    private func toolbar(_ sections: [AgentSort.Section<HomeRow>], unread: [PaneKey]) -> some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) { AgentSortMenu(sort: $sort) }
+        ToolbarItem(placement: .topBarLeading) { AgentFilterMenu() }
+        if query.isEmpty, !unread.isEmpty || unreadOnly {
+            ToolbarItem(placement: .topBarLeading) {
+                UnreadMenu(unread: unread, only: $unreadOnly)
+            }
+        }
+        if query.isEmpty, sections.count > 1 {
+            ToolbarItem(placement: .topBarTrailing) {
+                let shown = sections.map { ChatList.key($0, sort: sort) }
+                let folded = model.collapsed.home.allCollapsed(shown)
+                Button(
+                    folded ? "Expand All" : "Collapse All",
+                    systemImage: folded ? "rectangle.expand.vertical" : "rectangle.compress.vertical"
+                ) {
+                    withAnimation(.snappy) { model.collapsed.home.toggleAll(shown) }
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Talk to Sheprd", systemImage: "waveform") { model.talk() }
-                    .disabled(model.fleet.machines.isEmpty)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("New Workspace", systemImage: "plus") { model.creating = .workspace(device: nil) }
-                    .disabled(model.fleet.machines.isEmpty)
-            }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button("Talk to Sheprd", systemImage: "waveform") { model.talk() }
+                .disabled(model.fleet.machines.isEmpty)
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button("New Workspace", systemImage: "plus") { model.creating = .workspace(device: nil) }
+                .disabled(model.fleet.machines.isEmpty)
         }
     }
 
-    private func chats(_ sections: [AgentSort.Section<HomeRow>], unread: [PaneKey]) -> some View {
-        ChatList(sections: sections, unread: unread, unreadOnly: $unreadOnly)
+    private func chats(_ sections: [AgentSort.Section<HomeRow>]) -> some View {
+        ChatList(sections: sections)
             .nearbyBanner()
             .fleetOffer()
+            .demoOffer(pairing: $pairing)
             .overlay {
-                if model.computers.isEmpty {
-                    ContentUnavailableView {
-                        Label("No computers yet", systemImage: "desktopcomputer")
-                    } description: {
-                        Text("In Sheprd, open Remote control > Pair device, then scan its code here.")
-                    } actions: {
-                        Button("Pair a computer") { pairing = true }.buttonStyle(.glassProminent)
-                    }
-                } else if model.fleet.chatItems.isEmpty, model.fleet.agentTerminals.isEmpty,
+                if !model.shownComputers.isEmpty, model.fleet.chatItems.isEmpty, model.fleet.agentTerminals.isEmpty,
                           // Unpaired computers' cards fill Home instead.
                           !model.fleet.machines.contains(where: { $0.status == .revoked }) {
                     ContentUnavailableView("No chats", systemImage: "bubble.left.and.text.bubble.right",

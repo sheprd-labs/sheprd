@@ -457,7 +457,7 @@ impl Endpoint {
             self.attempts = 0;
         }
         match &self.connection.handle {
-            Some(handle) => handle.check_liveness(),
+            Some(handle) => handle.check_liveness(trigger.suspicion()),
             None if thorough && !self.live.ssh_failure.is_some_and(SshFailure::needs_user) => {
                 self.retry_at = self.retry_at.min(now);
             }

@@ -32,6 +32,18 @@ fn the_title_bar_region_ends_with_the_details_toggle_and_reports_its_width(
     let view = region.read_with(cx, |region, _| region.view.clone());
     assert!(view.read_with(cx, |view, _| view.titlebar_width) > 0.);
 
+    // Legacy layouts keep the toggle. The stock layout follows Moonframe tools.
+    assert!(cx.debug_bounds("toggle-details").is_some());
+    for enabled in [false, true] {
+        view.update(cx, |view, cx| {
+            view.hosted_full_header = Some(false);
+            view.config.features.moonframe_tools = enabled;
+            cx.notify();
+        });
+        region.update(cx, |_, cx| cx.notify());
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        assert_eq!(cx.debug_bounds("toggle-details").is_some(), enabled);
+    }
     let toggle = cx.debug_bounds("toggle-details").unwrap();
     cx.simulate_click(toggle.center(), Default::default());
     let shown = view.update(cx, |view, cx| {

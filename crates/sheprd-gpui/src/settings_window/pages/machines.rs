@@ -395,7 +395,7 @@ impl SettingsWindow {
             },
         );
         let guide = button("guide", fl!("settings-machines-guide"), |this, name, cx| {
-            machine::guide::begin(name, cx);
+            machine::guide::begin(name, machine::guide::Opening::Shown, cx);
             crate::browser::open_machine_in(&this.source, name.clone(), cx);
         });
         let save_image = button(

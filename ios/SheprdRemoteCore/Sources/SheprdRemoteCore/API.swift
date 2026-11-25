@@ -42,6 +42,7 @@ public enum API {
             public let origins: [String]
             public let fingerprint: Fingerprint
             public let computer: String
+            public let voice_exchange: Bool?
         }
 
         enum CodingKeys: String, CodingKey { case state }

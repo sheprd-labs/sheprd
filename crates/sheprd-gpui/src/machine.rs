@@ -11,6 +11,7 @@
 
 #[cfg(target_os = "macos")]
 pub(crate) mod agent;
+pub(crate) mod borrow;
 #[cfg(target_os = "macos")]
 mod configuration;
 mod error;
@@ -23,9 +24,14 @@ pub(crate) mod install;
 #[cfg(target_os = "macos")]
 pub(crate) mod known;
 #[cfg(target_os = "macos")]
+pub(crate) mod lend;
+#[cfg(target_os = "macos")]
 mod quit;
+pub(crate) mod remote;
 #[cfg(target_os = "macos")]
 mod settings;
+#[cfg(target_os = "macos")]
+pub(crate) mod settings_request;
 #[cfg(target_os = "macos")]
 mod store;
 #[cfg(target_os = "macos")]
@@ -40,8 +46,8 @@ pub(crate) use {
         resolve_name, update_settings,
     },
     vm::{
-        Status, capacity, check_capacity, delete, release, running, save_image, shut_down, start,
-        status, suspend, view,
+        Status, capacity, check_capacity, check_capacity_in, delete, release, running, save_image,
+        shut_down, start, status, suspend, view,
     },
 };
 

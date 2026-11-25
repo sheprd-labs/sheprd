@@ -26,7 +26,17 @@ pub(super) fn project(
     saved: Option<&SavedTabs>,
     scope: Option<&str>,
 ) -> Layout {
-    project_kept(boot, records, Kept::file(saved, scope))
+    let named = std::collections::BTreeMap::new();
+    project_kept(
+        boot,
+        records,
+        saved.map(|file| Kept {
+            file: Some(file),
+            primary: scope,
+            doc: None,
+            named: &named,
+        }),
+    )
 }
 
 /// The core's terminals in the workspaces and tabs `kept` names, and the
@@ -80,7 +90,7 @@ pub(super) fn project_kept(boot: &str, records: &[Record], kept: Option<Kept<'_>
                     }
                 }
             }
-            add(&mut layout, tab.workspace_id, terminal);
+            add(&mut layout, &tab.workspace_id, terminal);
         }
     }
     for record in records
@@ -256,6 +266,7 @@ pub(super) fn terminal(
         .iter()
         .filter(|record| record.status.is_some())
         .map(|record| TerminalAgent {
+            boot: boot.to_owned(),
             name: record
                 .status
                 .as_ref()

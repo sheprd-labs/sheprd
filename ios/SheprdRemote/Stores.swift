@@ -37,8 +37,8 @@ final class ChatStore {
         if let transcript { effects.history(transcript, epoch: cursor?.epoch, mark: cached?.effects) }
     }
 
-    #if DEBUG
-    /// A chat no computer sends, current as it is (`-sampleChat YES`).
+    /// A chat no computer sends, current as it is: the demo's chats and
+    /// the simulator loop's `-sampleChat YES`.
     init(key: PaneKey, sample: Transcript) {
         self.key = key
         transcript = sample
@@ -47,7 +47,6 @@ final class ChatStore {
         effects.onScreen = true
         effects.history(sample)
     }
-    #endif
 
     /// A screen shows the chat, or stopped showing it. Shown, the effects
     /// of a reply that came while it was not play now.

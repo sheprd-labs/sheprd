@@ -1,0 +1,60 @@
+# The App Store listing for Sheprd (so.pen.herdr.remote), entered by hand in
+# App Store Connect. Apple's limits are checked by tools/test_app_store.py.
+# Keep third-party names (Claude, Codex, Herdr) out of the name, subtitle,
+# and keywords (App Review Guideline 5.2.1).
+
+name = "Sheprd"
+subtitle = "Your coding agents, anywhere"
+primary_category = "Developer Tools"
+secondary_category = "Productivity"
+price = "Free"
+copyright = "2026 Fabien Penso"
+
+support_url = "https://sheprd.org/support/"
+marketing_url = "https://sheprd.org/"
+privacy_policy_url = "https://sheprd.org/privacy/"
+
+promotional_text = "See which agent needs you, answer its question from the lock screen, and pick up any chat or terminal from your phone. Pairs with Sheprd on your computer."
+
+keywords = "agents,ai,coding,terminal,remote,developer,chat,live activity,worktree,ssh,pull request,cli"
+
+description = """
+Sheprd follows the coding agents and terminals running in Sheprd on your computers, so you can step away from the desk without losing track of them.
+
+SEE WHAT NEEDS YOU
+One list across every paired computer, with the agents waiting on you first. Questions show their options right in the list, so most answers take one tap.
+
+ANSWER FROM ANYWHERE
+Alerts and Live Activities on the lock screen and in the Dynamic Island show what each agent is doing and let you allow or deny a step without opening the app. Apple Watch shows what needs you too.
+
+READ AND REPLY
+Open any chat to read the whole conversation, follow sub-agents, shells, and the plan, attach photos, and send the next prompt. Dictate it, or say a command such as "new worktree on studio about the login bug".
+
+TERMINALS IN YOUR POCKET
+Open a terminal tab with a key row for Control, Escape, and arrows, and type into it as at the desk.
+
+WORKSPACES AND PULL REQUESTS
+Browse each computer's workspaces and worktrees, see changed files and diffs, and follow pull requests and their checks.
+
+PRIVATE BY DESIGN
+The app talks directly to your own computers. Nothing runs on the phone itself, there is no account, and alerts are encrypted so only your phone can read them.
+
+Sheprd for iPhone and iPad needs Sheprd on a Mac, Linux, or Windows computer (free at sheprd.org). No computer yet? Tap Explore the Demo on the first screen.
+"""
+
+[review]
+# App Review Information. A demo account is not needed: the app has none.
+sign_in_required = false
+contact_email = "sheprd@pen.so"
+contact_phone = "" # fill in before submitting
+notes_file = "review-notes.md"
+
+[age_rating]
+# No age restriction (4+), the owner's decision of 22 November 2026: no
+# objectionable content of its own and no user-generated content shared
+# with others. The in-app browser opens only links in the person's own
+# agents' chats, so unrestricted web access is answered No; App Review may
+# ask about the browser.
+unrestricted_web_access = false
+user_generated_content = false
+expected_rating = "4+"

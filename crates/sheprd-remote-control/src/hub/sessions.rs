@@ -146,6 +146,19 @@ impl Sessions {
             .cloned()
     }
 
+    /// Desktop tab scopes for the other local sockets this daemon follows.
+    pub(super) fn local_scopes(&self) -> std::collections::BTreeMap<String, String> {
+        lock(&self.list)
+            .iter()
+            .filter_map(|session| {
+                let ConnectTarget::Socket(path) = session.api.target() else {
+                    return None;
+                };
+                Some((session.name.clone(), format!("local:{}", path.display())))
+            })
+            .collect()
+    }
+
     fn layouts(&self) -> Vec<(String, Arc<Layout>)> {
         lock(&self.list)
             .iter()
@@ -418,9 +431,12 @@ pub(super) fn merge(base: &Layout, sessions: &[(String, Arc<Layout>)]) -> Layout
 
 /// Whether `id` is of a session inside a WSL distribution.
 pub(super) fn in_wsl(id: &str) -> bool {
-    id.strip_prefix(PREFIX)
-        .and_then(|rest| rest.split_once(':'))
-        .is_some_and(|(name, _)| is_wsl(name))
+    wsl_distribution(id).is_some()
+}
+
+/// The distribution that owns a phone-facing id's filesystem.
+pub(crate) fn wsl_distribution(id: &str) -> Option<&str> {
+    split_id(id).0.and_then(wsl::distribution)
 }
 
 fn tag(name: &str, id: &str) -> String {

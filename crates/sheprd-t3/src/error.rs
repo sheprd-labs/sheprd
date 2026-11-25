@@ -26,6 +26,8 @@ pub enum Error {
     /// No server on this computer said where it listens.
     #[error("no T3 Code server is running here")]
     NoServer,
+    #[error(transparent)]
+    Launch(#[from] crate::launch::Error),
     #[error("T3 Code's HTTP API failed")]
     Http(#[source] Box<ureq::Error>),
     #[error("T3 Code sent JSON this client cannot read")]

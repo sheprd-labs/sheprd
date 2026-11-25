@@ -15,6 +15,8 @@ fn remote_control_is_off_with_its_defaults() -> anyhow::Result<()> {
     assert_eq!(config.remote.certificate, Certificate::Own);
     assert_eq!(config.remote.notifications, Privacy::Excerpt);
     assert_eq!(config.remote.device_idle_days, 30);
+    // Phone alerts wait while their owner is at the computer.
+    assert!(config.remote.presence);
     // The managed file documents the table without setting it.
     assert_eq!(
         Config::parse(DEFAULT_CONFIG)?.remote,
@@ -36,7 +38,7 @@ fn remote_control_reads_every_key() -> anyhow::Result<()> {
         "[remote]\nenabled = true\nport = 8443\nbind = '192.168.1.20'\n\
          certificate = {{ cert = '{}', key = '{}' }}\n\
          keep_running = false\nnotifications = 'excerpt'\ndevice_idle_days = 7\n\
-         presence = true\n",
+         presence = false\n",
         cert.display(),
         key.display(),
     ))?;
@@ -44,7 +46,7 @@ fn remote_control_reads_every_key() -> anyhow::Result<()> {
     let remote = config.remote;
     assert!(remote.enabled);
     assert!(!remote.keep_running);
-    assert!(remote.presence);
+    assert!(!remote.presence);
     assert_eq!(remote.port, 8443);
     assert_eq!(remote.bind, Bind::Address("192.168.1.20".parse()?));
     assert_eq!(remote.bind.to_string(), "192.168.1.20");

@@ -48,12 +48,17 @@ impl Hub {
             let cwd = PathBuf::from(new.cwd);
             // Git, not a workspace's folder, says which repository `cwd`
             // is: a workspace's folder follows its shell elsewhere.
-            let checkout = on_core(move || Ok(Checkout::of(&cwd))).await?;
-            let repository = checkout.and_then(|checkout| {
-                herdr_1_repository(&self.layout(), &checkout, session, |id| {
-                    self.kept_workspace(id)
-                })
-            });
+            let layout = self.layout();
+            let owner = self.core.clone();
+            let session = session.map(str::to_owned);
+            let repository = on_core(move || {
+                Ok(Checkout::of(&cwd).and_then(|checkout| {
+                    herdr_1_repository(&layout, &checkout, session.as_deref(), |id| {
+                        owner.as_ref().is_some_and(|core| core.keeps_workspace(id))
+                    })
+                }))
+            })
+            .await?;
             if let Some(source) = repository {
                 let worktree = Worktree {
                     base: source.base.as_deref(),
@@ -277,9 +282,7 @@ impl Checkout {
         )
         .ok()?;
         let branch = git(cwd, &["symbolic-ref", "--quiet", "HEAD"]).ok();
-        Self::parse(&dirs, branch.as_deref(), |path| {
-            std::fs::canonicalize(path).unwrap_or_else(|_| path.to_owned())
-        })
+        Self::parse(&dirs, branch.as_deref(), canonical_path)
     }
 
     /// From `rev-parse`'s common and Git directories and `symbolic-ref`'s
@@ -304,6 +307,10 @@ impl Checkout {
     }
 }
 
+fn canonical_path(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_owned())
+}
+
 /// Where Herdr 1 makes a new worktree in `checkout` from, among
 /// `session`'s workspaces (the primary's when `None`): the workspace of
 /// its repository's own checkout, keyed by its Git directory, and for a
@@ -324,15 +331,30 @@ pub(super) fn herdr_1_repository(
         (true, Some(branch)) => Some(branch.clone()),
         (true, None) => return None,
     };
-    let workspace = layout.workspaces.iter().find(|workspace| {
+    let mut eligible = layout.workspaces.iter().filter(|workspace| {
         sessions::split_id(&workspace.id).0 == session
             && !sessions::in_wsl(&workspace.id)
             && !core::is_new_workspace(&workspace.id)
+            && workspace.id != core::UNLISTED
             && !kept(&workspace.id)
-            && workspace.worktree.as_ref().is_some_and(|tree| {
+    });
+    let workspace = eligible
+        .clone()
+        .find(|workspace| {
+            workspace.worktree.as_ref().is_some_and(|tree| {
                 !tree.is_linked_worktree && Path::new(&tree.key) == checkout.common_dir
             })
-    })?;
+        })
+        .or_else(|| {
+            // Before the first worktree, Herdr can omit repository metadata.
+            // worktree.create discovers Git and groups the original workspace too.
+            eligible.find(|workspace| {
+                workspace.worktree.is_none()
+                    && !workspace.cwd.is_empty()
+                    && canonical_path(&Path::new(&workspace.cwd).join(".git"))
+                        == checkout.common_dir
+            })
+        })?;
     Some(Source {
         workspace: workspace.id.clone(),
         base,

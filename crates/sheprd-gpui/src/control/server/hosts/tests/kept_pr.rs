@@ -33,6 +33,7 @@ fn a_kept_workspaces_pull_request_is_found_from_its_terminal(cx: &mut TestAppCon
                     key: KEY.into(),
                     label: "app".into(),
                     linked: true,
+                    root: String::new(),
                 }),
             );
             let terminal = TerminalId::new("t1").unwrap();

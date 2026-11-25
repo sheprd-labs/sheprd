@@ -43,20 +43,25 @@ final class PairingModel {
         start(onPaired) { try await self.runNearby(computer, bluetooth: bluetooth, deviceName: deviceName) }
     }
 
-    private func start(_ onPaired: @escaping (Computer) -> Void, _ work: @escaping () async throws -> Computer) {
+    @discardableResult
+    func start(_ onPaired: @escaping (Computer) -> Void, _ work: @escaping () async throws -> Computer) -> Task<Void, Never> {
         task?.cancel()
-        task = Task {
+        voiceExchangeFailed = false
+        let attempt = Task {
             do {
+                try Task.checkCancellation()
                 let computer = try await work()
+                try Task.checkCancellation()
                 onPaired(computer)
                 paired = computer
                 step = .paired(computer.name)
-            } catch is CancellationError {
-                step = .idle
             } catch {
+                guard !Task.isCancelled else { return }
                 step = .failed(Self.describe(error))
             }
         }
+        task = attempt
+        return attempt
     }
 
     /// The error's message, plus the TLS status behind a secure connection
@@ -127,6 +132,7 @@ final class PairingModel {
             result = try await NearbySAS().exchange(bluetooth.io(for: identifier))
             origins = result.offer.origins.filter(Computer.isOrigin)
         }
+        try Task.checkCancellation()
         step = .code(result.code)
         // When the computer listens on relays, the claim carries this
         // phone's keys for them, so once approved it reaches the computer
@@ -134,6 +140,7 @@ final class PairingModel {
         let relay = result.offer.relay.flatMap(RelayRecord.make)
         // The claim pins the fingerprint the code vouched for.
         for origin in origins {
+            try Task.checkCancellation()
             let client = RemoteClient(origin: origin, fingerprint: result.fingerprint)
             guard await client.ping() else { continue }
             return try await claim(
@@ -143,6 +150,7 @@ final class PairingModel {
         }
         // No address answers: the phone is on another network. The
         // computer opened a pairing dial on its relays for this token.
+        try Task.checkCancellation()
         if let relay, let secret = Base64URL.decode(result.offer.token) {
             return try await claimThroughRelay(relay, secret: secret, result: result, deviceName: deviceName)
         }
@@ -173,6 +181,39 @@ final class PairingModel {
         )
     }
 
+    private func exchangeVoice(_ client: RemoteClient, device: String, key: DeviceKey, claim: String) async throws {
+        struct Offer: Encodable {
+            let claim: String
+            let has_account: Bool
+            let account: SpeechAccount?
+        }
+        struct Answer: Decodable {
+            let account: SpeechAccount?
+            let wants_account: Bool
+        }
+        do {
+            let local = try SpeechAccount.load()
+            let session = try await client.startSession(device: device, key: key)
+            try Task.checkCancellation()
+            let answer: Answer = try await client.pairVoice(Offer(claim: claim, has_account: local != nil, account: nil), bearer: session.token)
+            try Task.checkCancellation()
+            if answer.wants_account, let local, try SpeechAccount.load() == local {
+                let _: Answer = try await client.pairVoice(Offer(claim: claim, has_account: true, account: local), bearer: session.token)
+            }
+            try Task.checkCancellation()
+            if let account = answer.account, try SpeechAccount.load() == nil {
+                try SpeechAccount.save(account)
+            }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            voiceExchangeFailed = true
+        }
+    }
+
+    private(set) var voiceExchangeFailed = false
+
     /// Claims `token` with a new device key, then waits for Allow. A nearby
     /// claim must carry the code this phone computed.
     private func claim(
@@ -184,6 +225,7 @@ final class PairingModel {
         relay: RelayRecord? = nil,
         throughRelay: Bool = false
     ) async throws -> Computer {
+        try Task.checkCancellation()
         let key = try DeviceKey.create()
         let claim = try await client.claim(API.ClaimRequest(
             token: token,
@@ -191,6 +233,7 @@ final class PairingModel {
             publicKey: DeviceKeyEncoding.publicKey(key.publicKey),
             relay: relay?.enrollment
         ))
+        try Task.checkCancellation()
         if let expected, claim.code != expected { throw NearbyFailure.codeMismatch }
         step = .code(claim.code)
         for _ in 0..<Self.pollLimit {
@@ -203,6 +246,7 @@ final class PairingModel {
                 // this phone's own keys, which work once Allow is pressed.
                 continue
             }
+            try Task.checkCancellation()
             switch status {
             case .waiting:
                 continue
@@ -212,6 +256,9 @@ final class PairingModel {
                 throw Failure.expired
             case let .approved(approval):
                 guard approval.fingerprint == fingerprint else { throw Failure.certificateChanged }
+                if approval.voice_exchange == true {
+                    try await exchangeVoice(client, device: approval.device, key: key, claim: claim.claim)
+                }
                 return Computer(
                     device: approval.device,
                     name: approval.computer,

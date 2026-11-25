@@ -54,13 +54,34 @@ import Testing
         #expect(merged == ["https://192.168.1.9:7443", "https://10.0.0.2:7443", "https://mac.local:7443"])
     }
 
-    @Test func oldComputerRecordsDecodeWithPresenceOff() throws {
+    @Test func oldComputerRecordsDecodeWithPresenceOn() throws {
         let fingerprint = String(repeating: "AB", count: 32)
         let json = """
         {"device":"d","name":"Mac","origins":["https://a:1"],"fingerprint":"\(fingerprint)","keyKind":"software","keyData":""}
         """
         let computer = try JSONDecoder().decode(Computer.self, from: Data(json.utf8))
-        #expect(!computer.presence)
+        #expect(computer.presence)
+    }
+
+    @Test func newComputersHoldAlertsByDefault() throws {
+        let computer = Computer(
+            device: "d", name: "Mac", origins: ["https://a:1"],
+            fingerprint: try #require(Fingerprint(String(repeating: "AB", count: 32))),
+            keyKind: .software, keyData: Data()
+        )
+        #expect(computer.presence)
+    }
+
+    @Test(arguments: [false, true])
+    func savedPresenceChoiceSurvivesRoundTrip(_ presence: Bool) throws {
+        let fingerprint = String(repeating: "AB", count: 32)
+        let json = """
+        {"device":"d","name":"Mac","origins":["https://a:1"],"fingerprint":"\(fingerprint)","keyKind":"software","keyData":"","presence":\(presence)}
+        """
+        let computer = try JSONDecoder().decode(Computer.self, from: Data(json.utf8))
+        #expect(computer.presence == presence)
+        let restored = try JSONDecoder().decode(Computer.self, from: JSONEncoder().encode(computer))
+        #expect(restored.presence == presence)
     }
 }
 

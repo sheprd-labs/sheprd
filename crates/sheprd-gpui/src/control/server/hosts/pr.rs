@@ -431,7 +431,7 @@ pub(super) fn open(
         Ok(url) => url,
         Err(error) => return Response::error(ErrorCode::InvalidUrl, error.to_string()),
     };
-    let how = view.open_workspace_page(&place.endpoint, &place.workspace, url, window, cx);
+    let how = view.open_workspace_page(&place.endpoint, &place.workspace, url, false, window, cx);
     super::page_answer(Some(how), || {
         format!("Opened the pull request in workspace {}", place.workspace)
     })

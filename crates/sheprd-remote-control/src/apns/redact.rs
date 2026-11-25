@@ -36,6 +36,9 @@ impl Live {
     /// Removes text that may quote the chat.
     fn hide_quotes(&mut self) {
         let state = &mut self.state;
+        if let Some(agents) = &mut state.detail.agents {
+            agents.latest = None;
+        }
         state.question = None;
         state.permission = None;
         state.options.clear();
@@ -50,7 +53,17 @@ impl Live {
         state.previous.clear();
         state.summary = None;
         // Words, icon, and counts all tell what the turn does.
-        state.detail = Detail::default();
+        let focus = state.detail.focus.take().map(|mut focus| {
+            focus.chat_title.clear();
+            focus.workspace.clone_from(&focus.computer);
+            focus
+        });
+        state.detail = Detail {
+            question_revision: state.detail.question_revision,
+            focus,
+            agents: state.detail.agents.take(),
+            ..Detail::default()
+        };
         state.step = match state.phase {
             Phase::Working => super::decide::DEFAULT_STEP,
             Phase::Question => GENERIC_QUESTION,

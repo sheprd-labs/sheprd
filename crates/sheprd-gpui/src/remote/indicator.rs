@@ -1,5 +1,5 @@
 //! Remote control in the title bar, before the GitHub account. With no
-//! phone paired it is a "Pair phone" button; once one is, it is a phone
+//! phone paired it is a "Pair device" button; once one is, it is a phone
 //! with the number connected now, and opens a list of the phones: each can
 //! be disconnected (revoked, after asking), and another paired.
 

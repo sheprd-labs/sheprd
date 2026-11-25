@@ -7,6 +7,8 @@ use std::{fmt, ops::Deref, sync::Arc};
 /// Why this copy does not update itself.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Disabled {
+    /// The Mac App Store build: the store, not this copy, installs updates.
+    AppStore,
     /// A local build or test fixture: no release version or update key.
     LocalBuild,
     /// No standalone updater exists for this platform.
@@ -20,6 +22,9 @@ pub enum Disabled {
 impl fmt::Display for Disabled {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::AppStore => formatter.write_str(
+                "this copy came from the Mac App Store, which installs its updates.",
+            ),
             Self::LocalBuild => formatter.write_str(
                 "In-app updates require a release build with an embedded update verification key. Local builds and test fixtures never check automatically.",
             ),

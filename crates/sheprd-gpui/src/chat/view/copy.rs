@@ -56,22 +56,23 @@ impl SheprdWindow {
     /// A copy button by a message, positioned by the selected layout.
     pub(super) fn render_chat_copy(
         &self,
+        pane: &str,
         id: u64,
         text: &str,
         placement: CopyPlacement,
         cx: &mut Context<Self>,
     ) -> Div {
         let theme = &self.theme;
+        let compact = placement == CopyPlacement::Floating;
+        let words: std::sync::Arc<str> = text.into();
         let button = self
             .chat_copy_button(
                 ("chat-copy", id),
                 format!("chat-copy-{id}"),
-                String::from(text),
+                words.clone(),
                 fl!("chat-copy-message-done"),
                 cx,
             )
-            .invisible()
-            .group_hover("chat-agent-message", |button| button.visible())
             .flex()
             .items_center()
             .gap(px(4.))
@@ -84,9 +85,76 @@ impl SheprdWindow {
                     .size(px(11.))
                     .text_color(rgb(theme.muted)),
             )
-            .child(fl!("chat-copy"));
+            .role(Role::Button)
+            .aria_label(fl!("chat-copy"))
+            .when(!compact, |b| b.child(fl!("chat-copy")));
+        let target = crate::voice::Kind::Message {
+            window: cx.entity_id(),
+            pane: pane.to_owned().into(),
+            entry: id,
+        };
+        let playing = crate::voice::Session::playing(&target);
+        let label = if playing {
+            fl!("settings-voice-stop-reading")
+        } else {
+            fl!("settings-voice-read")
+        };
+        let read = div()
+            .id(("chat-read-aloud", id))
+            .role(Role::Button)
+            .aria_label(label.clone())
+            .cursor_pointer()
+            .text_color(rgb(theme.muted))
+            .text_size(px((self.chat_text_size() - 2.).max(10.)))
+            .px(px(4.))
+            .flex()
+            .items_center()
+            .justify_center()
+            .when(!compact, |b| b.child(label))
+            .when(compact && playing, |b| {
+                b.child(div().size(px(9.)).rounded(px(1.)).bg(rgb(theme.muted)))
+            })
+            .when(compact && !playing, |b| {
+                b.child(
+                    svg()
+                        .path("icons/play.svg")
+                        .size(px(12.))
+                        .text_color(rgb(theme.muted)),
+                )
+            })
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .on_click(cx.listener(move |_, _, _, cx| {
+                cx.stop_propagation();
+                let words = words.clone();
+                cx.notify();
+                let Some(session) = crate::voice::Session::begin(target.clone()) else {
+                    return;
+                };
+                let job = cx.background_executor().spawn(async move {
+                    let result = crate::voice::read_message(&words, &session);
+                    if session.cancelled() { Ok(()) } else { result }
+                });
+                cx.spawn(async move |this, cx| {
+                    let result = job.await;
+                    let _ = this.update(cx, |this, cx| {
+                        if let Err(error) = result {
+                            this.show_flash(Flash::warning(error.to_string()), cx);
+                        }
+                        cx.notify();
+                    });
+                })
+                .detach();
+            }));
+        let actions = div()
+            .id(("chat-message-actions", id))
+            .flex()
+            .items_center()
+            .when(!playing, |row| row.opacity(0.))
+            .group_hover("chat-agent-message", |row| row.opacity(1.))
+            .child(button)
+            .child(read);
         layout_for(self.config.chat.layout)
-            .copy(button, placement, &self.chat_look())
+            .copy(actions, placement, &self.chat_look())
             .when(placement == CopyPlacement::Footer, |copy| {
                 copy.debug_selector(move || format!("chat-copy-footer-{id}"))
             })

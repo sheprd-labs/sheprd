@@ -14,6 +14,9 @@
 //! WezTerm, Ghostty, and kitty use, still works, so the window sets the blur
 //! itself.
 //!
+//! That call is private API, which the Mac App Store refuses, so the `mas`
+//! build keeps GPUI's `Blurred` instead, unblurred on macOS 26 or not.
+//!
 //! The window server's call has no public or safe binding, and reaching the
 //! `NSWindow` behind GPUI's handle means dereferencing the raw view pointer,
 //! so both need `unsafe`.
@@ -22,15 +25,18 @@
 use gpui::{Window, WindowBackgroundAppearance};
 use objc2::rc::Retained;
 use objc2_app_kit::{NSColor, NSWindow};
+#[cfg(not(feature = "mas"))]
 use std::ffi::c_int;
 use wry::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 /// How far the desktop is blurred, in points.
+#[cfg(not(feature = "mas"))]
 const RADIUS: c_int = 24;
 
 // Exported by CoreGraphics, from the window server's SkyLight framework. No
 // public API blurs what lies behind a window, and the AppKit view that should
 // is what fails above.
+#[cfg(not(feature = "mas"))]
 #[link(name = "CoreGraphics", kind = "framework")]
 unsafe extern "C" {
     fn CGSDefaultConnectionForThread() -> c_int;
@@ -46,12 +52,24 @@ pub(super) struct Surface {
 }
 
 /// Moves `window` from the surface `was`, if it had one yet, to `surface`.
-pub(super) fn apply(window: &mut Window, was: Option<Surface>, surface: Surface) {
+pub(super) fn apply(
+    window: &mut Window,
+    #[cfg_attr(feature = "mas", allow(unused_variables))] was: Option<Surface>,
+    surface: Surface,
+) {
     use WindowBackgroundAppearance::{Blurred, Opaque, Transparent};
+    #[cfg(feature = "mas")]
+    if surface.appearance == Blurred {
+        window.set_background_appearance(Blurred);
+        return;
+    }
     window.set_background_appearance(Transparent);
-    let blurred = surface.appearance == Blurred;
-    if blurred || was.is_some_and(|was| was.appearance == Blurred) {
-        blur(window, blurred);
+    #[cfg(not(feature = "mas"))]
+    {
+        let blurred = surface.appearance == Blurred;
+        if blurred || was.is_some_and(|was| was.appearance == Blurred) {
+            blur(window, blurred);
+        }
     }
     if surface.appearance == Opaque {
         fill(window, surface.ground);
@@ -72,6 +90,7 @@ fn fill(window: &Window, ground: u32) {
 }
 
 /// Blurs the desktop behind `window`, or stops blurring it.
+#[cfg(not(feature = "mas"))]
 fn blur(window: &Window, blur: bool) {
     let Some(number) = native_window(window).map(|native| native.windowNumber()) else {
         tracing::warn!("Could not find the native window to blur behind");

@@ -23,3 +23,22 @@ fn sizes_carry_the_window_height_the_left_pane_shares(cx: &mut TestAppContext) {
     let height = cx.update(|window, cx| view.read(cx).region_sizes(window).height);
     assert_eq!(height, 600.);
 }
+
+#[gpui::test]
+fn specialized_sidebars_mount_one_complete_panel(cx: &mut TestAppContext) {
+    use crate::config::{AgentsPlacement, LayoutMode};
+    let (view, cx) = hosted(cx);
+    view.update_in(cx, |view, window, _| {
+        view.config.sidebar_style.device_footer = DeviceFooter::Always;
+        assert!(!view.region_sizes(window).sidebar_region);
+        view.config.layout.mode = LayoutMode::Devices;
+        assert!(view.region_sizes(window).sidebar_region);
+        view.config.layout.mode = LayoutMode::Orca;
+        view.config.show_agents = true;
+        view.config.agents_placement = AgentsPlacement::Nested;
+        assert!(view.region_sizes(window).sidebar_region);
+        view.config.agents_placement = AgentsPlacement::Panel;
+        view.sidebar_visible = false;
+        assert!(view.region_sizes(window).sidebar_region);
+    });
+}

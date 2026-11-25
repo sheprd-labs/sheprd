@@ -12,16 +12,35 @@ struct LockScreenView: View {
     var style: LiveActivityStyle = LiveActivityStyleSetting.current
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 6) {
             switch style {
             case .private, .minimal: MinimalCard(facts: facts, state: state, style: style)
             case .standard: StandardCard(facts: facts, state: state, complete: false)
             case .complete: StandardCard(facts: facts, state: state, complete: true)
             case .geek: GeekCard(facts: facts, state: state)
             }
+            if style != .standard && style != .complete {
+                AgentProgressLine(state: state, style: style)
+            }
         }
         .padding(14)
         .background(state.phase == .question ? Palette.question.opacity(0.18) : Color.clear)
+    }
+}
+
+private struct AgentProgressLine: View {
+    let state: ChatActivityState
+    let style: LiveActivityStyle
+
+    var body: some View {
+        if let agents = state.agents {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(agents.label).font(.caption.weight(.semibold))
+                if style != .private, let latest = agents.latest {
+                    Text(latest).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+        }
     }
 }
 
@@ -109,6 +128,11 @@ private struct StandardCard: View {
     let state: ChatActivityState
     let complete: Bool
 
+    private var progressHeadline: String? {
+        guard state.phase == .working || state.phase == .finished else { return nil }
+        return state.agents?.label
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(spacing: 8) {
@@ -121,7 +145,7 @@ private struct StandardCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            if complete, state.phase == .working || state.phase == .question {
+            if complete, state.agents == nil, state.phase == .working || state.phase == .question {
                 ForEach(Array(state.plainPrevious.suffix(2).enumerated()), id: \.offset) { _, step in
                     Label(step, systemImage: "checkmark")
                         .font(.caption)
@@ -133,7 +157,7 @@ private struct StandardCard: View {
                 PhaseMark(phase: state.phase)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
-                        Text(phaseHeadline(state.phase)).font(.headline)
+                        Text(progressHeadline ?? phaseHeadline(state.phase)).font(.headline)
                         if state.phase == .working {
                             Spacer(minLength: 4)
                             Elapsed(since: state.startedAt)
@@ -158,18 +182,30 @@ private struct StandardCard: View {
                     }
                 }
             }
+            if progressHeadline == nil, state.agents != nil {
+                AgentProgressLine(state: state, style: complete ? .complete : .standard)
+            }
             if opensChat(facts) {
                 AnswerButtons(facts: facts, state: state)
             }
             if state.phase == .working || state.phase == .finished {
                 TurnProgress(state: state)
-                footer
+                if state.agents == nil { footer }
             }
         }
     }
 
     @ViewBuilder
     private var detail: some View {
+        if progressHeadline != nil, let latest = state.agents?.latest {
+            Text(latest)
+        } else {
+            ordinaryDetail
+        }
+    }
+
+    @ViewBuilder
+    private var ordinaryDetail: some View {
         switch state.phase {
         case .working:
             if let icon = state.icon {
@@ -317,6 +353,9 @@ enum IslandParts {
                     .monospacedDigit()
             }
             .foregroundStyle(Palette.question)
+        } else if let agents = state.agents {
+            Text("\(agents.done)/\(agents.total)").font(.caption2.bold()).monospacedDigit()
+                .accessibilityLabel(agents.label)
         } else if state.phase == .working {
             Elapsed(since: state.startedAt)
                 .font(.caption2.weight(.semibold))
@@ -396,6 +435,7 @@ enum IslandParts {
                     Text(counts).font(.system(.caption2, design: .monospaced)).foregroundStyle(.secondary)
                 }
             }
+            AgentProgressLine(state: state, style: style)
             if style != .private, opensChat(facts) {
                 AnswerButtons(facts: facts, state: state)
             }

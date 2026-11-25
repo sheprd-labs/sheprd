@@ -1,6 +1,6 @@
 -- The window's layout. Everything here is yours to move, and each part is a
 -- mod in mods/: copy one to ~/.config/sheprd/mods to change it.
--- Only the terminals and pages in the middle are drawn by Sheprd in Rust.
+-- The stock mods mount native Sheprd controls for the sidebar, pages and bars.
 
 local function region(name: string)
 	return ui.view { name = "sheprd", id = name, props = { region = name } }
@@ -11,10 +11,9 @@ end
 local AGENTS_LEAST = 60
 local WORKTREES_LEAST = 120
 
--- The height the left column's lists share: the window's, less the row over
--- them and the device picker under them.
+-- Share the space between the title and footer, excluding the divider.
 local function lists_height(state: any): number
-	return math.max(state.height - state.header - state.devices, 0)
+	return math.max(state.height - (state.build or 0) - state.header - state.sidebar_title - state.devices - 6, 0)
 end
 
 -- The agents section's height: as dragged, else half the lists' room as
@@ -65,6 +64,7 @@ return mod {
 			header = 34,
 			height = 780,
 			left = 300,
+			sidebar_title = 32,
 			status_bar = 24,
 			titlebar = 0,
 		}
@@ -75,10 +75,15 @@ return mod {
 			-- Zero is meant: the activity bar turned off, or Zen mode hiding
 			-- the left column, and then neither is drawn.
 			state.activity_bar = msg.activity_bar
+			state.build = msg.build
 			state.devices = msg.devices or 0
 			state.header = msg.header
+			state.full_header = msg.full_header
 			state.height = msg.height or state.height
 			state.left = msg.left
+			state.sidebar_region = msg.sidebar_region
+			state.zen = msg.zen
+			state.sidebar_title = msg.sidebar_title or 0
 			state.status_bar = msg.status_bar
 			state.titlebar = msg.titlebar or 0
 		elseif type(msg) == "table" and msg.sidebar_width then
@@ -115,10 +120,13 @@ return mod {
 		local sheprd = app.sheprd or {}
 		-- The worktree and agent lists, unless a page or the rail takes
 		-- their place.
-		local lists = not sheprd.section and sheprd.sidebar_visible ~= false
+		local lists = not sheprd.section and not state.sidebar_region and sheprd.sidebar_visible ~= false
 		return ui.column {
 			grow = true,
 			gap = "none",
+			if state.full_header then ui.row {
+				height = state.header, shrink = false, region "full_header",
+			} else false,
 			-- Native pages sit below GPUI on macOS. Keep the shell clear;
 			-- the native window and the main region supply the ground, and
 			-- each chrome region paints its own background.
@@ -126,10 +134,11 @@ return mod {
 				grow = true,
 				gap = "none",
 				if state.left > 0 then ui.column {
-					width = state.left,
+					-- The one-pixel resize edge completes the column width.
+					width = if lists then state.left - 1 else state.left,
 					shrink = false,
 					gap = "none",
-					ui.row { height = state.header, shrink = false, gap = "none", style = { background = theme.sidebar }, ui.column { grow = true, gap = "none", ui.mount "header" } },
+					if not state.full_header then ui.row { height = state.header, shrink = false, gap = "none", style = { background = theme.sidebar }, ui.column { grow = true, gap = "none", ui.mount "header" } } else false,
 					ui.row {
 						grow = true,
 						gap = "none",
@@ -139,55 +148,53 @@ return mod {
 						-- The left pane: the worktrees, new and menu, then the agents,
 						-- each a mod, and the device picker under them (`mods/devices`), as Sheprd's
 						-- sidebar has it. A page in the sidebar's place shows neither list.
-						ui.column {
+						if state.sidebar_region and not sheprd.section then region "sidebar" elseif lists then ui.column {
 							class = "sheprd-left",
 							grow = true,
 							gap = "none",
 							style = { background = theme.sidebar },
 							ui.column { grow = true, gap = "none", ui.mount "worktrees" },
-							-- Under a rule, new and menu, then the agents. The rule is the edge
-							-- that shares the height between the worktrees and the agents, as
-							-- Sheprd's does.
-							if lists then ui.column {
+							ui.mount "actions",
+							if sheprd.agents_list ~= false then ui.column {
 								class = "sheprd-lower",
 								shrink = false,
 								gap = "none",
-								ui.row { class = "sheprd-rule", height = 1, shrink = false, style = { background = theme.active } },
-								ui.mount "actions",
-								if sheprd.agents_list ~= false then ui.column {
-									class = "sheprd-agents-pane",
-									height = agents_height(state),
-									shrink = false,
-									gap = "none",
-									ui.mount "agents",
-								} else false,
-								if sheprd.agents_list ~= false then ui.row {
+								ui.row {
 									class = "sheprd-agents-edge",
-									float = { top = -3, left = 0, right = 0 },
-									height = 7,
+									height = 6,
+									shrink = false,
 									align = "center",
 									justify = "center",
+									style = { border = "top", border_color = theme.active },
 									cursor = "row-resize",
 									tooltip = "Drag to resize, double-click to reset",
 									pointer = { agents_edge = true },
 									hover = true,
 									handle(state.agents_edge, "x"),
-								} else false,
+								},
+								ui.column {
+									class = "sheprd-agents-pane",
+									height = agents_height(state),
+									shrink = false,
+									gap = "none",
+									ui.mount "agents",
+								},
 							} else false,
-							if lists and state.devices > 0
+							if state.devices > 0
 								then ui.row { height = state.devices, shrink = false, gap = "none", ui.mount "devices" }
 								else false,
-						},
+						} else false,
 					},
 				} else false,
 				-- The left column's edge, a hairline beside it as Sheprd's border
 				-- is. Its grip resizes the column, as Sheprd's does, and a double
 				-- click puts back the default width. The grip overhangs the main
 				-- area rather than the column, where the lists' scrollbars are.
-				if state.left > 0 then ui.column {
-					class = "sheprd-left-edge-line",
-					width = 1,
+				if state.left > state.activity_bar and (lists or sheprd.sidebar_visible == false) then ui.column {
+					style = { background = theme.active },
+					width = if lists then 1 else 0,
 					shrink = false,
+					if not state.full_header then ui.row { height = state.header, style = { background = theme.sidebar } } else false,
 					ui.row {
 						class = "sheprd-left-edge",
 						float = { top = 0, bottom = 0, left = 0, right = -6 },
@@ -215,10 +222,10 @@ return mod {
 								-- The tabs and terminals, then over the tab strip's
 								-- end, the room it leaves free, the title bar's end
 								-- (changes, branch, account, the details toggle).
-								region "main",
+								region "body",
 								-- The turns of the chat on screen, over its left
 								-- gutter, where Sheprd laid it out.
-								if sheprd.chat_turns
+								if sheprd.moonframe_tools and sheprd.chat_turns
 									then ui.row {
 										float = { top = sheprd.chat_turns.top, left = sheprd.chat_turns.left },
 										width = sheprd.chat_turns.width,
@@ -228,23 +235,23 @@ return mod {
 									}
 									else false,
 								-- Drawn before Sheprd has measured it, so it can.
-								ui.row {
+								if not state.full_header and not state.zen then ui.row {
 									float = { top = 0, right = 0 },
 									width = math.max(state.titlebar, 1),
 									height = state.header,
 									gap = "none",
 									region "titlebar",
-								},
+								} else false,
 							},
 						},
 						-- Opened by the toggle that ends Sheprd's title bar.
-						ui.pane { size = 300, min = 200, visible = sheprd.details_visible == true, ui.mount "details" },
+						ui.pane { size = 300, min = 200, visible = not state.zen and sheprd.moonframe_tools == true and sheprd.details_visible == true, ui.mount "details" },
 					},
 					ui.row { height = state.status_bar, shrink = false, gap = "none", style = { background = theme.surface }, ui.column { grow = true, gap = "none", ui.mount "status" } },
 				},
 			},
 			-- A worktree build's strip, across the window's foot.
-			ui.mount "build",
+			if not state.zen then ui.mount "build" else false,
 		}
 	end,
 }

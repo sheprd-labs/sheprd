@@ -159,6 +159,7 @@ A relay needs no accounts and no setup to stay safe:
 - Only devices a computer has paired can reach that computer; anyone else hears that it is offline, the same answer as for a computer that is not there. A pairing in progress opens one extra dial, for two minutes, used once.
 - Connections, sessions, and bandwidth are limited per address and in total. Every limit is a `RELAY_*` setting with a safe default.
 - Addresses that misbehave are banned automatically, for ten minutes, then an hour, then a day. To ban one yourself, add it to `bans/list`; the relay rereads it every 30 seconds.
+- When a relay confirms that it banned your network address, iOS shows the ban in the connection notice and Settings > Relays. On the computer, Settings > Remote control > Relays shows the ban beside that relay. Connections retry automatically.
 - `RELAY_LISTEN_TOKEN` keeps a relay to your own computers. Droplets deployed from Sheprd set it for you. **Keep it**: an open relay lets anyone's computers listen and use your bandwidth to reach their own devices, within the limits above. It never lets them reach yours.
 - The dashboard needs its own access token, and `/metrics` is published only on the droplet itself.
 

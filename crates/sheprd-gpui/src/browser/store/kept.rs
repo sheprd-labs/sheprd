@@ -103,13 +103,8 @@ impl Store {
             return false;
         }
         workspace.cwd = cwd.to_owned();
-        if !workspace.custom
-            && let Some(label) = std::path::Path::new(cwd)
-                .file_name()
-                .and_then(|name| name.to_str())
-        {
-            workspace.label = clean_label(label);
-        }
+        // Automatic labels are projected from the checkout root, not this
+        // potentially nested folder. Keep the saved name for linked worktrees.
         self.save();
         true
     }

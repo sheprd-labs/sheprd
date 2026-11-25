@@ -13,7 +13,7 @@ both, and the table shows the median of the rounds. It opens real windows,
 so it needs an active desktop.
 
     scripts/bench_frames.py --herdr /path/to/herdr \
-        "classic=target/release/sheprd --classic" moonframe=target/release/sheprd
+        "classic=target/release/sheprd --classic" "moonframe=/usr/bin/env SHEPRD_MOONFRAME=1 target/release/sheprd"
 
 Each app is `NAME=COMMAND`: a binary, then the arguments it starts with.
 """

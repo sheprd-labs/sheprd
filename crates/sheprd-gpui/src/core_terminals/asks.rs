@@ -80,6 +80,7 @@ impl SheprdWindow {
             {
                 match self.browser_key() {
                     Some((scope, workspace)) => Purpose::Tab {
+                        focus: true,
                         group: None,
                         scope,
                         workspace,

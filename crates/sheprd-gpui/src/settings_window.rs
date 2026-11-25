@@ -3,6 +3,7 @@
 mod catalog;
 #[cfg(feature = "cloud")]
 mod cloud_devices;
+pub(crate) mod guidance;
 #[cfg(feature = "cloud")]
 // Add Device records the request instead in unit tests.
 #[cfg_attr(test, allow(dead_code, unused_imports))]
@@ -80,15 +81,17 @@ struct SettingsWindowHandle {
 impl Global for SettingsWindowHandle {}
 
 pub(crate) fn open(source: WeakEntity<SheprdWindow>, cx: &mut App) {
-    cx.defer(move |cx| {
-        open_with(source, cx, |view, window, cx| {
-            view.initialize_theme_browser(window, cx);
-            view.initialize_controls(cx);
-            #[cfg(windows)]
-            view.refresh_launch_at_login(None, cx);
-            view.reload(cx);
-            view.watch_config(cx);
-        })
+    cx.defer(move |cx| open_now(source, cx));
+}
+
+fn open_now(source: WeakEntity<SheprdWindow>, cx: &mut App) {
+    open_with(source, cx, |view, window, cx| {
+        view.initialize_theme_browser(window, cx);
+        view.initialize_controls(cx);
+        #[cfg(windows)]
+        view.refresh_launch_at_login(None, cx);
+        view.reload(cx);
+        view.watch_config(cx);
     });
 }
 
@@ -158,6 +161,7 @@ fn open_with(
 
 struct SettingsWindow {
     caption: crate::caption::Caption,
+    _guidance: Option<Subscription>,
     config: Config,
     /// The config as the last successful load read it, which sidebar saves
     /// diff against; previews change only `config`.
@@ -180,6 +184,7 @@ struct SettingsWindow {
     machines: pages::machines::MachinesPage,
     remote: pages::remote_control::RemoteSettings,
     fleet: pages::fleet::FleetPage,
+    voice: pages::voice::VoicePage,
     text_shortcuts: pages::text_shortcuts::TextShortcutsPage,
     /// The open override dropdown, if any; its list renders inside its button.
     dropdown: Option<ui::Dropdown>,
@@ -332,6 +337,7 @@ impl SettingsWindow {
         );
         Self {
             caption: Default::default(),
+            _guidance: None,
             loaded_config: config.clone(),
             config,
             theme,
@@ -351,6 +357,7 @@ impl SettingsWindow {
             machines: Default::default(),
             remote: Default::default(),
             fleet: Default::default(),
+            voice: pages::voice::VoicePage::new(cx),
             text_shortcuts: Default::default(),
             dropdown: None,
             number_edit: None,
@@ -490,6 +497,7 @@ impl SettingsWindow {
         };
         self._source = Some(cx.observe(&owner, Self::source_changed));
         self.source = source;
+        self._guidance = None;
         self.new_window_target = owner
             .read(cx)
             .endpoints
@@ -709,6 +717,9 @@ impl SettingsWindow {
         self.dropdown = None;
         self.dismiss_control_font_picker(window, cx);
         self.clear_search(cx);
+        if self.section == Section::Voice {
+            self.dismiss_voice_sheet(cx);
+        }
         self.section = section;
         // A page opened from search or elsewhere shows in a short list too.
         self.navigation_scroll.scroll_to_item(section.nav_item());
@@ -722,6 +733,9 @@ impl SettingsWindow {
         #[cfg(target_os = "macos")]
         if section == Section::Machines {
             self.open_machines(cx);
+        }
+        if section == Section::Voice {
+            self.open_voice(cx);
         }
         if section == Section::TextShortcuts {
             self.open_text_shortcuts_page(cx);
@@ -757,6 +771,15 @@ impl SettingsWindow {
 impl Render for SettingsWindow {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.caption.sync(window, &self.theme);
+        let guide = self
+            .source
+            .upgrade()
+            .map(|source| source.read(cx).agent_guidance.clone());
+        if self._guidance.is_none()
+            && let Some(guide) = &guide
+        {
+            self._guidance = Some(cx.observe(guide, |_, _, cx| cx.notify()));
+        }
         let searching = self.search_results.clone();
         let heading = if searching.is_some() {
             fl!("settings-results")
@@ -825,6 +848,11 @@ impl Render for SettingsWindow {
             .text_start()
             .children(header)
             .child(
+                div().flex_none().h(px(guide
+                    .as_ref()
+                    .map_or(0., |guide| 92. * guide.read(cx).shown()))),
+            )
+            .child(
                 div().flex_1().min_h_0().row().child(navigation).child(
                     self.scroll_area(
                         scrollbar::Pane::Body,
@@ -864,6 +892,13 @@ impl Render for SettingsWindow {
             )
             .child(self.footer(cx))
             .children(font_picker);
+        let root = root.children(self.guidance_highlight(guide.as_ref(), cx));
+        let root = root.children(
+            guide
+                .as_ref()
+                .and_then(|guide| crate::agent_guidance::banner(guide, &self.theme, window, cx)),
+        );
+        let root = root.children(self.voice_sheet(window, cx));
         let border = self.theme.active;
         crate::titlebar::frame(window, border, root)
     }

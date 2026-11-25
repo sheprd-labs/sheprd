@@ -15,6 +15,10 @@ fn a_program_that_offers_the_choice_starts_chats_that_can_switch() {
         ["/bin/sheprd-acp", "--choose", "claude"]
     );
     assert_eq!(
+        launcher(AgentChoice::Open).argv(Agent::Antigravity),
+        ["/bin/sheprd-acp", "--choose", "antigravity"]
+    );
+    assert_eq!(
         launcher(AgentChoice::Fixed).argv(Agent::Codex),
         ["/bin/sheprd-acp", "codex"]
     );

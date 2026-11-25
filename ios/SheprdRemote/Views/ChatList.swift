@@ -12,11 +12,6 @@ struct ChatList: View {
     @Environment(AppModel.self) private var model
     @AppStorage(HomeRow.sortKey) private var sort = AgentSort.priority
     var sections: [AgentSort.Section<HomeRow>]
-    /// The unread agents among those the filters leave, for the bar above
-    /// the list.
-    var unread: [PaneKey] = []
-    /// Lists only unread agents.
-    @Binding var unreadOnly: Bool
     /// Where each section's header is, so a jump can clear the bars.
     @State private var headerJump = HeaderJump()
     /// What a swipe or long press asked to close, waiting for confirmation.
@@ -62,7 +57,6 @@ struct ChatList: View {
         ScrollViewReader { proxy in
             List {
                 UnpairedCards()
-                if !unread.isEmpty || unreadOnly { UnreadBar(unread: unread, only: $unreadOnly) }
                 ForEach(sections) { section in
                     let key = Self.key(section, sort: sort)
                     let folded = model.collapsed.home.contains(key)

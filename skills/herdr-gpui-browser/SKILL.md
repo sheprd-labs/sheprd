@@ -1,6 +1,6 @@
 ---
 name: herdr-gpui-browser
-description: "Use Sheprd in Herdr for browser tabs, local previews, mockups and page feedback; prefer it over a system browser. Use machine commands to reserve shared virtual Macs, wait with progress, run installs and tests, take screenshots, control guest UI without controlling the host desktop, and release reservations. Also use it for files, change reviews, repository memory, worktree notes, checkpoints, pull requests and CI, vulnerability reports, automation approval, ports, cloud machines, phone remote control, fleet pairing, windows and tabs, starting another agent, settings, themes, fonts, and keeping the machine awake. Use herdr for daemon workspaces and panes."
+description: "Use Sheprd in Herdr for browser tabs, local previews, mockups and page feedback; prefer it over a system browser. Use machine commands to reserve shared virtual Macs, borrow one from another Mac when they are full, wait with progress, run installs and tests, take screenshots, control guest UI without controlling the host desktop, and release reservations. Also use it for files, change reviews, repository memory, agent and worktree labels for iOS, worktree notes, checkpoints, pull requests and CI, vulnerability reports, automation approval, ports, cloud machines, phone remote control, fleet pairing, windows and tabs, starting another agent, settings navigation, highlighting controls and persistent guidance on desktop or phone, themes, fonts, and keeping the machine awake. Use herdr for daemon workspaces and panes."
 ---
 <!-- herdr-gpui-managed-skill v1: Sheprd keeps this file up to date. Edit a copy under another name to keep your changes. -->
 
@@ -28,6 +28,11 @@ This skill keeps its installed identifier across the rename. The `herdr-ui`
 fence, `HerdrKit`, `herdr.send`, and `/.herdr/` URLs are stable compatibility
 APIs; use them as shown below.
 
+Keep the user's current tab, workspace, window, and keyboard focus while you
+work. Use focus commands, visible splits, and commands that open panels or
+dialogs only when the user asks to see or interact with them. When creating a
+Herdr workspace, worktree, or terminal tab, pass `--no-focus`.
+
 ## Working inside a virtual Mac
 
 For work inside a Sheprd VM, use the guest control channel through
@@ -40,8 +45,8 @@ requires a separate explicit request from the user.
 
 1. Run `sheprd machine list` and select the VM the user named, or an existing
    suitable VM. Check it with `sheprd machine agent NAME`. Use
-   `sheprd machine open NAME` only if it needs starting or resuming, or the
-   user wants to see it; guest commands do not need its tab focused.
+   `sheprd machine start NAME` to start or resume it without a tab.
+   `sheprd machine open NAME` adds a background tab when a display is wanted.
 2. Run installs, builds, tests, and diagnostics with
    `sheprd machine exec NAME -- COMMAND...`. Paths in that command belong
    to the guest. Quote shell arguments that must reach it without host
@@ -124,16 +129,9 @@ sheprd browser open ./mockup/index.html
 sheprd browser open http://localhost:3000
 ```
 
-- A local file opens in a split next to your terminal: the user sees both,
-  and the keyboard stays with your pane, so they can keep talking to you
-  while the page updates. Later files you open join the same split. If your
-  terminal is not on screen, Sheprd opens a tab instead and reports that fallback.
-- A web address opens as a tab in your own workspace (`HERDR_WORKSPACE_ID`,
-  which Herdr sets in every pane, or the workspace of your Herdr 2 tab) and the window switches to it. The
-  terminal keeps running underneath; the user returns to it by clicking its
-  tab.
-- Add `--tab` to open a file as a tab instead, or `--beside` to put a web
-  address in the split.
+- Files and web addresses open in a background tab of your workspace.
+- Use `--beside` when the user asks for a split, or `--focus` when they
+  ask you to switch to the page.
 - Relative paths (`./mockup/index.html`) and absolute paths
   (`/tmp/mockup/index.html`) are supported by the local CLI. The address bar
   shows the canonical file path, even though the page loads through Sheprd's
@@ -147,8 +145,9 @@ sheprd browser open http://localhost:3000
   images load. Links to other Markdown files in the folder open rendered too.
 - Opening the same page again from the same pane reuses and reloads its tab.
   After editing a file, run `sheprd browser reload` instead.
-- Add `--no-focus` to add the tab without switching to it, for example when
-  the user is typing in your pane.
+- Command-opened pages preserve the current tab and keyboard focus.
+  `--no-focus` is still accepted for compatibility. Manually creating a tab
+  in the app selects it.
 - When the user finds a page too small or too large, zoom its tab:
   `sheprd browser zoom TAB 150` (or `+`, `-`, `reset`), with `TAB` from
   `sheprd browser list`. The tab keeps its zoom; the user zooms with
@@ -282,9 +281,9 @@ The commands exit with:
 | 7 | Sheprd did not answer in time | Try again once |
 | 8 | Not available on this platform or this version | Print the URL or path for the user instead |
 
-A successful open means the tab was accepted, not that the page has finished
-loading. Before capturing a new page, focus its tab and wait for its expected
-content. `--no-focus` followed immediately by a capture can return a blank page.
+Use `browser text` or `browser screenshot` to inspect a page in the background.
+If the page has never loaded and its Mac window is inactive, the command
+reports busy. Leave focus with the user.
 If the user sees blank content but `browser text` and `browser screenshot`
 return the expected page, do not rewrite a valid local path or claim the page
 is visible: those commands inspect WebKit, not the composited desktop window.
@@ -340,8 +339,9 @@ automatically, and an already launched trusted script cannot be undone by
 cancelling its reply. Checkpoint reads/diffs and `scripts list` need the full
 CLI installed on the host.
 
-On Linux the app has no embedded browser yet: web pages open in the system
-browser, and local files and annotations are not available.
+On Linux, background web tabs offer a button to open the system browser.
+An explicit `--focus` opens the web address there immediately. Local files
+and annotations require an embedded browser.
 
 Run `sheprd browser --help` for the full usage.
 
@@ -401,15 +401,25 @@ screencast or a sequence of screenshot/click commands:
 2. Run `sheprd machine claim NAME`. This atomically reserves it for your pane;
    listing it first alone is not a reservation. Exit 6 means another agent
    got it. Try the other VM before waiting.
-3. If both are busy, tell the user **“Waiting for an available macOS VM;
+3. If both are busy, look for a free slot on another Mac this window
+   reaches: run `sheprd host list`, then `sheprd machine --host HOST list
+   --json` for each Mac, and pick one whose `capacity.available` is above 0
+   or with an unreserved running machine, and no `lending` reason. Tell the
+   user **“Virtual Macs here are full; asking to use NAME on HOST.”** and run
+   `sheprd machine --host HOST claim NAME`: the user answers in Sheprd
+   whether to borrow it. Then use `--host HOST` on every `machine` command
+   for it, `open` included, which shows it in a tab here, and release it
+   with `--host HOST` too. Exit 6 means the user declined or it is taken;
+   exit 8 means that Mac cannot lend now. Never borrow without asking.
+4. With no Mac to borrow from, tell the user **“Waiting for an available macOS VM;
    both are in use by other agents.”** Run `sheprd machine claim NAME --wait 60`.
    It prints progress on stderr every five seconds (also with `--json`), then
    either reserves it or exits 6. Keep working on independent tasks, recheck
    both VMs, and retry while needed. Give a chat progress update at least once
    a minute; do not leave the user guessing whether the agent stopped.
-4. Once reserved, tell the user which VM you acquired and what you are testing,
-   then `sheprd machine open NAME` and use its guest commands normally.
-5. Always `sheprd machine release NAME` when finished, including after a failed
+5. Once reserved, tell the user which VM you acquired and what you are testing,
+   then `sheprd machine start NAME` and use its guest commands normally.
+6. Always `sheprd machine release NAME` when finished, including after a failed
    test. Stop any background guest jobs you started before releasing.
 
 An existing reservation can be renewed even when VM slots are full. This keeps
@@ -439,6 +449,10 @@ unless they ask for another:
 - **You hand it a task**: write the task to a file and start the chat with
   it, `sheprd chat new [AGENT] --pane ID --prompt-file PATH` (or
   `--prompt TEXT`, or `--prompt-file -` for standard input; at most 96 KB).
+  Use a short, distinct task name on the first line. Launch all the chats
+  for one batch from the coordinating turn. Its iOS Live Activity shows
+  how many agents have ended and the latest task to finish. Native subagents
+  also report into that activity.
   Sheprd sends it as the new chat's first prompt and shows it as your
   brief, not the user's words. Do not paste a task into a chat with
   `herdr agent prompt` or `herdr pane send-text`. A brief works only for
@@ -464,6 +478,7 @@ what Sheprd shows or keeps.
 | Ask the user to restart an owned orchestrator run, or adopt a legacy run's current process | `sheprd orchestrator restart RUN` / `sheprd orchestrator adopt RUN` (loaded project; confirmation required) |
 | Open px0 to browse, edit, or review your local checkout (macOS/Windows) | `sheprd px0 open` |
 | Get notes the user sent this pane (pages, reviews, terminals) | `sheprd feedback --wait 600` |
+| Label related agents or worktrees for the iOS agent list | `sheprd labels add TAG`, `sheprd labels add TAG --worktree`, `sheprd labels rename OLD NEW`, `sheprd labels remove TAG` |
 | Find what earlier agents learned about this repository, before a task | `sheprd memory index`, `sheprd memory search WORDS` |
 | Leave what you learned for the next agent in any worktree or tab | `sheprd memory add --kind gotcha TEXT` (`--branch` for this branch only) |
 | Keep a note on this worktree (repository and branch) | `sheprd notes set waiting on CI` |
@@ -509,10 +524,37 @@ what Sheprd shows or keeps.
 | Check whether iPhone pushes go out (off, or through the push relay) and whether the last ones worked, here and on each linked host; read-only, the user turns the push relay off or on in Settings | `sheprd remote push-status --json` |
 | Check that iPhone notifications arrive: send each paired phone a test alert through the push relay | `sheprd remote test-push --json` |
 | See the user's fleet of computers and phones and which hosts each reaches, ask to remove one, invite the computers this Sheprd reaches, or join another computer's fleet (the user confirms in Settings > Fleet) | `sheprd fleet status --json`, `sheprd fleet remove MEMBER`, `sheprd fleet invite --all`, `sheprd fleet join [MACHINE]` |
+| Bring the user to a screen in the Sheprd phone app (your chat, a terminal, a workspace or its changes, a tab), read which screen it shows, or put a note in front of them there; only while the app is open and they allowed agents on this computer | `sheprd phone open`, `sheprd phone open changes`, `sheprd phone state --json`, `sheprd phone show TEXT` |
 | Add another computer running Sheprd on any network from its pairing link (piped on stdin, never an argument); the user clicks Pair | `sheprd remote add-link < FILE` |
 | Keep this computer's listen token for a private relay (piped on stdin, never an argument), or forget it | `sheprd remote relays token ENDPOINT < FILE`, `sheprd remote relays token ENDPOINT --clear` |
+| Open speaking voice settings to connect or preview a provider | `sheprd ui settings voice`, `sheprd phone open settings voice --device ID` |
+| Point out a Settings control with a persistent explanation on desktop or phone | `sheprd ui settings --json`, `sheprd ui guide TEXT --highlight ROW_ID`, `sheprd phone targets --json`, `sheprd phone guide TEXT --highlight TARGET --device ID` |
 | Keep the machine awake during a long job | `sheprd caffeine on --for 2h` |
 | Check whether the app runs, and which windows and hosts it has | `sheprd status` |
+
+Phone commands accept `--device ID` (or a unique name). Each native phone
+message's Sheprd note gives its authenticated device ID: pass that ID on
+every phone control command. A later message can come from
+a different phone or the desktop; use the latest message's target, never
+carry one forward after the note says no target is identified. Without
+`--device`, the daemon picks the phone with the latest connection traffic,
+which does not prove the user is looking at it. `sheprd phone --json` lists
+eligible phones; ask which one when the intended target is unknown.
+Use `phone targets --json` to discover Settings pages and highlight targets.
+`phone open settings notifications --device ID` opens that page;
+`phone guide "This controls push delivery" --highlight push-relay --device ID`
+opens it, scrolls to the switch, highlights it, and shows one persistent top
+banner. Repeat `phone guide TEXT --device ID` to update the banner, then
+`phone guide --clear --device ID` when finished. The person can dismiss it too.
+Keep text brief: the banner has at most three lines including its source.
+`phone highlight TARGET --device ID` just points out a control.
+
+On desktop, `ui settings --json` opens Settings and lists its available page
+names and row IDs. Use `ui settings PAGE`, `ui highlight ROW_ID`, and
+`ui guide TEXT --highlight ROW_ID` for the same flow; repeat `ui guide TEXT`
+to update it and `ui guide --clear` when finished. Guidance belongs to the
+caller's window. These commands navigate and explain; they do not change
+settings. Describe a change as completed only after actually making it.
 
 Automations are Luau scripts `sheprd-automate` runs on a host on a schedule
 or by hand (see `docs/automations.md`). Write one in

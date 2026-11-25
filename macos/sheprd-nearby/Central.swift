@@ -37,7 +37,11 @@ final class Central: NSObject {
     private static let pair = CBUUID(string: IDs.pair)
 
     /// Starts or stops looking for computers that are pairing. Stopping
-    /// leaves alone the one being paired with.
+    /// lets go of every computer, the one being paired with too: Sheprd
+    /// stops scanning only once no Add Device page is open, and a page
+    /// that closed mid-pairing sends no `disconnect`. A computer kept
+    /// would never be listed again, as a scan reports each peripheral it
+    /// already holds only once.
     func scan(_ on: Bool) {
         scanning = on
         if let manager {
@@ -55,7 +59,7 @@ final class Central: NSObject {
                 MainActor.assumeIsolated { self.readInfos() }
             }
         } else {
-            for (id, peripheral) in peripherals where !wanted.contains(id) {
+            for (id, peripheral) in peripherals {
                 manager?.cancelPeripheralConnection(peripheral)
                 left(id)
                 forget(id)
