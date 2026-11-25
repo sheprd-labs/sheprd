@@ -1,10 +1,8 @@
 //! What the relay list may point clients at: public hosts only, never
 //! their own machine or network, and pins that are pins.
 
-use crate::{
-    Endpoint,
-    directory::{Directory, Error},
-};
+use crate::{Directory, Error};
+use sheprd_relay::Endpoint;
 
 fn list(endpoint: &str) -> Result<Directory, Error> {
     Directory::parse(

@@ -6,7 +6,7 @@ pub enum Error {
     Endpoint {
         index: usize,
         #[source]
-        source: crate::endpoint::Error,
+        source: sheprd_relay::endpoint::Error,
     },
     #[error("the relay list expired at {expires}")]
     Expired { expires: u64 },
@@ -34,3 +34,5 @@ pub enum Error {
     Version { version: u32 },
     // keep-sorted end
 }
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;

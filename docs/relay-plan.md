@@ -383,7 +383,7 @@ relays = "default"   # Sheprd's relays (the default). Or one of:
 - A list replaces the defaults unless it names `"default"`, so someone
   running a private relay never touches ours, not even to look one up.
 - `"default"` means the relays listed at `https://sheprd.org/relays.json`
-  (`sheprd_relay::directory`, built), never a list compiled into the app:
+  (`sheprd_relay_directory`, built), never a list compiled into the app:
 
   ```json
   { "version": 1, "relays": [
@@ -406,8 +406,8 @@ relays = "default"   # Sheprd's relays (the default). Or one of:
   or a mis-issued certificate could forge. `just relays-add` reads the pin
   from `/v1/info` and prints it, to compare with the `pin=` the relay logs
   at start before signing.
-- The list is signed (`sheprd_relay::directory::signed`, behind the
-  `signed-directory` feature), so changing sheprd.org, its host, or its
+- The list is signed (`sheprd_relay_directory::signed`), so changing
+  sheprd.org, its host, or its
   DNS cannot redirect clients. Whoever controls the list would
   otherwise learn every computer's address, route, dial keys, and online
   times, could cut everyone off, and could aim every daemon at a host of
@@ -416,7 +416,7 @@ relays = "default"   # Sheprd's relays (the default). Or one of:
   - **Fabien Penso's OpenPGP key**, `gpg@pen.so`, fingerprint
     `3103 20A8 CC1C 5BA8 6AD0 9040 C045 1BAD F764 9BBF`, published on
     pen.so so anyone can check it, compiled in from
-    `crates/sheprd-relay/keys/maintainer.asc`. The signing subkey lives on
+    `crates/sheprd-relay-directory/keys/maintainer.asc`. The signing subkey lives on
     a YubiKey; `relays.json.asc` is its detached armored signature, made by
     `just relays-sign`. Clients check the subkey's binding, its backward
     signature, its signing flag, and its expiry. "Validated by Fabien Penso
@@ -424,7 +424,7 @@ relays = "default"   # Sheprd's relays (the default). Or one of:
   - **The site workflow's Ed25519 key**, `RELAYS_SIGNING_KEY`, a secret of
     the `relays` environment (allowed on `main` only), received only by the
     `sign-relays` job of `site.yml`, which checks it against
-    `crates/sheprd-relay/keys/actions.ed25519.hex` and publishes
+    `crates/sheprd-relay-directory/keys/actions.ed25519.hex` and publishes
     `relays.json.sig`, its raw 64-byte signature over the exact bytes
     deployed. "Validated by GitHub Actions (sheprd-labs/sheprd)". Whoever
     can change that workflow on `main` can have a list signed this way;

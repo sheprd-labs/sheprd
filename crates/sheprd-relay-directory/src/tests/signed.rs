@@ -2,9 +2,9 @@
 //! maintainer's OpenPGP key, the site workflow's Ed25519 key, freshness,
 //! and replay.
 
-use crate::directory::{
+use crate::{
     Directory, Error,
-    signed::{MAINTAINER_FINGERPRINT, Signatures, Signer, maintainer, signed_by},
+    signed::{ACTIONS_KEY, MAINTAINER_FINGERPRINT, Signatures, Signer, maintainer, signed_by},
 };
 use pgp::{
     composed::{Deserializable, SignedPublicKey},
@@ -123,7 +123,7 @@ fn a_signed_list_must_say_which_it_is_and_until_when() {
 #[test]
 fn the_site_workflow_checks_the_same_public_key() {
     let hex = include_str!("../../keys/actions.ed25519.hex").trim();
-    let written: String = crate::directory::signed::ACTIONS_KEY
+    let written: String = ACTIONS_KEY
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect();

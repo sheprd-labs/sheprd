@@ -3,7 +3,7 @@
 //! refuse it, and exits non-zero then. `just relays-sign` runs it after
 //! signing.
 
-use sheprd_relay::directory::{
+use sheprd_relay_directory::{
     Directory,
     signed::{Signatures, Signed},
 };

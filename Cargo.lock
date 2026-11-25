@@ -11725,6 +11725,7 @@ dependencies = [
  "sheprd-orchestrator",
  "sheprd-relay",
  "sheprd-relay-agent",
+ "sheprd-relay-directory",
  "sheprd-remote",
  "sheprd-remote-control",
  "sheprd-session",
@@ -11915,14 +11916,12 @@ dependencies = [
  "anyhow",
  "axum",
  "base64 0.23.1",
- "ed25519-dalek",
  "futures-util",
  "getrandom 0.4.3",
  "hmac 0.13.0",
  "http-body-util",
  "p256 0.14.0",
  "percent-encoding",
- "pgp",
  "quinn",
  "rcgen",
  "rustls",
@@ -11962,6 +11961,20 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "sheprd-relay-directory"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.23.1",
+ "ed25519-dalek",
+ "pgp",
+ "serde",
+ "serde_json",
+ "sheprd-relay",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

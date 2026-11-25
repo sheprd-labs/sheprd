@@ -32,7 +32,7 @@ ignore = [
     # use it for timestamps and RFC 3339 parsing; moving them to `jiff` or
     # `time` is its own change. Revisit if a vulnerability is filed.
     { id = "RUSTSEC-2026-0543", reason = "chrono is unmaintained, not vulnerable; migration to jiff/time is separate work" },
-    # `pgp` (sheprd-relay's `signed-directory`, checking Sheprd's relay list)
+    # `pgp` (sheprd-relay-directory, checking Sheprd's relay list)
     # pulls in `rsa` and the 0.13 elliptic-curve crates. Both advisories are
     # timing side channels in private-key operations (RSA decryption and
     # signing; constant-time scalar arithmetic). The relay list is only ever

@@ -1,0 +1,24 @@
+[package]
+description            = "Sheprd's public relay list from sheprd.org, taken only when its maintainer or the site workflow signed it"
+edition.workspace      = true
+license.workspace      = true
+name                   = "sheprd-relay-directory"
+publish.workspace      = true
+rust-version.workspace = true
+version.workspace      = true
+
+[lints]
+workspace = true
+
+[dependencies]
+base64.workspace        = true
+ed25519-dalek.workspace = true
+pgp.workspace           = true
+serde.workspace         = true
+serde_json.workspace    = true
+# Relay endpoints alone: no server, Tokio, or axum.
+sheprd-relay.workspace = true
+thiserror.workspace    = true
+
+[dev-dependencies]
+anyhow.workspace = true

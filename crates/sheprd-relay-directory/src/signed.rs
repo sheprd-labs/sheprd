@@ -16,7 +16,7 @@
 //! or is older than the list it keeps, so an old signed list cannot be
 //! replayed.
 
-use super::{Directory, Error};
+use super::{Directory, Error, Result};
 use ed25519_dalek::VerifyingKey;
 use pgp::{
     composed::{Deserializable, DetachedSignature, SignedPublicKey},
@@ -30,7 +30,7 @@ pub const OPENPGP_URL: &str = "https://sheprd.org/relays.json.asc";
 pub const ED25519_URL: &str = "https://sheprd.org/relays.json.sig";
 /// The maintainer's OpenPGP certificate, as `gpg --export --armor
 /// --export-options export-minimal` writes it.
-pub const MAINTAINER_KEY: &str = include_str!("../../keys/maintainer.asc");
+pub const MAINTAINER_KEY: &str = include_str!("../keys/maintainer.asc");
 /// The maintainer's primary key fingerprint, as published on pen.so.
 pub const MAINTAINER_FINGERPRINT: &str = "310320A8CC1C5BA86AD09040C0451BADF7649BBF";
 /// The site workflow's Ed25519 public key (`RELAYS_SIGNING_KEY`).
@@ -90,7 +90,7 @@ impl Directory {
         signatures: Signatures<'_>,
         now: u64,
         kept: Option<u64>,
-    ) -> Result<Signed, Error> {
+    ) -> Result<Signed> {
         let signer = signer(bytes, signatures, now).ok_or(Error::Unsigned)?;
         let directory = Self::parse(bytes)?;
         let (Some(serial), Some(expires)) = (directory.serial, directory.expires) else {

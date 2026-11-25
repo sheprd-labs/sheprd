@@ -46,8 +46,9 @@ sheprd-memory.workspace         = true
 sheprd-mods.workspace           = true
 sheprd-orchestrator.workspace   = true
 sheprd-remote.workspace         = true
+sheprd-relay.workspace          = true
 # Sheprd's signed relay list, for Settings to offer its relays.
-sheprd-relay = { features = ["signed-directory"], workspace = true }
+sheprd-relay-directory.workspace = true
 # Remote control without its server: the control protocol and `app`.
 sheprd-remote-control.workspace         = true
 # A plain host's relay agent without its runtime: its `status --json` and

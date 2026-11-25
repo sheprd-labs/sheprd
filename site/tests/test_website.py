@@ -102,8 +102,8 @@ class WebsiteTests(unittest.TestCase):
         self.assertIn("Cache-Control: public, max-age=300", rule)
 
     def test_relay_setup_docs_exist_where_clients_link(self):
-        """sheprd_relay::directory::SETUP_URL points at the relays docs page."""
-        source = (ROOT / "crates/sheprd-relay/src/directory.rs").read_text()
+        """sheprd_relay_directory::SETUP_URL points at the relays docs page."""
+        source = (ROOT / "crates/sheprd-relay-directory/src/lib.rs").read_text()
         self.assertIn('SETUP_URL: &str = "https://sheprd.org/docs/relays/"', source)
         # Settings opens the deploy page beside the private relay setting.
         self.assertIn('DEPLOY_URL: &str = "https://sheprd.org/relay/"', source)

@@ -53,18 +53,12 @@ server = [
 # A relay to run inside other projects' tests (`testing`): WebSockets on a
 # loopback port, small limits, no bans, no dashboard, QUIC, or metrics port.
 testing = ["websocket-server"]
-# Checking that Sheprd's relay list is genuine (`directory::signed`).
-signed-directory = ["dep:ed25519-dalek", "dep:pgp"]
 # The relay itself over WebSockets: who listens, limits, bans, splicing.
 websocket-server = ["dep:axum", "dep:futures-util", "dep:tokio", "dep:tracing", "ops"]
 
 [[bin]]
 name              = "sheprd-relay"
 required-features = ["server"]
-
-[[example]]
-name              = "relays"
-required-features = ["signed-directory"]
 
 [[example]]
 name              = "echo_computer"
@@ -81,8 +75,6 @@ thiserror.workspace  = true
 url.workspace        = true
 
 axum          = { optional = true, workspace = true }
-ed25519-dalek = { optional = true, workspace = true }
-pgp           = { optional = true, workspace = true }
 # `split` lets each direction of a spliced pair wait on its own throttle.
 futures-util             = { features = ["std"], optional = true, workspace = true }
 hmac                     = { optional = true, workspace = true }

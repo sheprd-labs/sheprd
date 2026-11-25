@@ -15,8 +15,6 @@ pub enum Error {
     #[error(transparent)]
     Dashboard(#[from] crate::ops::Error),
     #[error(transparent)]
-    Directory(#[from] crate::directory::Error),
-    #[error(transparent)]
     Endpoint(#[from] crate::endpoint::Error),
     #[error("{name} is not valid: {value:?}")]
     Invalid { name: &'static str, value: OsString },

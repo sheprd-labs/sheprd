@@ -11,7 +11,7 @@ use crate::{
     },
     settings_window::pages::remote_control::{Offered, Standing, public_title},
 };
-use sheprd_relay::directory::signed::Signer;
+use sheprd_relay_directory::signed::Signer;
 use sheprd_remote_control::control::RelayState;
 
 const HOME: &str = "https://relay.example.org";

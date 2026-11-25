@@ -61,9 +61,9 @@ def windows_line(line):
 
 
 # Outside a crate, what no crate builds or tests read: Markdown but the
-# skills the app embeds, the website but the relay list sheprd-relay's tests
-# check, the hosted site, and other workflows. Anything else there reaches
-# every crate.
+# skills the app embeds, the website but the relay list
+# sheprd-relay-directory's tests check, the hosted site, and other
+# workflows. Anything else there reaches every crate.
 UNREAD = re.compile(r"^(?!skills/).*\.md$|^website/(?!site/relays\.json)|^(site|\.github)/")
 # Patched into GPUI's build, which no member manifest names.
 WORKSPACE_WIDE_CRATES = frozenset({"crates/embed-resource"})

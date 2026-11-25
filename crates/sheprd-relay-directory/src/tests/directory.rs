@@ -1,7 +1,7 @@
 //! Sheprd's relay list: the file sheprd.org serves, empty or not, and what
 //! a client refuses.
 
-use crate::directory::{Directory, Error, MAX_BYTES, MAX_RELAYS};
+use crate::{Directory, Error, MAX_BYTES, MAX_RELAYS};
 
 /// The list as sheprd.org publishes it.
 const PUBLISHED: &str = include_str!("../../../../website/site/relays.json");

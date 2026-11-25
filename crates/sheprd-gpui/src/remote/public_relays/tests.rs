@@ -1,16 +1,17 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::*;
-use sheprd_relay::{Endpoint, directory::Relay};
+use sheprd_relay::Endpoint;
+use sheprd_relay_directory::Relay;
 
-/// A list the site workflow signed, from the relay crate's own fixtures.
+/// A list the site workflow signed, from the relay list crate's own fixtures.
 const SIGNED: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../sheprd-relay/src/tests/fixtures/relays-signed.json"
+    "/../sheprd-relay-directory/src/tests/fixtures/relays-signed.json"
 ));
 const SIGNED_SIG: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../sheprd-relay/src/tests/fixtures/relays-signed.json.sig"
+    "/../sheprd-relay-directory/src/tests/fixtures/relays-signed.json.sig"
 ));
 /// When the fixture was signed, in Unix seconds.
 const SIGNED_AT: u64 = 1_794_506_300;

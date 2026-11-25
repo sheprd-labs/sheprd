@@ -225,7 +225,7 @@ impl SettingsWindow {
         if !listed.expired(now) {
             return false;
         }
-        let expired = sheprd_relay::directory::Error::Expired {
+        let expired = sheprd_relay_directory::Error::Expired {
             expires: listed.expires,
         };
         self.remote.offered = Offered::Failed(public_relays::Error::from(expired).localize());
@@ -400,7 +400,7 @@ impl SettingsWindow {
                 fl!("settings-remote-public-relays-setup"),
                 true,
             )
-            .on_click(|_, _, cx| cx.open_url(sheprd_relay::directory::SETUP_URL))
+            .on_click(|_, _, cx| cx.open_url(sheprd_relay_directory::SETUP_URL))
         };
         let header = match &self.remote.offered {
             Offered::Unknown | Offered::Loading => {

@@ -25,14 +25,13 @@
 //! everyone off, and could aim every daemon at a host of their choosing.
 
 mod error;
-#[cfg(feature = "signed-directory")]
 pub mod signed;
 
-pub use error::Error;
+pub use error::{Error, Result};
 
-use crate::Endpoint;
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde::Deserialize;
+use sheprd_relay::Endpoint;
 
 /// Where Sheprd's relays are listed. Compiled in, so a paired device or
 /// a page cannot redirect a client's relay list.
@@ -102,7 +101,7 @@ struct RawRelay {
 }
 
 /// A label to show, if it is short, printable, and not blank.
-fn label(text: Option<String>, field: &'static str) -> Result<Option<String>, Error> {
+fn label(text: Option<String>, field: &'static str) -> Result<Option<String>> {
     let Some(text) = text.map(|text| text.trim().to_owned()) else {
         return Ok(None);
     };
@@ -117,7 +116,7 @@ fn label(text: Option<String>, field: &'static str) -> Result<Option<String>, Er
 
 impl Directory {
     /// Reads the list from `bytes`, as served at [`URL`].
-    pub fn parse(bytes: &[u8]) -> Result<Self, Error> {
+    pub fn parse(bytes: &[u8]) -> Result<Self> {
         if bytes.len() > MAX_BYTES {
             return Err(Error::TooLarge);
         }
@@ -173,3 +172,6 @@ impl Directory {
         self.relays.is_empty()
     }
 }
+
+#[cfg(test)]
+mod tests;

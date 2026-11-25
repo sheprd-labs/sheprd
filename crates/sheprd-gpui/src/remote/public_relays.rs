@@ -1,13 +1,13 @@
 //! Sheprd's own relays, for Settings to offer: the list at
 //! `sheprd.org/relays.json`, taken only when one of the signers compiled
-//! into `sheprd_relay::directory::signed` vouched for its exact bytes. A
+//! into `sheprd_relay_directory::signed` vouched for its exact bytes. A
 //! list nobody signed, or an expired one, offers nothing.
 
 mod error;
 
 pub use error::Error;
-use sheprd_relay::directory::{
-    self, Directory,
+use sheprd_relay_directory::{
+    self as directory, Directory,
     signed::{self, Signatures, Signer},
 };
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
