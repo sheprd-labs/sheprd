@@ -19,6 +19,9 @@ on:
       - 'crates/sheprd-fleet-ffi/**'
       - 'crates/sheprd-remote-control/src/control/fleet.rs'
       - 'crates/sheprd-remote-control/src/control/fleet/**'
+      # The relay's Swift client the app links, and the vectors it checks.
+      - 'crates/sheprd-relay/swift/**'
+      - 'crates/sheprd-relay/vectors/**'
       - 'Cargo.lock'
       - '.github/workflows/ios.yml'
   pull_request:
@@ -36,6 +39,9 @@ on:
       - 'crates/sheprd-fleet-ffi/**'
       - 'crates/sheprd-remote-control/src/control/fleet.rs'
       - 'crates/sheprd-remote-control/src/control/fleet/**'
+      # The relay's Swift client the app links, and the vectors it checks.
+      - 'crates/sheprd-relay/swift/**'
+      - 'crates/sheprd-relay/vectors/**'
       - 'Cargo.lock'
       - '.github/workflows/ios.yml'
   workflow_dispatch:
@@ -79,6 +85,8 @@ jobs:
         run: |
           command -v rustup >/dev/null || { curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none; echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"; export PATH="$HOME/.cargo/bin:$PATH"; }
           sh ios/tools/build-fleet-ffi.sh
+      - name: Relay client tests (vectors shared with the relay's Rust tests)
+        run: cd crates/sheprd-relay/swift && swift test
       - name: Swift package tests (fixtures shared with the daemon's Rust tests)
         run: cd ios/SheprdRemoteCore && swift test
       - name: Unsigned simulator build of the app and its extensions
