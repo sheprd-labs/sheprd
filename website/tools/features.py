@@ -90,25 +90,43 @@ def posters():
             print(f"poster {feature['id']}: {feature.get('poster', 'default')}")
 
 
+def rendered_clips(fid):
+    """Validate the window/language choices before replacing published assets."""
+    by_window = {}
+    for window in WINDOW_ORDER:
+        renders = RENDERS / window / VOICE
+        clips = {p.name[len(fid) + 1:-4]: p for p in sorted(renders.glob(f"{fid}.*.mp4"))
+                 if not p.name.endswith(".captioned.mp4")}
+        if not clips:
+            continue
+        if "en" not in clips:
+            raise ValueError(f"{fid}/{window}: the default English clip is missing")
+        for lang, mp4 in clips.items():
+            if lang not in LANG_LABELS:
+                raise ValueError(f"{mp4}: unknown narration language {lang}")
+            if not mp4.with_suffix(".srt").is_file():
+                raise ValueError(f"{mp4}: missing subtitles")
+        if by_window and clips.keys() != next(iter(by_window.values())).keys():
+            raise ValueError(f"{fid}: all published windows need the same narration languages")
+        by_window[window] = clips
+    return by_window
+
+
 def publish():
     """Copy every rendered clip of the catalog's features into the site."""
+    features = catalog() + ([tour()] if tour() else [])
+    rendered = {f["id"]: rendered_clips(f["id"]) for f in features}
     CLIPS.mkdir(parents=True, exist_ok=True)
     manifest = {}
-    for feature in catalog() + ([tour()] if tour() else []):
+    for feature in features:
         fid = feature["id"]
-        windows, langs, starts, length = [], set(), None, 0.0
-        for window in WINDOW_ORDER:
-            renders = RENDERS / window / VOICE
-            mine = sorted(renders.glob(f"{fid}.*.mp4"))
-            mine = [p for p in mine if not p.name.endswith(".captioned.mp4")]
-            if not mine:
-                continue
-            windows.append(window)
-            for mp4 in mine:
-                lang = mp4.name[len(fid) + 1:-len(".mp4")]
-                langs.add(lang)
+        clips = rendered[fid]
+        windows = list(clips)
+        starts, length = None, 0.0
+        for window, variants in clips.items():
+            for lang, mp4 in variants.items():
                 shutil.copyfile(mp4, CLIPS / f"{fid}.{window}.{lang}.mp4")
-                srt = (renders / f"{fid}.{lang}.srt").read_text()
+                srt = mp4.with_suffix(".srt").read_text()
                 vtt = "WEBVTT\n\n" + re.sub(r"(\d\d:\d\d:\d\d),(\d\d\d)", r"\1.\2", srt)
                 (CLIPS / f"{fid}.{window}.{lang}.vtt").write_text(vtt)
                 if starts is None and lang == "en":
@@ -118,7 +136,7 @@ def publish():
             print(f"skipped {fid}: no clips in {RENDERS}", file=sys.stderr)
             continue
         poster(fid, windows[0], feature.get("poster"), starts)
-        manifest[fid] = {"windows": windows, "langs": sorted(langs, key=list(LANG_LABELS).index),
+        manifest[fid] = {"windows": windows, "langs": [lang for lang in LANG_LABELS if lang in clips[windows[0]]],
                          "length": round(length, 1), "starts": [round(s, 2) for s in starts]}
         print(f"published {fid}: {', '.join(windows)}, {length:.0f}s")
     (CLIPS / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
@@ -214,7 +232,8 @@ def index_page(features, manifest):
         fid, clip = feature["id"], manifest[feature["id"]]
         narration = spec(fid)
         words = [feature["kicker"], feature["category"], plain(feature["headline"]),
-                 feature["dek"], feature.get("keywords", "")]
+                 feature["dek"], feature["description"], *narration["title"].values(),
+                 feature.get("keywords", "")]
         words += [h + " " + p for h, p in feature["how"]]
         words += [text for s in narration["segments"] for text in s["say"].values()]
         entries.append({"id": fid, "category": feature["category"], "text": " ".join(words)})

@@ -6,10 +6,12 @@ const demo = document.querySelector('#feature-demo');
 if (demo instanceof HTMLVideoElement) {
   const labels = { en: 'English', fr: 'Français' };
   const chosen = { window: demo.dataset.window, lang: 'en' };
+  let pending = null;
   const play = async () => {
     try {
       await demo.play();
-    } catch {
+    } catch (error) {
+      if (error.name === 'AbortError') return;
       // Native controls remain available when the browser blocks playback.
       demo.focus();
     }
@@ -26,17 +28,30 @@ if (demo instanceof HTMLVideoElement) {
         && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return;
     event.preventDefault();
     event.stopPropagation();
-    if (demo.paused) play(); else demo.pause();
+    if (event.repeat) return;
+    if (pending) pending.playing = !pending.playing;
+    else if (demo.paused) play(); else demo.pause();
   }, { capture: true });
   document.querySelectorAll('[data-seek]').forEach((button) => {
     button.addEventListener('click', () => {
-      demo.currentTime = Number(button.dataset.seek);
+      const at = Number(button.dataset.seek);
+      if (pending) {
+        pending = { at, playing: true };
+        return;
+      }
+      demo.currentTime = at;
       play();
     });
   });
+  demo.addEventListener('loadedmetadata', () => {
+    if (!pending) return;
+    const { at, playing } = pending;
+    pending = null;
+    demo.currentTime = Math.min(at, demo.duration);
+    if (playing) play();
+  });
   const show = () => {
-    const at = demo.currentTime;
-    const playing = !demo.paused;
+    pending ??= { at: demo.currentTime, playing: !demo.paused };
     const name = `${demo.dataset.clips}.${chosen.window}.${chosen.lang}`;
     demo.querySelector('source').src = `${name}.mp4`;
     const track = demo.querySelector('track');
@@ -44,15 +59,12 @@ if (demo instanceof HTMLVideoElement) {
     track.srclang = chosen.lang;
     track.label = labels[chosen.lang];
     demo.load();
-    demo.addEventListener('loadedmetadata', () => {
-      demo.currentTime = at;
-      if (playing) play();
-    }, { once: true });
   };
   ['window', 'lang'].forEach((key) => {
     const buttons = document.querySelectorAll(`.demo-switches [data-${key}]`);
     buttons.forEach((button) => {
       button.addEventListener('click', () => {
+        if (chosen[key] === button.dataset[key]) return;
         chosen[key] = button.dataset[key];
         buttons.forEach((other) => {
           other.setAttribute('aria-pressed', String(other === button));

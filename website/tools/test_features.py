@@ -85,10 +85,26 @@ class Build(unittest.TestCase):
         data = json.loads(re.search(r'id="feature-index">(.*?)</script>', index, re.S).group(1))
         alpha = next(e for e in data if e["id"] == "alpha")
         self.assertIn("alpha premier thème.", alpha["text"])
+        self.assertIn("alpha titre", alpha["text"])
+        self.assertIn("alpha description", alpha["text"])
         self.assertIn("special", alpha["text"])
         self.assertIn("Line one line two", alpha["text"])
         self.assertIn('data-category="Agents"', index)
         self.assertIn("2 of 2 features", re.sub(r"<[^>]+>", "", index))
+
+    def test_publish_rejects_partial_window_before_copying(self):
+        renders = self.site.parent / "renders"
+        for window, languages in (("moonframe", ("en", "fr")), ("classic", ("en",))):
+            folder = renders / window / features.VOICE
+            folder.mkdir(parents=True)
+            for lang in languages:
+                (folder / f"alpha.{lang}.mp4").touch()
+                (folder / f"alpha.{lang}.srt").touch()
+        with (unittest.mock.patch.object(features, "RENDERS", renders),
+              unittest.mock.patch.object(features, "WINDOW_ORDER", ["moonframe", "classic"]),
+              self.assertRaisesRegex(ValueError, "same narration languages")):
+            features.publish()
+        self.assertFalse(list(features.CLIPS.glob("*.mp4")))
 
     def test_feature_page_chapters_switches_and_pager(self):
         alpha = self.read("alpha/index.html")
