@@ -16,7 +16,7 @@ use std::{
 };
 
 pub const USAGE: &str = "\
-sheprd-relay: joins end-to-end encrypted streams between Sheprd peers.
+sheprd-relay: joins end-to-end encrypted streams between peers with no direct path.
 
 Usage: sheprd-relay [OPTIONS]
 

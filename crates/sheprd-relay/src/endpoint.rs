@@ -1,11 +1,11 @@
-//! Where a relay is: the default ones Sheprd ships or a private one the
-//! user runs. Parsed once at the boundary (a setting, a pairing payload),
+//! Where a relay is: one an app ships with, or a private one its user
+//! runs. Parsed once at the boundary (a setting, a pairing payload),
 //! then used to build the relay's URLs.
 //!
 //! Accepted forms, all normalized to `https://HOST[:PORT][/PREFIX/]`:
 //!
 //! - `relay.example.org` or `relay.example.org:8443` (https implied)
-//! - `https://relay.example.org/sheprd`, behind a proxy that strips the
+//! - `https://relay.example.org/acme`, behind a proxy that strips the
 //!   prefix
 //! - `wss://relay.example.org`, the same as `https://`
 //! - `http://` or `ws://` only for this computer, a private address, or a

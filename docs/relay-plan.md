@@ -51,8 +51,14 @@ Either side may use a WebSocket over HTTPS instead, when UDP is blocked.
 
 ### The relay (`crates/sheprd-relay`, built)
 
-Tokio, quinn, and axum. No GPUI, and no dependency on the client crates: it
-knows streams, routes, and limits, nothing else.
+Tokio, quinn, and axum. No GPUI, and no dependency on any other workspace
+crate: it knows streams, routes, and limits, nothing else, so it can move to
+a repository of its own and serve apps other than Sheprd. Its wire format is
+specified for outside implementers in `crates/sheprd-relay/PROTOCOL.md`,
+with vectors in `crates/sheprd-relay/vectors/`; its README lists the
+features (a WebSocket client, `client-ws`; a test relay, `testing`; and the
+server split into `websocket-server`, `quic-server`, `dashboard`, `ops`).
+The Swift client the iOS app builds on is `crates/sheprd-relay/swift`.
 
 #### QUIC (`wire`, `quic`)
 
@@ -114,7 +120,8 @@ Statuses: `0` ok, `1` offline, `2` busy, `3` timeout, `4` limited,
 #### WebSocket fallback and HTTP
 
 When a relay bans the caller’s network address, its HTTP 403 carries
-`Sheprd-Relay-Banned: 1` and `Cache-Control: no-store`. Clients use this
+`Relay-Banned: 1`, the deprecated `Sheprd-Relay-Banned: 1` beside it, and
+`Cache-Control: no-store`; clients accept either header. Clients use this
 response on `/v1/info` to identify a ban before opening a connection.
 
 | Route | What it does |
@@ -148,9 +155,14 @@ frame over `max-frame` breaks it. A revoked key's session closes with
 A session may mix transports: a phone on QUIC reaches a computer that could
 only open a WebSocket, and the other way round.
 
-The relay pings idle listeners every 25 seconds, which keeps NAT mappings
-open. Inside a session, keepalives are the peers' job: they are encrypted,
-so the relay cannot tell a keepalive from data.
+The relay pings idle listeners every 25 seconds (or a third of
+`listener-silence`, 60 s by default, when that is sooner), which keeps NAT
+mappings open. Inside a session, a WebSocket ping or pong from either peer
+counts as activity for the idle timeout: the relay answers it, never
+forwards it, and charges it to no budget, so peers need no keepalive inside
+the tunnel. QUIC has no per-stream ping; its peers keep a session busy with
+bytes of their own. A listener's `dial_keys` and `pairing_key` may carry an
+`id`, echoed in the status that answers it; older relays ignore it.
 
 ### Limits
 
@@ -283,7 +295,10 @@ limit both ways for an hour sends 14 GiB a side and is never slowed.
 ### Telemetry
 
 `/metrics` listens on its own port (default `127.0.0.1:9090`; `off` turns it
-off), optionally behind `RELAY_METRICS_TOKEN`. Series:
+off), optionally behind `RELAY_METRICS_TOKEN`. Every series below is also
+served as `relay_*` (`relay_sessions` beside `sheprd_relay_sessions`); the
+`sheprd_relay_*` names are deprecated aliases, kept so existing dashboards
+and alerts work. Series:
 
 - `sheprd_relay_connections{kind}`, `sheprd_relay_listeners`,
   `sheprd_relay_sessions`, `sheprd_relay_pending_dials` (gauges)

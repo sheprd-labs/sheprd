@@ -29,7 +29,7 @@ use std::{
 
 const PAGE: Page = Page {
     index: include_str!("dashboard/assets/index.html"),
-    name: "Sheprd relay",
+    name: "Relay",
     script: include_str!("dashboard/assets/app.js"),
 };
 
