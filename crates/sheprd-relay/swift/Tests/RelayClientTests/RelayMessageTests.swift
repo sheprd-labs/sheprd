@@ -83,6 +83,32 @@ struct RelayFramingTests {
         #expect(RelayConnection.frames(Data([1, 2, 3]), maximumFrameSize: 0) == [Data([1]), Data([2]), Data([3])])
         #expect(RelayConnection.frames(Data(), maximumFrameSize: 4).isEmpty)
     }
+
+    @Test func sendsTakeTurnsWithoutInterleaving() async {
+        actor Log {
+            var entries: [String] = []
+            func add(_ entry: String) { entries.append(entry) }
+        }
+        let turns = SendTurns()
+        let log = Log()
+        await withTaskGroup(of: Void.self) { group in
+            for sender in 0..<8 {
+                group.addTask {
+                    await turns.acquire()
+                    for frame in 0..<4 {
+                        await log.add("\(sender)")
+                        if frame < 3 { await Task.yield() }
+                    }
+                    await turns.release()
+                }
+            }
+        }
+        let entries = await log.entries
+        #expect(entries.count == 32)
+        for start in stride(from: 0, to: 32, by: 4) {
+            #expect(Set(entries[start..<(start + 4)]).count == 1, "\(entries)")
+        }
+    }
 }
 
 struct RelayStatusTests {

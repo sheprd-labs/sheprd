@@ -18,6 +18,9 @@ public actor RelayConnection {
     private var deframer: RelayFraming.Deframer
     private let maximumFrameSize: Int
     private var closed = false
+    /// Sends take turns, so a message's frames are never interleaved with
+    /// another send's.
+    private let sending = SendTurns()
 
     init(
         socket: URLSessionWebSocketTask,
@@ -29,8 +32,12 @@ public actor RelayConnection {
         deframer = RelayFraming.Deframer(cap: messageCap)
     }
 
-    /// Sends `bytes` as one binary frame.
+    /// Sends `bytes` as one binary frame, after any send already under way.
     public func send(_ bytes: Data) async throws {
+        try await inTurn { try await sendFrame(bytes) }
+    }
+
+    private func sendFrame(_ bytes: Data) async throws {
         guard !closed else { throw RelayDialError.closed(code: URLSessionWebSocketTask.CloseCode.normalClosure.rawValue) }
         do {
             try await socket.send(.data(bytes))
@@ -64,11 +71,27 @@ public actor RelayConnection {
 
     /// Sends `message` framed: its length, then the message, in binary
     /// frames of at most the dialer's `maximumFrameSize` each, so a long
-    /// message never exceeds the relay's frame limit.
+    /// message never exceeds the relay's frame limit. Concurrent calls
+    /// send whole messages one after another, in the order they began.
     public func sendMessage(_ message: Data) async throws {
-        for frame in Self.frames(try RelayFraming.encode(message), maximumFrameSize: maximumFrameSize) {
-            try await send(frame)
+        let frames = Self.frames(try RelayFraming.encode(message), maximumFrameSize: maximumFrameSize)
+        try await inTurn {
+            for frame in frames {
+                try await sendFrame(frame)
+            }
         }
+    }
+
+    /// Runs `body` once every earlier send is done.
+    private func inTurn(_ body: () async throws -> Void) async throws {
+        await sending.acquire()
+        do {
+            try await body()
+        } catch {
+            await sending.release()
+            throw error
+        }
+        await sending.release()
     }
 
     /// `bytes` in pieces of at most `maximumFrameSize`, in order.
@@ -120,5 +143,29 @@ public actor RelayConnection {
         let code = socket.closeCode
         if code != .invalid { return RelayDialError.closed(code: code.rawValue) }
         return error
+    }
+}
+
+/// Turns at something async, first come first served: ``acquire()``
+/// waits until every earlier holder has called ``release()``.
+actor SendTurns {
+    private var busy = false
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    func acquire() async {
+        guard busy else {
+            busy = true
+            return
+        }
+        await withCheckedContinuation { waiting.append($0) }
+    }
+
+    /// Hands the turn to the next waiter, which stays `busy`, or frees it.
+    func release() {
+        if waiting.isEmpty {
+            busy = false
+        } else {
+            waiting.removeFirst().resume()
+        }
     }
 }
