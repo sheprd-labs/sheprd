@@ -9,12 +9,23 @@ import Foundation
 /// The relay counts WebSocket pings as session activity, so ``ping()``
 /// keeps an idle session alive without any in-band message.
 public actor RelayConnection {
+    /// The largest frame ``sendMessage(_:)`` writes unless told otherwise,
+    /// as the Rust client: a quarter of a default relay's 64 KiB
+    /// `max-frame`.
+    public static let defaultFrameSize = 16 * 1024
+
     private let socket: URLSessionWebSocketTask
     private var deframer: RelayFraming.Deframer
+    private let maximumFrameSize: Int
     private var closed = false
 
-    init(socket: URLSessionWebSocketTask, messageCap: Int = RelayFraming.maxMessage) {
+    init(
+        socket: URLSessionWebSocketTask,
+        maximumFrameSize: Int = defaultFrameSize,
+        messageCap: Int = RelayFraming.maxMessage
+    ) {
         self.socket = socket
+        self.maximumFrameSize = max(1, maximumFrameSize)
         deframer = RelayFraming.Deframer(cap: messageCap)
     }
 
@@ -51,9 +62,21 @@ public actor RelayConnection {
         }
     }
 
-    /// Sends `message` framed: its length, then the message.
+    /// Sends `message` framed: its length, then the message, in binary
+    /// frames of at most the dialer's `maximumFrameSize` each, so a long
+    /// message never exceeds the relay's frame limit.
     public func sendMessage(_ message: Data) async throws {
-        try await send(RelayFraming.encode(message))
+        for frame in Self.frames(try RelayFraming.encode(message), maximumFrameSize: maximumFrameSize) {
+            try await send(frame)
+        }
+    }
+
+    /// `bytes` in pieces of at most `maximumFrameSize`, in order.
+    static func frames(_ bytes: Data, maximumFrameSize: Int) -> [Data] {
+        let size = max(1, maximumFrameSize)
+        return stride(from: bytes.startIndex, to: bytes.endIndex, by: size).map { start in
+            bytes.subdata(in: start..<min(start + size, bytes.endIndex))
+        }
     }
 
     /// The next framed message, or `nil` once the session closed normally

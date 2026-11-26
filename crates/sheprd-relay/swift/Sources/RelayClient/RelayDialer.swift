@@ -32,11 +32,21 @@ public struct RelayDialer: Sendable {
     public let session: URLSession
     /// The largest WebSocket message the connection accepts.
     public var maximumMessageSize: Int
+    /// The largest binary frame ``RelayConnection/sendMessage(_:)`` writes.
+    /// A relay refuses frames over its `max-frame`, 64 KiB by default and
+    /// never under 1 KiB; lower it for a relay set below the default.
+    public var maximumFrameSize: Int
 
-    public init(address: RelayAddress, session: URLSession = .shared, maximumMessageSize: Int = 1 << 20) {
+    public init(
+        address: RelayAddress,
+        session: URLSession = .shared,
+        maximumMessageSize: Int = 1 << 20,
+        maximumFrameSize: Int = RelayConnection.defaultFrameSize
+    ) {
         self.address = address
         self.session = session
         self.maximumMessageSize = maximumMessageSize
+        self.maximumFrameSize = maximumFrameSize
     }
 
     /// Dials `route` (32 bytes) as the holder of `key`. Cancelling the task
@@ -47,13 +57,14 @@ public struct RelayDialer: Sendable {
         socket.maximumMessageSize = maximumMessageSize
         socket.resume()
         let proofName = address.proofName
+        let maximumFrameSize = maximumFrameSize
         return try await withTaskCancellationHandler {
             do {
                 let challenge = try await Self.receiveText(socket)
                 let hello = try Self.hello(challenge: challenge, proofName: proofName, route: route, key: key)
                 try await socket.send(.string(hello))
                 try Self.check(status: try await Self.receiveText(socket))
-                return RelayConnection(socket: socket)
+                return RelayConnection(socket: socket, maximumFrameSize: maximumFrameSize)
             } catch {
                 socket.cancel(with: .goingAway, reason: nil)
                 throw RelayConnection.mapped(error, socket: socket)

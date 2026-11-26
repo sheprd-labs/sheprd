@@ -21,13 +21,16 @@ use std::{
 use tokio::{
     sync::{mpsc, oneshot, watch},
     task::JoinHandle,
+    time::MissedTickBehavior,
 };
 use tokio_tungstenite::tungstenite::{
     Message,
     protocol::{CloseFrame, frame::coding::CloseCode},
 };
 
-/// How many accepted sessions wait for [`Listener::accept`] at once.
+/// How many dials are being accepted or wait for [`Listener::accept`] at
+/// once. A dial over it is not answered and times out at the relay, so a
+/// relay cannot make the listener open sockets without bound.
 const WAITING: usize = 16;
 
 /// Where a listener stands.
@@ -101,6 +104,12 @@ pub struct ListenerConfig {
     pub key: SigningKey,
     /// Sessions accepted, and the control socket's handshake.
     pub session: Config,
+    /// How long the control socket may hear nothing from the relay, not
+    /// even a pong, and how long one write to it may take, before the
+    /// listener drops it and connects again. It pings every third of it,
+    /// so a path that vanished without closing TCP is noticed. Keep it at
+    /// most the relay's `listener-silence`, 60 seconds by default.
+    pub silence: Duration,
     /// The relay's listen token, when it asks for one.
     pub token: Option<String>,
 }
@@ -114,6 +123,7 @@ impl ListenerConfig {
             endpoint,
             key,
             session: Config::default(),
+            silence: Duration::from_secs(60),
             token: None,
         }
     }
@@ -382,6 +392,19 @@ impl Task {
         self.pairing.push((key, expires));
     }
 
+    /// The silence limit, never so short that pings flood the relay.
+    fn silence(&self) -> Duration {
+        self.config.silence.max(Duration::from_millis(300))
+    }
+
+    /// Sends a control message within the silence limit, so a relay that
+    /// stopped reading cannot hold the listener off its reconnect loop.
+    async fn send(&self, socket: &mut Socket, message: &FromListener) -> Result<()> {
+        tokio::time::timeout(self.silence(), connect::send(socket, message))
+            .await
+            .map_err(|_| Error::Timeout)?
+    }
+
     fn id(&mut self) -> Id {
         self.next_id += 1;
         Id::Number(self.next_id)
@@ -395,9 +418,16 @@ impl Task {
             return Ended::Lost(Unreachable::from(&error));
         }
         self.status.send_replace(ListenerStatus::Listening);
+        let silence = self.silence();
+        let mut ping = tokio::time::interval(silence / 3);
+        ping.set_missed_tick_behavior(MissedTickBehavior::Delay);
+        ping.reset();
+        let mut heard = tokio::time::Instant::now();
         let ended = loop {
             tokio::select! {
-                frame = socket.next() => match frame {
+                frame = socket.next() => {
+                    heard = tokio::time::Instant::now();
+                    match frame {
                     Some(Ok(Message::Text(text))) => {
                         let Ok(message) = serde_json::from_str::<ToPeer>(&text) else {
                             break Ended::Lost(Unreachable::Protocol);
@@ -416,11 +446,24 @@ impl Task {
                         };
                     }
                     Some(Err(_)) | None => break Ended::Lost(Unreachable::Network),
+                    }
                 },
+                _ = ping.tick() => {
+                    // A path that vanished without closing TCP: the relay
+                    // may have dropped the route long ago.
+                    if heard.elapsed() >= silence {
+                        break Ended::Lost(Unreachable::Network);
+                    }
+                    let ping = socket.send(Message::Ping(Default::default()));
+                    if !matches!(tokio::time::timeout(silence, ping).await, Ok(Ok(()))) {
+                        break Ended::Lost(Unreachable::Network);
+                    }
+                }
                 command = self.commands.recv() => match command {
                     Some(Command::Close(done)) => {
                         let frame = CloseFrame { code: CloseCode::Normal, reason: "".into() };
-                        let _ = socket.send(Message::Close(Some(frame))).await;
+                        let close = socket.send(Message::Close(Some(frame)));
+                        let _ = tokio::time::timeout(silence, close).await;
                         let _ = done.send(());
                         break Ended::Stopped;
                     }
@@ -452,7 +495,7 @@ impl Task {
     ) -> Result<()> {
         if let Some(keys) = self.dial_keys.clone() {
             let id = self.id();
-            connect::send(socket, &dial_keys(&keys, id.clone())).await?;
+            self.send(socket, &dial_keys(&keys, id.clone())).await?;
             owed.push_back((id, None));
         }
         let now = Instant::now();
@@ -465,7 +508,8 @@ impl Task {
                 .unwrap_or(MAX_PAIRING_SECS)
                 .clamp(1, MAX_PAIRING_SECS);
             let id = self.id();
-            connect::send(socket, &pairing_key(&key, seconds, id.clone())).await?;
+            self.send(socket, &pairing_key(&key, seconds, id.clone()))
+                .await?;
             owed.push_back((id, None));
         }
         Ok(())
@@ -496,7 +540,7 @@ impl Task {
                 return Ok(());
             }
         };
-        if let Err(error) = connect::send(socket, &message).await {
+        if let Err(error) = self.send(socket, &message).await {
             let _ = reply.send(Applied::Queued);
             return Err(error);
         }
@@ -535,15 +579,20 @@ impl Task {
                 let session = SessionId::parse(&session).ok_or(Unreachable::Protocol)?;
                 // The relay lets a pairing key through once.
                 self.pairing.retain(|(kept, _)| *kept != key);
+                // A place in the queue first: with every place taken, the
+                // dial is left unanswered rather than opening a socket
+                // whose result would have nowhere to go.
+                let Ok(place) = self.incoming.clone().try_reserve_owned() else {
+                    return Ok(());
+                };
                 let url = self.config.endpoint.accept(&session);
                 let config = self.config.session.clone();
-                let incoming = self.incoming.clone();
                 tokio::spawn(async move {
                     let accepted = connect::open(&url, &config).await.map(|socket| Incoming {
                         key,
                         session: Session::new(socket, &config),
                     });
-                    let _ = incoming.send(accepted).await;
+                    place.send(accepted);
                 });
                 Ok(())
             }

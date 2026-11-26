@@ -45,6 +45,10 @@ pub fn encode(message: &[u8]) -> Result<Vec<u8>, Error> {
 pub struct Deframer {
     buffer: Vec<u8>,
     cap: usize,
+    /// Where the next message starts in `buffer`: bytes before it were
+    /// given out already, and are dropped when more arrive, so draining a
+    /// chunk of many short messages copies it once, not once per message.
+    start: usize,
 }
 
 impl Default for Deframer {
@@ -61,6 +65,7 @@ impl Deframer {
         Self {
             buffer: Vec::new(),
             cap: cap.min(MAX_MESSAGE),
+            start: 0,
         }
     }
 
@@ -73,7 +78,7 @@ impl Deframer {
     /// Bytes held toward the next message.
     #[must_use]
     pub fn buffered(&self) -> usize {
-        self.buffer.len()
+        self.buffer.len() - self.start
     }
 
     /// How many more bytes the next message needs before
@@ -81,14 +86,16 @@ impl Deframer {
     #[must_use]
     pub fn wanted(&self) -> usize {
         match self.length() {
-            Some(length) => (PREFIX + length).saturating_sub(self.buffer.len()).max(1),
-            None => PREFIX - self.buffer.len(),
+            Some(length) => (PREFIX + length).saturating_sub(self.buffered()).max(1),
+            None => PREFIX - self.buffered(),
         }
     }
 
     /// Adds bytes that arrived, then gives the first whole message, if one
     /// is. Call [`Deframer::next_message`] until it gives `None` to drain the rest.
     pub fn push(&mut self, bytes: &[u8]) -> Result<Option<Vec<u8>>, Error> {
+        self.buffer.drain(..self.start);
+        self.start = 0;
         self.buffer.extend_from_slice(bytes);
         self.next_message()
     }
@@ -104,18 +111,22 @@ impl Deframer {
                 length,
             });
         }
-        if self.buffer.len() < PREFIX + length {
+        if self.buffered() < PREFIX + length {
             return Ok(None);
         }
-        let rest = self.buffer.split_off(PREFIX + length);
-        let mut message = std::mem::replace(&mut self.buffer, rest);
-        message.drain(..PREFIX);
+        let body = self.start + PREFIX;
+        let message = self.buffer[body..body + length].to_vec();
+        self.start = body + length;
+        if self.start == self.buffer.len() {
+            self.buffer.clear();
+            self.start = 0;
+        }
         Ok(Some(message))
     }
 
     /// The next message's length, once its prefix is in.
     fn length(&self) -> Option<usize> {
-        match self.buffer.as_slice() {
+        match &self.buffer[self.start..] {
             [high, low, ..] => Some(usize::from(u16::from_be_bytes([*high, *low]))),
             _ => None,
         }

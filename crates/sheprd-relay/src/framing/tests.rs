@@ -69,3 +69,26 @@ fn wanted_counts_down_to_a_whole_message() {
     assert_eq!(deframer.push(&[2, 3]), Ok(Some(vec![1, 2, 3])));
     assert_eq!(deframer.wanted(), 2);
 }
+
+#[test]
+fn a_chunk_of_many_short_messages_drains_in_order() {
+    let mut chunk = Vec::new();
+    for index in 0..10_000_u16 {
+        let byte = u8::try_from(index % 251).unwrap();
+        let message: &[u8] = if index % 2 == 0 { &[] } else { &[byte] };
+        chunk.extend(encode(message).unwrap());
+    }
+    // The start of a message the next chunk finishes.
+    chunk.extend([0, 3, 7]);
+    let mut deframer = Deframer::default();
+    let mut messages = vec![deframer.push(&chunk).unwrap().unwrap()];
+    while let Some(message) = deframer.next_message().unwrap() {
+        messages.push(message);
+    }
+    assert_eq!(messages.len(), 10_000);
+    assert_eq!(messages[9_999], vec![u8::try_from(9_999 % 251).unwrap()]);
+    assert_eq!(deframer.buffered(), 3);
+    assert_eq!(deframer.wanted(), 2);
+    assert_eq!(deframer.push(&[8, 9]), Ok(Some(vec![7, 8, 9])));
+    assert_eq!(deframer.buffered(), 0);
+}

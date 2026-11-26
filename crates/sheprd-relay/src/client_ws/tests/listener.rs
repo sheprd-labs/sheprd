@@ -155,3 +155,86 @@ async fn a_wrong_listen_token_is_unreachable_not_fatal() {
     let mut status = right.status();
     until(&mut status, |now| *now == ListenerStatus::Listening).await;
 }
+
+/// A relay that lets a listener on its route, then goes silent without
+/// closing TCP: it neither reads nor writes, so no pong comes back.
+async fn silent_relay(route: RouteId) -> Endpoint {
+    use crate::socket::{NONCE_LEN, ToPeer};
+    use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+    use futures_util::{SinkExt, StreamExt};
+    use tokio_tungstenite::tungstenite::Message;
+    let tcp = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = tcp.local_addr().unwrap();
+    tokio::spawn(async move {
+        let mut held = Vec::new();
+        while let Ok((stream, _)) = tcp.accept().await {
+            let Ok(mut socket) = tokio_tungstenite::accept_async(stream).await else {
+                continue;
+            };
+            let challenge = ToPeer::Challenge {
+                nonce: URL_SAFE_NO_PAD.encode([0; NONCE_LEN]),
+                version: crate::endpoint::PROTOCOL,
+            };
+            let text = serde_json::to_string(&challenge).unwrap();
+            socket.send(Message::Text(text.into())).await.unwrap();
+            let _hello = socket.next().await;
+            let ready = ToPeer::Ready {
+                route: route.to_string(),
+            };
+            let text = serde_json::to_string(&ready).unwrap();
+            socket.send(Message::Text(text.into())).await.unwrap();
+            held.push(socket);
+        }
+    });
+    Endpoint::parse(&format!("http://{address}")).unwrap()
+}
+
+#[tokio::test]
+async fn a_relay_gone_silent_is_left_for_a_new_connection() {
+    let key = key(33);
+    let endpoint = silent_relay(RouteId::of(key.verifying_key())).await;
+    let listener = Listener::spawn(ListenerConfig {
+        silence: Duration::from_millis(600),
+        ..ListenerConfig::new(endpoint, key)
+    });
+    let mut status = listener.status();
+    until(&mut status, |now| *now == ListenerStatus::Listening).await;
+    assert_eq!(
+        until(&mut status, |now| *now != ListenerStatus::Listening).await,
+        ListenerStatus::Unreachable(Unreachable::Network)
+    );
+}
+
+#[tokio::test]
+async fn dials_beyond_the_waiting_room_are_not_accepted() {
+    let relay = TestRelay::start_with(testing::Config {
+        limits: crate::Limits {
+            accept_timeout: Duration::from_secs(1),
+            max_sessions_per_key: 64,
+            ..testing::limits()
+        },
+        ..testing::Config::default()
+    })
+    .unwrap();
+    let phone = key(35);
+    let mut listener = listening(&relay, key(34), &[&phone]).await;
+    let route = listener.route();
+    // More dials than places, none of them taken from the listener yet.
+    let dials: Vec<_> = (0..20)
+        .map(|_| {
+            let endpoint = relay.endpoint().clone();
+            let phone = phone.clone();
+            tokio::spawn(async move { dial(&endpoint, &route, &phone).await })
+        })
+        .collect();
+    let mut through = 0;
+    for dial in dials {
+        through += usize::from(dial.await.unwrap().is_ok());
+    }
+    assert_eq!(through, 16);
+    for _ in 0..16 {
+        accepted(&mut listener).await;
+    }
+    let more = tokio::time::timeout(Duration::from_millis(200), listener.accept()).await;
+    assert!(more.is_err(), "{more:?}");
+}

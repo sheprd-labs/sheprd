@@ -55,6 +55,34 @@ struct RelayFramingTests {
         #expect(try deframer.push(Data([2, 3])) == Data([1, 2, 3]))
         #expect(deframer.wanted == 2)
     }
+
+    @Test func aChunkOfManyShortMessagesDrainsInOrder() throws {
+        var chunk = Data()
+        for index in 0..<10_000 {
+            chunk.append(try RelayFraming.encode(index % 2 == 0 ? Data() : Data([UInt8(index % 251)])))
+        }
+        // The start of a message the next chunk finishes.
+        chunk.append(contentsOf: [0, 3, 7])
+        var deframer = RelayFraming.Deframer()
+        var messages = [try #require(try deframer.push(chunk))]
+        while let message = try deframer.next() { messages.append(message) }
+        #expect(messages.count == 10_000)
+        #expect(messages.last == Data([UInt8(9_999 % 251)]))
+        #expect(deframer.buffered == 3)
+        #expect(deframer.wanted == 2)
+        #expect(try deframer.push(Data([8, 9])) == Data([7, 8, 9]))
+        #expect(deframer.buffered == 0)
+    }
+
+    @Test func aLongMessageIsSentInFramesUnderTheRelayLimit() throws {
+        let framed = try RelayFraming.encode(Data(repeating: 5, count: RelayFraming.maxMessage))
+        let frames = RelayConnection.frames(framed, maximumFrameSize: RelayConnection.defaultFrameSize)
+        #expect(frames.count == 5)
+        #expect(frames.allSatisfy { $0.count <= RelayConnection.defaultFrameSize })
+        #expect(frames.reduce(Data(), +) == framed)
+        #expect(RelayConnection.frames(Data([1, 2, 3]), maximumFrameSize: 0) == [Data([1]), Data([2]), Data([3])])
+        #expect(RelayConnection.frames(Data(), maximumFrameSize: 4).isEmpty)
+    }
 }
 
 struct RelayStatusTests {

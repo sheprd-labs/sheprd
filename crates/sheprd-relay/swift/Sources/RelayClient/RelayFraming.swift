@@ -37,6 +37,10 @@ public enum RelayFraming {
     /// the last piece pushed.
     public struct Deframer: Sendable {
         private var buffer = Data()
+        /// Where the next message starts in `buffer`: bytes before it were
+        /// given out already and are dropped when more arrive, so draining
+        /// a chunk of many short messages copies it once, not once each.
+        private var start = 0
         /// The longest message this reader takes.
         public let cap: Int
 
@@ -47,18 +51,22 @@ public enum RelayFraming {
         }
 
         /// Bytes held toward the next message.
-        public var buffered: Int { buffer.count }
+        public var buffered: Int { buffer.count - start }
 
         /// How many more bytes the next message needs: at least one when it
         /// is not whole.
         public var wanted: Int {
-            guard let length else { return prefixLength - buffer.count }
-            return max(prefixLength + length - buffer.count, 1)
+            guard let length else { return prefixLength - buffered }
+            return max(prefixLength + length - buffered, 1)
         }
 
         /// Adds bytes that arrived, then gives the first whole message, if
         /// one is. Call ``next()`` until it gives `nil` to drain the rest.
         public mutating func push(_ bytes: Data) throws -> Data? {
+            if start > 0 {
+                buffer = Data(buffer.dropFirst(start))
+                start = 0
+            }
             buffer.append(contentsOf: bytes)
             return try next()
         }
@@ -67,19 +75,22 @@ public enum RelayFraming {
         public mutating func next() throws -> Data? {
             guard let length else { return nil }
             guard length <= cap else { throw Error.overCap(cap: cap, length: length) }
-            let end = prefixLength + length
-            guard buffer.count >= end else { return nil }
-            let start = buffer.startIndex
-            let message = Data(buffer[(start + prefixLength)..<(start + end)])
-            buffer = Data(buffer[(start + end)...])
+            guard buffered >= prefixLength + length else { return nil }
+            let body = buffer.startIndex + start + prefixLength
+            let message = Data(buffer[body..<(body + length)])
+            start += prefixLength + length
+            if start == buffer.count {
+                buffer = Data()
+                start = 0
+            }
             return message
         }
 
         /// The next message's length, once its prefix is in.
         private var length: Int? {
-            guard buffer.count >= prefixLength else { return nil }
-            let start = buffer.startIndex
-            return Int(buffer[start]) << 8 | Int(buffer[start + 1])
+            guard buffered >= prefixLength else { return nil }
+            let first = buffer.startIndex + start
+            return Int(buffer[first]) << 8 | Int(buffer[first + 1])
         }
     }
 }
