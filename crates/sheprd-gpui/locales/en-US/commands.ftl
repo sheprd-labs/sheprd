@@ -109,3 +109,5 @@ commands-toggle-zen-mode = Toggle Zen Mode
 commands-toggle-zoom = Toggle Pane Zoom
 commands-workspace-picker = Go To
 commands-worktree-notes = Worktree Notes
+
+commands-new-tmux-terminal = New tmux Terminal

@@ -66,6 +66,8 @@ class ReleaseTests(unittest.TestCase):
         nearby.write_bytes(b"bluetooth helper")
         core = self.work / "herdr-core"
         core.write_bytes(b"herdr-core daemon")
+        core_licenses = self.work / "herdr-core-licenses.txt"
+        core_licenses.write_bytes(b"herdr-core notices")
         for target in ("x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"):
             with self.subTest(target=target):
                 result = self.run_script("package-linux.sh", "20260920.3", target, binary, self.work, self.notices)
@@ -109,7 +111,7 @@ class ReleaseTests(unittest.TestCase):
                     self.assertEqual(files[base + "bin/herdr-core"].mode & 0o777, 0o755)
                     self.assertEqual(archive.extractfile(base + "bin/herdr-core").read(), core.read_bytes())
                     self.assertEqual(archive.extractfile(base + "share/licenses/herdr-gpui/HERDR-CORE-LICENSES.txt").read(),
-                                     (SCRIPTS / "herdr-core-licenses.txt").read_bytes())
+                                     core_licenses.read_bytes())
                     self.assertEqual(archive.extractfile(base + "share/icons/hicolor/scalable/apps/sheprd.svg").read(), (ROOT / "assets/icons/sheprd-linux.svg").read_bytes())
                     self.assertEqual(archive.extractfile(base + "share/licenses/herdr-gpui/THIRD-PARTY-NOTICES.txt").read(), self.notices.read_bytes())
                     for source in ("LICENSE", "NOTICE", "assets/icons/LICENSE-octicons", "crates/sheprd-protocol/NOTICE.md", "crates/sheprd-gpui/SOUND-NOTICE.md"):
@@ -157,6 +159,11 @@ class ReleaseTests(unittest.TestCase):
         result = self.run_script("package-linux.sh", "20260920.3", "x86_64-unknown-linux-gnu", binary, self.work,
                                  self.notices, success=False)
         self.assertIn("A herdr-core beside the binary required", result.stderr)
+        core.write_bytes(b"herdr-core daemon")
+        core_licenses.unlink()
+        result = self.run_script("package-linux.sh", "20260920.3", "x86_64-unknown-linux-gnu", binary, self.work,
+                                 self.notices, success=False)
+        self.assertIn("herdr-core licenses beside the binary required", result.stderr)
 
     def run_windows(self, *args, success=True):
         result = subprocess.run(["python3", str(SCRIPTS / "package-windows.py"), *map(str, args)],
@@ -179,6 +186,8 @@ class ReleaseTests(unittest.TestCase):
         nearby.write_bytes(b"bluetooth helper")
         core = self.work / "herdr-core.exe"
         core.write_bytes(b"herdr-core daemon")
+        core_licenses = self.work / "herdr-core-licenses.txt"
+        core_licenses.write_bytes(b"herdr-core notices")
         target = "x86_64-pc-windows-msvc"
         output = Path(self.run_windows("20260920.3", target, binary, launcher, self.work, self.notices).stdout.strip())
         self.assertEqual(output, self.work.resolve() / f"Sheprd-20260920.3-{target}.zip")
@@ -205,8 +214,7 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual(archive.read(base + "sheprd-automate.exe"), automate.read_bytes())
             self.assertEqual(archive.read(base + "sheprd-nearby.exe"), nearby.read_bytes())
             self.assertEqual(archive.read(base + "herdr-core.exe"), core.read_bytes())
-            self.assertEqual(archive.read(base + "licenses/HERDR-CORE-LICENSES.txt"),
-                             (SCRIPTS / "herdr-core-licenses.txt").read_bytes())
+            self.assertEqual(archive.read(base + "licenses/HERDR-CORE-LICENSES.txt"), core_licenses.read_bytes())
             self.assertEqual(archive.read(base + "licenses/THIRD-PARTY-NOTICES.txt"), self.notices.read_bytes())
             for source in ("LICENSE", "NOTICE", "assets/icons/LICENSE-octicons", "crates/sheprd-protocol/LICENSE-APACHE",
                            "crates/sheprd-protocol/NOTICE.md", "crates/sheprd-gpui/SOUND-NOTICE.md"):
@@ -243,6 +251,10 @@ class ReleaseTests(unittest.TestCase):
         result = self.run_windows("20260920.3", target, binary, launcher, self.work, self.notices, success=False)
         self.assertIn("A herdr-core.exe beside the binary required", result.stderr)
         core.write_bytes(b"herdr-core daemon")
+        core_licenses.unlink()
+        result = self.run_windows("20260920.3", target, binary, launcher, self.work, self.notices, success=False)
+        self.assertIn("herdr-core licenses beside the binary required", result.stderr)
+        core_licenses.write_bytes(b"herdr-core notices")
         for args in [("20260920.03", target, binary, launcher, self.work, self.notices),
                      ("v20260920.3", target, binary, launcher, self.work, self.notices),
                      ("20260920.3", "x86_64-pc-windows-gnu", binary, launcher, self.work, self.notices),
@@ -293,7 +305,8 @@ class ReleaseTests(unittest.TestCase):
     def macos_builds(self, arm_worktree=False, intel_worktree=False):
         """Each architecture's build folder, as the build leaves it:
         herdr-gpui and the sheprd-acp, sheprd-remote-control, sheprd-automate,
-        the Swift sheprd-nearby, and fetched herdr-core beside it, in a folder
+        the Swift sheprd-nearby, and fetched herdr-core and its notices beside
+        it, in a folder
         the mock lipo reads the architecture from."""
         binaries = []
         for arch, worktree in (("arm64", arm_worktree), ("x86_64", intel_worktree)):
@@ -305,6 +318,7 @@ class ReleaseTests(unittest.TestCase):
             (folder / "sheprd-automate").write_bytes(b"automation daemon")
             (folder / "sheprd-nearby").write_bytes(b"bluetooth helper")
             (folder / "herdr-core").write_bytes(b"herdr-core daemon")
+            (folder / "herdr-core-licenses.txt").write_bytes(b"herdr-core notices")
             binaries.append(folder / "herdr-gpui")
         return binaries
 
@@ -332,8 +346,7 @@ class ReleaseTests(unittest.TestCase):
         for helper in ("acp", "remote-control", "automate", "nearby"):
             self.assertEqual((app / f"Contents/MacOS/herdr-{helper}").read_bytes(),
                              (app / f"Contents/MacOS/sheprd-{helper}").read_bytes())
-        self.assertEqual((app / "Contents/Resources/HERDR-CORE-LICENSES.txt").read_bytes(),
-                         (SCRIPTS / "herdr-core-licenses.txt").read_bytes())
+        self.assertEqual((app / "Contents/Resources/HERDR-CORE-LICENSES.txt").read_bytes(), b"herdr-core notices")
         self.assertEqual((app / "Contents/Resources/Sheprd.icns").read_bytes(), (ROOT / "assets/icons/Sheprd.icns").read_bytes())
         self.assertEqual((app / "Contents/Resources/Assets.car").read_bytes(), (ROOT / "assets/icons/Sheprd.car").read_bytes())
         for source in ("LICENSE", "NOTICE", "assets/icons/LICENSE-octicons", "crates/sheprd-protocol/NOTICE.md", "crates/sheprd-gpui/SOUND-NOTICE.md"):
@@ -351,6 +364,17 @@ class ReleaseTests(unittest.TestCase):
                 self.assertIn(f"A {companion} beside each binary required", result.stderr)
                 self.assertFalse((self.work / "Sheprd.app").exists())
 
+    def test_assembly_requires_the_same_herdr_core_licenses_beside_each_binary(self):
+        self.mock_tools()
+        arm, intel = self.macos_builds()
+        (intel.parent / "herdr-core-licenses.txt").unlink()
+        result = self.run_script("package-macos.sh", "20260920.3", arm, intel, self.work, self.notices, success=False)
+        self.assertIn("herdr-core licenses beside each binary required", result.stderr)
+        (intel.parent / "herdr-core-licenses.txt").write_bytes(b"other notices")
+        result = self.run_script("package-macos.sh", "20260920.3", arm, intel, self.work, self.notices, success=False)
+        self.assertIn("herdr-core licenses differ between architectures", result.stderr)
+        self.assertFalse((self.work / "Sheprd.app").exists())
+
     def test_worktree_icons_and_mismatched_architectures(self):
         self.mock_tools()
         # Distinct fixture artwork proves selection without generating real icons.
@@ -359,7 +383,7 @@ class ReleaseTests(unittest.TestCase):
                      "scripts/release/package-linux.sh", "scripts/release/build-icon.py",
                      "scripts/release/org.sheprd.Sheprd.desktop", "assets/macos/Info.plist",
                       "LICENSE", "NOTICE", "assets/icons/LICENSE-octicons",
-                      "crates/sheprd-gpui/SOUND-NOTICE.md", "scripts/release/herdr-core-licenses.txt",
+                      "crates/sheprd-gpui/SOUND-NOTICE.md",
                      "crates/sheprd-protocol/LICENSE-APACHE", "crates/sheprd-protocol/NOTICE.md"]:
             destination = fixture / path
             destination.parent.mkdir(parents=True, exist_ok=True)

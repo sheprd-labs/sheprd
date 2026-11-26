@@ -19,9 +19,13 @@ fn forgetting_a_host_keeps_the_terminals_waiting_for_others() {
     let remote = Scope::endpoint("ssh:box");
     let mut terminals = CoreTerminals::default();
     for scope in [&local, &remote, &local] {
-        terminals
-            .wanted
-            .push_back((tab(scope), Host::of(scope), Spawn::default(), None));
+        terminals.wanted.push_back(crate::core_terminals::Wanted {
+            purpose: tab(scope),
+            host: Host::of(scope),
+            spawn: Spawn::default(),
+            file: None,
+            backend: crate::config::TerminalBackend::Core,
+        });
     }
 
     terminals.forget_host(&Host::Remote(remote));
@@ -29,7 +33,7 @@ fn forgetting_a_host_keeps_the_terminals_waiting_for_others() {
     let hosts: Vec<Host> = terminals
         .wanted
         .iter()
-        .map(|(_, host, ..)| host.clone())
+        .map(|wanted| wanted.host.clone())
         .collect();
     assert_eq!(hosts, vec![Host::Local, Host::Local]);
 }

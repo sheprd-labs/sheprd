@@ -6,6 +6,8 @@ pub(super) enum Action {
     Rename,
     /// Toggles the device's mute, which silences everything on it.
     Mute,
+    /// Toggles whether the device is paused: listed, but not connected.
+    Pause,
     /// Toggles `[devices.<id>] keybindings` between local and server.
     ServerKeybindings,
     /// Forwards one of the host's listening ports to this computer.
@@ -32,6 +34,7 @@ pub(super) const SSH_ACTIONS: &[(Action, &str)] = &[
     (Action::Tags(Mode::MoveTo), "device-tags-move-to"),
     (Action::Tags(Mode::AlsoTagged), "device-tags-also-tagged"),
     (Action::Mute, "host-menu-mute"),
+    (Action::Pause, "host-menu-pause"),
     (Action::ServerKeybindings, "host-menu-server-keybindings"),
     // Port forwards need an `ssh` control master, which Windows OpenSSH lacks.
     #[cfg(unix)]
@@ -49,6 +52,7 @@ pub(super) const CLOUD_ACTIONS: &[(Action, &str)] = &[
     (Action::Tags(Mode::MoveTo), "device-tags-move-to"),
     (Action::Tags(Mode::AlsoTagged), "device-tags-also-tagged"),
     (Action::Mute, "host-menu-mute"),
+    (Action::Pause, "host-menu-pause"),
     (Action::ProviderSettings, "host-menu-cloud-settings"),
     (Action::RunSetup, "host-menu-run-setup"),
     (Action::InstallCore, "host-menu-install-core"),

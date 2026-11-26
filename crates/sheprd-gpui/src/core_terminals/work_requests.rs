@@ -92,12 +92,12 @@ impl CoreTerminals {
             }
             // A retained list from a lost connection cannot establish the
             // new baseline. Wait for a list asked on this connection.
-            if !remote.work_requests.fresh(remote.infos.read_at()) {
+            if !remote.work_requests.fresh(remote.infos.core_read_at()) {
                 continue;
             }
             let listed = remote
                 .infos
-                .all()
+                .core_terminals()
                 .flat_map(|info| {
                     info.labels
                         .keys()
@@ -107,7 +107,7 @@ impl CoreTerminals {
                 .take(MAX_SEEN + 1)
                 .collect();
             let new = remote.work_requests.take(listed);
-            for info in remote.infos.all() {
+            for info in remote.infos.core_terminals() {
                 let tokens: Vec<_> = info
                     .labels
                     .iter()

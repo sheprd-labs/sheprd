@@ -59,6 +59,9 @@ pub(in crate::settings_window) struct RemoteSettings {
     relay_invalid: bool,
     /// Sheprd's own relays, read once the page shows.
     pub(in crate::settings_window) offered: Offered,
+    /// The offered list's pins wait for Settings to be idle before they
+    /// update the saved relays (`follow_public_pins`).
+    pub(in crate::settings_window) pins_pending: bool,
     /// A private relay's listen token being asked for or linked.
     pub(in crate::settings_window) token: relays::TokenPrompt,
     /// The push relay's explanation, asked before it turns on.

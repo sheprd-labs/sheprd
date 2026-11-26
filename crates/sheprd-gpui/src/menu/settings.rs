@@ -408,6 +408,7 @@ impl SheprdWindow {
                 | Command::DevicesOverview
                 | Command::NotificationHistory
                 | Command::ClearAllNotifications
+                | Command::NewTmuxTerminal
                 | Command::NewCoreTerminal
                 | Command::MirrorCorePane
                 | Command::ConvertToChat

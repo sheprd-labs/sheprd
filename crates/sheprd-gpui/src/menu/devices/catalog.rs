@@ -13,7 +13,7 @@ impl SheprdWindow {
     /// The providers the rail lists: configured here, or with a saved device.
     pub(super) fn cloud_listed(&self) -> Vec<CloudProvider> {
         let configured = self.cloud_providers();
-        CloudProvider::ALL
+        crate::cloud::enabled()
             .iter()
             .copied()
             .filter(|provider| configured.contains(provider) || self.has_cloud_device(*provider))
@@ -23,7 +23,7 @@ impl SheprdWindow {
     /// The providers only the Add provider pane offers.
     pub(super) fn cloud_unlisted(&self) -> Vec<CloudProvider> {
         let listed = self.cloud_listed();
-        CloudProvider::ALL
+        crate::cloud::enabled()
             .iter()
             .copied()
             .filter(|provider| !listed.contains(provider))

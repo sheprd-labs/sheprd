@@ -16,7 +16,7 @@ fn kept(dir: &std::path::Path, id: ThreadId, load: Option<&str>) -> Harness {
 }
 
 /// The chat's folder: absolute on every platform, as a record needs.
-fn work() -> PathBuf {
+pub(super) fn work() -> PathBuf {
     std::env::temp_dir()
 }
 

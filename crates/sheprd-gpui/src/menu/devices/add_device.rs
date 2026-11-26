@@ -56,6 +56,27 @@ pub(in crate::menu) struct Setup {
     pub(super) host_keys: HostKeys,
 }
 
+/// Cancels a background `herdr-core` install if the dialog leaves `Step::Installing`.
+pub(super) struct CancelFlag(std::sync::Arc<std::sync::atomic::AtomicBool>);
+
+impl CancelFlag {
+    pub(super) fn new() -> Self {
+        Self(std::sync::Arc::new(std::sync::atomic::AtomicBool::new(
+            false,
+        )))
+    }
+
+    pub(super) fn flag(&self) -> std::sync::Arc<std::sync::atomic::AtomicBool> {
+        self.0.clone()
+    }
+}
+
+impl Drop for CancelFlag {
+    fn drop(&mut self) {
+        self.0.store(true, std::sync::atomic::Ordering::Release);
+    }
+}
+
 /// Where adding a device stands. Each step after `Form` belongs to the request
 /// that was submitted, not to whatever the fields hold now.
 pub(super) enum Step {
@@ -64,9 +85,15 @@ pub(super) enum Step {
     /// macOS refused the host check the local network; waiting for the user
     /// to allow Herdr, then checking again (see `local_network`).
     AwaitingLocalNetwork(setup::Request),
-    /// Herdr is present, so the CLI saves the device without a terminal. A
-    /// stopped server is started by that same command.
+    /// Herdr or herdr-core is present, so the device is saved without a
+    /// terminal. A stopped Herdr 1 server is started by that same command.
     Saving(setup::Request, HostProbe),
+    /// Installing pinned herdr-core over SSH, then saving the device directly.
+    Installing {
+        request: setup::Request,
+        offer: Offer,
+        _cancel: CancelFlag,
+    },
     /// Saved; the next frame closes the dialog (see `poll_device_setup`).
     Saved,
     /// Already saved; keep the recovery advice readable until dismissed.
@@ -75,7 +102,7 @@ pub(super) enum Step {
     FetchingKey(setup::Request),
     /// The user compares the host key's fingerprint before trusting it.
     TrustKey(setup::Request, NewHostKey),
-    /// Setup needs prompts, so the user decides whether to run it locally.
+    /// Setup needs approval or prompts before continuing.
     Confirm(setup::Request, Offer),
     // Only interactive setup verifies, and Windows cannot host it yet.
     #[cfg(unix)]
@@ -303,6 +330,9 @@ impl SheprdWindow {
                 Some(fl!("add-device-starting", target = request.target()))
             }
             Step::Saving(request, _) => Some(fl!("add-device-saving", target = request.target())),
+            Step::Installing { request, .. } => {
+                Some(fl!("add-device-installing-core", target = request.target()))
+            }
             Step::Saved | Step::SavedWarning(_) => None,
             Step::FetchingKey(request) => {
                 Some(fl!("add-device-fetching-key", target = request.target()))
@@ -358,11 +388,14 @@ impl SheprdWindow {
         let cancel = button("device-setup-cancel", fl!("add-device-cancel").into(), true)
             .on_click(cx.listener(|this, _, _, cx| this.cancel_device_step(cx)));
         footer = match &setup.step {
-            Step::Confirm(..) if cfg!(windows) => footer.child(cancel),
+            Step::Confirm(_, offer) if cfg!(windows) && !offer.installs_core() => {
+                footer.child(cancel)
+            }
             Step::Confirm(_, offer) => footer.child(cancel).child(
                 button("device-setup-submit", offer.action().into(), true)
                     .on_click(cx.listener(|this, _, _, cx| this.start_device_setup(cx))),
             ),
+            Step::Installing { .. } => footer.child(cancel),
             Step::AwaitingLocalNetwork(_) => footer
                 .children(self.local_network_settings_button("device-setup-settings", cx))
                 .child(cancel),
@@ -426,7 +459,7 @@ impl SheprdWindow {
         match &form.step {
             Step::Form => {}
             // Windows offers no terminal setup; the question says what to run.
-            Step::Confirm(..) if cfg!(windows) => return,
+            Step::Confirm(_, offer) if cfg!(windows) && !offer.installs_core() => return,
             Step::Confirm(..) => return self.start_device_setup(cx),
             _ => return,
         }
@@ -435,7 +468,10 @@ impl SheprdWindow {
             form.fields[1].read(cx).text(),
             form.fields[2].read(cx).text(),
         )
-        .map(|request| request.with_host_keys(form.host_keys));
+        .map(|mut request| {
+            request.tmux = self.config.terminal_backend == crate::config::TerminalBackend::Tmux;
+            request.with_host_keys(form.host_keys)
+        });
         let request = match request.and_then(|request| {
             self.ensure_new_device(&request)?;
             Ok(request)
@@ -448,16 +484,29 @@ impl SheprdWindow {
                 return;
             }
         };
+        self.check_device_with_claim(request, None, cx);
+    }
+
+    pub(super) fn check_device_with_claim(
+        &mut self,
+        request: setup::Request,
+        claim: Option<setup::Claim>,
+        cx: &mut Context<Self>,
+    ) {
         let Some(form) = &mut self.menu.device_setup else {
             return;
         };
         tracing::info!(category = "device_setup", "Checking device");
         form.step = Step::Checking(request.clone());
+        form.claim = None;
         form.error = None;
         // Claim before probing: a second add of this host, from any window of
         // this process, is refused from here on rather than after a slow probe.
         let background = cx.background_executor().spawn(async move {
-            let claim = setup::claim(&request)?;
+            let claim = match claim {
+                Some(claim) => setup::verify_unsaved(&request, &claim).map(|()| claim)?,
+                None => setup::claim(&request)?,
+            };
             Ok::<_, crate::Error>((claim, request.probe()))
         });
         form.task = Some(cx.spawn(async move |this, cx| {

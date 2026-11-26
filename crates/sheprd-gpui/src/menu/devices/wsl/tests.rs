@@ -164,7 +164,7 @@ fn a_platform_without_wsl_refuses_with_its_reason() {
     if cfg!(windows) {
         return;
     }
-    let Outcome::Refused(message) = add("Ubuntu", "default") else {
+    let Outcome::Refused(message) = add("Ubuntu", "default", false) else {
         panic!("WSL saved a device off Windows");
     };
     assert_eq!(

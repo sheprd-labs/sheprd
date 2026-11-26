@@ -215,7 +215,7 @@ pub(super) fn tab_panes(layout: &Layout) -> HashMap<String, Vec<String>> {
 
 /// The labels naming where `place` is, when it is somewhere Sheprd could
 /// keep a tab.
-fn place_labels(place: Option<Place<'_>>) -> BTreeMap<&'static str, &str> {
+pub(in crate::hub) fn place_labels(place: Option<Place<'_>>) -> BTreeMap<&'static str, &str> {
     match place {
         Some(Place::Workspace(workspace)) if sheprd_session::tab_workspace(workspace.id) => {
             let mut labels = BTreeMap::from([(WORKSPACE_LABEL, workspace.id)]);

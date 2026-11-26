@@ -10,6 +10,7 @@
 
 mod error;
 pub mod file;
+pub mod read;
 
 pub use error::Error;
 

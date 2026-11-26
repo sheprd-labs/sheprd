@@ -74,6 +74,7 @@ pub(super) fn host(command: HostCommand, context: &Context) -> crate::Result<Out
         HostCommand::List => HostOp::List,
         HostCommand::Select(id) => HostOp::Select { id },
         HostCommand::Mute { host, muted } => HostOp::Mute { host, muted },
+        HostCommand::Pause { host, paused } => HostOp::Pause { host, paused },
         HostCommand::Tag { id, tags } => HostOp::Tag { id, tags },
         HostCommand::Update(host) => HostOp::Update { host },
     };

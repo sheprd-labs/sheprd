@@ -79,6 +79,9 @@ pub(crate) struct Notification {
     /// The permission request a question is, for the native app's answer
     /// buttons; the Web Push message leaves it out.
     pub permission: Option<Permission>,
+    /// The pull request a finished turn created or pushed to, for the
+    /// native app's Open PR action; the Web Push message leaves it out.
+    pub pr: Option<String>,
     /// Where the chat is, `workspace · title`, which the native app shows
     /// under the title and the Web Push message above the body.
     pub subtitle: String,
@@ -100,6 +103,7 @@ impl Notification {
             kind,
             pane: chat.pane.to_owned(),
             permission: None,
+            pr: None,
             subtitle: place(chat),
             tag: tag(chat.pane),
             title,
@@ -125,12 +129,22 @@ impl Notification {
             kind: Kind::Question,
             pane: pane.to_owned(),
             permission: None,
+            pr: None,
             subtitle: String::new(),
             tag: tag(pane),
             title: String::new(),
             urgency: Urgency::High,
             wizz: false,
         }
+    }
+
+    /// With `pr`, the pull request its turn created or pushed to
+    /// ([`super::TurnPull`]), when it is a finished turn's.
+    pub(crate) fn with_pr(self, pr: Option<String>) -> Self {
+        if self.kind != Kind::TurnEnded || self.clear {
+            return self;
+        }
+        Self { pr, ..self }
     }
 
     /// Moves the badge alone: no pane has this notification to close.

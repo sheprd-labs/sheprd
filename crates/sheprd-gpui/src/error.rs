@@ -372,6 +372,8 @@ pub enum Error {
     #[cfg(any(target_os = "macos", windows))]
     #[error("Could not reach the native window for the page: {0}")]
     WindowHandle(#[from] WindowHandleError),
+    #[error(transparent)]
+    WindowsHost(#[from] crate::windows_host::Error),
     #[error("Checkout changed. Dismiss and reopen the menu.")]
     WorkspaceCheckoutChanged,
     #[error("Workspace group changed. Dismiss and review the group again.")]

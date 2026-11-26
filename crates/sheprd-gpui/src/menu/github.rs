@@ -218,6 +218,7 @@ impl SheprdWindow {
         self.sync_github_hosts();
         self.sync_github_accounts();
         self.prune_device_removals();
+        self.prune_device_pauses();
         // Only the main account's page offers the local GitHub CLI, and only
         // a window that may touch credentials asks it.
         if self.avatars.is_some()

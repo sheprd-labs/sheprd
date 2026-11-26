@@ -23,7 +23,7 @@ pub mod unsynced;
 mod value;
 mod worker;
 
-pub use catalog::{FILE as CATALOG_FILE, SavedDevice, load, remove, rename, save};
+pub use catalog::{FILE as CATALOG_FILE, SavedDevice, load, remove, rename, save, set_enabled};
 pub use command::{connect_core, with_command};
 pub use providers::ProviderError;
 pub use providers::{

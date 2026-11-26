@@ -128,7 +128,7 @@ fn sizes_and_uptimes_read_short() {
 
 #[test]
 fn this_machine_reports_its_uptime_and_home_volume() {
-    let mut source = Source::open(&Host::Local).unwrap();
+    let mut source = Source::open(&Host::Local, false, false).unwrap();
     let sample = source.sample(false).unwrap();
     assert!(sample.uptime.is_some_and(|seconds| seconds > 0));
     let disk = sample.disk.expect("the home directory lies on some volume");

@@ -8,6 +8,7 @@
 mod automation;
 mod local_ports;
 mod mute;
+mod pause;
 mod ports;
 mod pr;
 mod security;
@@ -49,6 +50,9 @@ pub(super) fn serve(
         HostOp::Select { id } => in_free_window(caller, cx, |view, _, cx| {
             select(view, &id, |view, id| view.select_endpoint(id, cx))
         }),
+        HostOp::Pause { host, paused } => {
+            return pause::run(call.caller, &host, paused, incoming, watches, cx);
+        }
         HostOp::Tag { id, tags } => in_window(caller, cx, |view, _, cx| tag(view, &id, tags, cx)),
         HostOp::Update { host } => in_window(caller, cx, |view, window, cx| {
             update::ask(view, caller, host.as_deref(), window, cx)

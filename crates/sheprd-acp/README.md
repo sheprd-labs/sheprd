@@ -244,6 +244,13 @@ passes it back with `--thread`, so the restored chat goes on in the same
 thread. A chat that cannot write its thread says so once and keeps nothing
 more.
 
+The chat also gives its agent `sheprd-acp thread-mcp --thread ID`, a
+read-only stdio MCP server over its own thread's file with two tools:
+`thread_read { from, to }` (at most 64 entries or 160 KiB a call; trimmed
+ids answer "trimmed") and `thread_search { query }`. ACP agents get it in
+their sessions, Claude and Codex reached natively on their command lines;
+Pi takes none. A handoff that leaves entries out names their ids for it.
+
 Herdr 2 chats keep the same exact-session information separately under
 `restore/core`, scoped by the core-injected `HC_TERMINAL_ID` and
 `HC_TERMINAL_SOCKET`, not a caller's `HC_SOCKET`. An endpoint lock is acquired

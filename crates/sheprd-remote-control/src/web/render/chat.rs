@@ -255,9 +255,13 @@ fn extras(row: &ChatRow, transcript: &Transcript) -> Markup {
             }
             @for queued in &transcript.queued {
                 div class="flex items-center gap-2 card text-sm" {
-                    span class="text-muted" { "Queued" }
+                    span class="text-muted" { (if queued.steered { "Steering" } else if queued.held { "Held" } else { "Queued" }) }
                     span class="flex-1 truncate" { (queued.text) }
-                    button type="button" class="text-accent" data-command={ r#"{"command":"unqueue","id":""# (queued.id.0) r#""}"# } data-pane=(row.pane) { "Remove" }
+                    // A steered prompt is already with the agent.
+                    @if !queued.steered {
+                        button type="button" class="text-accent" data-command={ r#"{"command":"send_now","id":""# (queued.id.0) r#""}"# } data-pane=(row.pane) { "Send now" }
+                        button type="button" class="text-accent" data-command={ r#"{"command":"unqueue","id":""# (queued.id.0) r#""}"# } data-pane=(row.pane) { "Remove" }
+                    }
                 }
             }
             @match &transcript.status {

@@ -22,7 +22,7 @@ fn shell(cx: &mut TestAppContext) -> (Entity<SheprdWindow>, &mut VisualTestConte
                 .unwrap()
                 .panes
                 .remove(&id("shell"));
-            view.core_terminals.fallback = Fallback::Shown(shell.clone());
+            view.core_terminals.fallback = Fallback::Shown(id("shell"), shell.clone());
             view.live.snapshot = None;
             view.live.missing_installation = true;
             view.refresh_core_session(cx);

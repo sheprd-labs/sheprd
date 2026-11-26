@@ -20,6 +20,8 @@ mod metrics;
 mod neutral_names;
 mod options;
 mod pings;
+#[cfg(feature = "client")]
+mod pinned;
 mod pools;
 mod quic;
 mod races;

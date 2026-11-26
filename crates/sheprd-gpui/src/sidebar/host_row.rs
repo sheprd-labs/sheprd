@@ -104,10 +104,15 @@ impl SheprdWindow {
                 );
                 (width, gauges, reading)
             });
-        // The Devices layout counts the agents listed under the header.
-        let working = (!self.config.layout.mode.lists_workspaces())
-            .then(|| self.working_summary(endpoint))
-            .flatten();
+        // The Devices layout counts the agents listed under the header; a
+        // paused device says so instead, as it has none to count.
+        let working = if endpoint.enabled {
+            (!self.config.layout.mode.lists_workspaces())
+                .then(|| self.working_summary(endpoint))
+                .flatten()
+        } else {
+            Some(crate::i18n::fl!("sidebar-host-paused"))
+        };
         let working_width = working.as_ref().map_or(0., |text| {
             text.chars().count() as f32 * super::metrics::glyph_width(font) + host_gap
         });

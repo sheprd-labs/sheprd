@@ -303,7 +303,9 @@ impl SheprdWindow {
         let pane_id = chat.target.pane_id.clone();
         chat.text_geometry.begin_frame();
         chat.prepared.visuals.begin_frame();
-        let entries = {
+        let entries = if chat.session.synced() && chat.session.transcript().entries.is_empty() {
+            self.render_chat_empty(chat).into_any_element()
+        } else {
             let pane_id = pane_id.clone();
             list(
                 chat.list.clone(),
@@ -318,6 +320,7 @@ impl SheprdWindow {
             // Margins rather than padding: the list leaves its padding out
             // of the end it reports, which would stop the glide short.
             .my(px(8.))
+            .into_any_element()
         };
         let focus_pane = pane_id.clone();
         let key_pane = pane_id.clone();
@@ -392,14 +395,14 @@ impl SheprdWindow {
             }))
             .on_mouse_up(
                 MouseButton::Left,
-                cx.listener(move |this, _, _, _| {
-                    this.release_chat_text(&release_pane);
+                cx.listener(move |this, _, _, cx| {
+                    this.release_chat_text(&release_pane, cx);
                 }),
             )
             .on_mouse_up_out(
                 MouseButton::Left,
-                cx.listener(move |this, _, _, _| {
-                    this.release_chat_text(&release_out_pane);
+                cx.listener(move |this, _, _, cx| {
+                    this.release_chat_text(&release_out_pane, cx);
                 }),
             )
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
@@ -498,6 +501,71 @@ impl SheprdWindow {
             .children(self.render_chat_screen(chat, cx))
             .children(self.render_chat_viewer(chat, bounds, cx))
             .into_any_element()
+    }
+
+    /// What to do while a connected chat has no transcript entries yet.
+    fn render_chat_empty(&self, chat: &ChatPane) -> Div {
+        let theme = &self.theme;
+        let transcript = chat.session.transcript();
+        let (title, detail) = match &transcript.status {
+            Status::Starting => (
+                fl!("chat-empty-starting-title"),
+                fl!("chat-empty-starting-hint"),
+            ),
+            Status::Working => (
+                fl!("chat-empty-working-title"),
+                fl!("chat-empty-working-hint"),
+            ),
+            Status::Failed { .. } | Status::Exited { .. } => {
+                (fl!("chat-empty-ended-title"), fl!("chat-empty-ended-hint"))
+            }
+            _ => {
+                let detail = match chat.input() {
+                    ChatInput::Composer => fl!("chat-empty-prompt-hint"),
+                    ChatInput::Terminal => fl!("chat-empty-terminal-hint"),
+                    ChatInput::ReadOnly => fl!("chat-empty-read-only-hint"),
+                };
+                (fl!("chat-empty-title"), detail)
+            }
+        };
+
+        div()
+            .debug_selector(|| "chat-empty".into())
+            .flex_1()
+            .min_h_0()
+            .w_full()
+            .flex()
+            .items_center()
+            .justify_center()
+            .px(px(24.))
+            .child(
+                div()
+                    .max_w(px(360.))
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .gap(px(8.))
+                    .child(
+                        svg()
+                            .path(agent_icon(chat.session.agent()))
+                            .size(px(40.))
+                            .text_color(rgb(theme.foreground)),
+                    )
+                    .child(
+                        div()
+                            .text_size(px(self.chat_text_size() + 4.))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(rgb(theme.foreground))
+                            .child(title),
+                    )
+                    .child(
+                        div()
+                            .text_size(self.chat_small_text())
+                            .text_color(rgb(theme.subtext()))
+                            .text_center()
+                            .child(detail),
+                    ),
+            )
     }
 
     /// The layout's sign that the agent is working on a turn, with what it

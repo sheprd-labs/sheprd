@@ -96,6 +96,8 @@ fn a_changed_extra_sends_the_extras_region() {
         transcript.queued.push(Queued {
             attachments: Vec::new(),
             id: CommandId::random(),
+            held: false,
+            steered: false,
             text: "next".into(),
         });
     });

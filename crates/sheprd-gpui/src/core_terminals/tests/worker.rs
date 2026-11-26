@@ -3,8 +3,8 @@
 
 use crate::core_terminals::worker::{self, Command};
 use sheprd_backend::{
-    Backend, Changes, ClientPaneInputEvent, FrameData, Generation, History, HistoryAnswer, Role,
-    Size, Spawn, SurfaceUpdate, Terminal, TerminalId, TerminalInfo,
+    Backend, ClientPaneInputEvent, FrameData, History, HistoryAnswer, Role, Size, Spawn,
+    SurfaceUpdate, Terminal, TerminalId, TerminalInfo,
 };
 use std::{
     sync::{Arc, Mutex},
@@ -50,31 +50,12 @@ impl Scripted {
 
 pub(super) struct ScriptedTerminal(Scripted);
 
-pub(super) struct NoChanges;
-
-impl Changes for NoChanges {
-    type Error = Failure;
-
-    fn next(&mut self, _: Duration) -> Result<Vec<sheprd_backend::Change>, Failure> {
-        Ok(Vec::new())
-    }
-}
-
 impl Backend for Scripted {
-    type Changes = NoChanges;
     type Error = Failure;
     type Terminal = ScriptedTerminal;
 
-    fn generation(&self) -> Generation {
-        Generation::Herdr2
-    }
-
     fn terminals(&self) -> Result<Vec<TerminalInfo>, Failure> {
         Ok(Vec::new())
-    }
-
-    fn watch(&self) -> Result<(Vec<TerminalInfo>, NoChanges), Failure> {
-        Ok((Vec::new(), NoChanges))
     }
 
     fn attach(&self, _: &TerminalId, size: Size, _: Role) -> Result<ScriptedTerminal, Failure> {

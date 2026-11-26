@@ -15,6 +15,7 @@ use std::sync::{
 
 pub(crate) struct ConnectionBridge {
     pub target: ConnectTarget,
+    pub(crate) start_local_herdr: bool,
     pub handle: Option<ClientHandle>,
     pub inbox: Arc<Mutex<LiveState>>,
     pub drained: Arc<AtomicBool>,
@@ -122,6 +123,7 @@ impl ConnectionBridge {
         let state = LiveState::default();
         Self {
             target,
+            start_local_herdr: true,
             handle: None,
             sound_cancel: state.sound_connection_cancel.clone(),
             inbox: Arc::new(Mutex::new(state)),
@@ -182,13 +184,14 @@ impl ConnectionBridge {
         self.drained = Arc::new(AtomicBool::new(false));
         let target = self.target.clone();
         let startup_inbox = self.inbox.clone();
+        let start_local = self.start_local_herdr;
         let result =
             connect_with_connector(target, options, surface_active, move |target, stop| {
                 #[cfg(feature = "cloud")]
                 if matches!(target, ConnectTarget::Cloud { .. }) {
                     return crate::cloud::connect(target, stop);
                 }
-                let result = crate::daemon::connect(target, stop, || {
+                let result = crate::daemon::connect(target, stop, start_local, || {
                     tracing::debug!("Connection bridge starting local daemon");
                     if let Ok(mut state) = startup_inbox.lock()
                         && state.status == ConnectionStatus::Connecting
@@ -224,11 +227,11 @@ impl ConnectionBridge {
                     };
                     tracing::debug!(category, error_kind = ?error.kind(), raw_os_error = ?error.raw_os_error(), "Connection bridge connector failed");
                 }
-                if result
-                    .as_ref()
-                    .is_err_and(crate::daemon::is_missing_installation)
+                let join_only_absent = !start_local && matches!(target, ConnectTarget::Local | ConnectTarget::Session { development: false, .. })
+                    && result.as_ref().is_err_and(|error| matches!(error.kind(),std::io::ErrorKind::NotFound | std::io::ErrorKind::ConnectionRefused));
+                if (result.as_ref().is_err_and(crate::daemon::is_missing_installation) || join_only_absent)
                     && let Ok(mut state) = startup_inbox.lock()
-                    && state.status == ConnectionStatus::StartingDaemon
+                    && (state.status == ConnectionStatus::StartingDaemon || join_only_absent)
                 {
                     state.missing_installation = true;
                     state.dirty = true;

@@ -10,6 +10,8 @@ pub mod input;
 mod listener;
 mod modes;
 mod scan;
+mod surface;
+pub use surface::Surface;
 
 pub use damage::Damage;
 pub use emulator::{Emulator, Event, Scroll};

@@ -34,6 +34,7 @@ fn info() -> Info {
     Info {
         identity: "identity".into(),
         labels: Default::default(),
+        pins: Default::default(),
         relays: vec!["https://relay.example.org".into()],
         route: "route".into(),
         rtt_ms: Default::default(),
@@ -181,9 +182,9 @@ fn host_relay_messages_keep_their_wire_names() {
         })
     );
     assert_eq!(
-        serde_json::to_value(State::Done(Outcome::Failed {
+        serde_json::to_value(State::Done(Box::new(Outcome::Failed {
             reason: "no".into()
-        }))
+        })))
         .unwrap(),
         json!({"state": "done", "outcome": "failed", "reason": "no"})
     );
@@ -315,6 +316,7 @@ fn the_answer_message_is_the_request_then_what_it_claims() {
         info: Info {
             identity: "ID".into(),
             labels: Default::default(),
+            pins: Default::default(),
             relays: vec!["https://a".into(), "https://b".into()],
             route: "RT".into(),
             rtt_ms: Default::default(),

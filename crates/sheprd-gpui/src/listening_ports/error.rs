@@ -7,7 +7,5 @@ pub enum Error {
     Scan(#[source] Box<crate::Error>),
     #[error("Neither ss nor lsof is installed on this host, so listening ports cannot be read.")]
     Tool,
-    #[error("Listening ports cannot be read on this platform.")]
-    Unsupported,
     // keep-sorted end
 }

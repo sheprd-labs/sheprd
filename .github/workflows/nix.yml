@@ -39,7 +39,6 @@ on:
       - macos/sheprd-nearby/**
       - crates/sheprd-gpui/SOUND-NOTICE.md
       - scripts/release/herdr-core.json
-      - scripts/release/herdr-core-licenses.txt
       - .github/workflows/nix.yml
   workflow_dispatch:
 

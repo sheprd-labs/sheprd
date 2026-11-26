@@ -46,6 +46,9 @@ pub enum Error {
     Observe(#[from] crate::observe::Error),
     #[error("could not hold the chat's automatic recovery while it switches agents")]
     RecoveryHold(#[source] sheprd_core_client::Error),
+    #[cfg(feature = "tmux")]
+    #[error("tmux chat recovery: {0}")]
+    TmuxRecovery(#[from] sheprd_tmux::Error),
     #[error(transparent)]
     SessionHelpers(#[from] crate::session_helpers::Error),
     #[error("could not read the chat's terminal input")]

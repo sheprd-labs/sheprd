@@ -99,7 +99,14 @@ pub(crate) fn valid_pane(pane: &str) -> bool {
 
 /// Whether `pane` belongs to the primary Herdr 1 session.
 pub(crate) fn primary_pane(pane: &str) -> bool {
-    !pane.starts_with(CORE_PREFIX) && !pane.starts_with(SESSION_PREFIX)
+    !pane.starts_with(CORE_PREFIX)
+        && !pane.starts_with(SESSION_PREFIX)
+        && !pane.starts_with("tmux:")
+}
+
+/// Managed tmux terminals keep the same UUID across server and host restarts.
+pub fn tmux_pane(address: &str) -> String {
+    format!("tmux:{address}")
 }
 
 /// The id phones and favorites know the herdr-core terminal at `address`

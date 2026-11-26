@@ -56,6 +56,8 @@ fn busy() -> View {
     transcript.queued = vec![Queued {
         attachments: Vec::new(),
         id: sheprd_chat_protocol::CommandId::random(),
+        held: false,
+        steered: false,
         text: "and then commit".to_owned(),
     }];
     let mut view = View::default();

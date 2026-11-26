@@ -225,7 +225,27 @@ pub fn rename(provider: CloudProvider, id: &str, label: &str) -> Result<()> {
     transaction(|path| rename_in(path, provider, id, label))
 }
 
+/// Pause a saved device (`false`), so nothing connects to it, or resume it;
+/// it stays listed either way.
+pub fn set_enabled(provider: CloudProvider, id: &str, enabled: bool) -> Result<()> {
+    transaction(|path| set_enabled_in(path, provider, id, enabled))
+}
+
 fn rename_in(path: &Path, provider: CloudProvider, id: &str, label: &str) -> Result<()> {
+    edit_in(path, provider, id, |saved| saved.label = label.to_owned())
+}
+
+fn set_enabled_in(path: &Path, provider: CloudProvider, id: &str, enabled: bool) -> Result<()> {
+    edit_in(path, provider, id, |saved| saved.enabled = enabled)
+}
+
+/// Changes one saved device in place; a missing one is an error.
+fn edit_in(
+    path: &Path,
+    provider: CloudProvider,
+    id: &str,
+    change: impl FnOnce(&mut SavedDevice),
+) -> Result<()> {
     let mut devices = read_entries(path)?;
     let Some(saved) = devices.iter_mut().find_map(|entry| match entry {
         Entry::Known(saved) if saved.provider == provider && saved.id == id => Some(saved),
@@ -233,7 +253,7 @@ fn rename_in(path: &Path, provider: CloudProvider, id: &str, label: &str) -> Res
     }) else {
         return Err(Error::Missing);
     };
-    saved.label = label.to_owned();
+    change(saved);
     write(path, devices)
 }
 

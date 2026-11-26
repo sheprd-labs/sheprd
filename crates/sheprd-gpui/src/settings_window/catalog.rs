@@ -25,6 +25,10 @@ pub(super) enum Availability {
     FollowingSystemTheme,
     /// Only on Windows, which has the only platform code for it.
     Windows,
+    /// Only while a cloud provider is turned on; Settings > Cloud devices
+    /// shows nothing else otherwise.
+    #[cfg(feature = "cloud")]
+    CloudProviders,
 }
 
 impl Entry {
@@ -344,6 +348,26 @@ pub(super) const CATALOG: &[Entry] = &[
     // One per `[features]` flag; a test checks none is missing.
     // keep-sorted start
     feature(Feature::AcpChats),
+    #[cfg(feature = "azure")]
+    feature(Feature::CloudAzure),
+    #[cfg(feature = "boat")]
+    feature(Feature::CloudBoat),
+    #[cfg(feature = "boxd")]
+    feature(Feature::CloudBoxd),
+    #[cfg(feature = "coder")]
+    feature(Feature::CloudCoder),
+    #[cfg(feature = "container")]
+    feature(Feature::CloudContainer),
+    #[cfg(feature = "daytona")]
+    feature(Feature::CloudDaytona),
+    #[cfg(feature = "opensandbox")]
+    feature(Feature::CloudOpenSandbox),
+    #[cfg(feature = "cloud")]
+    feature(Feature::CloudProviders),
+    #[cfg(feature = "railway")]
+    feature(Feature::CloudRailway),
+    #[cfg(feature = "sprites")]
+    feature(Feature::CloudSprites),
     #[cfg(feature = "mcp")]
     feature(Feature::Mcp),
     feature(Feature::MoonframeTools),
@@ -620,7 +644,8 @@ pub(super) const CATALOG: &[Entry] = &[
         "cloud-setup",
         "settings-cloud-setup",
         "settings-cloud-setup-description",
-    ),
+    )
+    .only(Availability::CloudProviders),
     entry(
         Section::RemoteControl,
         "remote-enabled",

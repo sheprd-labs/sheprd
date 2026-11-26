@@ -201,7 +201,9 @@ impl SheprdWindow {
         } else {
             &self.endpoints[index].live
         };
-        self.config.herdr_2_terminals || live.missing_installation
+        self.config.terminal_backend == crate::config::TerminalBackend::Tmux
+            || self.config.herdr_2_terminals
+            || live.missing_installation
     }
 
     /// Shows this computer and brings its kept workspace in `cwd` to the

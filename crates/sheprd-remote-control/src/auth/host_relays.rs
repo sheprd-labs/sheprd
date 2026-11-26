@@ -58,7 +58,7 @@ struct Ask {
 enum Stage {
     Queued,
     Taken,
-    Done(Outcome),
+    Done(Box<Outcome>),
 }
 
 /// The near computer's requests, by the phone as it knows it and the far
@@ -162,7 +162,7 @@ impl HostRelays {
             },
             outcome => outcome,
         };
-        ask.stage = Stage::Done(outcome);
+        ask.stage = Stage::Done(Box::new(outcome));
         ask.since_ms = now_ms;
         Ok(())
     }
@@ -185,9 +185,9 @@ impl HostRelays {
         });
         for ask in self.asks.values_mut() {
             if ask.stage == Stage::Taken && now_ms.saturating_sub(ask.since_ms) >= TAKEN_TTL_MS {
-                ask.stage = Stage::Done(Outcome::Failed {
+                ask.stage = Stage::Done(Box::new(Outcome::Failed {
                     reason: "Sheprd did not finish carrying the relay keys".to_owned(),
-                });
+                }));
                 ask.since_ms = now_ms;
             }
         }

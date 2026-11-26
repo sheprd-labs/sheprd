@@ -177,16 +177,27 @@ impl SheprdWindow {
                     });
                 }
             }
+            // A join-only probe cannot tell a stopped Herdr from an absent one.
+            // Choosing Herdr again authorizes the normal local startup probe.
+            // tmux keeps saved Herdr 1 tabs on their backend, which may
+            // start it too, as after a reboot.
+            let starts_herdr = endpoint.starts_herdr(self.config.terminal_backend, cx);
+            let start_requested = !endpoint.connection.start_local_herdr
+                && !endpoint.connection.target.is_remote()
+                && (self.config.terminal_backend == crate::config::TerminalBackend::Herdr
+                    || self.config.terminal_backend == crate::config::TerminalBackend::Tmux
+                        && starts_herdr);
             if endpoint.enabled
                 && !endpoint.detached
                 && !endpoint.suspended()
                 // The core fallback owns this host now. Retrying an absent
                 // Herdr 1 resets the window and drops its working core view.
                 // An explicit reconnect can probe a newly installed Herdr 1.
-                && !endpoint.live.missing_installation
+                && (!endpoint.live.missing_installation || start_requested)
                 && endpoint.connection.handle.is_none()
                 && Instant::now() >= endpoint.retry_at
             {
+                endpoint.connection.start_local_herdr = starts_herdr;
                 endpoint.connect(self.options, index == 0 && self.selected_endpoint == 0);
                 selected_changed |= index == self.selected_endpoint;
                 changed = Redraw::Window;

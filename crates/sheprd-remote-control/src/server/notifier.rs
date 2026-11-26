@@ -19,7 +19,7 @@ use crate::{
     hub::Layout,
     push::{
         Chat, Delivery, Hold, Kind, Notification, Outcome, Privacy, SeenAgent, Subscription,
-        TerminalAgents, Throttle, decide, decide_terminal,
+        TerminalAgents, Throttle, TurnPull, decide, decide_terminal,
     },
     web::{State, now_ms},
 };
@@ -53,9 +53,15 @@ pub(super) async fn run(state: Arc<State>) {
             event = events.recv() => match event {
                 Ok((pane, Event::Reset { transcript, cursor })) => {
                     live.snapshot(&state, &pane, &transcript);
+                    // A fresh copy of the same chat: its turn may go on.
+                    let pull = transcripts
+                        .remove(&pane)
+                        .map(|base| base.pull.carried(&base.transcript, &transcript))
+                        .unwrap_or_default();
                     transcripts.insert(pane, Base {
                         transcript: Transcript::clone(&transcript),
                         cursor: Some(cursor),
+                        pull,
                     });
                 }
                 Ok((pane, Event::Change { change, cursor })) => {
@@ -65,7 +71,7 @@ pub(super) async fn run(state: Arc<State>) {
                         };
                         let (transcript, cursor) = link.base();
                         live.snapshot(&state, &pane, &transcript);
-                        transcripts.insert(pane.clone(), Base { transcript, cursor });
+                        transcripts.insert(pane.clone(), Base { transcript, cursor, pull: TurnPull::default() });
                     }
                     let Some(base) = transcripts.get_mut(&pane) else {
                         continue;
@@ -74,8 +80,10 @@ pub(super) async fn run(state: Arc<State>) {
                     if base.includes(cursor) {
                         continue;
                     }
+                    let pr = base.pull.step(&change);
                     let before = &mut base.transcript;
-                    let notification = notification(&state, &pane, before, &change);
+                    let notification =
+                        notification(&state, &pane, before, &change).map(|n| n.with_pr(pr));
                     live.change(&state, &pane, before, &change);
                     if before.apply(&change).is_err() {
                         // Rebuilt from the next Reset or change.
@@ -133,6 +141,8 @@ pub(super) async fn run(state: Arc<State>) {
 struct Base {
     transcript: Transcript,
     cursor: Option<Cursor>,
+    /// The pull request the chat's running turn created or pushed to.
+    pull: TurnPull,
 }
 
 impl Base {

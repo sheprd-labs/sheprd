@@ -4,7 +4,10 @@
 use super::remote_control::{click, draw, page, status};
 use super::*;
 use crate::{
-    config::{preferences::Preference, remote::Edit},
+    config::{
+        preferences::Preference,
+        remote::{Edit, Relay},
+    },
     remote::{
         Health, Supervisor,
         public_relays::{self, Listed, Public},
@@ -179,16 +182,19 @@ fn a_relay_row_says_how_the_daemon_stands_on_it() {
 fn sheprd_list() -> Listed {
     Listed {
         expires: EXPIRES,
+        serial: 1,
         relays: vec![
             Public {
                 address: HOME.into(),
                 name: Some("Frankfurt".into()),
                 region: Some("fra1".into()),
+                quic_pin: Some([8; 32]),
             },
             Public {
                 address: "https://nyc3.relay.example.org".into(),
                 name: None,
                 region: None,
+                quic_pin: Some([9; 32]),
             },
         ],
         signer: Signer::Maintainer,
@@ -226,14 +232,80 @@ fn sheprds_relays_are_offered_and_adding_one_saves_it(cx: &mut TestAppContext) {
     click(cx, "remote-public-relay-0-add");
     assert!(edits.lock().unwrap().is_empty());
     click(cx, "remote-public-relay-1-add");
+    // With the pin its signed list gives it.
     assert_eq!(
         *edits.lock().unwrap(),
         [Preference::Remote(Edit::Relays(vec![
             HOME.into(),
             AWAY.into(),
-            "https://nyc3.relay.example.org".into(),
+            Relay {
+                endpoint: "https://nyc3.relay.example.org".into(),
+                pin: Some([9; 32]),
+                ..Relay::default()
+            },
         ]))]
     );
+}
+
+#[gpui::test]
+fn reading_the_list_brings_a_listed_relays_pin_up_to_date(cx: &mut TestAppContext) {
+    let (view, cx, edits) = page(cx);
+    let named = Relay {
+        endpoint: HOME.into(),
+        label: sheprd_remote_control::relay_label::RelayLabel {
+            name: Some("home".into()),
+            ..Default::default()
+        },
+        pin: Some([1; 32]),
+    };
+    view.update(cx, |view, cx| {
+        view.config.remote.relays = vec![named.clone(), AWAY.into()];
+        view.load_public_relays(|| Ok(sheprd_list()), cx);
+    });
+    cx.run_until_parked();
+    // HOME's pin follows the list, its label stays; AWAY is not listed.
+    assert_eq!(
+        *edits.lock().unwrap(),
+        [Preference::Remote(Edit::Relays(vec![
+            Relay {
+                pin: Some([8; 32]),
+                ..named
+            },
+            AWAY.into(),
+        ]))]
+    );
+}
+
+#[gpui::test]
+fn a_list_read_while_settings_saves_updates_pins_once_idle(cx: &mut TestAppContext) {
+    let (view, cx, edits) = page(cx);
+    let pinned = Relay {
+        endpoint: HOME.into(),
+        pin: Some([1; 32]),
+        ..Relay::default()
+    };
+    view.update(cx, |view, cx| {
+        view.config.remote.relays = vec![pinned.clone()];
+        view.saving = true;
+        view.load_public_relays(|| Ok(sheprd_list()), cx);
+    });
+    cx.run_until_parked();
+    // Another save was running: the pins wait rather than being dropped.
+    assert!(edits.lock().unwrap().is_empty());
+    view.read_with(cx, |view, _| assert!(view.remote.pins_pending));
+    view.update(cx, |view, cx| {
+        view.saving = false;
+        view.finish_close(cx);
+    });
+    cx.run_until_parked();
+    assert_eq!(
+        *edits.lock().unwrap(),
+        [Preference::Remote(Edit::Relays(vec![Relay {
+            pin: Some([8; 32]),
+            ..pinned
+        }]))]
+    );
+    view.read_with(cx, |view, _| assert!(!view.remote.pins_pending));
 }
 
 #[gpui::test]
@@ -244,6 +316,7 @@ fn an_empty_or_unreadable_list_says_so(cx: &mut TestAppContext) {
         cx,
         Offered::Listed(Listed {
             expires: EXPIRES,
+            serial: 1,
             relays: Vec::new(),
             signer: Signer::Actions,
         }),

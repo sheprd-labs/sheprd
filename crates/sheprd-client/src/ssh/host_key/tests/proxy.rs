@@ -2,7 +2,6 @@
 //! (`-E`), never the stderr a proxy shares.
 
 use super::*;
-use std::os::unix::fs::PermissionsExt as _;
 
 /// A completed exchange as `ssh` logs it.
 const LOGGED: &str = "debug1: Server host key: ssh-ed25519 SHA256:abc
@@ -14,10 +13,10 @@ debug1: SSH2_MSG_SERVICE_ACCEPT received
 debug1: No more authentication methods to try.
 ";
 
-/// Writes an executable `sh` script at `path`.
+/// Writes an executable `sh` script at `path`, without the Linux `ETXTBSY`
+/// race a test thread forking meanwhile would cause.
 fn script(path: &Path, body: &str) {
-    std::fs::write(path, format!("#!/bin/sh\n{body}")).unwrap();
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    crate::test_executable::write(path, format!("#!/bin/sh\n{body}"), 0o755).unwrap();
 }
 
 /// A stand-in proxy prints the proof lines on the stderr it shares with

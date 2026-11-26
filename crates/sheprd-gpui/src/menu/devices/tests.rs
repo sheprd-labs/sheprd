@@ -45,18 +45,19 @@ fn only_a_present_herdr_is_saved_without_a_terminal() {
         Some(Offer::InstallKey)
     );
     // Without Fluent's isolation marks around each name.
-    let question = Offer::Install
-        .question("dev@box", Some("dev"))
-        .replace(['\u{2068}', '\u{2069}'], "");
+    let strip = |text: String| text.replace(['\u{2068}', '\u{2069}'], "");
+    assert_eq!(
+        strip(Offer::Install.question("dev@box", Some("dev"))),
+        "herdr-core was not detected on dev@box. Should we install it?"
+    );
+    assert_eq!(
+        strip(Offer::Update.question("dev@box", Some("dev"))),
+        "The Herdr on dev@box is too old for this app. Install herdr-core instead?"
+    );
     if cfg!(windows) {
-        // No terminal setup: the user is told what to run instead.
-        assert!(question.contains("Herdr was not detected there"));
-        assert!(question.contains("`herdr machine add dev@box`"));
-    } else {
-        assert_eq!(
-            question,
-            "Herdr was not detected on dev@box. Should we install it?"
-        );
+        // Interactive SSH prompts still need a terminal on Windows.
+        let terminal = strip(Offer::Terminal.question("dev@box", Some("dev")));
+        assert!(terminal.contains("`herdr machine add dev@box`"));
     }
 }
 

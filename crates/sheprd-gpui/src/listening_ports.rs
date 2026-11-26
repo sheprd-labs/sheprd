@@ -3,17 +3,21 @@
 //!
 //! Every host has its own worker thread scanning it every few seconds through
 //! one long-lived `sh`: a local one for this machine, the host's own over SSH
-//! for a remote one, and a distribution's own through `wsl.exe` for WSL. The UI thread only starts and stops workers and takes
-//! their answers on later ticks, so a slow `lsof` or an unreachable host never
-//! blocks rendering or delays another host.
+//! for a remote one, and a distribution's own through `wsl.exe` for WSL. A
+//! Windows host, and this machine when it runs Windows, is scanned through
+//! PowerShell instead (`windows`). The UI thread only starts and stops
+//! workers and takes their answers on later ticks, so a slow `lsof` or an
+//! unreachable host never blocks rendering or delays another host.
 // i18n: migrated
 
+mod command_line;
 mod core;
 pub(crate) use core::Place;
 mod error;
 mod render;
 mod scan;
 pub(crate) mod tunnel;
+mod windows;
 
 pub(crate) use error::Error;
 
@@ -24,6 +28,7 @@ use crate::{
     Result,
     system_load::Stop,
     usage::{Host, Shell},
+    windows_host::Session as WindowsSession,
 };
 pub(crate) use render::{chips, close_button};
 #[cfg(test)]
@@ -113,7 +118,7 @@ impl Daemon {
         let api = Path::new(socket);
         match identity {
             Identity::Client(client) => client_socket(api).as_deref() == Some(client.as_path()),
-            Identity::Session(name) => session_name(api) == Some(name.as_str()),
+            Identity::Session(name) => session_name(socket) == Some(name.as_str()),
         }
     }
 }
@@ -126,27 +131,79 @@ fn client_socket(api: &Path) -> Option<PathBuf> {
 }
 
 /// `…/sessions/<name>/herdr.sock` belongs to session `name`; the socket in
-/// the configuration root belongs to `default`.
-fn session_name(api: &Path) -> Option<&str> {
-    let directory = api.parent()?;
-    if directory.parent()?.file_name()? == "sessions" {
-        directory.file_name()?.to_str()
+/// the configuration root belongs to `default`. The path is the remote
+/// host's own, so a Windows host's `\` separates it as `/` does, whatever
+/// this machine runs.
+fn session_name(api: &str) -> Option<&str> {
+    let mut parts = api.rsplit(['/', '\\']);
+    let _file = parts.next()?;
+    let directory = parts.next()?;
+    if parts.next()? == "sessions" {
+        Some(directory)
     } else {
         Some("default")
     }
 }
 
-/// The shell a host is scanned through.
-fn open(host: &Host) -> Result<Shell> {
+/// What a host is scanned through.
+enum Scanner {
+    /// A POSIX shell, running [`scan::COMMAND`] each scan.
+    Shell(Shell),
+    /// A Windows host's PowerShell, printing the same lines on its own.
+    Windows(WindowsSession),
+}
+
+/// The scanner for `host`. `windows` is whether it answered as a Windows
+/// host before, so a reconnect goes straight to PowerShell.
+fn open(host: &Host, windows: bool) -> Result<Scanner> {
     match host {
-        Host::Local => local_shell(),
-        Host::Ssh(target) => Shell::connect(target).map_err(crate::Error::from),
+        Host::Local => local(),
+        Host::Ssh(target) if windows => windows_scanner(target),
+        // A Windows host's `cmd.exe` or PowerShell cannot start `/bin/sh`;
+        // Git Bash there can, but finds neither `ss` nor `lsof`. Either is
+        // scanned through PowerShell. When that fails too, the POSIX failure
+        // is the one reported.
+        Host::Ssh(target) => match Shell::connect(target) {
+            Ok(mut shell) => {
+                if git_bash(&mut shell) {
+                    windows_scanner(target)
+                } else {
+                    Ok(Scanner::Shell(shell))
+                }
+            }
+            Err(posix) => windows_scanner(target).map_err(|_| failed(posix)),
+        },
         // A distribution is scanned as a Linux host, with its own `ss`.
-        Host::Wsl(distro) => Shell::connect_wsl(distro).map_err(crate::Error::from),
+        Host::Wsl(distro) => Shell::connect_wsl(distro)
+            .map(Scanner::Shell)
+            .map_err(failed),
         #[cfg(feature = "azure")]
-        Host::Azure { .. } => Err(crate::Error::CloudHostUnsupported),
+        Host::Azure { .. } => Err(failed(crate::Error::CloudHostUnsupported)),
     }
-    .map_err(failed)
+}
+
+/// A Windows host's PowerShell, which must give one answer before it counts
+/// as one: an SSH failure, or a host with no PowerShell, gives none.
+fn windows_scanner(target: &str) -> Result<Scanner> {
+    let mut session = WindowsSession::connect(target, &windows::script()).map_err(failed)?;
+    session.sample(STEP_TIMEOUT).map_err(failed)?;
+    Ok(Scanner::Windows(session))
+}
+
+/// Whether the shell is Git Bash, MSYS2 or Cygwin on Windows, whose
+/// `uname -s` reads like `MINGW64_NT-10.0-26200`.
+fn git_bash(shell: &mut Shell) -> bool {
+    shell.run("uname -s", STEP_TIMEOUT).is_ok_and(|output| {
+        // i18n: data
+        ["MINGW", "MSYS", "CYGWIN"]
+            .iter()
+            .any(|prefix| output.stdout.trim().starts_with(prefix))
+    })
+}
+
+#[cfg(unix)]
+fn local() -> Result<Scanner> {
+    local_shell().map(Scanner::Shell).map_err(failed)
 }
 
 #[cfg(unix)]
@@ -160,15 +217,23 @@ fn local_shell() -> Result<Shell> {
     Ok(Shell::start(command)?)
 }
 
-/// Windows has neither `ss` nor `lsof`, and its own tools are not wired up.
+/// Windows has neither `ss` nor `lsof`; this machine is scanned as a Windows
+/// host is.
 #[cfg(windows)]
-fn local_shell() -> Result<Shell> {
-    Err(Error::Unsupported.into())
+fn local() -> Result<Scanner> {
+    WindowsSession::local(&windows::script())
+        .map(Scanner::Windows)
+        .map_err(failed)
 }
 
-fn scan(shell: &mut Shell) -> Result<Scan> {
-    let output = shell.run(scan::COMMAND, STEP_TIMEOUT).map_err(failed)?;
-    parse(&output.stdout)
+fn scan(scanner: &mut Scanner) -> Result<Scan> {
+    match scanner {
+        Scanner::Shell(shell) => {
+            let output = shell.run(scan::COMMAND, STEP_TIMEOUT).map_err(failed)?;
+            parse(&output.stdout)
+        }
+        Scanner::Windows(session) => parse(&session.sample(STEP_TIMEOUT).map_err(failed)?),
+    }
 }
 
 fn failed(error: impl Into<crate::Error>) -> crate::Error {
@@ -204,17 +269,20 @@ fn spawn(host: Host) -> Option<Worker> {
 }
 
 fn run(host: &Host, stop: &Stop, results: &mpsc::SyncSender<Result<Scan>>) {
-    let mut shell: Option<Shell> = None;
+    let mut scanner: Option<Scanner> = None;
+    // Once a host answers through PowerShell it stays a Windows host.
+    let mut windows = false;
     loop {
-        let opened = match shell.take() {
-            Some(shell) => Ok(shell),
-            None => open(host),
+        let opened = match scanner.take() {
+            Some(scanner) => Ok(scanner),
+            None => open(host, windows),
         };
         let result = opened.and_then(|mut opened| {
             let ports = scan(&mut opened);
+            windows |= matches!(opened, Scanner::Windows(_));
             // A failed step leaves the shell unusable; a missing tool does not.
             if !matches!(ports, Err(crate::Error::ListeningPorts(Error::Scan(_)))) {
-                shell = Some(opened);
+                scanner = Some(opened);
             }
             ports
         });

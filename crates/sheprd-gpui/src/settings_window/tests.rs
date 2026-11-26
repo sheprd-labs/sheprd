@@ -8,6 +8,8 @@ use std::sync::{
 
 mod activity_bar_windows;
 mod appearance_messages;
+#[cfg(feature = "cloud")]
+mod cloud_switches;
 mod config_watch;
 mod en_xa;
 mod fleet;

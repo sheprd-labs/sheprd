@@ -9,6 +9,9 @@ enum AlertKeys {
     static let event = "event"
     static let pane = "pane"
     static let permission = "permission"
+    /// The pull request a finished turn offers to open
+    /// (`AlertPullRequest`), as its address.
+    static let pullRequest = "pr"
     /// Set when the pane is a terminal's, which a tap opens.
     static let terminal = "terminal"
 
@@ -25,20 +28,24 @@ enum AlertKeys {
 }
 
 /// Registers the category a notification's actions hang on. Questions get
-/// one category per distinct set of answers, so the Notification Service
-/// Extension adds each before showing its notification, keeping only the
-/// most recent few.
+/// one category per distinct set of answers, and finished turns one per
+/// pull request number, so the Notification Service Extension adds each
+/// before showing its notification, keeping only the most recent few of
+/// each family.
 enum NotificationCategories {
     static let maxQuestionCategories = 16
+    static let families = ["question.", AlertPresentation.pullRequestCategoryPrefix]
 
     static func register(_ presentation: AlertPresentation) async {
         guard let id = presentation.category else { return }
         let center = UNUserNotificationCenter.current()
         var categories = await center.notificationCategories()
         if categories.contains(where: { $0.identifier == id }) { return }
-        let questions = categories.filter { $0.identifier.hasPrefix("question.") }
-        if questions.count >= maxQuestionCategories, let oldest = questions.first {
-            categories.remove(oldest)
+        if let family = families.first(where: id.hasPrefix) {
+            let kin = categories.filter { $0.identifier.hasPrefix(family) }
+            if kin.count >= maxQuestionCategories, let oldest = kin.first {
+                categories.remove(oldest)
+            }
         }
         categories.insert(category(id, presentation.actions))
         center.setNotificationCategories(categories)
@@ -54,17 +61,20 @@ enum NotificationCategories {
     }
 
     private static func action(_ action: AlertPresentation.Action) -> UNNotificationAction {
-        switch action.style {
+        let icon = action.icon.map { UNNotificationActionIcon(systemImageName: $0) }
+        return switch action.style {
         case let .textInput(placeholder):
             // A prompt can make an agent do anything, so a locked phone
             // asks for Face ID or the passcode first.
-            UNTextInputNotificationAction(identifier: action.id, title: action.title, options: [.authenticationRequired], textInputButtonTitle: "Send", textInputPlaceholder: placeholder)
+            UNTextInputNotificationAction(identifier: action.id, title: action.title, options: [.authenticationRequired], icon: icon, textInputButtonTitle: "Send", textInputPlaceholder: placeholder)
         case .destructive:
-            UNNotificationAction(identifier: action.id, title: action.title, options: [.destructive])
+            UNNotificationAction(identifier: action.id, title: action.title, options: [.destructive], icon: icon)
         case .authenticated:
-            UNNotificationAction(identifier: action.id, title: action.title, options: [.authenticationRequired])
+            UNNotificationAction(identifier: action.id, title: action.title, options: [.authenticationRequired], icon: icon)
+        case .foreground:
+            UNNotificationAction(identifier: action.id, title: action.title, options: [.foreground], icon: icon)
         case .plain:
-            UNNotificationAction(identifier: action.id, title: action.title, options: [])
+            UNNotificationAction(identifier: action.id, title: action.title, options: [], icon: icon)
         }
     }
 }

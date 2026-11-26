@@ -66,7 +66,7 @@ impl SheprdWindow {
             return;
         }
         pane.toggle_expanded(entry);
-        self.release_chat_text(pane_id);
+        self.release_chat_text(pane_id, cx);
         cx.stop_propagation();
         self.redraw_terminal(cx);
         cx.notify();
@@ -137,7 +137,7 @@ impl SheprdWindow {
             return;
         }
         if event.pressed_button != Some(MouseButton::Left) {
-            self.release_chat_text(pane_id);
+            self.release_chat_text(pane_id, cx);
             return;
         }
         pane.text_drag.point = Some(event.position);
@@ -151,11 +151,37 @@ impl SheprdWindow {
         cx.notify();
     }
 
-    pub(in crate::chat) fn release_chat_text(&mut self, pane_id: &str) {
-        if let Some(pane) = self.chats.pane_mut(pane_id) {
-            pane.selection.release();
-            pane.text_geometry.release();
-            pane.text_drag = Default::default();
+    /// Ends a transcript drag. With Herdr's shared `ui.copy_on_select` on,
+    /// as for terminals, the text it chose goes to the clipboard; the
+    /// highlight stays so Cmd-C or Escape still work on it.
+    pub(in crate::chat) fn release_chat_text(&mut self, pane_id: &str, cx: &mut Context<Self>) {
+        let Some(pane) = self.chats.pane_mut(pane_id) else {
+            return;
+        };
+        let selecting = pane.selection.is_selecting();
+        pane.selection.release();
+        pane.text_geometry.release();
+        pane.text_drag = Default::default();
+        if !selecting || pane.selection.is_empty() || !self.copy_on_select() {
+            return;
+        }
+        let Some(pane) = self.chats.pane(pane_id) else {
+            return;
+        };
+        match pane.selection.text(pane.prepared.text()) {
+            Some(text) => {
+                cx.write_to_clipboard(ClipboardItem::new_string(text));
+                if self.config.clipboard_toast.enabled {
+                    self.show_flash(
+                        crate::window::Flash::success(crate::i18n::fl!("window-find-copied")),
+                        cx,
+                    );
+                }
+            }
+            None => self.show_flash(
+                crate::window::Flash::warning(crate::i18n::fl!("chat-select-less")),
+                cx,
+            ),
         }
     }
 

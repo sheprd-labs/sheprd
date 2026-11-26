@@ -155,7 +155,7 @@ Claude (run directly), Codex, and Claude through its ACP adapter report these, t
 
 Messages render Markdown and TeX: headings, lists, links, tables, Mermaid, code with syntax colors, inline and display equations, and attached images. **Ctrl+-**, **Ctrl++** and **Ctrl+0** change text size on Linux and Windows; macOS uses Cmd.
 
-- **Selecting.** Drag across text to select across messages, code, and tables. Tables copy as tab-separated cells, and formulas copy their TeX.
+- **Selecting.** Drag across text to select across messages, code, and tables. Tables copy as tab-separated cells, and formulas copy their TeX. Releasing the drag copies the selection, as in terminals; with Herdr's `[ui] copy_on_select = false` it waits for Cmd-C or Ctrl-C instead.
 - **Pictures.** A local image the agent links or a tool wrote shows in the chat, on SSH hosts too. A web picture shows as a card and loads only when you press **Load**, since loading it tells that server your address.
 - **Code blocks.** Each has **Wrap** and **Copy code** buttons. Settings > Chat sets whether blocks start wrapped (`chat.wrap_code`), with line numbers (`chat.code_line_numbers`), or with alternating line colors (`chat.code_stripes`); a block's own **Wrap** button still changes that block alone.
 - **Pages.** An `html` code block, or an HTML file a tool wrote on this machine, gets a **Show page** button. On macOS and Windows the page runs inside the message; on Linux the button opens your browser. **HTML blocks** in Settings > Chat (`chat.render_html`) starts an agent's `html` block as this card (`default`), with its page already loaded (`always`, macOS and Windows), or as code (`never`). **Show code** and **Render webpage** switch each block either way.

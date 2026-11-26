@@ -174,9 +174,10 @@ impl SheprdWindow {
         };
         setup.step = Step::Checking(distro.clone());
         setup.error = None;
+        let tmux = self.config.terminal_backend == crate::config::TerminalBackend::Tmux;
         let background = cx
             .background_executor()
-            .spawn(async move { add(&distro, &session) });
+            .spawn(async move { add(&distro, &session, tmux) });
         setup.task = Some(cx.spawn_in(window, async move |this, cx| {
             let outcome = background.await;
             let _ = this.update_in(cx, |this, window, cx| {
@@ -495,9 +496,9 @@ impl SheprdWindow {
 /// or herdr-core (Herdr 2) is there alone. A stopped server is fine: the
 /// bridge starts it on the first connection.
 /// Blocking: runs on the background executor.
-fn add(distro: &str, session: &str) -> Outcome {
-    match sheprd_client::probe_distro(distro, session) {
-        Ok(HostProbe::Core | HostProbe::Running | HostProbe::Stopped) => {
+fn add(distro: &str, session: &str, tmux: bool) -> Outcome {
+    match sheprd_client::wsl::probe_terminals(distro, session, tmux) {
+        Ok(HostProbe::Tmux | HostProbe::Core | HostProbe::Running | HostProbe::Stopped) => {
             match sheprd_client::add_wsl_host(false, distro, session) {
                 Ok(()) => Outcome::Saved,
                 Err(error) => {

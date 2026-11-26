@@ -145,6 +145,35 @@ impl<'a> Kept<'a> {
     }
 }
 
+/// Placement of managed tmux panes in the same saved tabs the core reads.
+/// A named Herdr session can have its own w1 on this computer.
+#[cfg(feature = "tmux")]
+pub(in crate::hub) fn tmux_placements(
+    file: Option<&SavedTabs>,
+    primary: Option<&str>,
+    named: &BTreeMap<String, String>,
+) -> std::collections::HashMap<TerminalId, (String, Option<String>)> {
+    let kept = Kept {
+        file,
+        primary,
+        named,
+        doc: None,
+    };
+    let mut locations = std::collections::HashMap::new();
+    for tab in kept.tabs() {
+        for pane in tab.panes.terminals().into_iter().filter(|id| id.is_tmux()) {
+            let name = tab
+                .names
+                .and_then(|names| names.get(pane.as_str()))
+                .cloned();
+            locations
+                .entry(pane.clone())
+                .or_insert_with(|| (tab.workspace_id.to_string(), name));
+        }
+    }
+    locations
+}
+
 fn file_tabs<'a>(
     saved: &'a SavedTabs,
     scope: &'a str,

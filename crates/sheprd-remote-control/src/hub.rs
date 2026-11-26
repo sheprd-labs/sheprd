@@ -18,6 +18,8 @@ mod observed;
 mod recency;
 pub(crate) mod row_summary;
 mod sessions;
+#[cfg(feature = "tmux")]
+mod tmux;
 mod wake;
 
 pub(crate) use api::ApiMethod;
@@ -85,6 +87,12 @@ pub enum Error {
     SessionOnHerdr2,
     #[error("Herdr did not answer in time")]
     Timeout,
+    #[cfg(feature = "tmux")]
+    #[error(transparent)]
+    Tmux(#[from] sheprd_tmux::Error),
+    #[cfg(feature = "tmux")]
+    #[error("This action requires a terminal view on the tmux host")]
+    TmuxAction,
     #[error("no such chat")]
     UnknownChat,
     #[error("no such workspace")]
@@ -175,6 +183,8 @@ impl Hub {
             daemon_layout.clone(),
             core_layout,
         ));
+        #[cfg(feature = "tmux")]
+        let base_layout = tmux::with_chats(base_layout, &target, state_dir, sessions.clone());
         tokio::spawn(sessions::merge_sources(
             sender,
             base_layout,
@@ -379,6 +389,16 @@ impl Hub {
             .ok_or(Error::UnknownWorkspace)?
             .cwd
             .clone();
+        #[cfg(feature = "tmux")]
+        if self.wants_tmux_chat(workspace).await {
+            let cwd = cwd.unwrap_or(&folder).to_owned();
+            let workspace = workspace.to_owned();
+            return tokio::task::spawn_blocking(move || {
+                tmux::open_chat(agent, &launcher, &workspace, &cwd, &folder)
+            })
+            .await
+            .map_err(|_| Error::NotConnected)?;
+        }
         if let Some(core) = self.core_for_work().await? {
             let cwd = cwd.unwrap_or(&folder).to_owned();
             // Labelled for its workspace, so Sheprd puts it in a tab there.
@@ -406,7 +426,9 @@ impl Hub {
         let mut layout = self.layout.clone();
         tokio::time::timeout(
             limit,
-            chat_listed_and_linked(&mut layout, pane, || self.chat(pane).is_some()),
+            chat_listed_and_linked(&mut layout, pane, || {
+                self.chat(pane).is_some_and(|chat| chat.ready_to_open())
+            }),
         )
         .await
         .is_ok()
@@ -473,6 +495,14 @@ impl Hub {
 
     /// Calls Herdr's public API, for the terminal views.
     pub(crate) async fn call(&self, method: ApiMethod, params: Value) -> Result<Value> {
+        #[cfg(feature = "tmux")]
+        if sessions::ID_KEYS.iter().any(|key| {
+            params[key]
+                .as_str()
+                .is_some_and(|id| id.starts_with("tmux:"))
+        }) {
+            return Err(Error::TmuxAction);
+        }
         if core::owns(&params) {
             if !self.layout().connected {
                 return Err(Error::NotConnected);

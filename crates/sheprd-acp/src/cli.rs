@@ -69,6 +69,8 @@ pub(crate) enum Parsed {
     Session(crate::session_helpers::Command),
     /// This host's index of agent sessions.
     Traces(crate::traces::Command),
+    /// Serve a thread's transcript file to its agent over MCP on stdio.
+    ThreadMcp(sheprd_chat_protocol::thread::ThreadId),
     Help,
     Version,
 }
@@ -191,6 +193,9 @@ Usage:
   sheprd-acp traces exchange
                         One bounded replication request on stdin and reply on stdout;
                         used by connected Sheprd hosts over authenticated transport.
+  sheprd-acp thread-mcp --thread ID
+                        Serve thread ID's conversation to its agent over MCP
+                        on stdin/stdout, read-only (chats start it themselves).
   sheprd-acp mirror codex|claude FILE [--pane ID] [--endpoint ID]
                         Watch an existing JSONL transcript, read-only; starts
                         no agent and changes no Herdr pane metadata. Prints
@@ -297,6 +302,10 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Parsed, 
         Some("traces") => {
             args.next();
             return traces::parse(args);
+        }
+        Some(crate::thread_mcp::COMMAND) => {
+            args.next();
+            return crate::thread_mcp::parse(args).map(Parsed::ThreadMcp);
         }
         Some("observe") => {
             args.next();

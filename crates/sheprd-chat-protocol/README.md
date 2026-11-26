@@ -31,7 +31,10 @@ once its conversation started, and every entry in the thread's transcript
 file beside it (`thread::file`): JSON lines, at most 64 MiB, trimmed from
 the oldest entry after the pinned first prompt, with each trimmed range of
 ids recorded so a read of one answers "trimmed". Segments are capped at 64;
-past that the oldest two fold into one.
+past that the oldest two fold into one. `thread::read` turns the file into what an agent
+reads by id range or search, bounded per call, and `handoff::build_with`
+names the entries a handoff leaves out by id for an agent that can read
+them.
 
 An image is a PNG, JPEG, GIF, or WebP as base64 text of at most
 `MAX_IMAGE_DATA` bytes, either an entry of its own (from the user or the agent)

@@ -6,22 +6,31 @@ status: shipped
 
 # Terminals
 
-This page covers terminal panes in Sheprd: the two kinds of terminal, splitting and moving panes, selecting and copying text, opening links, pasting images, and dropping files, including onto SSH hosts.
+Sheprd keeps terminals in workspaces. Each pane can run on Herdr or tmux, locally or on a connected host.
 
-## Herdr 1 and Herdr 2 terminals
+## Choosing a terminal backend
 
-A Herdr daemon owns every terminal, so closing Sheprd leaves your terminals and agents running. Sheprd works with two daemons side by side, in the same workspaces:
+Herdr 1 and Herdr 2 are included by default. To add tmux to the desktop, chat helper and remote service, build with `cargo build --locked -p sheprd-gpui -p sheprd-acp -p sheprd-remote-control --features tmux`. On macOS, `just bundle release tmux` builds the app bundle. A build without the feature preserves saved tmux pane addresses for the next tmux-enabled build. Its new terminals follow the existing Herdr preference.
 
-- **Herdr 1** (`herdr server`) runs terminal tabs and sends Sheprd their cells to draw.
-- **Herdr 2** (herdr-core) streams each terminal's raw output, which Sheprd emulates and draws with the same painter. Every release bundles a pinned herdr-core.
+Open **Settings → Tabs → Terminal backend** to select **Herdr 1**, **Herdr 2**, or **tmux** for new terminals. Each saved pane reattaches to the backend that created it. Splitting a pane uses its backend too. Closing the desktop leaves the terminal processes running.
 
-Nothing moves from one to the other on its own: Herdr 1 tabs stay Herdr 1 tabs. [Teleport](teleport.md) moves a worktree's tabs into another host's Herdr 2 when new terminals use Herdr 2.
+- **Herdr 1** supplies workspaces, tabs, panes and their rendered cells.
+- **Herdr 2** streams terminal output from herdr-core to Sheprd. Open one directly with **New Herdr 2 Terminal** or `sheprd run new_core_terminal`.
+- **tmux** runs each Sheprd terminal in a session on its dedicated server. Install tmux on the host where you want the shell, then choose **New tmux Terminal** or run `sheprd run new_tmux_terminal`. `tmux -L sheprd list-sessions` lists those sessions. The desktop stores workspace and split layouts. It can open its first local shell with both Herdr daemons absent.
 
-To open a Herdr 2 terminal, run **New Herdr 2 Terminal** in the command palette, or `sheprd run new_core_terminal`. To make every new tab a Herdr 2 terminal, turn on **Settings > Tabs > New terminals use Herdr 2**:
+For example, set this at the top level of `config-gpui.local.toml`:
 
 ```toml
-herdr_2_terminals = true
+terminal_backend = "tmux"
 ```
+
+The other values are `"herdr"` and `"herdr-core"`. Existing configurations using `herdr_2_terminals` keep their choice until you set `terminal_backend`.
+
+On macOS or Linux, tmux can run locally. Saved POSIX SSH hosts, WSL distributions and cloud hosts run tmux on the host itself. With tmux selected, Add Device recognizes it when probing an SSH host or WSL distribution.
+
+tmux panes use the native terminal view for input, scrollback, selection, search, splits and read-only mirrors. Sheprd chats can report their agent status and title to tmux. After a host reboot, reopening a saved tmux pane starts its login shell in the folder it was last in or resumes its Sheprd chat with the provider’s saved session and conversation history. Tabs you saved in a Herdr 1 workspace keep that backend: Sheprd starts Herdr 1 at launch to show them, even when tmux is selected. Closing the owning pane removes its recovery record. Personal tmux servers have separate inventories. Phone terminal control, Teleport, and core-backed automations still depend on Herdr services.
+
+## Herdr 2 terminals
 
 On this computer, Sheprd joins a herdr-core that is already running, or starts your own `herdr-core` or the bundled one when a Herdr 2 terminal is first needed. `herdr-core ls` lists its terminals.
 
@@ -29,7 +38,7 @@ A Herdr 2 terminal in a workspace on an SSH host, cloud machine, or WSL distribu
 
 Herdr's shared `[ui]` settings apply to Herdr 2 panes too: `copy_on_select`, `mouse_scroll_lines`, and `right_click_passthrough_modifier`.
 
-A Herdr 2 pane keeps 10,000 lines of scrollback by default. **Settings > Tabs > Herdr 2 scrollback** offers 1,000 to 100,000, and `herdr_2_scrollback` in the config takes any number in that range; a terminal opened after the change uses the new size. herdr-core itself keeps each terminal's recent output, a few thousand lines, through Sheprd and herdr-core restarts, and a pane shows it again when it opens, so scrolling back after a restart works without a switch. **Restore Herdr 1 scrollback after it restarts** and Herdr's `[advanced] scrollback_limit_bytes` apply to Herdr 1 only.
+A Herdr 2 or tmux pane keeps 10,000 lines of scrollback by default. **Settings > Tabs > Terminal scrollback** offers 1,000 to 100,000, and `herdr_2_scrollback` in the config takes any number in that range; a terminal opened after the change uses the new size. herdr-core itself keeps each terminal's recent output, a few thousand lines, through Sheprd and herdr-core restarts, and a pane shows it again when it opens, so scrolling back after a restart works without a switch. **Restore Herdr 1 scrollback after it restarts** and Herdr's `[advanced] scrollback_limit_bytes` apply to Herdr 1 only.
 
 ```toml
 herdr_2_scrollback = 50000

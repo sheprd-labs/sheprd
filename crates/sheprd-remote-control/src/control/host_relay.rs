@@ -78,6 +78,13 @@ pub struct Info {
     /// `GET /api/relay` once it reaches the computer, through the relay too.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub labels: BTreeMap<String, RelayLabel>,
+    /// The QUIC certificate pin of each relay whose pin Sheprd's signed
+    /// relay list gave (`[remote] relays`, `pin`), by endpoint, base64url:
+    /// the phone then trusts only that certificate there, not the one the
+    /// relay's `/v1/info` reports. Left out like the labels, and ignored by
+    /// older phones.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub pins: BTreeMap<String, String>,
     /// The relays the computer listens on, nearest first; those not
     /// listening now keep their configured order, after the rest.
     pub relays: Vec<String>,
@@ -105,14 +112,19 @@ impl Info {
                 .labels
                 .iter()
                 .all(|(relay, label)| field(relay) && label.check().is_ok())
+            && self.pins.len() <= MAX_RELAYS
+            && self.pins.iter().all(|(relay, pin)| {
+                field(relay) && sheprd_relay::endpoint::decode_pin(pin).is_some()
+            })
     }
 
-    /// The info without labels, as nearby offers and carried answers send
-    /// it.
+    /// The info without labels or pins, as nearby offers and carried
+    /// answers send it: their bytes stay as the shared vectors fix them.
     #[must_use]
     pub fn without_labels(self) -> Self {
         Self {
             labels: BTreeMap::new(),
+            pins: BTreeMap::new(),
             ..self
         }
     }
@@ -309,7 +321,7 @@ pub enum State {
     Pending,
     /// Sheprd carried it; [`Outcome::Elsewhere`] means no host this
     /// computer's Sheprd connects to is that computer.
-    Done(Outcome),
+    Done(Box<Outcome>),
 }
 
 /// A phone's request for Sheprd to carry: the phone as the near computer

@@ -149,7 +149,7 @@ pub(crate) fn save(dir: &Path, session: &str, brief: Known) -> Result<(), Error>
     #[cfg(unix)]
     std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
     builder.create(dir).map_err(failed)?;
-    prune(dir, &target);
+    prune(dir, &target, MAX_FILES);
     let temporary = target.with_extension(format!("tmp-{}", std::process::id()));
     let mut options = fs::OpenOptions::new();
     options.write(true).create(true).truncate(true);
@@ -167,7 +167,7 @@ pub(crate) fn save(dir: &Path, session: &str, brief: Known) -> Result<(), Error>
 
 /// Removes the oldest session files once [`MAX_FILES`] are kept, sparing
 /// `keep`; at most [`MAX_ENTRIES`] directory entries are looked at.
-fn prune(dir: &Path, keep: &Path) {
+pub(crate) fn prune(dir: &Path, keep: &Path, limit: usize) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
@@ -179,7 +179,7 @@ fn prune(dir: &Path, keep: &Path) {
         .filter_map(|entry| Some((entry.metadata().ok()?.modified().ok()?, entry.path())))
         .collect();
     // Room for the file about to be written.
-    let excess = (files.len() + 1).saturating_sub(MAX_FILES);
+    let excess = (files.len() + 1).saturating_sub(limit);
     if excess == 0 {
         return;
     }

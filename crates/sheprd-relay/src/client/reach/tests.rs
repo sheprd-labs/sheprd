@@ -70,3 +70,14 @@ async fn a_name_with_no_address_did_not_resolve() {
     let failed = first_reachable(&[], ATTEMPT, |_| async { Ok(()) }).await;
     assert!(matches!(failed, Err(Error::Resolve(_))));
 }
+
+#[test]
+fn an_expected_pin_must_be_the_one_reported() {
+    let reported = [1; 32];
+    assert_eq!(trusted(reported, None).unwrap(), reported);
+    assert_eq!(trusted(reported, Some(reported)).unwrap(), reported);
+    assert!(matches!(
+        trusted(reported, Some([2; 32])),
+        Err(Error::PinMismatch)
+    ));
+}

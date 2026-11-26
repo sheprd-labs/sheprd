@@ -137,11 +137,11 @@ pub(super) fn add_device_offer(cloud: bool) -> String {
 }
 
 impl SheprdWindow {
-    /// Whether Add Device lists cloud providers: built in and able to connect.
+    /// Whether Add Device lists cloud providers: built in, turned on, and able
+    /// to connect.
     pub(super) fn cloud_offered(&self) -> bool {
         #[cfg(feature = "cloud")]
-        return crate::cloud::unavailable().is_none()
-            && !crate::cloud::CloudProvider::ALL.is_empty();
+        return crate::cloud::unavailable().is_none() && !crate::cloud::enabled().is_empty();
         #[cfg(not(feature = "cloud"))]
         false
     }

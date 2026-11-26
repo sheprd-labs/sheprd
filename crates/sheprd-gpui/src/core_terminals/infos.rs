@@ -1,9 +1,10 @@
-//! What herdr-core reports about each terminal: its agent's status, its
+//! What each backend reports about its terminals: its agent's status, its
 //! folder, and its name, for the chrome of split panes. Read on a short-lived
 //! thread every few seconds while a split is shown, never on the UI thread.
+//! The same read saves where each tmux shell moved, for a reboot to reopen.
 
-use sheprd_backend::{Backend as _, TerminalId, TerminalInfo};
-use sheprd_core_client::CoreBackend;
+use super::provider::Provider;
+use sheprd_backend::{TerminalId, TerminalInfo};
 use std::{
     collections::{HashMap, HashSet},
     sync::mpsc::{Receiver, TryRecvError, sync_channel},
@@ -13,7 +14,13 @@ use std::{
 /// How often the list is read again.
 const EVERY: Duration = Duration::from_secs(2);
 
-type Listed = Receiver<Result<Vec<TerminalInfo>, sheprd_core_client::Error>>;
+type Inventory = Result<Vec<TerminalInfo>, super::Error>;
+
+#[derive(Default)]
+struct Listed {
+    core: Option<Inventory>,
+    tmux: Option<Inventory>,
+}
 
 #[derive(Default)]
 pub(super) struct Infos {
@@ -26,8 +33,10 @@ pub(super) struct Infos {
     read: Option<Instant>,
     /// Lists read so far.
     lists: u64,
+    core_read: Option<Instant>,
+    tmux_available: bool,
     /// The list on its way, and when it was asked for.
-    pending: Option<(Instant, Listed)>,
+    pending: Option<(Instant, Receiver<Listed>)>,
 }
 
 impl Infos {
@@ -35,20 +44,17 @@ impl Infos {
         self.known.get(id)
     }
 
-    /// The terminal herdr-core knows by `name`.
-    pub(super) fn by_name(&self, name: &str) -> Option<&TerminalInfo> {
-        self.known
-            .values()
-            .find(|info| info.name.as_deref() == Some(name))
-    }
-
     /// The terminal `id` names: its address, or else its name, as a terminal
     /// found by name is shown under it.
     pub(super) fn named(&self, id: &TerminalId) -> Option<&TerminalInfo> {
         self.get(id).or_else(|| {
+            // Only old core saves can hold a name in place of an address.
+            if id.is_tmux() {
+                return None;
+            }
             self.known
                 .values()
-                .find(|info| info.name.as_deref() == Some(id.as_str()))
+                .find(|info| !info.id.is_tmux() && info.name.as_deref() == Some(id.as_str()))
         })
     }
 
@@ -67,12 +73,26 @@ impl Infos {
         self.known.values()
     }
 
+    /// Only records whose labels can be read or modified through herdr-core.
+    pub(super) fn core_terminals(&self) -> impl Iterator<Item = &TerminalInfo> {
+        self.all().filter(|info| !info.id.is_tmux())
+    }
+
     /// When the list known was asked for; none before the first.
     pub(super) fn read_at(&self) -> Option<Instant> {
         self.read
     }
 
+    pub(super) fn core_read_at(&self) -> Option<Instant> {
+        self.core_read
+    }
+
+    pub(super) fn tmux_available(&self) -> bool {
+        self.tmux_available
+    }
+
     /// How many lists have been read; none means nothing is known yet.
+    #[cfg(any(target_os = "macos", windows, test))]
     pub(super) fn lists(&self) -> u64 {
         self.lists
     }
@@ -85,6 +105,7 @@ impl Infos {
             .map(|info| (info.id.clone(), info))
             .collect();
         self.read = Some(Instant::now());
+        self.core_read = self.read;
         self.lists += 1;
     }
 
@@ -96,34 +117,63 @@ impl Infos {
         info
     }
 
+    pub(super) fn needs_poll(&self, now: Instant) -> bool {
+        self.pending.is_some()
+            || self
+                .last
+                .is_none_or(|last| now.duration_since(last) >= EVERY)
+    }
+
     /// Takes a finished read and starts the next when one is due. True when
     /// what is known changed.
-    pub(super) fn poll(&mut self, backend: Option<&CoreBackend>, now: Instant) -> bool {
+    pub(super) fn poll(
+        &mut self,
+        core: Option<Provider>,
+        tmux: Option<Provider>,
+        now: Instant,
+    ) -> bool {
         let mut changed = false;
         if let Some((asked, pending)) = &self.pending {
             let asked = *asked;
             match pending.try_recv() {
-                Ok(Ok(list)) => {
-                    let mut known: HashMap<TerminalId, TerminalInfo> = list
-                        .into_iter()
-                        .map(|info| (info.id.clone(), info))
-                        .collect();
-                    // A fresh terminal outlives one list that missed it.
-                    for id in self.fresh.drain() {
-                        if let Some(info) = self.known.get(&id)
-                            && !known.contains_key(&id)
-                        {
-                            known.insert(id, info.clone());
+                Ok(listed) => {
+                    let mut succeeded = false;
+                    for (tmux, result) in [(false, listed.core), (true, listed.tmux)] {
+                        if tmux {
+                            let available = result.as_ref().is_some_and(Result::is_ok);
+                            changed |= available != self.tmux_available;
+                            self.tmux_available = available;
+                        } else if result.as_ref().is_some_and(Result::is_ok) {
+                            self.core_read = Some(asked);
+                        }
+                        match result {
+                            Some(Ok(list)) => {
+                                succeeded = true;
+                                let mut missing: HashSet<_> = self
+                                    .known
+                                    .keys()
+                                    .filter(|id| id.is_tmux() == tmux)
+                                    .cloned()
+                                    .collect();
+                                for info in list {
+                                    missing.remove(&info.id);
+                                    changed |= self.known.get(&info.id) != Some(&info);
+                                    self.known.insert(info.id.clone(), info);
+                                }
+                                for id in missing.difference(&self.fresh) {
+                                    self.known.remove(id);
+                                    changed = true;
+                                }
+                                self.fresh.retain(|id| id.is_tmux() != tmux);
+                            }
+                            Some(Err(error)) => tracing::debug!(%error, "Could not list terminals"),
+                            None => {}
                         }
                     }
-                    changed = known != self.known;
-                    self.known = known;
-                    self.read = Some(asked);
-                    self.lists += 1;
-                    self.pending = None;
-                }
-                Ok(Err(error)) => {
-                    tracing::debug!(%error, "Could not list herdr-core terminals");
+                    if succeeded {
+                        self.read = Some(asked);
+                        self.lists += 1;
+                    }
                     self.pending = None;
                 }
                 Err(TryRecvError::Disconnected) => self.pending = None,
@@ -133,18 +183,34 @@ impl Infos {
         let due = self
             .last
             .is_none_or(|last| now.duration_since(last) >= EVERY);
-        if let Some(backend) = backend.filter(|_| self.pending.is_none() && due) {
+        if (core.is_some() || tmux.is_some()) && self.pending.is_none() && due {
             self.last = Some(now);
-            let backend = backend.clone();
             let (send, receive) = sync_channel(1);
+            // Where each tmux shell was last seen, so only one that moved is
+            // saved again.
+            let seen: HashMap<_, _> = self
+                .known
+                .values()
+                .filter(|info| info.id.is_tmux())
+                .map(|info| (info.id.clone(), info.cwd.clone()))
+                .collect();
             let started = std::thread::Builder::new()
-                .name("herdr-core-list".into())
+                .name("terminal-inventory".into())
                 .spawn(move || {
-                    let _ = send.send(backend.terminals());
+                    let _ = send.send(Listed {
+                        core: core.map(|b| b.terminals()),
+                        tmux: tmux.map(|b| {
+                            let listed = b.terminals();
+                            if let Ok(list) = &listed {
+                                b.keep_folders(list, &seen);
+                            }
+                            listed
+                        }),
+                    });
                 });
             match started {
                 Ok(_) => self.pending = Some((now, receive)),
-                Err(error) => tracing::warn!(%error, "Could not start a herdr-core list worker"),
+                Err(error) => tracing::warn!(%error, "Could not start a terminal inventory worker"),
             }
         }
         changed

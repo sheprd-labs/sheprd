@@ -73,6 +73,14 @@ fn the_ssh_form_shows_only_messages_at_each_step_under_en_xa() {
             ("checking", Step::Checking(request())),
             ("starting", Step::Saving(request(), HostProbe::Stopped)),
             ("saving", Step::Saving(request(), HostProbe::Running)),
+            (
+                "installing herdr-core",
+                Step::Installing {
+                    request: request(),
+                    offer: Offer::Install,
+                    _cancel: super::super::add_device::CancelFlag::new(),
+                },
+            ),
             ("fetching the key", Step::FetchingKey(request())),
         ];
         // Only interactive setup verifies; Windows has none yet.

@@ -10,6 +10,7 @@
 #   RELAY_DOMAIN_SUFFIX  e.g. relay.example.org gives nyc3.relay.example.org;
 #                  point those names at the droplets yourself. Without it,
 #                  each relay is served at IP-WITH-DASHES.sslip.io.
+#   RELAY_NAME_PREFIX  droplet names, PREFIX-REGION (default sheprd-relay)
 #   RELAY_OPEN=1   let any computer listen. By default each relay gets its
 #                  own listen token, printed at the end, and only computers
 #                  given it may listen; phones never need it.
@@ -73,7 +74,7 @@ for region in "$@"; do
   if [ -n "${RELAY_SSH_KEYS:-}" ]; then
     keys=(--ssh-keys "$RELAY_SSH_KEYS")
   fi
-  created=$(doctl compute droplet create "sheprd-relay-$region" \
+  created=$(doctl compute droplet create "${RELAY_NAME_PREFIX:-sheprd-relay}-$region" \
     --region "$region" \
     --size "$size" \
     --image ubuntu-24-04-x64 \

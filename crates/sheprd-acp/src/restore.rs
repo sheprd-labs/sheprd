@@ -12,6 +12,46 @@ use sheprd_chat_protocol::{Agent, EndpointId, restore, thread::ThreadId};
 use crate::{cli::AgentChoice, herdr::Target};
 
 pub(crate) mod core;
+#[cfg(feature = "tmux")]
+mod tmux;
+
+pub(crate) trait Continuity: Send {
+    fn copy(&self) -> Box<dyn Continuity>;
+    fn agent_started(&self, _pid: u32) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn switched(&mut self, agent: Agent);
+    fn agent_switched(&mut self, _pid: u32) {}
+    fn hold_for_switch(&self) -> crate::Result<()>;
+    fn opened(&self, session: &str);
+    fn ended(&self);
+}
+
+pub(crate) fn keeper(
+    target: Option<&Target>,
+    endpoint: Option<&EndpointId>,
+    agent: &AgentChoice,
+    adapter: bool,
+    cwd: &Path,
+    pid: u32,
+    thread: Option<ThreadId>,
+) -> Option<Box<dyn Continuity>> {
+    let dir = restore::restore_dir();
+    #[cfg(feature = "tmux")]
+    if let Some(keeper) = tmux::Keeper::new(endpoint, agent, adapter, cwd) {
+        return Some(Box::new(keeper));
+    }
+    let mut keeper = if target.is_none() && std::env::var_os("HC_TERMINAL_ID").is_some() {
+        Keeper::core(dir, endpoint, agent, adapter, cwd, |name| {
+            std::env::var_os(name)
+        })
+    } else {
+        Keeper::new(dir, target, endpoint, agent, adapter, cwd)
+    }?
+    .with_thread(thread);
+    keeper.child = Some(pid);
+    Some(Box::new(keeper))
+}
 
 /// A detached view or a failed agent is not a request to forget continuity.
 pub(crate) fn expected_end(input: &crate::session::Input) -> bool {
@@ -135,12 +175,25 @@ impl Keeper {
             thread: self.thread,
         }
     }
+}
+
+impl Continuity for Keeper {
+    fn agent_started(&self, pid: u32) -> anyhow::Result<()> {
+        if self.core {
+            core::agent_started(&self.dir, &self.endpoint, pid)?;
+        }
+        Ok(())
+    }
+
+    fn copy(&self) -> Box<dyn Continuity> {
+        Box::new(self.clone())
+    }
 
     /// The chat switched to `agent`; the session
     /// that opens next is that agent's. The record of the agent before goes
     /// at once: should the new one fail to start, a restore must not bring
     /// back the agent the user switched away from.
-    pub(crate) fn switched(&mut self, agent: Agent) {
+    fn switched(&mut self, agent: Agent) {
         restore::remove(&self.dir, &self.endpoint);
         self.agent = agent;
     }
@@ -149,7 +202,7 @@ impl Keeper {
     /// agent its record names, so a chat program lost mid-switch is never
     /// relaunched with that agent and its session beside the new one. A
     /// switch that cannot hold it must start no other agent.
-    pub(crate) fn hold_for_switch(&self) -> crate::Result<()> {
+    fn hold_for_switch(&self) -> crate::Result<()> {
         if !self.core {
             return Ok(());
         }
@@ -160,7 +213,7 @@ impl Keeper {
     /// as the agent a later restore must find gone; when that cannot be
     /// written, the earlier agent's record goes too, so a restore refuses
     /// rather than take the switched-away agent's end for this one's.
-    pub(crate) fn agent_switched(&mut self, pid: u32) {
+    fn agent_switched(&mut self, pid: u32) {
         self.child = Some(pid);
         if self.core && self.agent_started(pid).is_err() {
             core::agent_ended(&self.dir, &self.endpoint);
@@ -171,7 +224,7 @@ impl Keeper {
     /// session id that could not be typed back safely is not kept, and its
     /// earlier record goes with it, so a restore never continues a session
     /// other than the chat's last.
-    pub(crate) fn opened(&self, session: &str) {
+    fn opened(&self, session: &str) {
         if !self.args.is_empty() || self.record(session).write(&self.dir).is_err() {
             restore::remove(&self.dir, &self.endpoint);
         }
@@ -183,7 +236,7 @@ impl Keeper {
     }
 
     /// Removes the record: the chat ended on its own.
-    pub(crate) fn ended(&self) {
+    fn ended(&self) {
         if self.core
             && let Err(error) = core::closed(self)
         {
@@ -191,12 +244,6 @@ impl Keeper {
         }
         restore::remove(&self.dir, &self.endpoint);
         core::agent_ended(&self.dir, &self.endpoint);
-    }
-
-    /// Keeps the agent this chat started, which a later restore must find
-    /// gone. Only a core chat's explicit restore reads it.
-    pub(crate) fn agent_started(&self, pid: u32) -> anyhow::Result<()> {
-        core::agent_started(&self.dir, &self.endpoint, pid)
     }
 }
 

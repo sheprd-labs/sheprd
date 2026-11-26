@@ -24,7 +24,7 @@ class NixWorkflowTests(unittest.TestCase):
         inputs = [
             "flake.nix", "flake.lock", "Cargo.lock", "rust-toolchain.toml",
             "LICENSE", "NOTICE", "crates/sheprd-gpui/SOUND-NOTICE.md",
-            "scripts/release/herdr-core.json", "scripts/release/herdr-core-licenses.txt",
+            "scripts/release/herdr-core.json",
             ".github/workflows/nix.yml",
         ]
         for directory in ("assets/macos", "assets/icons", "macos/sheprd-nearby"):

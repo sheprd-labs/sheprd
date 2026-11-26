@@ -38,6 +38,7 @@ mod names;
 mod phone;
 mod processes;
 mod programs;
+mod provider;
 pub(crate) mod recent;
 mod recovery;
 mod requests;
@@ -73,6 +74,7 @@ pub(crate) use spaces::edits_for_test as spaces_edits_for_test;
 pub(crate) use view::{CoreTerminalView, LinkClick, Look};
 pub(crate) use workspaces::kept_label;
 
+use crate::config::TerminalBackend;
 use crate::{
     SheprdWindow,
     browser::{Location, Scope, TabId},
@@ -82,7 +84,7 @@ use crate::{
 use gpui::{prelude::*, *};
 use layout::merged;
 use panes::{Axis, Panes};
-use sheprd_backend::{Backend as _, Spawn, TerminalId, TerminalInfo};
+use sheprd_backend::{Spawn, TerminalId, TerminalInfo};
 use sheprd_client::protocol::AgentStatus;
 use std::collections::{HashMap, VecDeque};
 
@@ -133,7 +135,13 @@ impl Refreshed {
 
 /// A terminal to start, what for, and a file its program takes over once
 /// it starts: removed with the request if the start fails or is dropped.
-type Wanted = (Purpose, Host, Spawn, Option<tempfile::TempPath>);
+struct Wanted {
+    purpose: Purpose,
+    host: Host,
+    spawn: Spawn,
+    file: Option<tempfile::TempPath>,
+    backend: TerminalBackend,
+}
 
 /// One tab's panes as the window holds them. The tab's saved location
 /// follows, written when a change settles rather than on every drag step.
@@ -432,6 +440,11 @@ pub(crate) struct CoreTerminals {
     /// it was sent, put back to end once their core answers again. Every
     /// window holds the app's one list ([`tabs::Unended`]).
     unended: std::sync::Arc<std::sync::Mutex<Vec<crate::browser::Ending>>>,
+    /// When a failed tmux kill may be tried again, shared across windows so a
+    /// host that is down is not dialled on every tick.
+    #[cfg(feature = "tmux")]
+    tmux_kill_retry:
+        std::sync::Arc<std::sync::Mutex<HashMap<crate::browser::Ending, std::time::Instant>>>,
     views: HashMap<(TabId, TerminalId), Entity<CoreTerminalView>>,
     /// Terminals to start, one after another, once the hub of each one's
     /// host connects: a shell, or the program its spawn names. Several
@@ -444,7 +457,7 @@ impl CoreTerminals {
     /// Every view on screen: the tabs' panes and the stand-in shell.
     fn shown(&self) -> impl Iterator<Item = &Entity<CoreTerminalView>> {
         let fallback = match &self.fallback {
-            fallback::Fallback::Shown(view) => Some(view),
+            fallback::Fallback::Shown(_, view) => Some(view),
             _ => None,
         };
         self.views.values().chain(fallback)
@@ -476,7 +489,11 @@ impl CoreTerminals {
     /// lost core's last list may name agents that have since stopped, so
     /// none is reported until it answers again.
     pub(crate) fn reported(&self, host: &Host, terminal: &TerminalId) -> Option<&TerminalInfo> {
-        self.backend_of(host)?;
+        if terminal.is_tmux() {
+            self.infos_of(host)?.tmux_available().then_some(())?;
+        } else {
+            self.backend_of(host)?;
+        }
         self.listed(host, terminal)
     }
 
@@ -609,6 +626,9 @@ impl SheprdWindow {
     /// host that is one whose core answers while its Herdr 1 does not, and
     /// never one found to have no herdr-core.
     pub(crate) fn new_workspaces_use_core(&self) -> bool {
+        if self.config.terminal_backend == TerminalBackend::Tmux {
+            return true;
+        }
         if !self.selected_is_remote() {
             return self.config.herdr_2_terminals || self.live.missing_installation;
         }
@@ -628,6 +648,15 @@ impl SheprdWindow {
     /// this computer, the user's own `herdr-core` or the bundled one starts;
     /// on another host, its bridge starts the host's own.
     pub(crate) fn new_core_terminal(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.new_provider_terminal(None, window, cx);
+    }
+
+    pub(crate) fn new_provider_terminal(
+        &mut self,
+        choice: Option<TerminalBackend>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let Some((scope, workspace)) = self.browser_key() else {
             self.show_flash(Flash::warning(fl!("core-terminals-open-workspace")), cx);
             return;
@@ -646,7 +675,7 @@ impl SheprdWindow {
                 }),
             ..Spawn::default()
         };
-        self.start_core_program(
+        self.start_on_provider(
             Purpose::Tab {
                 focus: true,
                 group: None,
@@ -654,6 +683,8 @@ impl SheprdWindow {
                 workspace,
             },
             spawn,
+            None,
+            choice,
             cx,
         );
     }
@@ -671,9 +702,20 @@ impl SheprdWindow {
     /// removed if the start fails or the request is dropped.
     pub(crate) fn start_core_program_with(
         &mut self,
+        purpose: Purpose,
+        spawn: Spawn,
+        file: Option<tempfile::TempPath>,
+        cx: &App,
+    ) -> bool {
+        self.start_on_provider(purpose, spawn, file, None, cx)
+    }
+
+    pub(crate) fn start_on_provider(
+        &mut self,
         mut purpose: Purpose,
         mut spawn: Spawn,
         file: Option<tempfile::TempPath>,
+        choice: Option<TerminalBackend>,
         cx: &App,
     ) -> bool {
         if self.core_terminals.wanted.len() >= MAX_WANTED {
@@ -692,14 +734,24 @@ impl SheprdWindow {
             *group = self.active_group();
         }
         let host = self.purpose_host(&purpose);
+        let backend = choice.unwrap_or_else(|| match &purpose {
+            Purpose::Tab { .. } => self.config.terminal_backend,
+            Purpose::Split { at, .. } => TerminalBackend::owner(at),
+        });
         let Some(hub) = self.core_hub(&host) else {
             return false;
         };
-        hub.connect(Start::IfMissing);
+        if backend != TerminalBackend::Tmux {
+            hub.connect(Start::IfMissing);
+        }
         self.give_core_context(&purpose, &host, &mut spawn, cx);
-        self.core_terminals
-            .wanted
-            .push_back((purpose, host, spawn, file));
+        self.core_terminals.wanted.push_back(Wanted {
+            purpose,
+            host,
+            spawn,
+            file,
+            backend,
+        });
         self.start_core_shell();
         true
     }
@@ -711,49 +763,6 @@ impl SheprdWindow {
         match purpose {
             Purpose::Tab { scope, .. } => Host::of(scope),
             Purpose::Split { tab, .. } => self.core_terminals.host_of(*tab),
-        }
-    }
-
-    /// Starts the wanted shell once the hub is connected.
-    fn start_core_shell(&mut self) {
-        if self.core_terminals.starting.is_some() {
-            return;
-        }
-        let terminals = &mut self.core_terminals;
-        let Some((_, host, _, _)) = terminals.wanted.front() else {
-            return;
-        };
-        let Some(backend) = terminals.backend_of(host).cloned() else {
-            return;
-        };
-        let Some((purpose, host, spawn, file)) = terminals.wanted.pop_front() else {
-            return;
-        };
-        let (send, receive) = std::sync::mpsc::sync_channel(1);
-        let spawned = std::thread::Builder::new()
-            .name("herdr-core-spawn".into())
-            .spawn(move || {
-                let started = backend.spawn(&spawn);
-                let succeeded = started.is_ok();
-                let handed = start::deliver(started, send, |terminal| {
-                    // The receiver vanished with its host/window. End only
-                    // the terminal this worker created, on its captured core;
-                    // never retry its ID against a replacement saved host.
-                    if let Err(error) = backend.kill(terminal) {
-                        tracing::warn!(%error, %terminal, "Could not end an abandoned herdr-core start");
-                    }
-                });
-                // Keep a program's handoff file only after its window accepts
-                // the start; failed/cancelled starts retain local cleanup.
-                if handed && succeeded
-                    && let Some(file) = file
-                    && let Err(error) = file.keep() {
-                    tracing::warn!(%error, "Could not hand a file to a herdr-core program");
-                }
-            });
-        match spawned {
-            Ok(_) => terminals.starting = Some((purpose, host, receive)),
-            Err(error) => tracing::warn!(%error, "Could not start a herdr-core spawn worker"),
         }
     }
 
@@ -825,9 +834,14 @@ impl SheprdWindow {
         let fallback = self.core_fallback_view();
         self.answer_phone_split(cx);
         let dispatching = self.dispatch_sampling();
-        let listed = self
-            .core_terminals
-            .poll_infos(std::time::Instant::now(), dispatching);
+        let listed = self.core_terminals.poll_infos(
+            std::time::Instant::now(),
+            dispatching,
+            self.config.terminal_backend == TerminalBackend::Tmux
+                || fallback
+                    .as_ref()
+                    .is_some_and(|v| v.read(cx).terminal().is_tmux()),
+        );
         if listed {
             self.remap_recovered_chats(window, cx);
         }

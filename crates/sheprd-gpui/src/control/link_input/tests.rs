@@ -13,6 +13,7 @@ fn link() -> String {
         relay: Info {
             identity: "aWRlbnRpdHk".into(),
             labels: Default::default(),
+            pins: Default::default(),
             relays: vec!["https://relay.example.org".into()],
             route: "cm91dGU".into(),
             rtt_ms: Default::default(),

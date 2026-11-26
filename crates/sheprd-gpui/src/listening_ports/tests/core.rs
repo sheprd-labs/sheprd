@@ -41,6 +41,19 @@ fn a_listener_in_a_core_terminal_names_its_terminal_unless_a_workspace_claims_it
     );
 }
 
+#[test]
+fn tmux_listener_follows_its_terminal_into_the_workspace() {
+    let id = sheprd_backend::TerminalId::new("tmux-01234567-89ab-cdef-0123-456789abcdef").unwrap();
+    let scan = parse(&format!("L 10 127.0.0.1:5173 node\nC 10 {id}\n")).unwrap();
+    let mut ports = ListeningPorts::default();
+    ports.seed(Host::Local, scan);
+    ports.place_terminals(vec![at(id.as_str(), "my-workspace")]);
+    assert_eq!(
+        ports.core_ports(&scope(), "my-workspace").unwrap().ports,
+        [port(5173, Bind::Loopback, "node")]
+    );
+}
+
 /// The local daemon the fixtures' core terminals belong to.
 const SOCKET: &str = "/run/h/herdr-client.sock";
 

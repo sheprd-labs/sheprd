@@ -201,8 +201,6 @@ settings-tabs-layout = Tab layout
 settings-tabs-layout-description = How tab strips draw their tabs. Also under View > Tab Layout.
 settings-tabs-agent-title = Show agent titles on tabs
 settings-tabs-agent-title-description = A tab with no name of its own shows its agent's terminal title in place of its number.
-settings-tabs-herdr-2 = New terminals use Herdr 2
-settings-tabs-herdr-2-description = New tabs on this computer run in herdr-core, with native split panes. Herdr 1 tabs keep running beside them.
 settings-tabs-position = Position
 settings-tabs-hide-single = Hide with a single tab
 settings-tabs-confirm-tab = Confirm before closing a tab
@@ -212,12 +210,12 @@ settings-tabs-undo-close = Undo closing a tab
 settings-tabs-undo-close-description = A closed terminal tab keeps running, hidden, for 10 seconds, or as long as `seconds` in [undo_close_tab] says. Reopen Closed Tab brings back the same tab, its programs still running. Other clients of the daemon list it until then.
 settings-tabs-focus-follows-mouse = Focus follows mouse
 settings-tabs-focus-follows-mouse-description = The pointer chooses the active pane within a split terminal tab.
-settings-tabs-herdr-2-scrollback = Herdr 2 scrollback
-settings-tabs-herdr-2-scrollback-description = Lines of output each Herdr 2 terminal keeps to scroll back through. Terminals opened from now on use the new size.
+settings-tabs-herdr-2-scrollback = Terminal scrollback
+settings-tabs-herdr-2-scrollback-description = Lines of output each Herdr 2 or tmux terminal keeps to scroll back through. Terminals opened from now on use the new size.
 # $lines is a number of lines of terminal output.
 settings-tabs-herdr-2-scrollback-lines = { $lines }
 settings-tabs-pane-history = Restore Herdr 1 scrollback after it restarts
-settings-tabs-pane-history-description = Experimental. Herdr 1 saves pane output to session-history.json and replays it when its daemon restarts. Herdr 2 needs no setting: herdr-core keeps its terminals running, so they come back with their output, up to the Herdr 2 scrollback above.
+settings-tabs-pane-history-description = Experimental. Herdr 1 saves pane output to session-history.json and replays it when its daemon restarts. Herdr 2 needs no setting: herdr-core keeps its terminals running, so they come back with their output, up to the Terminal scrollback above.
 settings-chat-layout = Chat layout
 settings-chat-layout-description = How chat views draw messages and the composer: on a timeline, as bubbles like Claude's app, as Claude Code's terminal screen, as a document, as one card per turn, as Messages bubbles, or in one quiet column like iA Writer. The button in a chat's header steps through them too.
 settings-chat-full-width = Full-width chat
@@ -292,5 +290,10 @@ settings-config-reload = Reload configuration
 settings-config-reload-description = Re-reads both files. Does not restart the daemon.
 
 settings-agent-guide-dismiss = Dismiss agent guidance
+
+settings-tabs-terminal-backend = Terminal backend
+settings-tabs-backend-herdr = Herdr 1
+settings-tabs-backend-core = Herdr 2
+settings-tabs-backend-tmux = tmux
 
 settings-section-voice = Voice

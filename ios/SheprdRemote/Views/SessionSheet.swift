@@ -31,7 +31,8 @@ struct SessionSheet: View {
                         nameCard()
                         contextCard(transcript)
                         if let harnesses = transcript.harnesses, harnesses.available.count > 1 {
-                            agentTiles(harnesses, idle: transcript.status != .working)
+                            // A prompt this phone sent starts a turn before its echo arrives.
+                            agentTiles(harnesses, idle: !transcript.answering && store.outgoing.isEmpty)
                         }
                         if let modes = transcript.modes, !modes.available.isEmpty { modeTiles(modes) }
                         if let option = transcript.options.first(where: { $0.category == .thoughtLevel }),
@@ -110,7 +111,8 @@ struct SessionSheet: View {
     }
 
     /// The agents the chat may hand its conversation to, as the desktop's
-    /// agent button offers them; a switch waits for the turn to end.
+    /// agent button offers them. The daemon refuses a switch mid-turn, so
+    /// the tiles dim and say so while the agent answers.
     private func agentTiles(_ harnesses: Harnesses, idle: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Agent").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
@@ -136,8 +138,11 @@ struct SessionSheet: View {
                 }
             }
             .disabled(!idle)
+            // Plain buttons with their own backgrounds do not dim themselves.
+            .opacity(idle ? 1 : 0.45)
+            .animation(.snappy, value: idle)
             .haptic(.selection, trigger: harnesses.current)
-            Text(idle ? "The new agent picks up this conversation with your next message." : "You can switch once the agent finishes its turn.")
+            Text(idle ? "The new agent picks up this conversation with your next message." : "Can't be changed during a response.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .card()

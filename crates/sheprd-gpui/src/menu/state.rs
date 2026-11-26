@@ -220,6 +220,8 @@ pub(crate) struct MenuState {
     /// success until the catalog drops the device, so its header pulses
     /// until it disappears; the confirmation closes as soon as it starts.
     pub(crate) removing_devices: std::collections::HashSet<String>,
+    /// Saved devices' pause requests not yet shown by the catalog.
+    pub(crate) pauses: super::devices::Pauses,
     pub(super) github_selected: Option<github::Action>,
     pub(super) github_scroll: ScrollHandle,
     pub(super) pr_connection: Option<std::sync::Weak<std::sync::Mutex<crate::state::LiveState>>>,
@@ -483,6 +485,7 @@ impl MenuState {
             gitlab: Default::default(),
             azure: Default::default(),
             removing_devices: Default::default(),
+            pauses: Default::default(),
             github_selected: None,
             github_scroll: ScrollHandle::new(),
             pr_connection: None,

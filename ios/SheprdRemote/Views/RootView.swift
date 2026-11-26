@@ -77,6 +77,9 @@ struct RootView: View {
         .sheet(item: Bindable(model).voice, onDismiss: nil) { session in
             VoiceSheet(session: session)
         }
+        .sheet(item: Bindable(model).pendingPullRequest) { route in
+            PullRequestSheet(route: route)
+        }
         // A panel's sheet draws it instead, as here it would be behind it.
         .nearbyCard(window, when: !window.panelOpen)
         // A first computer gets the card at once; later ones, the banner.

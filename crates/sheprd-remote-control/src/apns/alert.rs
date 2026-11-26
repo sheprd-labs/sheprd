@@ -36,7 +36,7 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use p256::PublicKey;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
-use sheprd_chat_protocol::PermissionOption;
+use sheprd_chat_protocol::{PermissionOption, PullRequest};
 
 /// The sealed format's version.
 pub(crate) const VERSION: u32 = 1;
@@ -89,6 +89,11 @@ pub(crate) struct Sealed {
     /// under the title. Older daemons put it in `body` instead.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub(crate) subtitle: String,
+    /// The GitHub pull request a finished turn created or pushed to,
+    /// `https://github.com/OWNER/REPO/pull/N`, which the phone offers to
+    /// open. Left out otherwise, and dropped before the payload fails to fit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) pr: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -127,6 +132,7 @@ impl Sealed {
             test: None,
             event: Some(notification.event.as_str().to_owned()),
             subtitle: notification.subtitle.clone(),
+            pr: notification.pr.clone().filter(|url| pull_request_url(url)),
         }
     }
 
@@ -148,8 +154,15 @@ impl Sealed {
             test: Some(id),
             event: Some(EventId::new().as_str().to_owned()),
             subtitle: String::new(),
+            pr: None,
         }
     }
+}
+
+/// Whether `url` is a GitHub pull request's address as the chat protocol
+/// writes it, and nothing more.
+fn pull_request_url(url: &str) -> bool {
+    PullRequest::parse(url).is_some_and(|pull| pull.url == url)
 }
 
 /// The thread test pushes share, which names no chat.
@@ -224,6 +237,10 @@ pub(crate) fn push(
             });
         }
         if sealed.body.is_empty() {
+            // The action goes before the push does.
+            if sealed.pr.take().is_some() {
+                continue;
+            }
             return Err(Error::PayloadTooLarge { len: body.len() });
         }
         // Base64 grows the sealed bytes by a third, so the plaintext must

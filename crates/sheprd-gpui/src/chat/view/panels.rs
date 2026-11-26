@@ -105,6 +105,58 @@ impl SheprdWindow {
             .map(|(index, queued)| {
                 let pane_id = chat.target.pane_id.clone();
                 let id = queued.id;
+                // A steered prompt is already with the agent, waiting for
+                // its next step, so it cannot be withdrawn or sent again.
+                // One held by a stop waits until sent now.
+                let label = if queued.steered {
+                    fl!("chat-steering")
+                } else if queued.held {
+                    fl!("chat-held")
+                } else {
+                    fl!("chat-queued")
+                };
+                let send_pane = pane_id.clone();
+                let send_now = (!queued.steered).then(|| {
+                    div()
+                        .id(("chat-send-now", index))
+                        .debug_selector(move || format!("chat-send-now-{index}"))
+                        .flex_none()
+                        .px(px(6.))
+                        .rounded(px(corners::SMALL))
+                        .cursor_pointer()
+                        .text_color(rgb(theme.primary()))
+                        .hover(|button| button.bg(rgb(theme.active)))
+                        .child(fl!("chat-send-now"))
+                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                        .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                            cx.stop_propagation();
+                            this.chat_send(&send_pane, Command::SendNow { id }, cx);
+                        }))
+                });
+                let withdraw = (!queued.steered).then(|| {
+                    div()
+                        .id(("chat-unqueue", index))
+                        .debug_selector(move || format!("chat-unqueue-{index}"))
+                        .flex_none()
+                        .size(px(18.))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .rounded(px(corners::SMALL))
+                        .cursor_pointer()
+                        .hover(|button| button.bg(rgb(theme.active)))
+                        .child(
+                            svg()
+                                .path("icons/close.svg")
+                                .size(px(10.))
+                                .text_color(rgb(theme.foreground)),
+                        )
+                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                        .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                            cx.stop_propagation();
+                            this.chat_send(&pane_id, Command::Unqueue { id }, cx);
+                        }))
+                });
                 div()
                     .flex_none()
                     .flex()
@@ -116,12 +168,7 @@ impl SheprdWindow {
                     .py(px(2.))
                     .rounded(px(corners::SMALL))
                     .bg(rgb(theme.surface))
-                    .child(
-                        div()
-                            .flex_none()
-                            .text_color(rgb(theme.muted))
-                            .child(fl!("chat-queued")),
-                    )
+                    .child(div().flex_none().text_color(rgb(theme.muted)).child(label))
                     .child(
                         div()
                             .flex_1()
@@ -129,30 +176,8 @@ impl SheprdWindow {
                             .truncate()
                             .child(safe_text(&queued.text, QUEUED)),
                     )
-                    .child(
-                        div()
-                            .id(("chat-unqueue", index))
-                            .debug_selector(move || format!("chat-unqueue-{index}"))
-                            .flex_none()
-                            .size(px(18.))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .rounded(px(corners::SMALL))
-                            .cursor_pointer()
-                            .hover(|button| button.bg(rgb(theme.active)))
-                            .child(
-                                svg()
-                                    .path("icons/close.svg")
-                                    .size(px(10.))
-                                    .text_color(rgb(theme.foreground)),
-                            )
-                            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                            .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
-                                cx.stop_propagation();
-                                this.chat_send(&pane_id, Command::Unqueue { id }, cx);
-                            })),
-                    )
+                    .children(send_now)
+                    .children(withdraw)
             })
             .collect();
         // A height-limited list that scrolls, so a long queue keeps every

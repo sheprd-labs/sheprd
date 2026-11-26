@@ -41,7 +41,7 @@ fn an_accepted_start_stays_running_and_a_failed_start_never_kills_anything() {
     });
     let (send, receive) = mpsc::sync_channel(1);
     drop(receive);
-    deliver(Err(sheprd_core_client::Error::Busy), send, |_| {
+    deliver(Err(sheprd_core_client::Error::Busy.into()), send, |_| {
         panic!("failure killed a terminal")
     });
 }

@@ -9,6 +9,7 @@ use crate::{Error, usage::Host};
 use sheprd_client::ConnectTarget;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
+mod command_line;
 mod core;
 mod en_xa;
 mod excluded_processes;
@@ -17,6 +18,7 @@ mod process_owner;
 mod repeated_scans;
 mod ssh_links;
 mod status_bar;
+mod windows_hosts;
 mod wsl_hosts;
 
 /// The ports one workspace was found with, whichever daemon it named.

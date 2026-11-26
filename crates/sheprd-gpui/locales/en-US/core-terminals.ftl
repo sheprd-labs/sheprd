@@ -51,3 +51,4 @@ core-terminals-install-running = Herdr 2 is already being installed on { $device
 # $reason is why, in English or from the device.
 core-terminals-install-failed = Could not install Herdr 2 on { $device }: { $reason }
 core-terminals-install-local = this computer runs the herdr-core bundled with Sheprd
+core-terminals-tmux-disabled = This build does not include tmux support.

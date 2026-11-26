@@ -3,7 +3,7 @@
 // i18n: migrated
 use super::{SettingsWindow, on_value, ui};
 use crate::{
-    config::{TabLayoutMode, preferences::Preference},
+    config::{TabLayoutMode, TerminalBackend, preferences::Preference},
     herdr_settings::{Edit, TabBarPosition},
     i18n::fl,
     settings_window::remote_history::HostState,
@@ -60,14 +60,26 @@ impl SettingsWindow {
                     )),
             )
             .child(
-                ui::row(theme, "tabs-herdr-2", fl!("settings-tabs-herdr-2"))
-                    .description(fl!("settings-tabs-herdr-2-description"))
-                    .switch(self.preference_toggle(
-                        "tabs-herdr-2-toggle",
-                        self.config.herdr_2_terminals,
-                        Preference::Herdr2Terminals(!self.config.herdr_2_terminals),
-                        cx,
-                    )),
+                ui::row(
+                    theme,
+                    "tabs-terminal-backend",
+                    fl!("settings-tabs-terminal-backend"),
+                )
+                .control(ui::segmented(
+                    theme,
+                    "tabs-terminal-backend-control",
+                    &[
+                        (TerminalBackend::Herdr, fl!("settings-tabs-backend-herdr")),
+                        (TerminalBackend::Core, fl!("settings-tabs-backend-core")),
+                        #[cfg(feature = "tmux")]
+                        (TerminalBackend::Tmux, fl!("settings-tabs-backend-tmux")),
+                    ],
+                    Some(self.config.terminal_backend),
+                    open,
+                    on_value(cx, |this, choice, _, cx| {
+                        this.save_preference(Preference::TerminalBackend(choice), cx)
+                    }),
+                )),
             )
             .child(
                 ui::row(

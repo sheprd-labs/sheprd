@@ -275,10 +275,9 @@ impl SheprdWindow {
             parked.workspace == key && needed.iter().any(|(group, _)| *group == parked.group)
         });
         terminals.retry.retain(|(_, at)| now < *at);
-        let target = self.endpoints[self.selected_endpoint]
-            .connection
-            .target
-            .clone();
+        let endpoint = &self.endpoints[self.selected_endpoint];
+        let target = endpoint.connection.target.clone();
+        let starts_herdr = endpoint.starts_herdr(self.config.terminal_backend, cx);
         for (group, tab) in &needed {
             let existing = terminals
                 .parked
@@ -289,6 +288,7 @@ impl SheprdWindow {
                 None if terminals.retry.iter().any(|(waiting, _)| waiting == group) => {}
                 None => {
                     let mut connection = ConnectionBridge::new(target.clone());
+                    connection.start_local_herdr = starts_herdr;
                     connection.reconnect(self.options, false, true);
                     terminals.parked.push(Parked {
                         group: *group,

@@ -9,7 +9,7 @@ use sheprd_chat_protocol::{
 };
 
 use super::{Asked, Pending, Session, Update, now_ms};
-use crate::{project, rpc::Inbound};
+use crate::{harness::steer, project, rpc::Inbound};
 
 /// A configured ACP auth method. Never read or copy the agent's credential store.
 fn auth_method(methods: &[wire::AuthMethod], requested: &str) -> Option<wire::AuthMethodId> {
@@ -35,21 +35,23 @@ impl<R: FnMut(Update)> Session<R> {
             // A resumed session replays history the transcript already
             // shows.
             Inbound::Notification { .. } if self.thread.replaying() => {}
-            Inbound::Notification { method, params } => {
-                if method == "session/update" {
-                    self.session_update(params);
-                } else if method == project::opencode::METHOD
-                    && let Some(session) = &self.acp_session
-                {
-                    let changes = self.projector.opencode_child(
-                        &self.transcript,
-                        &session.0,
-                        params,
-                        now_ms(),
-                    );
-                    self.emit_all(changes);
+            Inbound::Notification { method, params } => match method.as_str() {
+                "session/update" => self.session_update(params),
+                steer::STEERED => self.steer_notified(true, params),
+                steer::UNSTEERED => self.steer_notified(false, params),
+                project::opencode::METHOD => {
+                    if let Some(session) = &self.acp_session {
+                        let changes = self.projector.opencode_child(
+                            &self.transcript,
+                            &session.0,
+                            params,
+                            now_ms(),
+                        );
+                        self.emit_all(changes);
+                    }
                 }
-            }
+                _ => {}
+            },
             Inbound::Request { id, method, params } => self.agent_request(id, &method, params),
             Inbound::Closed(Some(error)) => self.fail(&error.to_string()),
             Inbound::Closed(None) => {}
@@ -64,6 +66,7 @@ impl<R: FnMut(Update)> Session<R> {
                 self.session_opened(matches!(pending, Pending::LoadSession), result);
             }
             Pending::Prompt => self.turn_ended(id, result),
+            Pending::Steer(prompt) => self.steer_answered(prompt, &result),
             Pending::SetOption => {
                 self.option_set(result);
                 self.carry_next();
@@ -180,6 +183,11 @@ impl<R: FnMut(Update)> Session<R> {
                 .is_some_and(|meta| {
                     meta.get(project::opencode::CAPABILITY) == Some(&Value::Bool(true))
                 });
+        self.can_steer = response
+            .agent_capabilities
+            .meta
+            .as_ref()
+            .is_some_and(|meta| meta.get(steer::CAPABILITY) == Some(&Value::Bool(true)));
         self.accepts = crate::files::Accepts {
             embedded: prompts.embedded_context,
             image: prompts.image,
@@ -225,7 +233,7 @@ impl<R: FnMut(Update)> Session<R> {
                 self.acp_session = Some(id.clone());
                 self.request(
                     "session/load",
-                    &wire::LoadSessionRequest::new(id, cwd),
+                    &wire::LoadSessionRequest::new(id, cwd).mcp_servers(self.mcp_servers()),
                     Pending::LoadSession,
                 );
             }
@@ -246,10 +254,24 @@ impl<R: FnMut(Update)> Session<R> {
                 }
                 self.request(
                     "session/new",
-                    &wire::NewSessionRequest::new(cwd),
+                    &wire::NewSessionRequest::new(cwd).mcp_servers(self.mcp_servers()),
                     Pending::NewSession,
                 );
             }
+        }
+    }
+
+    /// The MCP servers an ACP agent's session gets: the one reading the
+    /// chat's thread, when the agent takes it in its session.
+    fn mcp_servers(&self) -> Vec<wire::McpServer> {
+        match &self.config.given {
+            crate::thread_mcp::Given::InSession(server) => {
+                vec![wire::McpServer::Stdio(
+                    wire::McpServerStdio::new(crate::thread_mcp::NAME, &server.program)
+                        .args(server.args.clone()),
+                )]
+            }
+            _ => Vec::new(),
         }
     }
 
@@ -272,7 +294,7 @@ impl<R: FnMut(Update)> Session<R> {
                 let cwd = self.config.cwd.clone();
                 self.request(
                     "session/new",
-                    &wire::NewSessionRequest::new(cwd),
+                    &wire::NewSessionRequest::new(cwd).mcp_servers(self.mcp_servers()),
                     Pending::NewSession,
                 );
                 return;
@@ -338,6 +360,7 @@ impl<R: FnMut(Update)> Session<R> {
         let Some(id) = self.acp_session.clone() else {
             return;
         };
+        self.open_history(&id.0, loaded);
         self.ready = true;
         (self.report)(Update::Opened(id.0.to_string()));
         self.keep_opened(id.0.as_ref());
@@ -415,7 +438,15 @@ impl<R: FnMut(Update)> Session<R> {
         let Some(agent) = self.config.harness else {
             return;
         };
-        let Some((joining, handoff)) = self.thread.opened(agent, loaded, &self.transcript.entries)
+        // The thread's file holds the whole conversation, which the
+        // transcript's window may not.
+        let kept = self.kept_conversation();
+        let tool = kept.is_some() && self.config.given.reads();
+        let (entries, trimmed) = match &kept {
+            Some(contents) => (contents.entries.as_slice(), contents.trimmed.as_slice()),
+            None => (self.transcript.entries.as_slice(), &[][..]),
+        };
+        let Some((joining, handoff)) = self.thread.opened(agent, loaded, entries, tool, trimmed)
         else {
             return;
         };
@@ -661,6 +692,7 @@ impl<R: FnMut(Update)> Session<R> {
             self.status(Status::Idle);
         }
         self.keep_entries();
+        self.turn_ended_steering();
         self.next_queued();
     }
 

@@ -134,6 +134,7 @@ struct Mockup: View {
         case ("live", _): LiveStyle(variant: variant, state: state)
         case ("effects", "Bubbles"): EffectsBubbles(state: state)
         case ("effects", "Screen"): EffectsScreen(state: state)
+        case ("pushpr", _): PushPR(variant: variant, state: state)
         default: Text("No mockup \(screen) \(variant)")
         }
     }
@@ -178,6 +179,8 @@ struct Catalog: View {
         ("ghsignin", "C", 0),
         ("ghsignin", "C", 1), ("ghsignin", "C", 2), ("ghsignin", "C", 3), ("ghsignin", "C", 4),
         ("agentpr", "A", 0), ("agentpr", "B", 0), ("agentpr", "C", 0),
+        ("pushpr", "A", 0), ("pushpr", "A", 1), ("pushpr", "B", 0), ("pushpr", "B", 1),
+        ("pushpr", "C", 0), ("pushpr", "C", 1), ("pushpr", "D", 0), ("pushpr", "D", 1),
         ("effects", "Sizes", 0), ("effects", "Bubbles", 0), ("effects", "Bubbles", 1),
         ("live", "Now", 0), ("live", "A", 0), ("live", "B", 0), ("live", "C", 0), ("live", "D", 0),
         ("live", "Now", 1), ("live", "A", 1), ("live", "B", 1), ("live", "C", 1), ("live", "D", 1), ("live", "Pick", 0),

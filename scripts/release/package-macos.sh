@@ -16,6 +16,11 @@ companions=(sheprd-acp sheprd-remote-control sheprd-automate sheprd-nearby herdr
 for companion in "${companions[@]}"; do
     [[ -f $(dirname -- "$2")/$companion && -f $(dirname -- "$3")/$companion ]] || fail "A $companion beside each binary required"
 done
+# herdr-core's notices, which fetch-herdr-core.py leaves beside it; both
+# architectures' releases carry the same ones.
+core_licenses=$(dirname -- "$2")/herdr-core-licenses.txt
+[[ -s $core_licenses && -s $(dirname -- "$3")/herdr-core-licenses.txt ]] || fail 'herdr-core licenses beside each binary required'
+cmp -s "$core_licenses" "$(dirname -- "$3")/herdr-core-licenses.txt" || fail 'herdr-core licenses differ between architectures'
 out=$(cd -- "$4" && pwd)/Sheprd.app
 new_output "$out"
 icons=$(python3 "$release_root/scripts/release/build-icon.py" macos "$2" "$3")
@@ -72,6 +77,6 @@ cp "$release_root/crates/sheprd-protocol/NOTICE.md" "$app/Contents/Resources/"
 cp "$release_root/LICENSE" "$release_root/NOTICE" "$release_root/assets/icons/LICENSE-octicons" "$app/Contents/Resources/"
 cp "$5" "$app/Contents/Resources/THIRD-PARTY-NOTICES.txt"
 cp "$release_root/crates/sheprd-gpui/SOUND-NOTICE.md" "$app/Contents/Resources/"
-cp "$release_root/scripts/release/herdr-core-licenses.txt" "$app/Contents/Resources/HERDR-CORE-LICENSES.txt"
+cp "$core_licenses" "$app/Contents/Resources/HERDR-CORE-LICENSES.txt"
 mv "$app" "$out"
 printf '%s\n' "$out"

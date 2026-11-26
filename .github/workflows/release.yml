@@ -232,6 +232,7 @@ jobs:
             target/${{ matrix.target }}/release/sheprd-automate
             target/${{ matrix.target }}/release/sheprd-nearby
             target/${{ matrix.target }}/release/herdr-core
+            target/${{ matrix.target }}/release/herdr-core-licenses.txt
             target/${{ matrix.target }}/release/sheprd-relay-agent
             target/${{ matrix.target }}/release/THIRD-PARTY-NOTICES.txt
           if-no-files-found: error

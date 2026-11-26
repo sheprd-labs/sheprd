@@ -73,7 +73,7 @@ pub(crate) fn open(
             return;
         };
         let _ = handle.update(cx, |view, window, cx| {
-            if let Some(provider) = provider {
+            if let Some(provider) = provider.filter(|&p| crate::cloud::is_enabled(p)) {
                 view.cloud_tab = provider;
             }
             view.select_section(super::Section::CloudDevices, window, cx);
@@ -81,10 +81,14 @@ pub(crate) fn open(
     });
 }
 
-/// The provider whose tab shows first.
+/// The provider whose tab shows first: the first one turned on, or the first
+/// built in while all are off, which the page then does not show.
 pub(super) fn first_tab() -> CloudProvider {
     // `cloud` builds always have a provider; see `main.rs`.
-    CloudProvider::ALL[0]
+    crate::cloud::enabled()
+        .first()
+        .copied()
+        .unwrap_or(CloudProvider::ALL[0])
 }
 
 /// A card's text input, styled like the rest of Settings.
@@ -184,9 +188,10 @@ fn cloud_devices(window: &crate::SheprdWindow) -> u64 {
 }
 
 impl SettingsWindow {
-    /// Build each provider's card on first view, then refresh what it reads.
+    /// Build each turned-on provider's card on first view, then refresh what it
+    /// reads. A provider turned off gets no card, so nothing of it runs here.
     pub(super) fn open_cloud_devices(&mut self, cx: &mut Context<Self>) {
-        for &provider in CloudProvider::ALL {
+        for &provider in crate::cloud::enabled() {
             match provider {
                 #[cfg(feature = "azure")]
                 CloudProvider::Azure => self.open_azure_card(cx),
@@ -210,10 +215,10 @@ impl SettingsWindow {
         }
     }
 
-    /// Called after the config file reloads, so each card follows an account
-    /// that was just saved or edited by hand.
+    /// Called after the config file reloads, so each turned-on provider's card
+    /// follows an account that was just saved or edited by hand.
     pub(super) fn cloud_config_changed(&mut self, cx: &mut Context<Self>) {
-        for &provider in CloudProvider::ALL {
+        for &provider in crate::cloud::enabled() {
             match provider {
                 #[cfg(feature = "azure")]
                 CloudProvider::Azure => self.azure_config_changed(cx),
@@ -267,7 +272,7 @@ impl SettingsWindow {
 
     fn cloud_tabs(&self, cx: &mut Context<Self>) -> Div {
         let mut tabs = div().row().flex_wrap().gap(px(8.));
-        for &provider in CloudProvider::ALL {
+        for &provider in crate::cloud::enabled() {
             let key = provider.key();
             tabs = tabs.child(
                 self.control_choice(
@@ -287,6 +292,17 @@ impl SettingsWindow {
     }
 
     pub(super) fn render_cloud_devices(&self, cx: &mut Context<Self>) -> Div {
+        let section = div()
+            .relative()
+            .debug_selector(|| "cloud-accounts".into())
+            .flex()
+            .flex_col()
+            .gap(px(16.))
+            .min_w_0()
+            .child(super::search::track_bounds("cloud-accounts".into()));
+        if crate::cloud::enabled().is_empty() {
+            return section.child(self.control_note(fl!("settings-cloud-turned-off")));
+        }
         let card = match self.cloud_tab {
             #[cfg(feature = "azure")]
             CloudProvider::Azure => self.render_azure_card(cx),
@@ -307,19 +323,12 @@ impl SettingsWindow {
             #[cfg(feature = "sprites")]
             CloudProvider::Sprites => self.render_sprites_card(cx),
         };
-        div()
-            .relative()
-            .debug_selector(|| "cloud-accounts".into())
-            .flex()
-            .flex_col()
-            .gap(px(16.))
-            .min_w_0()
-            .child(super::search::track_bounds("cloud-accounts".into()))
+        section
             .when(crate::cloud::unavailable().is_some(), |section| {
                 section.child(self.control_note(fl!("settings-cloud-unavailable")))
             })
             .child(self.render_cloud_setup(cx))
-            .when(CloudProvider::ALL.len() > 1, |section| {
+            .when(crate::cloud::enabled().len() > 1, |section| {
                 section.child(self.cloud_tabs(cx))
             })
             .child(card)

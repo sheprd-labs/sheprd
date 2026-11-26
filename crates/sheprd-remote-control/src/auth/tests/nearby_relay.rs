@@ -10,6 +10,7 @@ fn info() -> Info {
     Info {
         identity: "identity".into(),
         labels: Default::default(),
+        pins: Default::default(),
         relays: vec!["https://relay.example.org".into()],
         route: "route".into(),
         rtt_ms: std::collections::BTreeMap::new(),

@@ -22,6 +22,7 @@ fn labelled(dir: &Path) -> Relays {
             Relay {
                 endpoint: fra3_endpoint,
                 label: fra3(),
+                pin: None,
             },
         ],
     )
@@ -105,5 +106,38 @@ fn status_names_each_relay_with_its_label() {
     assert_eq!(
         status["https://sfo3.example.org"],
         Status::Listening { rtt_ms: None }.into()
+    );
+}
+
+#[test]
+fn a_pinned_relays_pin_reaches_the_phone_but_not_the_nearby_offer() {
+    let dir = tempfile::tempdir().unwrap();
+    let fra1 = Endpoint::parse("https://fra1.relay.example.org").unwrap();
+    let relays = Relays::load(
+        dir.path(),
+        vec![
+            Endpoint::parse("https://sfo3.example.org").unwrap().into(),
+            Relay {
+                endpoint: fra1.clone(),
+                label: RelayLabel::default(),
+                pin: Some([7; 32]),
+            },
+        ],
+    )
+    .unwrap();
+    assert_eq!(relays.pin(&fra1), Some([7; 32]));
+    let info = relays.info().unwrap();
+    assert!(info.valid());
+    assert_eq!(
+        serde_json::to_value(&info).unwrap()["pins"],
+        serde_json::json!({
+            "https://fra1.relay.example.org": sheprd_relay::endpoint::encode_pin(&[7; 32]),
+        })
+    );
+    assert!(
+        serde_json::to_value(relays.offer().unwrap())
+            .unwrap()
+            .get("pins")
+            .is_none()
     );
 }

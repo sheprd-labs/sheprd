@@ -238,3 +238,60 @@ fn the_budget_counts_what_quoting_adds() {
     );
     assert!(handoff.omitted > 0);
 }
+
+/// A first prompt, then replies too long to all fit a small budget.
+fn long_conversation() -> Vec<Entry> {
+    let mut entries = vec![user(1, "Fix the build")];
+    entries.extend((2..=9).map(|id| agent(id, &"x".repeat(200))));
+    entries.push(user(10, "And now?"));
+    entries.push(agent(11, "Done"));
+    entries
+}
+
+#[test]
+fn an_agent_with_thread_read_is_told_the_ids_left_out() {
+    let reading = Reading {
+        tool: true,
+        trimmed: 0,
+    };
+    let handoff = build_with(&long_conversation(), full(), &[Agent::Claude], 700, reading).unwrap();
+    assert!(handoff.omitted > 0);
+    assert!(handoff.text.contains("read them with the thread_read tool"));
+    // The gap sits between the first prompt and the newest entries, and
+    // names the run of ids it stands for.
+    let marker = format!("| [{} left out: #2 to #", handoff.omitted);
+    assert!(handoff.text.contains(&marker), "{}", handoff.text);
+}
+
+#[test]
+fn an_agent_without_the_tool_is_told_only_how_many_were_left_out() {
+    let handoff = build(&long_conversation(), full(), &[Agent::Claude], 700).unwrap();
+    assert!(!handoff.text.contains("thread_read"));
+    assert!(
+        handoff
+            .text
+            .contains(&format!("| [{} left out]", handoff.omitted))
+    );
+}
+
+#[test]
+fn trimmed_entries_are_counted_as_gone() {
+    let reading = Reading {
+        tool: true,
+        trimmed: 12,
+    };
+    let handoff = build_with(
+        &long_conversation(),
+        full(),
+        &[Agent::Claude],
+        BUDGET,
+        reading,
+    )
+    .unwrap();
+    assert_eq!(handoff.omitted, 0);
+    assert!(
+        handoff
+            .text
+            .contains("12 older entries are no longer kept and cannot be read.")
+    );
+}

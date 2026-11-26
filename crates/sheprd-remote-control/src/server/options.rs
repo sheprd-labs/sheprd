@@ -59,11 +59,13 @@ pub struct Options {
     pub wsl_catalog: Option<PathBuf>,
 }
 
-/// A relay to listen on, and what the user calls it.
+/// A relay to listen on, what the user calls it, and the QUIC certificate
+/// pin its listener alone trusts, when Sheprd's signed list gave one.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Relay {
     pub endpoint: sheprd_relay::Endpoint,
     pub label: RelayLabel,
+    pub pin: Option<[u8; 32]>,
 }
 
 impl From<sheprd_relay::Endpoint> for Relay {
@@ -71,6 +73,7 @@ impl From<sheprd_relay::Endpoint> for Relay {
         Self {
             endpoint,
             label: RelayLabel::default(),
+            pin: None,
         }
     }
 }
@@ -273,6 +276,9 @@ Options:
   --relay-description TEXT A line about the --relay before it, such as
                            not for public use
   --relay-tag TAG          A tag for the --relay before it; repeatable
+  --relay-pin PIN          Trust only this QUIC certificate on the --relay
+                           before it: its SHA-256 in base64url, as Sheprd's
+                           signed relay list gives it
   --no-bonjour             Do not advertise over Bonjour; phones then pair
                            by QR code only (on macOS, Sheprd advertises
                            while its pairing dialog is open instead)
@@ -491,6 +497,15 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Invocation, Par
             "--relay-tag" => {
                 let tag = text(value("--relay-tag")?, "--relay-tag")?;
                 last_label(&mut relays, "--relay-tag")?.tags.push(tag);
+            }
+            "--relay-pin" => {
+                const OPTION: &str = "--relay-pin";
+                let pin = sheprd_relay::endpoint::decode_pin(&text(value(OPTION)?, OPTION)?)
+                    .ok_or(ParseError::Value { option: OPTION })?;
+                relays
+                    .last_mut()
+                    .ok_or(ParseError::NoRelay { option: OPTION })?
+                    .pin = Some(pin);
             }
             "--no-bonjour" => bonjour = false,
             "--github-cli" => github_cli = true,

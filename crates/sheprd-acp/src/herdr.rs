@@ -6,6 +6,8 @@
 //! the chat.
 
 mod naming;
+#[cfg(feature = "tmux")]
+mod tmux;
 
 use std::{
     io::{BufRead, BufReader, Read, Write},

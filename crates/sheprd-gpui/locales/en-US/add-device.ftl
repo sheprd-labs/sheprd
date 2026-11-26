@@ -28,7 +28,8 @@ add-device-intro = Sheprd checks the host over SSH and saves the device. Setup s
 add-device-target = SSH target
 add-device-label = Label (optional)
 add-device-session = Remote session (optional)
-add-device-checking = Checking Herdr on { $target }…
+add-device-checking = Checking { $target }…
+add-device-installing-core = Installing herdr-core on { $target }…
 add-device-starting = Herdr is installed on { $target } but not running. Starting it…
 add-device-saving = Herdr is running on { $target }. Saving the device…
 add-device-fetching-key = Fetching the host key of { $target }…
@@ -51,25 +52,22 @@ add-device-key-fetch-failed = Fetch the host key of { $target }: { $error }
 add-device-key-unknown = { $target } is not a known host yet. Trust it only if this fingerprint matches the host's own key:
 add-device-key-check = On the host, ssh-keygen -lf { $host_file } prints it. Trusting adds the key to { $known_hosts }.
 
-# What setup offers when the host check finds Herdr missing, old, or SSH
-# needing the user.
-add-device-ask-install = Herdr was not detected on { $target }. Should we install it?
-add-device-ask-update = The Herdr on { $target } is too old for this app. Should we update it?
+# What setup offers when the host check finds herdr-core missing, an old
+# Herdr, or SSH needing the user.
+add-device-ask-install = herdr-core was not detected on { $target }. Should we install it?
+add-device-ask-update = The Herdr on { $target } is too old for this app. Install herdr-core instead?
 add-device-ask-terminal = Setting up { $target } needs your input, such as an SSH password or host key. Continue here?
 add-device-ask-restart = Restart the Herdr server on { $target }? Setup asks you to confirm here before stopping any running panes.
 # $example is the target with a placeholder login, such as name@host.
-add-device-ask-key-user = { $target } accepted none of your SSH keys for the user { $user }. If you log in there as someone else, change the target to { $example } and press Enter to check it. Otherwise, install your key for { $user }? Setup installs your SSH key, asks for the password here, then saves the device.
-add-device-ask-key = { $target } accepted none of your SSH keys. Install your key there? Setup installs your SSH key, asks for the password here, then saves the device.
+add-device-ask-key-user = { $target } accepted none of your SSH keys for the user { $user }. If you log in there as someone else, change the target to { $example } and press Enter to check it. Otherwise, install your key for { $user }? Setup installs your SSH key, asks for the password here, then checks the host again.
+add-device-ask-key = { $target } accepted none of your SSH keys. Install your key there? Setup installs your SSH key, asks for the password here, then checks the host again.
 # The placeholder login in $example above.
 add-device-example-user = name
-add-device-install = Install
-add-device-update = Update
+add-device-install = Install herdr-core
 add-device-open-terminal = Continue setup
 add-device-set-up-key = Set up key login
 # Windows runs no setup in a local terminal yet, so these say which command
 # to run in one.
-add-device-terminal-install = Setting up { $target } needs a terminal: Herdr was not detected there. Run `herdr machine add { $target }` in a terminal, then add the device again.
-add-device-terminal-update = Setting up { $target } needs a terminal: its Herdr is too old for this app. Run `herdr machine add { $target }` in a terminal, then add the device again.
 add-device-terminal-input = Setting up { $target } needs a terminal: SSH needs your input, such as a password or host key. Run `herdr machine add { $target }` in a terminal, then add the device again.
 add-device-terminal-restart = Setting up { $target } needs a terminal: its Herdr server has to restart. Run `herdr machine add { $target }` in a terminal, then add the device again.
 add-device-terminal-key-user = Setting up { $target } needs a terminal: it accepted none of your SSH keys for the user { $user } (use { $example } to log in as someone else). Run `herdr machine add { $target }` in a terminal, then add the device again.

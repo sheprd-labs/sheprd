@@ -72,9 +72,12 @@ pub(crate) fn text(text: &str) -> wire::ToolCallContent {
 }
 
 /// The capabilities every translator offers: pictures and files in prompts,
-/// and continuing a session.
+/// continuing a session, and steering a running turn.
 pub(crate) fn initialized() -> Result<Value, wire::Error> {
+    let mut meta = serde_json::Map::new();
+    meta.insert(super::steer::CAPABILITY.to_owned(), Value::Bool(true));
     let capabilities = wire::AgentCapabilities::new()
+        .meta(meta)
         .load_session(true)
         .prompt_capabilities(
             wire::PromptCapabilities::new()

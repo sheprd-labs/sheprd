@@ -17,22 +17,35 @@ use crate::{
     harness::{
         Out, Translator, out,
         out::{failure, reply, to_value},
+        steer as steering,
     },
     project::{STOP_METHOD, Tag},
     rpc::Inbound,
 };
 
 mod progress;
+mod steer;
 
 /// What a control request this side sent is waiting for.
 #[derive(Debug)]
 enum Control {
-    Effort { acp: wire::RequestId, level: String },
+    Effort {
+        acp: wire::RequestId,
+        level: String,
+    },
     Initialize,
     Interrupt,
-    Mode { acp: wire::RequestId, mode: String },
-    Model { acp: wire::RequestId, value: String },
+    Mode {
+        acp: wire::RequestId,
+        mode: String,
+    },
+    Model {
+        acp: wire::RequestId,
+        value: String,
+    },
     StopTask,
+    /// `cancel_async_message` of a steered prompt.
+    Withdraw(uuid::Uuid),
 }
 
 /// A tool call of the running turn.
@@ -78,6 +91,8 @@ pub(super) struct Bridge {
     /// The running `session/prompt`, answered by Claude's `result`.
     prompt: Option<wire::RequestId>,
     session: String,
+    /// Prompts steered into the turn that Claude has not taken yet.
+    steers: Vec<uuid::Uuid>,
     /// Messages whose text came in pieces, so the whole message that follows
     /// is not shown again.
     streamed: HashSet<String>,
@@ -100,6 +115,7 @@ impl Bridge {
             progress: progress::Progress::default(),
             prompt: None,
             session,
+            steers: Vec::new(),
             streamed: HashSet::new(),
             tasks: Tasks::default(),
         }
@@ -189,6 +205,7 @@ impl Bridge {
                 _ => self.opened(id),
             },
             "session/prompt" => self.prompt(id, params),
+            steering::METHOD => self.steer(id, params),
             "session/set_mode" => {
                 let Ok(request) = serde_json::from_value::<wire::SetSessionModeRequest>(params)
                 else {
@@ -241,7 +258,9 @@ impl Bridge {
             return Vec::new();
         }
         self.interrupted = true;
-        vec![self.control(json!({"subtype": "interrupt"}), Control::Interrupt)]
+        let mut outs = self.withdraw_steers();
+        outs.push(self.control(json!({"subtype": "interrupt"}), Control::Interrupt));
+        outs
     }
 
     /// Asks Claude Code to end a task; its notification says how it ended.
@@ -333,6 +352,10 @@ impl Bridge {
                 outs
             }
             Control::Interrupt => Vec::new(),
+            Control::Withdraw(id) => {
+                self.withdrawn(id, &result);
+                Vec::new()
+            }
             Control::StopTask => result
                 .err()
                 .map(|message| {
@@ -645,6 +668,9 @@ impl Bridge {
     }
 
     fn user(&mut self, envelope: &Value) -> Vec<Out> {
+        if envelope.get("isReplay") == Some(&Value::Bool(true)) {
+            return self.replayed(envelope);
+        }
         let Some(message) = envelope.get("message") else {
             return Vec::new();
         };
@@ -748,6 +774,7 @@ impl Bridge {
             }
             (false, subtype) => Err(error_text(message, subtype)),
         };
+        let continues = self.turn_continues();
         self.interrupted = false;
         // A background task can outlive this prompt; a call's heartbeat cannot.
         outs.extend(self.progress.flush(&self.session));
@@ -763,6 +790,11 @@ impl Bridge {
         self.calls.clear();
         self.streamed.clear();
         self.message = None;
+        if continues {
+            self.prompt = Some(id);
+            outs.extend(self.continued(stop.err()));
+            return outs;
+        }
         let result = match stop {
             Ok(stop) => to_value(&wire::PromptResponse::new(stop)).map(|mut response| {
                 if let Some(tokens) = tokens(message) {

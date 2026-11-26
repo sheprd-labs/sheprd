@@ -22,6 +22,12 @@ pub enum Error {
     Stopped,
     #[error("herdr-core no longer runs this terminal.")]
     TerminalGone,
+    #[cfg(feature = "tmux")]
+    #[error(transparent)]
+    Tmux(#[from] sheprd_tmux::Error),
+    #[cfg(not(feature = "tmux"))]
+    #[error("This build does not include tmux support.")]
+    TmuxDisabled,
     #[error("Could not start watching the pane's processes.")]
     Worker(#[source] std::io::Error),
 }

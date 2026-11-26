@@ -110,6 +110,8 @@ fn catalog_has_all_native_commands_and_gpui_shortcuts() {
         (NotificationHistory, &[]),
         (ClearAllNotifications, &[]),
         (NewCoreTerminal, &[]),
+        #[cfg(feature = "tmux")]
+        (NewTmuxTerminal, &[]),
         (MirrorCorePane, &[]),
         (ConvertToChat, &[]),
         (IncreaseFontSize, &["cmd-=", "cmd-+"]),

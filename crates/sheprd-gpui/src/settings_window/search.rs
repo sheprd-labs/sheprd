@@ -50,6 +50,8 @@ impl SettingsWindow {
                 ThemeName::follows_system(self.drafted_theme())
             }
             catalog::Availability::Windows => cfg!(windows),
+            #[cfg(feature = "cloud")]
+            catalog::Availability::CloudProviders => !crate::cloud::enabled().is_empty(),
         }
     }
 

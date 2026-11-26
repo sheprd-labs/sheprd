@@ -58,6 +58,10 @@ impl<R: FnMut(Update)> Session<R> {
         self.auth_attempted = false;
         self.auth_methods.clear();
         self.can_load_session = false;
+        self.can_steer = false;
+        // Prompts sent to the old agent go to the new one afresh, with the
+        // conversation it is handed.
+        self.steering.clear();
         self.legacy_model_option = false;
         self.pending.clear();
         self.pictures = super::pictures::Pictures::default();
@@ -81,6 +85,9 @@ impl<R: FnMut(Update)> Session<R> {
         transcript.pull_requests = std::mem::take(&mut self.transcript.pull_requests);
         // Prompts typed while the old agent started go to the new one.
         transcript.queued = std::mem::take(&mut self.transcript.queued);
+        for queued in &mut transcript.queued {
+            queued.steered = false;
+        }
         transcript.harnesses = Some(Harnesses {
             available,
             current: Some(agent),
@@ -126,7 +133,14 @@ impl<R: FnMut(Update)> Session<R> {
 
     /// The agent [`super::Flow::Launch`] asked for started: open the ACP
     /// connection to it.
-    pub(crate) fn launched(&mut self, outbox: rpc::Outbox, pid: u32) {
+    /// `given` is how it gets the server that reads the chat's thread.
+    pub(crate) fn launched(
+        &mut self,
+        outbox: rpc::Outbox,
+        pid: u32,
+        given: crate::thread_mcp::Given,
+    ) {
+        self.config.given = given;
         (self.report)(Update::Started(pid));
         self.outbox = outbox;
         self.start();

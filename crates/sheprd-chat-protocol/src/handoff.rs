@@ -19,7 +19,7 @@
 
 use std::fmt::Write as _;
 
-use crate::{Agent, Author, Entry, EntryKind, Tool, ToolContent, ToolStatus};
+use crate::{Agent, Author, Entry, EntryId, EntryKind, Tool, ToolContent, ToolStatus};
 
 /// The handoff's text budget: about 16,000 tokens at four bytes a token.
 pub const BUDGET: usize = 64 * 1024;
@@ -53,6 +53,17 @@ pub struct Handoff {
     pub text: String,
 }
 
+/// What the agent taking over can read beyond the handoff.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct Reading {
+    /// It has the `thread_read` tool, which reads entries the handoff left
+    /// out by their ids.
+    pub tool: bool,
+    /// Entries the thread's transcript file no longer keeps, which nothing
+    /// can read.
+    pub trimmed: usize,
+}
+
 /// The handoff for an agent taking over after `others`, who held the
 /// conversation before it, from `entries` (oldest first). `None` when
 /// nothing in them is worth handing over.
@@ -62,9 +73,27 @@ pub fn build(
     others: &[Agent],
     budget: usize,
 ) -> Option<Handoff> {
+    build_with(entries, scope, others, budget, Reading::default())
+}
+
+/// [`build`] for an agent that can read what `reading` says: entries left
+/// out are named by id for its `thread_read` tool, and trimmed ones are
+/// counted as gone.
+pub fn build_with(
+    entries: &[Entry],
+    scope: Scope<'_>,
+    others: &[Agent],
+    budget: usize,
+    reading: Reading,
+) -> Option<Handoff> {
+    let mut ids: Vec<Option<EntryId>> = Vec::new();
     let mut lines: Vec<String> = entries
         .iter()
-        .filter_map(|entry| line(&entry.kind))
+        .filter_map(|entry| {
+            let line = line(&entry.kind)?;
+            ids.push(Some(entry.id));
+            Some(line)
+        })
         .collect();
     if let Scope::Full {
         first_prompt: Some(first),
@@ -80,6 +109,7 @@ pub fn build(
             .is_some_and(|line| line == cap(&pinned));
         if !held {
             lines.insert(0, cap(&pinned));
+            ids.insert(0, None);
         }
     }
     if lines.is_empty() {
@@ -90,23 +120,18 @@ pub fn build(
     let omitted = lines.len() - kept;
 
     let boundary = uuid::Uuid::new_v4().simple().to_string();
-    let mut text = header(scope, others, omitted, &boundary);
+    let mut text = header(scope, others, omitted, reading, &boundary);
     let _ = writeln!(text, "<<<quote {boundary}");
-    let mut skipped = 0;
-    for (line, keep) in lines.iter().zip(&chosen) {
+    let mut gap = Gap::default();
+    for ((line, keep), id) in lines.iter().zip(&chosen).zip(&ids) {
         if !keep {
-            skipped += 1;
+            gap.add(*id);
             continue;
         }
-        if skipped > 0 {
-            quote(&mut text, &format!("[{skipped} left out]"));
-            skipped = 0;
-        }
+        gap.close(&mut text, reading.tool);
         quote(&mut text, line);
     }
-    if skipped > 0 {
-        quote(&mut text, &format!("[{skipped} left out]"));
-    }
+    gap.close(&mut text, reading.tool);
     let _ = writeln!(text, "quote {boundary}>>>");
     text.push_str("[End of context. The user's new message follows in a separate block.]");
     Some(Handoff {
@@ -114,6 +139,40 @@ pub fn build(
         omitted,
         text,
     })
+}
+
+/// A run of lines left out of the quote.
+#[derive(Default)]
+struct Gap {
+    count: usize,
+    first: Option<EntryId>,
+    last: Option<EntryId>,
+}
+
+impl Gap {
+    fn add(&mut self, id: Option<EntryId>) {
+        self.count += 1;
+        self.first = self.first.or(id);
+        self.last = id.or(self.last);
+    }
+
+    /// Marks the run in the quote, by its ids when the agent can read them.
+    fn close(&mut self, text: &mut String, tool: bool) {
+        let gap = std::mem::take(self);
+        if gap.count == 0 {
+            return;
+        }
+        let marker = match (tool, gap.first, gap.last) {
+            (true, Some(first), Some(last)) if first == last => {
+                format!("[{} left out: #{}]", gap.count, first.0)
+            }
+            (true, Some(first), Some(last)) => {
+                format!("[{} left out: #{} to #{}]", gap.count, first.0, last.0)
+            }
+            _ => format!("[{} left out]", gap.count),
+        };
+        quote(text, &marker);
+    }
 }
 
 /// What each line quotes, aligned with the lines: a pinned first prompt
@@ -189,7 +248,13 @@ fn quote(text: &mut String, line: &str) {
     }
 }
 
-fn header(scope: Scope<'_>, others: &[Agent], omitted: usize, boundary: &str) -> String {
+fn header(
+    scope: Scope<'_>,
+    others: &[Agent],
+    omitted: usize,
+    reading: Reading,
+    boundary: &str,
+) -> String {
     let names = names(others);
     let mut text = match scope {
         Scope::Full { .. } => format!(
@@ -205,6 +270,19 @@ fn header(scope: Scope<'_>, others: &[Agent], omitted: usize, boundary: &str) ->
     };
     if omitted > 0 {
         let _ = write!(text, " {omitted} earlier entries are left out for length.");
+        if reading.tool {
+            text.push_str(
+                " Each gap in the quote names their ids: read them with the thread_read tool \
+                 (from, to) when you need them.",
+            );
+        }
+    }
+    if reading.trimmed > 0 {
+        let _ = write!(
+            text,
+            " {} older entries are no longer kept and cannot be read.",
+            reading.trimmed
+        );
     }
     let _ = writeln!(
         text,
@@ -234,6 +312,11 @@ fn names(agents: &[Agent]) -> String {
 /// One entry as a quoted line, or `None` for what the agent taking over has
 /// no use for: reasoning, turn summaries, and the chat's own notices.
 fn line(kind: &EntryKind) -> Option<String> {
+    full_line(kind).map(|line| cap(&line))
+}
+
+/// [`line`] without the cut to [`ENTRY_CAP`], for reads of the thread.
+pub(crate) fn full_line(kind: &EntryKind) -> Option<String> {
     let line = match kind {
         EntryKind::User { text, .. } => format!("User: {text}"),
         EntryKind::Agent { text } => format!("Agent: {text}"),
@@ -247,7 +330,7 @@ fn line(kind: &EntryKind) -> Option<String> {
         | EntryKind::Notice { .. }
         | EntryKind::Handoff(_) => return None,
     };
-    Some(cap(&line))
+    Some(line)
 }
 
 fn tool_line(tool: &Tool) -> String {

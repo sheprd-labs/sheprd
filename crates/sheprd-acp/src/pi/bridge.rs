@@ -11,8 +11,10 @@ use acp::v1 as wire;
 use serde_json::{Value, json};
 
 use super::tools;
-use crate::harness::{Out, Translator, out, streaming::Streams};
+use crate::harness::{Out, Translator, out, steer as steering, streaming::Streams};
 use crate::rpc::Inbound;
+
+mod steer;
 
 const MODEL: &str = "model";
 const THINKING: &str = "thinking";
@@ -38,6 +40,12 @@ enum Pending {
         value: String,
     },
     Abort,
+    /// A `steer`, answering the session's steered prompt `prompt`.
+    Steer {
+        acp: wire::RequestId,
+        prompt: uuid::Uuid,
+    },
+    ClearQueue,
 }
 
 /// A dialog an extension opened, waiting for its answer.
@@ -70,21 +78,39 @@ pub(super) struct Bridge {
     pending: HashMap<String, Pending>,
     prompt: Option<wire::RequestId>,
     session: String,
+    /// The messages of a run that ended while pi still queued steered
+    /// prompts, kept until the run that takes them ends.
+    held: Option<Value>,
+    /// When a held run stops waiting for a pi not yet heard to settle.
+    held_until: Option<Instant>,
+    /// pi says when it settles, so a run ending with steered prompts still
+    /// queued is followed by one that takes them.
+    settles: bool,
     /// The `get_state` answer, kept until the models are in too.
     state: Option<Value>,
+    /// Prompts sent to pi's steering queue, oldest first.
+    steers: Vec<steer::Steering>,
     thinking: Option<String>,
     tool_output: Streams<tools::Progress>,
+    /// pi's steering queue, as it last listed it.
+    waiting: Vec<String>,
 }
 
 impl Translator for Bridge {
     fn next_tick(&self) -> Option<Instant> {
-        self.tool_output.next_tick()
+        [self.tool_output.next_tick(), self.held_until]
+            .into_iter()
+            .flatten()
+            .min()
     }
 
     fn tick(&mut self) -> Vec<Out> {
         let session = &self.session;
-        self.tool_output
-            .flush(|id, progress| partial(session, id, progress))
+        let mut outs = self
+            .tool_output
+            .flush(|id, progress| partial(session, id, progress));
+        outs.extend(self.waited());
+        outs
     }
 
     fn start(&mut self) -> Vec<Out> {
@@ -169,6 +195,7 @@ impl Bridge {
                 self.opened()
             }
             "session/prompt" => self.prompt(id, params),
+            steering::METHOD => self.steer(id, params),
             "session/set_config_option" => {
                 let Some((setting, value)) = out::chosen(params) else {
                     return vec![out::reply(id, Err(wire::Error::invalid_params()))];
@@ -275,33 +302,12 @@ impl Bridge {
                 Err(out::failure("A turn is already running.")),
             )];
         }
-        let mut text = Vec::new();
-        let mut images = Vec::new();
-        for block in &request.prompt {
-            match block {
-                wire::ContentBlock::Text(content) => text.push(content.text.clone()),
-                wire::ContentBlock::Image(image) => images.push(json!({
-                    "type": "image", "data": image.data, "mimeType": image.mime_type,
-                })),
-                wire::ContentBlock::Resource(resource) => {
-                    if let wire::EmbeddedResourceResource::TextResourceContents(file) =
-                        &resource.resource
-                    {
-                        text.push(out::embedded_file(&file.uri, &file.text));
-                    }
-                }
-                // pi reads a file named with `@`.
-                wire::ContentBlock::ResourceLink(link) => {
-                    text.push(format!("@{}", out::file_path(&link.uri)));
-                }
-                _ => {}
-            }
-        }
+        let (text, images) = message(&request.prompt);
         self.calls.clear();
         self.finished.clear();
         self.tool_output.clear();
         self.prompt = Some(id);
-        let mut command = json!({"type": "prompt", "message": text.join("\n\n")});
+        let mut command = json!({"type": "prompt", "message": text});
         if !images.is_empty() {
             command["images"] = Value::Array(images);
         }
@@ -395,7 +401,8 @@ impl Bridge {
                     Ok(json!({"configOptions": self.options()})),
                 )]
             }
-            Pending::Abort => Vec::new(),
+            Pending::Steer { acp, prompt } => self.steer_answered(acp, prompt, failed, &data),
+            Pending::Abort | Pending::ClearQueue => Vec::new(),
         }
     }
 
@@ -516,7 +523,10 @@ impl Bridge {
                     )),
                 )]
             }
-            "agent_end" => self.finished(message.get("messages")),
+            "agent_end" => self.run_ended(message.get("messages")),
+            "agent_start" => self.run_started(),
+            "agent_settled" => self.settled(),
+            "queue_update" => self.queue_changed(message),
             "compaction_end"
                 if message
                     .get("result")
@@ -542,6 +552,29 @@ impl Bridge {
                 .collect(),
             _ => Vec::new(),
         }
+    }
+
+    /// A run ended: the prompt ends with it, unless pi continues with
+    /// steered prompts it still queues.
+    fn run_ended(&mut self, messages: Option<&Value>) -> Vec<Out> {
+        if self.prompt.is_none() {
+            return Vec::new();
+        }
+        let aborted = messages
+            .and_then(Value::as_array)
+            .and_then(|messages| {
+                messages.iter().rfind(|message| {
+                    message.get("role").and_then(Value::as_str) == Some("assistant")
+                })
+            })
+            .and_then(|message| message.get("stopReason"))
+            .and_then(Value::as_str)
+            == Some("aborted");
+        let mut outs = self.give_back_unless_held(messages, aborted);
+        if self.held.is_none() {
+            outs.extend(self.finished(messages));
+        }
+        outs
     }
 
     /// Ends the prompt from how pi's last answer stopped, and asks for the
@@ -711,6 +744,33 @@ fn partial(session: &str, id: &str, progress: &tools::Progress) -> Out {
             progress.fields(),
         )),
     )
+}
+
+/// An ACP prompt as pi's message text and pictures; pi reads a file named
+/// with `@`.
+fn message(prompt: &[wire::ContentBlock]) -> (String, Vec<Value>) {
+    let mut text = Vec::new();
+    let mut images = Vec::new();
+    for block in prompt {
+        match block {
+            wire::ContentBlock::Text(content) => text.push(content.text.clone()),
+            wire::ContentBlock::Image(image) => images.push(json!({
+                "type": "image", "data": image.data, "mimeType": image.mime_type,
+            })),
+            wire::ContentBlock::Resource(resource) => {
+                if let wire::EmbeddedResourceResource::TextResourceContents(file) =
+                    &resource.resource
+                {
+                    text.push(out::embedded_file(&file.uri, &file.text));
+                }
+            }
+            wire::ContentBlock::ResourceLink(link) => {
+                text.push(format!("@{}", out::file_path(&link.uri)));
+            }
+            _ => {}
+        }
+    }
+    (text.join("\n\n"), images)
 }
 
 fn model_id(model: Option<&Value>) -> Option<String> {

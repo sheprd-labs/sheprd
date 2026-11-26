@@ -192,8 +192,11 @@ bundle profile="release" features="":
         *) echo "Unknown profile: {{profile}} (release or debug)" >&2; exit 2 ;;
     esac
     app=target/{{profile}}/Sheprd.app
-    cargo build --locked $flags --target-dir target -p sheprd-gpui --features "{{features}}"
-    cargo build --locked $flags --target-dir target -p sheprd-acp -p sheprd-automate -p sheprd-remote-control
+    cargo build --locked $flags --target-dir target -p sheprd-gpui --features "{{features}}" -p sheprd-acp
+    features="{{features}}"
+    remote_features=""
+    if [[ ",${features// /,}," == *,tmux,* ]]; then remote_features=tmux; fi
+    cargo build --locked $flags --target-dir target -p sheprd-automate -p sheprd-remote-control --features "$remote_features"
     mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
     # Replace the executables rather than rewrite them in place: macOS keeps
     # a signed file's old signature with its inode, so reading the rewritten
@@ -289,6 +292,7 @@ ios-fleet-ffi:
 
 # Swift package tests, against the fixtures the daemon's Rust tests write.
 ios-test: ios-fleet-ffi
+    PYTHONDONTWRITEBYTECODE=1 python3 ios/tools/test_next_build.py
     PYTHONDONTWRITEBYTECODE=1 python3 ios/tools/test_testflight_notes.py
     PYTHONDONTWRITEBYTECODE=1 python3 ios/tools/test_signing.py
     cd ios/SheprdRemoteCore && swift test
@@ -404,6 +408,14 @@ relays-add endpoint region name:
 relays-remove endpoint:
     python3 scripts/relays.py remove {{relays_list}} "{{endpoint}}"
     just relays-sign
+
+# Create open public relays at REGION.relay.sheprd.org, then check them; publishes nothing.
+relays-deploy +regions:
+    bash scripts/public-relays.sh deploy {{regions}}
+
+# Wait for public relays' DNS, HTTPS, and QUIC, then print their relays-add lines.
+relays-check +regions:
+    bash scripts/public-relays.sh check {{regions}}
 
 # Re-stamp and re-sign the list as it is, before it expires.
 relays-sign:

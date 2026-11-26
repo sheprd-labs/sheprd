@@ -15,6 +15,9 @@ companions=(sheprd-acp sheprd-remote-control sheprd-automate sheprd-nearby herdr
 for companion in "${companions[@]}"; do
     [[ -f $(dirname -- "$3")/$companion ]] || fail "A $companion beside the binary required"
 done
+# herdr-core's notices, which fetch-herdr-core.py leaves beside it.
+core_licenses=$(dirname -- "$3")/herdr-core-licenses.txt
+[[ -s $core_licenses ]] || fail 'herdr-core licenses beside the binary required'
 out=$(cd -- "$4" && pwd)/Sheprd-$1-$2.tar.gz
 new_output "$out"
 selection=$(python3 "$release_root/scripts/release/build-icon.py" linux "$3")
@@ -47,7 +50,7 @@ cp "$release_root/crates/sheprd-protocol/LICENSE-APACHE" "$release_root/crates/s
 cp "$release_root/LICENSE" "$release_root/NOTICE" "$release_root/assets/icons/LICENSE-octicons" "$root/share/licenses/herdr-gpui/"
 cp "$5" "$root/share/licenses/herdr-gpui/THIRD-PARTY-NOTICES.txt"
 cp "$release_root/crates/sheprd-gpui/SOUND-NOTICE.md" "$root/share/licenses/herdr-gpui/"
-cp "$release_root/scripts/release/herdr-core-licenses.txt" "$root/share/licenses/herdr-gpui/HERDR-CORE-LICENSES.txt"
+cp "$core_licenses" "$root/share/licenses/herdr-gpui/HERDR-CORE-LICENSES.txt"
 COPYFILE_DISABLE=1 tar -C "$tmp" -czf "$tmp/archive.tar.gz" "$name"
 mv "$tmp/archive.tar.gz" "$out"
 printf '%s\n' "$out"

@@ -67,6 +67,12 @@ pub(super) fn creation(
     if let Some(reason) = cloud::unavailable() {
         return Err(Response::error(ErrorCode::Unsupported, reason));
     }
+    if !cloud::is_enabled(provider) {
+        return Err(Response::error(
+            ErrorCode::Unsupported,
+            format!("{name} is turned off in Settings > General"),
+        ));
+    }
     if cloud::provision(provider).is_none() {
         return Err(Response::error(
             ErrorCode::Unsupported,

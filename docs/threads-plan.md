@@ -134,6 +134,16 @@ field, as revision 2 did for `Change::Harnesses`.
   relaunch) pass it. The remote control daemon still reads revision 4, so
   phones keep seeing notices until phase 6.
 
+- `thread_read` (`feat/threads-read`): `sheprd-acp thread-mcp --thread ID`
+  serves `thread_read` and `thread_search` over `crates/sheprd-mcp`, reading
+  the thread's file through `sheprd_chat_protocol::thread::read` (at most
+  64 entries or 160 KiB per read, inside the MCP server's 256 KiB message
+  bound; 64 search hits). ACP agents get it in `session/new` and
+  `session/load`, native Claude with `--mcp-config`, native Codex with
+  `-c mcp_servers.sheprd-thread.*`; native Pi takes none. The handoff is
+  now built from the thread's file, names each gap by its ids for an agent
+  with the tool, and counts trimmed entries as gone.
+
 As built, the restore record keeps its single agent and session, the
 segment a restore continues, plus the thread id: records stay readable in
 both directions across versions, and segments live in the thread record

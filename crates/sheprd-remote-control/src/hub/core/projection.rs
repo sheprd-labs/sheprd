@@ -7,7 +7,7 @@ use sheprd_core_client::wire::{StatusState, Terminal as Record};
 use sheprd_session::SavedTabs;
 use std::{collections::HashSet, io::Read, path::Path};
 
-pub(super) fn read(path: &Path) -> Option<SavedTabs> {
+pub(in crate::hub) fn read(path: &Path) -> Option<SavedTabs> {
     let mut bytes = Vec::new();
     std::fs::File::open(path)
         .ok()?

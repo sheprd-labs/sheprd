@@ -20,5 +20,6 @@ serde_json.workspace   = true
 gpui.workspace = true
 
 [features]
+tmux = []
 # The platform's default for a catalog shortcut, for the app's own tests.
 test-support = []

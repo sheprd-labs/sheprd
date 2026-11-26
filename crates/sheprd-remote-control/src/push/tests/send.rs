@@ -50,6 +50,7 @@ fn delivery_follows_the_notification() {
         pane: "p".to_owned(),
         permission: None,
         subtitle: String::new(),
+        pr: None,
         tag: "chat-p".to_owned(),
         title: String::new(),
         urgency: Urgency::High,

@@ -102,3 +102,5 @@ commands-toggle-zen-mode = 切换专注模式
 commands-toggle-zoom = 切换窗格最大化
 commands-workspace-picker = 跳转
 commands-worktree-notes = 工作树笔记
+
+commands-new-tmux-terminal = 新建 tmux 终端

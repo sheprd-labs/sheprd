@@ -254,6 +254,12 @@ impl SheprdWindow {
                     self.set_host_muted(&id, !muted, cx);
                 }
             }
+            Action::Pause => {
+                if let Some(id) = self.menu.host.as_ref().map(|host| host.id.clone()) {
+                    let paused = self.device_paused(&id);
+                    self.set_device_paused(&id, !paused, cx);
+                }
+            }
             Action::ServerKeybindings => self.toggle_server_keybindings(cx),
             Action::InstallCore => {
                 let Some(id) = self.menu.host.as_ref().map(|host| host.id.clone()) else {
@@ -651,10 +657,12 @@ impl SheprdWindow {
             let device_theme = self.device_theme_value(&host.id).map(str::to_owned);
             let muted =
                 crate::notification_mutes::Mutes::of(cx).is_some_and(|mutes| mutes.host(&host.id));
+            let paused = self.device_paused(&host.id);
             for (index, &(action, message)) in host.actions().iter().enumerate() {
                 let label = crate::i18n::message(message, &[]);
                 let toggle = match action {
                     Action::Mute => Some(muted),
+                    Action::Pause => Some(paused),
                     Action::ServerKeybindings => Some(server_keys),
                     _ => None,
                 };

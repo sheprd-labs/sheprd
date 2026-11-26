@@ -57,6 +57,7 @@ class LinuxDistroTests(unittest.TestCase):
         (self.work / "sheprd-automate").write_bytes(b"automation daemon")
         (self.work / "sheprd-nearby").write_bytes(b"bluetooth helper")
         (self.work / "herdr-core").write_bytes(b"herdr-core daemon")
+        (self.work / "herdr-core-licenses.txt").write_bytes(b"herdr-core notices")
         self.notices = self.work / "notices.txt"
         self.notices.write_text("Third-party license text\n")
 

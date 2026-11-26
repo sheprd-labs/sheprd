@@ -101,6 +101,9 @@ pub(crate) struct Relays {
     /// What `[remote] relays` calls each relay, by endpoint; unlabelled
     /// relays are left out.
     labels: BTreeMap<String, RelayLabel>,
+    /// The QUIC certificate pin `[remote] relays` gives a relay, by
+    /// endpoint: its listener trusts only that certificate.
+    pins: BTreeMap<String, [u8; 32]>,
     /// The open pairing dial, if any, and a revision listeners follow.
     pairing: Mutex<Option<Pairing>>,
     pairing_changed: watch::Sender<u64>,
@@ -146,11 +149,16 @@ impl Relays {
             .filter(|relay| !relay.label.is_empty())
             .map(|relay| (relay.endpoint.to_string(), relay.label.clone()))
             .collect();
+        let pins = relays
+            .iter()
+            .filter_map(|relay| Some((relay.endpoint.to_string(), relay.pin?)))
+            .collect();
         Ok(Self {
             changed: watch::Sender::new(0),
             configured: relays.into_iter().map(|relay| relay.endpoint).collect(),
             keys: keys::Keys::load_or_create(state_dir)?,
             labels,
+            pins,
             pairing: Mutex::default(),
             pairing_changed: watch::Sender::new(0),
             rtt: Mutex::default(),
@@ -221,6 +229,12 @@ impl Relays {
         shared.token(endpoint).cloned()
     }
 
+    /// The QUIC certificate pin `endpoint`'s listener must find, when
+    /// `[remote] relays` gives one.
+    fn pin(&self, endpoint: &Endpoint) -> Option<[u8; 32]> {
+        self.pins.get(&endpoint.to_string()).copied()
+    }
+
     /// The token each relay listened on is presented, by endpoint, to tell
     /// which listeners a change of tokens must reconnect.
     fn presented(&self) -> BTreeMap<String, Option<ListenToken>> {
@@ -283,6 +297,11 @@ impl Relays {
         Some(Info {
             identity: URL_SAFE_NO_PAD.encode(self.keys.tunnel.identity().to_bytes()),
             labels: self.labels.clone(),
+            pins: self
+                .pins
+                .iter()
+                .map(|(endpoint, pin)| (endpoint.clone(), sheprd_relay::endpoint::encode_pin(pin)))
+                .collect(),
             relays: nearest::first(&endpoints, &rtt),
             route: self.keys.route().to_string(),
             rtt_ms: nearest::millis(&rtt),

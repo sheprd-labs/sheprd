@@ -1,8 +1,8 @@
 //! CPU, memory and GPU of each host the window lists, for the status bar and
 //! the sidebar's host rows. Every host has its own worker thread sampling it every
 //! couple of seconds: this machine through `sysinfo`, a remote host over one
-//! SSH shell, and a WSL distribution over one `wsl.exe` shell, kept open
-//! between samples. The UI thread only starts and stops
+//! SSH shell (PowerShell on a Windows host), and a WSL distribution over one
+//! `wsl.exe` shell, kept open between samples. The UI thread only starts and stops
 //! workers and takes their samples on later ticks, so a slow or unreachable
 //! host never blocks rendering or delays another host.
 // i18n: migrated
@@ -12,6 +12,7 @@ mod gpu;
 mod hosted;
 mod render;
 mod sample;
+mod windows;
 
 #[cfg(test)]
 mod tests;
@@ -23,6 +24,7 @@ pub(crate) use hosted::host_load;
 use crate::{
     Result,
     usage::{Host, Shell},
+    windows_host::Session as WindowsSession,
 };
 pub(crate) use render::{
     CPU_WARN, DISK_WARN, GPU_WARN, MEMORY_WARN, VRAM_WARN, gauges, gpu_line, line, severity,
@@ -71,10 +73,21 @@ enum Source {
         os: Os,
         ticks: Option<Ticks>,
     },
+    /// A Windows SSH host, through PowerShell.
+    Windows {
+        session: WindowsSession,
+        target: String,
+        /// Whether the session's script probes the GPU.
+        gpu: bool,
+        ticks: Option<Ticks>,
+    },
 }
 
 impl Source {
-    fn open(host: &Host) -> Result<Self> {
+    /// `windows` is whether `host` answered as a Windows host before, so a
+    /// reconnect goes straight to PowerShell. `gpu` is whether a Windows
+    /// host's script probes its cards.
+    fn open(host: &Host, windows: bool, gpu: bool) -> Result<Self> {
         match host {
             Host::Local => Ok(Self::Local {
                 system: Box::new(sysinfo::System::new()),
@@ -82,7 +95,13 @@ impl Source {
                 disk: HomeDisk::open(),
                 gpu: gpu::Local::open(),
             }),
-            Host::Ssh(target) => Self::remote(Shell::connect(target).map_err(crate::Error::from)),
+            Host::Ssh(target) if windows => Self::windows(target, gpu),
+            // A Windows host's `cmd.exe` or PowerShell cannot start `/bin/sh`,
+            // and Git Bash there names itself `MINGW64_NT-…`, which no POSIX
+            // step reads; either is then tried through PowerShell. When that
+            // fails too, the POSIX failure is the one reported.
+            Host::Ssh(target) => Self::remote(Shell::connect(target).map_err(crate::Error::from))
+                .or_else(|posix| Self::windows(target, gpu).map_err(|_| posix)),
             // A distribution is sampled as a Linux host, through `wsl.exe`.
             Host::Wsl(distro) => {
                 Self::remote(Shell::connect_wsl(distro).map_err(crate::Error::from))
@@ -104,6 +123,22 @@ impl Source {
             shell,
             os,
             ticks: None,
+        })
+    }
+
+    /// A Windows host's PowerShell, which must give one answer that reads as
+    /// a sample before it counts as one: an SSH failure, or a host with no
+    /// PowerShell, gives none. Answers come a period apart, so its counters
+    /// measure CPU usage up to the next.
+    fn windows(target: &str, gpu: bool) -> Result<Self> {
+        let mut session = WindowsSession::connect(target, &windows::script(gpu)).map_err(remote)?;
+        let text = session.sample(STEP_TIMEOUT).map_err(remote)?;
+        let ticks = sample::parse(&text, None)?.ticks;
+        Ok(Self::Windows {
+            session,
+            target: target.to_owned(),
+            gpu,
+            ticks,
         })
     }
 
@@ -145,6 +180,23 @@ impl Source {
             Self::Remote { shell, os, ticks } => {
                 let output = shell.run(&os.command(gpu), STEP_TIMEOUT).map_err(remote)?;
                 let answer = sample::parse(&output.stdout, *ticks)?;
+                *ticks = answer.ticks;
+                Ok(answer.sample)
+            }
+            Self::Windows {
+                session,
+                target,
+                gpu: probing,
+                ticks,
+            } => {
+                // The script knows whether to probe the GPU from its start.
+                if *probing != gpu {
+                    *session =
+                        WindowsSession::connect(target, &windows::script(gpu)).map_err(remote)?;
+                    *probing = gpu;
+                }
+                let text = session.sample(STEP_TIMEOUT).map_err(remote)?;
+                let answer = sample::parse(&text, *ticks)?;
                 *ticks = answer.ticks;
                 Ok(answer.sample)
             }
@@ -275,12 +327,15 @@ fn spawn(host: Host, gpu: Arc<AtomicBool>) -> Option<Worker> {
 
 fn run(host: &Host, gpu: &AtomicBool, stop: &Stop, results: &mpsc::SyncSender<Result<Sample>>) {
     let mut source: Option<Source> = None;
+    // Once a host answers through PowerShell it stays a Windows host.
+    let mut windows = false;
     loop {
         let opened = match source.take() {
             Some(source) => Ok(source),
-            None => Source::open(host),
+            None => Source::open(host, windows, gpu.load(Ordering::Relaxed)),
         };
         let result = opened.and_then(|mut opened| {
+            windows |= matches!(opened, Source::Windows { .. });
             let sample = opened.sample(gpu.load(Ordering::Relaxed));
             // A failed remote step leaves the shell unusable; reconnect.
             if sample.is_ok() || matches!(opened, Source::Local { .. }) {

@@ -1,0 +1,237 @@
+{
+  "id": "tmux-sessions",
+  "feature": "Terminals kept in tmux",
+  "fill": false,
+  "title": {
+    "en": "Terminals that keep running",
+    "fr": "Des terminaux qui continuent de tourner",
+    "es": "Terminales que siguen funcionando",
+    "de": "Terminals, die weiterlaufen",
+    "pt-BR": "Terminais que continuam rodando",
+    "ja": "動き続けるターミナル",
+    "zh-CN": "持续运行的终端"
+  },
+  "setup": [
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "click",
+      1600,
+      700
+    ],
+    [
+      "repeat",
+      4,
+      [
+        [
+          "key",
+          "delete"
+        ]
+      ]
+    ],
+    [
+      "type",
+      "clear"
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      1
+    ]
+  ],
+  "segments": [
+    {
+      "say": {
+        "en": "In Settings, choose tmux as the terminal backend.",
+        "fr": "Dans les réglages, choisissez tmux comme moteur de terminal.",
+        "es": "En Ajustes, elige tmux como motor de terminal.",
+        "de": "Wähle in den Einstellungen tmux als Terminal-Backend.",
+        "pt-BR": "Nos Ajustes, escolha o tmux como motor de terminal.",
+        "ja": "設定で、ターミナルのバックエンドに tmux を選びます。",
+        "zh-CN": "在设置中，把终端后端设为 tmux。"
+      },
+      "actions": [
+        [
+          "click",
+          42,
+          1395
+        ],
+        [
+          "wait",
+          1.8
+        ],
+        [
+          "click",
+          494,
+          840
+        ],
+        [
+          "wait",
+          1.5
+        ],
+        [
+          "click",
+          2127,
+          618
+        ],
+        [
+          "wait",
+          1.2
+        ]
+      ]
+    },
+    {
+      "say": {
+        "en": "New tabs now run in tmux. Start the website's dev server.",
+        "fr": "Les nouveaux onglets tournent dans tmux. Lancez le serveur du site.",
+        "es": "Las pestañas nuevas ya corren en tmux. Arranca el servidor del sitio.",
+        "de": "Neue Tabs laufen jetzt in tmux. Starte den Dev-Server der Website.",
+        "pt-BR": "As novas abas agora rodam no tmux. Inicie o servidor do site.",
+        "ja": "新しいタブは tmux で動きます。サイトの開発サーバーを起動します。",
+        "zh-CN": "新标签页现在运行在 tmux 中。启动网站的开发服务器。"
+      },
+      "actions": [
+        [
+          "key",
+          "cmd+w"
+        ],
+        [
+          "wait",
+          0.8
+        ],
+        [
+          "click",
+          1600,
+          700
+        ],
+        [
+          "key",
+          "cmd+t"
+        ],
+        [
+          "wait",
+          4.5
+        ],
+        [
+          "click",
+          1200,
+          800
+        ],
+        [
+          "wait",
+          0.6
+        ],
+        [
+          "type",
+          "cd ~/Projects/website && ./dev"
+        ],
+        [
+          "key",
+          "return"
+        ],
+        [
+          "wait",
+          1.5
+        ]
+      ]
+    },
+    {
+      "say": {
+        "en": "Split the tab to run the API worker beside it.",
+        "fr": "Divisez l'onglet pour lancer le worker de l'API à côté.",
+        "es": "Divide la pestaña para ejecutar el worker de la API al lado.",
+        "de": "Teile den Tab und starte daneben den API-Worker.",
+        "pt-BR": "Divida a aba para rodar o worker da API ao lado.",
+        "ja": "タブを分割して、隣で API ワーカーを動かします。",
+        "zh-CN": "拆分标签页，在旁边运行 API 任务进程。"
+      },
+      "actions": [
+        [
+          "key",
+          "cmd+d"
+        ],
+        [
+          "wait",
+          4.5
+        ],
+        [
+          "click",
+          2100,
+          800
+        ],
+        [
+          "wait",
+          0.6
+        ],
+        [
+          "type",
+          "cd ~/Projects/api && ./worker"
+        ],
+        [
+          "key",
+          "return"
+        ],
+        [
+          "wait",
+          2
+        ]
+      ]
+    },
+    {
+      "say": {
+        "en": "Quit Sheprd and open it again.",
+        "fr": "Quittez Sheprd, puis rouvrez-le.",
+        "es": "Cierra Sheprd y vuelve a abrirlo.",
+        "de": "Beende Sheprd und öffne es wieder.",
+        "pt-BR": "Feche o Sheprd e abra de novo.",
+        "ja": "Sheprd を終了して、もう一度開きます。",
+        "zh-CN": "退出 Sheprd，再重新打开。"
+      },
+      "actions": [
+        [
+          "wait",
+          0.5
+        ],
+        [
+          "key",
+          "cmd+q"
+        ],
+        [
+          "wait",
+          2.5
+        ],
+        [
+          "exec",
+          "open ~/Apps/Sheprd.app --args --classic"
+        ],
+        [
+          "wait",
+          9
+        ]
+      ]
+    },
+    {
+      "say": {
+        "en": "tmux kept both running the whole time.",
+        "fr": "tmux les a gardés en marche tout du long.",
+        "es": "tmux los mantuvo en marcha todo el tiempo.",
+        "de": "tmux hat beide die ganze Zeit laufen lassen.",
+        "pt-BR": "O tmux manteve os dois rodando o tempo todo.",
+        "ja": "tmux がその間もずっと両方を動かしていました。",
+        "zh-CN": "tmux 让它们一直在运行。"
+      },
+      "actions": [
+        [
+          "wait",
+          3
+        ]
+      ]
+    }
+  ],
+  "teardown": []
+}

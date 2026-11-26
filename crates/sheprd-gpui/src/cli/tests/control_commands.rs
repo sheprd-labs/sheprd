@@ -300,6 +300,25 @@ fn an_events_cursor_names_its_app_run() {
 }
 
 #[test]
+fn pause_commands() {
+    assert_eq!(
+        command(&["host", "pause", "studio"]),
+        ControlCommand::Host(control::HostCommand::Pause {
+            host: "studio".into(),
+            paused: true
+        })
+    );
+    assert_eq!(
+        command(&["host", "resume", "ssh:abc"]),
+        ControlCommand::Host(control::HostCommand::Pause {
+            host: "ssh:abc".into(),
+            paused: false
+        })
+    );
+    assert!(parse(&["host", "pause"]).is_err());
+}
+
+#[test]
 fn mute_commands() {
     assert_eq!(
         command(&["host", "mute", "studio"]),

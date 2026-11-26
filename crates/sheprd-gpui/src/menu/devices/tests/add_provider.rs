@@ -186,3 +186,39 @@ fn tiles_stack_in_one_column_in_a_narrow_window(cx: &mut gpui::TestAppContext) {
     let (a, b) = (tile(cx, first), tile(cx, second));
     assert!(a.bottom() <= b.top(), "stacked");
 }
+
+#[gpui::test]
+fn a_provider_turned_off_is_offered_nowhere(cx: &mut gpui::TestAppContext) {
+    if crate::cloud::unavailable().is_some() {
+        return;
+    }
+    let Some((&off, on)) = CloudProvider::ALL.split_first() else {
+        return;
+    };
+    let _enabled = crate::cloud::enable_for_test(on);
+    let (view, cx) = open(cx);
+    cx.update(|_, cx| {
+        let view = view.read(cx);
+        assert!(!view.cloud_listed().contains(&off));
+        assert!(!view.cloud_unlisted().contains(&off));
+        assert!(
+            !view
+                .cloud_providers_with_env(|_| Some("x".into()))
+                .contains(&off)
+        );
+        assert_eq!(view.cloud_offered(), !on.is_empty());
+    });
+    assert!(cx.debug_bounds(rail::rail_id(off)).is_none());
+}
+
+#[gpui::test]
+fn every_provider_off_offers_no_cloud_devices(cx: &mut gpui::TestAppContext) {
+    let _enabled = crate::cloud::enable_for_test(&[]);
+    let (view, cx) = open(cx);
+    cx.update(|_, cx| {
+        let view = view.read(cx);
+        assert!(!view.cloud_offered());
+        assert!(view.cloud_listed().is_empty() && view.cloud_unlisted().is_empty());
+    });
+    assert!(cx.debug_bounds("add-device-source-catalog").is_none());
+}

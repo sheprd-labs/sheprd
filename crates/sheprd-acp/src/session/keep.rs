@@ -359,6 +359,14 @@ impl<R: FnMut(Update)> Session<R> {
         }
     }
 
+    /// The conversation as the thread's file keeps it, every marked entry
+    /// written first; `None` when the thread is not kept or does not read.
+    pub(super) fn kept_conversation(&mut self) -> Option<file::Contents> {
+        self.keep_entries();
+        let keep = self.keep.as_ref().filter(|keep| keep.kept())?;
+        file::Contents::read(keep.writer.path()).ok()
+    }
+
     /// The first prompt, `shown`, reached the agent: the thread is kept from
     /// now on, titled by it.
     pub(super) fn keep_started(&mut self, shown: &str) {

@@ -12,6 +12,13 @@ without Herdr 1 (below).
 
 ## Herdr 1 sessions
 
+With the optional `tmux` feature, the service also discovers managed local
+tmux chats and serves their private ACP endpoints to paired phone and web
+clients. Choosing tmux in the host's desktop settings sends new chats there.
+When the service starts after a host reboot, it resumes up to 64 chats with a saved
+provider session even while the desktop is closed. Install a tmux-enabled
+`sheprd-acp` alongside the service. Raw terminal control still requires Herdr.
+
 The daemon follows the Herdr 1 session at `--herdr-socket` (discovered when
 absent) and every other running session of this user's installation
 (`herdr --session NAME`, under `sessions/` in Herdr's configuration

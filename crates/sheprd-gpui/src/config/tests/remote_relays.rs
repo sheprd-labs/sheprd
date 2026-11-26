@@ -22,6 +22,7 @@ fn a_relay_is_an_address_or_a_labelled_table() -> anyhow::Result<()> {
                     name: Some("fra3".into()),
                     tags: vec!["eu".into(), "private".into()],
                 },
+                pin: None,
             },
             Relay {
                 endpoint: "https://ams3.example.org".into(),
@@ -29,6 +30,7 @@ fn a_relay_is_an_address_or_a_labelled_table() -> anyhow::Result<()> {
                     name: Some("ams3".into()),
                     ..RelayLabel::default()
                 },
+                pin: None,
             },
         ]
     );
@@ -79,6 +81,7 @@ fn saving_the_list_from_settings_keeps_each_label() -> anyhow::Result<()> {
             name: Some("fra3".into()),
             tags: vec!["eu".into(), "private".into()],
         },
+        pin: None,
     };
     Config::save_preference_path(
         Preference::Remote(Edit::Relays(vec![
@@ -105,6 +108,7 @@ fn saving_the_list_from_settings_keeps_each_label() -> anyhow::Result<()> {
             name: Some(" ".into()),
             ..RelayLabel::default()
         },
+        pin: None,
         ..fra3
     };
     let before = fs::read_to_string(&path)?;
@@ -126,6 +130,7 @@ fn a_relay_named_twice_keeps_its_place_and_the_label_the_daemon_uses() -> anyhow
             name: Some(name.into()),
             ..RelayLabel::default()
         },
+        pin: None,
     };
     // Plain first, then labelled, then plain again, as a hand-edited list
     // may name it: the label survives, as the daemon would read it.
@@ -150,5 +155,38 @@ fn a_relay_named_twice_keeps_its_place_and_the_label_the_daemon_uses() -> anyhow
     )?;
     let saved = Config::parse(&fs::read_to_string(&path)?)?.remote.relays;
     assert_eq!(saved, [named("new")]);
+    Ok(())
+}
+
+#[test]
+fn a_relays_pin_is_read_checked_and_saved() -> anyhow::Result<()> {
+    use crate::config::{preferences::Preference, remote::Edit};
+    let pin = sheprd_relay::endpoint::encode_pin(&[7; 32]);
+    let config = Config::parse(&format!(
+        "[remote]\nrelays = [{{ endpoint = 'https://fra1.relay.example.org', pin = '{pin}' }}]\n"
+    ))?;
+    let pinned = Relay {
+        endpoint: "https://fra1.relay.example.org".into(),
+        pin: Some([7; 32]),
+        ..Relay::default()
+    };
+    assert_eq!(config.remote.relays, std::slice::from_ref(&pinned));
+    // A pin that is not one is refused, not dropped.
+    for bad in ["not-a-pin", "", "AAAA"] {
+        let text = format!(
+            "[remote]\nrelays = [{{ endpoint = 'https://fra1.relay.example.org', pin = '{bad}' }}]"
+        );
+        assert!(Config::parse(&text).is_err(), "{bad} loaded");
+    }
+    // Settings writes it back as a table, with nothing else.
+    let directory = tempfile::tempdir()?;
+    let path = directory.path().join("local.toml");
+    Config::save_preference_path(
+        Preference::Remote(Edit::Relays(vec![pinned.clone()])),
+        &path,
+    )?;
+    let text = fs::read_to_string(&path)?;
+    assert!(text.contains(&format!("pin = \"{pin}\"")), "{text}");
+    assert_eq!(Config::parse(&text)?.remote.relays, [pinned]);
     Ok(())
 }

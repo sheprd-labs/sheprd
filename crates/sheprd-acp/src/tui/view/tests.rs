@@ -154,7 +154,7 @@ fn ctrl_c_clears_then_cancels_then_quits_on_a_second_press() {
     snapshot(&mut view, Transcript::new("Claude"));
     assert_eq!(ctrl(&mut view, 'c'), None);
     assert!(view.flash.is_some());
-    assert_eq!(ctrl(&mut view, 'c'), Some(Out::Quit));
+    assert_eq!(ctrl(&mut view, 'c'), Some(Out::Quit(Quit::CtrlC)));
     typed(&mut view, "x");
     assert_eq!(ctrl(&mut view, 'd'), None, "Ctrl+D quits only when empty");
 }

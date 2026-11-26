@@ -312,6 +312,21 @@ pub struct QuicInfo {
     pub port: u16,
 }
 
+/// Reads a QUIC certificate pin as `/v1/info` and the signed relay list
+/// write it: the SHA-256, base64url without padding (43 characters).
+#[must_use]
+pub fn decode_pin(text: &str) -> Option<[u8; 32]> {
+    use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+    URL_SAFE_NO_PAD.decode(text).ok()?.try_into().ok()
+}
+
+/// Writes a QUIC certificate pin as [`decode_pin`] reads it.
+#[must_use]
+pub fn encode_pin(pin: &[u8; 32]) -> String {
+    use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+    URL_SAFE_NO_PAD.encode(pin)
+}
+
 /// The relay protocol version this crate speaks.
 pub const PROTOCOL: u8 = 1;
 

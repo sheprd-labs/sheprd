@@ -96,6 +96,7 @@ Each device's header in the Spaces list starts with a mark: a monitor for this m
 Right-click a saved SSH device's header to:
 
 - **Rename** it. An empty name falls back to the SSH target.
+- **Pause device** to keep it listed but stop connecting to it, until you choose it again. Its header turns grey and says *paused*, and nothing on it notifies; the host's own Herdr and terminals keep running. `sheprd host pause|resume HOST` does the same from a terminal.
 - **Remove device…** to forget it. This only edits your local list; the host's own Herdr keeps running.
 - **Forward port…** (see below).
 - **Use server keybindings** (see below).

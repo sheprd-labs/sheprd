@@ -83,7 +83,7 @@ fn native_completion_and_failures_stay_with_the_ssh_form(cx: &mut gpui::TestAppC
         cx.update(|window, cx| {
             view.update(cx, |view, cx| {
                 let request = setup::Request::new("dev@box", "Box", "").unwrap();
-                open_form(view, Step::Verifying(request, Offer::Install), cx);
+                open_form(view, Step::Verifying(request, Offer::Terminal), cx);
                 view.device_setup_started(
                     Ok(crate::setup_relay::gui::Session::fixture_state(
                         "Connection refused",
@@ -110,4 +110,71 @@ fn native_completion_and_failures_stay_with_the_ssh_form(cx: &mut gpui::TestAppC
             });
         });
     }
+}
+
+#[gpui::test]
+fn key_setup_rechecks_the_host_instead_of_saving_with_herdr_1(cx: &mut gpui::TestAppContext) {
+    let (view, cx) = cx.add_window_view(fixture_window);
+    cx.update(|window, cx| {
+        view.update(cx, |view, cx| {
+            let request = setup::Request::new("dev@box", "Box", "").unwrap();
+            open_form(view, Step::Verifying(request, Offer::InstallKey), cx);
+            view.device_setup_started(
+                Ok(crate::setup_relay::gui::Session::fixture_state(
+                    "Number of key(s) added: 1",
+                    Some(Ok(0)),
+                )),
+                cx,
+            );
+            view.poll_device_setup(window, cx);
+            assert!(matches!(step(view), Step::Checking(_)));
+        });
+    });
+}
+
+#[gpui::test]
+fn core_install_completes_or_returns_to_confirm_with_claim(cx: &mut gpui::TestAppContext) {
+    use std::sync::atomic::Ordering;
+    let (view, cx) = cx.add_window_view(fixture_window);
+    cx.update(|_, cx| {
+        view.update(cx, |view, cx| {
+            let request = setup::Request::new("dev@box", "Box", "").unwrap();
+            let cancel = super::super::add_device::CancelFlag::new();
+            let flag = cancel.flag();
+            open_form(
+                view,
+                Step::Installing {
+                    request: request.clone(),
+                    offer: Offer::Install,
+                    _cancel: cancel,
+                },
+                cx,
+            );
+            view.core_install_finished(
+                Err(crate::Error::Remote(
+                    sheprd_remote::core_install::Error::NoCurl.into(),
+                )),
+                Some(setup::Claim::fixture("core-install-fail")),
+                cx,
+            );
+            assert!(flag.load(Ordering::Acquire));
+            assert!(matches!(step(view), Step::Confirm(_, Offer::Install)));
+            let setup = view.menu.device_setup.as_ref().unwrap();
+            assert!(setup.claim.is_some());
+            assert!(setup.error.as_deref().unwrap().contains("curl"));
+
+            let cancel = super::super::add_device::CancelFlag::new();
+            open_form(
+                view,
+                Step::Installing {
+                    request,
+                    offer: Offer::Update,
+                    _cancel: cancel,
+                },
+                cx,
+            );
+            view.core_install_finished(Ok(()), None, cx);
+            assert!(matches!(step(view), Step::Saved));
+        });
+    });
 }

@@ -2,6 +2,26 @@
 
 features-acp-chats = ACP chats
 features-acp-chats-description = Show sheprd-acp chats as native chat views and offer new chats with the agents installed on the host. Off, chat panes keep their terminal and nothing looks for sheprd-acp or agents.
+features-cloud-azure = Azure devices
+features-cloud-azure-description = Offer Azure VMs and Container Apps sandboxes as devices while Cloud providers is on. Off, Add Device and Settings > Cloud devices leave it out and its saved devices stay hidden until it is back on. Takes effect the next time Sheprd starts.
+features-cloud-boat = Boat devices
+features-cloud-boat-description = Offer Boat sandboxes as devices while Cloud providers is on. Off, Add Device and Settings > Cloud devices leave it out and its saved devices stay hidden until it is back on. Takes effect the next time Sheprd starts.
+features-cloud-boxd = boxd devices
+features-cloud-boxd-description = Offer boxd machines as devices while Cloud providers is on. Off, Add Device and Settings > Cloud devices leave it out and its saved devices stay hidden until it is back on. Takes effect the next time Sheprd starts.
+features-cloud-coder = Coder devices
+features-cloud-coder-description = Offer Coder workspaces as devices while Cloud providers is on. Off, Add Device and Settings > Cloud devices leave it out and its saved devices stay hidden until it is back on. Takes effect the next time Sheprd starts.
+features-cloud-container = Containers devices
+features-cloud-container-description = Offer containers on this computer's Docker or Podman engine as devices while Cloud providers is on. Off, Add Device and Settings > Cloud devices leave it out and its saved devices stay hidden until it is back on. Takes effect the next time Sheprd starts.
+features-cloud-daytona = Daytona devices
+features-cloud-daytona-description = Offer Daytona sandboxes as devices while Cloud providers is on. Off, Add Device and Settings > Cloud devices leave it out and its saved devices stay hidden until it is back on. Takes effect the next time Sheprd starts.
+features-cloud-opensandbox = OpenSandbox devices
+features-cloud-opensandbox-description = Offer sandboxes on a self-hosted OpenSandbox server as devices while Cloud providers is on. Off, Add Device and Settings > Cloud devices leave it out and its saved devices stay hidden until it is back on. Takes effect the next time Sheprd starts.
+features-cloud-providers = Cloud providers
+features-cloud-providers-description = Offer machines from cloud providers as devices. Off, no provider is offered, whatever its own switch says, and saved cloud devices stay hidden until this is back on; their terminals keep running. Takes effect the next time Sheprd starts.
+features-cloud-railway = Railway devices
+features-cloud-railway-description = Offer Railway VMs as devices while Cloud providers is on. Off, Add Device and Settings > Cloud devices leave it out and its saved devices stay hidden until it is back on. Takes effect the next time Sheprd starts.
+features-cloud-sprites = Sprites devices
+features-cloud-sprites-description = Offer Fly Sprites as devices while Cloud providers is on. Off, Add Device and Settings > Cloud devices leave it out and its saved devices stay hidden until it is back on. Takes effect the next time Sheprd starts.
 features-mcp = MCP server
 features-mcp-description = Let MCP clients such as Claude Desktop, Cursor, or Codex use Sheprd through `sheprd mcp`: its windows and tabs, pages and your notes on them, worktrees, pull requests, memory, and checkpoints. Restoring a checkpoint, creating a worktree, fanning out, and teleporting open a dialog here for you to confirm; opening pages and files, worktree notes, and repository memory (adding, pinning, and forgetting entries) change without asking, as the sheprd command does. Run `sheprd mcp config` for the setting to paste into a client.
 features-moonframe-tools = Moonframe tools

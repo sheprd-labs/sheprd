@@ -9,6 +9,7 @@ mod clear;
 mod decide;
 mod delivery;
 mod notify_key;
+mod open_pr;
 mod pacer;
 mod payload;
 mod per_host;

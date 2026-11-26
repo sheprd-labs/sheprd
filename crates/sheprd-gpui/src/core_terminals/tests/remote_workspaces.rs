@@ -183,9 +183,9 @@ fn a_saved_host_without_herdr_1_keeps_a_workspace_with_a_shell(cx: &mut TestAppC
                 .is_some()
         );
         // Its first shell waits for that host's core.
-        assert!(view.core_terminals.wanted.iter().any(|(purpose, host, ..)| {
-            *host == Host::Remote(scope())
-                && matches!(purpose, Purpose::Tab { workspace, .. } if workspace == crate::core_terminals::WORKSPACE)
+        assert!(view.core_terminals.wanted.iter().any(|wanted| {
+            wanted.host == Host::Remote(scope())
+                && matches!(&wanted.purpose, Purpose::Tab { workspace, .. } if workspace == crate::core_terminals::WORKSPACE)
         }));
         // This computer keeps none for it.
         assert!(

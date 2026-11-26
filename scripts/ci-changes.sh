@@ -55,7 +55,7 @@ code=$(changed \
 embedded=$(changed skills website/site/relays.json website/site/relays.json.asc)
 [[ "$embedded" == true ]] && code=true
 windows_package=$(changed \
-  scripts/release/package-windows.py scripts/release/windows-installer.py \
+  scripts/release/package-windows.py scripts/release/fetch-herdr-core.py scripts/release/windows-installer.py \
   scripts/release/sheprd.iss scripts/release/installer site/install.ps1 \
   crates/sheprd-launcher crates/sheprd-gpui/src/lib.rs crates/sheprd-gpui/src/main.rs \
   crates/sheprd-gpui/build.rs crates/sheprd-gpui/windows_resource.rs \

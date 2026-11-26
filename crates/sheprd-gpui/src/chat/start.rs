@@ -562,6 +562,12 @@ impl SheprdWindow {
                     )
                 };
                 self.type_script_line(&starting.boot, &pane, &line)?;
+                tracing::info!(
+                    agent = %starting.agent,
+                    %pane,
+                    remote = starting.remote,
+                    "Typed a new chat's line into its tab"
+                );
                 Ok(tab)
             });
         match typed {

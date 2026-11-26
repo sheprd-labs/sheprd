@@ -11,6 +11,7 @@ mod names;
 mod progress;
 mod questions;
 mod settings;
+mod steering;
 mod stopping;
 mod tasks;
 mod turns;

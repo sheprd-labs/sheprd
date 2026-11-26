@@ -98,6 +98,7 @@ final class NotificationService: UNNotificationServiceExtension {
         info[AlertKeys.pane] = alert.pane
         if let permission = alert.permission { info[AlertKeys.permission] = NSNumber(value: permission.id.value) }
         if alert.kind.isTerminal { info[AlertKeys.terminal] = true }
+        if let pull = alert.pullRequest { info[AlertKeys.pullRequest] = pull.url.absoluteString }
         content.userInfo = info
         if alert.wizz {
             content.interruptionLevel = .timeSensitive

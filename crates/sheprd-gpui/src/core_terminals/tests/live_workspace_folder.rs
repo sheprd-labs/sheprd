@@ -57,7 +57,8 @@ fn live_folder_drives_metadata_empty_groups_and_chat_tabs(cx: &mut TestAppContex
             view.config.features.acp_chats = true;
             view.chats.program = crate::chat::Program::Found("/opt/sheprd-acp".into());
             view.start_core_chat_in_tab(Agent::Codex, tab, None, cx).unwrap();
-            let (purpose, _, spawn, _) = view.core_terminals.wanted.back().unwrap();
+            let wanted = view.core_terminals.wanted.back().unwrap();
+            let (purpose, spawn) = (&wanted.purpose, &wanted.spawn);
             assert!(matches!(purpose, Purpose::Tab { scope: actual, workspace: id, .. } if actual == &scope && id == &workspace));
             assert_eq!(spawn.cwd.as_deref(), Some(Path::new("/work/repo/src/nested")));
             view.close_browser_tab(tab, window, cx);
@@ -72,7 +73,7 @@ fn live_folder_drives_metadata_empty_groups_and_chat_tabs(cx: &mut TestAppContex
             assert_eq!(saved.cwd, "/work/repo/src/nested");
             assert_eq!(saved.label, "Chosen name");
             view.start_kept_core_chat(Agent::Codex, None, None, true, cx).unwrap();
-            assert_eq!(view.core_terminals.wanted.back().unwrap().2.cwd.as_deref(), Some(Path::new("/work/repo/src/nested")));
+            assert_eq!(view.core_terminals.wanted.back().unwrap().spawn.cwd.as_deref(), Some(Path::new("/work/repo/src/nested")));
         })
     });
 }
@@ -92,7 +93,8 @@ fn a_chat_keeps_its_requested_group_while_the_editor_gets_focus(cx: &mut TestApp
         view.chats.program = crate::chat::Program::Found("/opt/sheprd-acp".into());
         // The launcher names its group even while another group is active.
         view.start_chat_in(Agent::Codex, chat_group, cx);
-        let (purpose, host, _, _) = view.core_terminals.wanted.pop_back().unwrap();
+        let wanted = view.core_terminals.wanted.pop_back().unwrap();
+        let (purpose, host) = (wanted.purpose, wanted.host);
         assert!(matches!(&purpose, Purpose::Tab { group: Some(group), .. } if *group == chat_group));
         view.activate_group(chat_group, window, cx);
         view.activate_group(editor_group, window, cx);
@@ -126,7 +128,8 @@ fn a_background_chat_finishing_keeps_the_selected_tab(cx: &mut TestAppContext) {
         view.config.features.acp_chats = true;
         view.chats.program = crate::chat::Program::Found("/opt/sheprd-acp".into());
         view.start_kept_core_chat(Agent::Codex, None, None, false, cx).unwrap();
-        let (purpose, host, _, _) = view.core_terminals.wanted.pop_back().unwrap();
+        let wanted = view.core_terminals.wanted.pop_back().unwrap();
+        let (purpose, host) = (wanted.purpose, wanted.host);
         view.core_terminals.start_for_test(purpose, host, Ok(TerminalInfo {
             agent: AgentStatus::Unknown, cwd: None, foreground: None,
             id: TerminalId::new("t-background").unwrap(), labels: Default::default(),

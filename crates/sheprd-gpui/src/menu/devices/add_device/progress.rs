@@ -1,10 +1,12 @@
 use super::*;
+use crate::i18n::Localize;
 
 #[cfg(unix)]
 use crate::setup_relay::gui::{self, Prompt, Session};
 
 #[cfg(unix)]
 pub(in crate::menu::devices) struct Progress {
+    offer: Offer,
     session: Session,
     pub(super) response: Entity<SearchInput>,
     output: String,
@@ -13,15 +15,6 @@ pub(in crate::menu::devices) struct Progress {
 }
 
 impl SheprdWindow {
-    #[cfg(windows)]
-    pub(super) fn start_device_setup(&mut self, cx: &mut Context<Self>) {
-        self.set_device_error(Some(
-            super::super::Error::TerminalSetupUnavailable.to_string(),
-        ));
-        cx.notify();
-    }
-
-    #[cfg(unix)]
     pub(super) fn start_device_setup(&mut self, cx: &mut Context<Self>) {
         let Some(form) = &mut self.menu.device_setup else {
             return;
@@ -31,20 +24,127 @@ impl SheprdWindow {
         };
         let (request, offer) = (request.clone(), *offer);
         let claim = form.claim.take();
-        form.step = Step::Verifying(request.clone(), offer);
+        if offer.installs_core() {
+            return self.start_core_install(request, offer, claim, cx);
+        }
+        #[cfg(windows)]
+        {
+            form.claim = claim;
+            self.set_device_error(Some(
+                super::super::Error::TerminalSetupUnavailable.to_string(),
+            ));
+            cx.notify();
+        }
+        #[cfg(unix)]
+        {
+            form.step = Step::Verifying(request.clone(), offer);
+            form.error = None;
+            let background = cx.background_executor().spawn(async move {
+                let claim = match claim {
+                    Some(claim) => match setup::verify_unsaved(&request, &claim) {
+                        Ok(()) => claim,
+                        Err(error) => return (Err(error), None),
+                    },
+                    None => match setup::claim(&request) {
+                        Ok(claim) => claim,
+                        Err(error) => return (Err(error), None),
+                    },
+                };
+                if offer == Offer::InstallKey {
+                    (setup::key_setup(&request), Some(claim))
+                } else {
+                    (setup::native_setup(&request, claim), None)
+                }
+            });
+            form.task = Some(cx.spawn(async move |this, cx| {
+                let (result, claim) = background.await;
+                let _ = this.update(cx, |this, cx| {
+                    if let Some(form) = &mut this.menu.device_setup
+                        && matches!(form.step, Step::Verifying(..))
+                    {
+                        form.claim = claim;
+                    }
+                    this.device_setup_started(result, cx);
+                });
+            }));
+            cx.notify();
+        }
+    }
+
+    fn start_core_install(
+        &mut self,
+        request: setup::Request,
+        offer: Offer,
+        claim: Option<setup::Claim>,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(form) = &mut self.menu.device_setup else {
+            return;
+        };
+        let cancel = CancelFlag::new();
+        let flag = cancel.flag();
+        form.step = Step::Installing {
+            request: request.clone(),
+            offer,
+            _cancel: cancel,
+        };
         form.error = None;
         let background = cx.background_executor().spawn(async move {
             let claim = match claim {
-                Some(claim) => setup::verify_unsaved(&request, &claim).map(|()| claim),
-                None => setup::claim(&request),
-            }?;
-            setup::native_setup(&request, offer == Offer::InstallKey, claim)
+                Some(claim) => claim,
+                None => match setup::claim(&request) {
+                    Ok(claim) => claim,
+                    Err(error) => return (Err(error), None),
+                },
+            };
+            let result = setup::install_core(&request, &claim, &flag);
+            (result, Some(claim))
         });
         form.task = Some(cx.spawn(async move |this, cx| {
-            let result = background.await;
-            let _ = this.update(cx, |this, cx| this.device_setup_started(result, cx));
+            let (result, claim) = background.await;
+            let _ = this.update(cx, |this, cx| this.core_install_finished(result, claim, cx));
         }));
         cx.notify();
+    }
+
+    pub(in crate::menu::devices) fn core_install_finished(
+        &mut self,
+        result: crate::Result<()>,
+        claim: Option<setup::Claim>,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(Setup {
+            step: Step::Installing { request, offer, .. },
+            ..
+        }) = &self.menu.device_setup
+        else {
+            return;
+        };
+        let (request, offer) = (request.clone(), *offer);
+        match result {
+            Ok(()) => {
+                tracing::info!(
+                    category = "device_setup",
+                    "Installed herdr-core and saved device"
+                );
+                self.device_save_succeeded(setup::SaveOutcome::Ready, cx);
+            }
+            Err(error) => {
+                tracing::warn!(
+                    category = "device_setup",
+                    %error,
+                    "Installing herdr-core failed"
+                );
+                if !self.refuse_duplicate(&error, cx) {
+                    if let Some(form) = &mut self.menu.device_setup {
+                        form.step = Step::Confirm(request, offer);
+                        form.claim = claim;
+                        form.error = Some(error.localize());
+                    }
+                    cx.notify();
+                }
+            }
+        }
     }
 
     #[cfg(unix)]
@@ -84,6 +184,7 @@ impl SheprdWindow {
             form.step = Step::Running(
                 request,
                 Progress {
+                    offer,
                     session,
                     response,
                     output: String::new(),
@@ -100,7 +201,7 @@ impl SheprdWindow {
         let Some(form) = &mut self.menu.device_setup else {
             return;
         };
-        let Step::Running(_, progress) = &mut form.step else {
+        let Step::Running(request, progress) = &mut form.step else {
             return;
         };
         let Some(update) = progress.session.poll() else {
@@ -120,7 +221,14 @@ impl SheprdWindow {
             }
         }
         if let Some(result) = update.result {
+            let offer = progress.offer;
+            let request = request.clone();
             let error = match result {
+                Ok(0) if offer == Offer::InstallKey => {
+                    let claim = form.claim.take();
+                    self.check_device_with_claim(request, claim, cx);
+                    return;
+                }
                 Ok(0) => {
                     self.device_save_succeeded(setup::SaveOutcome::Ready, cx);
                     return;
@@ -136,6 +244,7 @@ impl SheprdWindow {
                 Err(error) => error,
             };
             form.step = Step::Form;
+            form.claim = None;
             form.error = Some(error.to_string());
         }
         cx.notify();

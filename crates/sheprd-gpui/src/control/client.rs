@@ -197,6 +197,13 @@ pub(super) fn env_id(name: &str) -> Option<String> {
     std::env::var(name).ok().filter(|id| !id.is_empty())
 }
 
+fn caller_terminal(var: &impl Fn(&str) -> Option<String>) -> Option<String> {
+    let terminal = var("HC_TERMINAL_ID").filter(|id| !id.is_empty());
+    #[cfg(feature = "tmux")]
+    let terminal = terminal.or_else(|| sheprd_tmux::Tmux::caller_in(var).map(|id| id.to_string()));
+    terminal
+}
+
 fn caller(workspace: Option<String>) -> crate::Result<Caller> {
     Ok(caller_from(workspace, env_id, caller_daemon()?))
 }
@@ -211,7 +218,7 @@ pub(super) fn caller_from(
     var: impl Fn(&str) -> Option<String>,
     daemon_socket: Option<String>,
 ) -> Caller {
-    let terminal_id = var("HC_TERMINAL_ID");
+    let terminal_id = caller_terminal(&var);
     Caller {
         pane_id: terminal_id
             .is_none()

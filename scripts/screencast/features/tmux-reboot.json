@@ -1,0 +1,57 @@
+{
+  "id": "tmux-reboot",
+  "feature": "Terminals kept in tmux, after a restart",
+  "fill": false,
+  "title": {
+    "en": "After the Mac restarts",
+    "fr": "Après un redémarrage du Mac",
+    "es": "Después de reiniciar el Mac",
+    "de": "Nach einem Neustart des Mac",
+    "pt-BR": "Depois de reiniciar o Mac",
+    "ja": "Mac を再起動したあと",
+    "zh-CN": "Mac 重启之后"
+  },
+  "setup": [
+    ["wait", 1]
+  ],
+  "segments": [
+    {
+      "say": {
+        "en": "Even after the Mac restarts, Sheprd brings the tab and its split back.",
+        "fr": "Même après un redémarrage du Mac, Sheprd rouvre l'onglet et sa division.",
+        "es": "Incluso tras reiniciar el Mac, Sheprd recupera la pestaña y su división.",
+        "de": "Auch nach einem Neustart des Mac holt Sheprd den Tab samt Teilung zurück.",
+        "pt-BR": "Mesmo depois de reiniciar o Mac, o Sheprd traz de volta a aba e a divisão.",
+        "ja": "Mac を再起動しても、Sheprd はタブと分割をそのまま戻します。",
+        "zh-CN": "即使 Mac 重启，Sheprd 也会恢复标签页和拆分。"
+      },
+      "actions": [
+        ["wait", 1.5]
+      ]
+    },
+    {
+      "say": {
+        "en": "Each shell reopens in the folder it was in, ready to pick up the work.",
+        "fr": "Chaque shell se rouvre dans son dossier, prêt à reprendre le travail.",
+        "es": "Cada shell vuelve a abrirse en su carpeta, listo para seguir.",
+        "de": "Jede Shell öffnet sich in ihrem Ordner, bereit zum Weitermachen.",
+        "pt-BR": "Cada shell reabre na pasta em que estava, pronto para continuar.",
+        "ja": "各シェルは元のフォルダーで開き直り、すぐに作業を再開できます。",
+        "zh-CN": "每个 shell 都在原来的文件夹中重新打开，随时可以继续工作。"
+      },
+      "actions": [
+        ["click", 1000, 800],
+        ["wait", 0.5],
+        ["type", "./dev"],
+        ["key", "return"],
+        ["wait", 1],
+        ["click", 2100, 800],
+        ["wait", 0.5],
+        ["type", "./worker"],
+        ["key", "return"],
+        ["wait", 3]
+      ]
+    }
+  ],
+  "teardown": []
+}

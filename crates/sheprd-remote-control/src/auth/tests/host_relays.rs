@@ -99,6 +99,7 @@ fn info() -> Info {
     Info {
         identity: "identity".into(),
         labels: Default::default(),
+        pins: Default::default(),
         relays: vec!["https://relay.example.org".into()],
         route: "route".into(),
         rtt_ms: Default::default(),
@@ -244,7 +245,7 @@ fn the_near_computer_queues_a_request_until_sheprd_carries_it() {
     assert_eq!(
         near.ask_host_relay(&phone, request.clone(), T0 + 6)
             .unwrap(),
-        State::Done(relayed(&request))
+        State::Done(Box::new(relayed(&request)))
     );
 }
 
@@ -287,7 +288,7 @@ fn a_request_sheprd_never_finishes_fails() {
     let state = near
         .ask_host_relay(&phone, request, T0 + TAKEN_TTL_MS)
         .unwrap();
-    assert!(matches!(state, State::Done(Outcome::Failed { .. })));
+    assert!(matches!(state, State::Done(outcome) if matches!(*outcome, Outcome::Failed { .. })));
 }
 
 #[test]

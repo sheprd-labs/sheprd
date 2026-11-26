@@ -19,6 +19,7 @@ fn fra3() -> Relay {
             name: Some("fra3".into()),
             tags: vec!["eu".into(), "private".into()],
         },
+        pin: None,
     }
 }
 
@@ -46,6 +47,7 @@ fn a_labelled_row_names_its_address_description_and_tags() {
             tags: vec!["eu".into()],
             ..RelayLabel::default()
         },
+        pin: None,
         ..fra3()
     };
     assert_eq!(

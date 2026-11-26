@@ -25,6 +25,11 @@ pub enum HostCommand {
         host: Option<String>,
         muted: bool,
     },
+    /// Pause or resume a saved device by ID or label.
+    Pause {
+        host: String,
+        paused: bool,
+    },
     /// Replace a host's tags; none clears them.
     Tag {
         id: String,
@@ -127,6 +132,10 @@ pub(super) fn host(args: &mut Args) -> Result<HostCommand, CliError> {
         Some(verb @ ("mute" | "unmute")) => HostCommand::Mute {
             host: args.optional_text()?,
             muted: verb == "mute",
+        },
+        Some(verb @ ("pause" | "resume")) => HostCommand::Pause {
+            host: args.required_text("HOST")?,
+            paused: verb == "pause",
         },
         Some("tag") => HostCommand::Tag {
             id: args.required_text("HOST")?,

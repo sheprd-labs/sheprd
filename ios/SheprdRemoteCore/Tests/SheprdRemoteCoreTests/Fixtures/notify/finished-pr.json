@@ -1,0 +1,29 @@
+{
+  "apns": {
+    "aps": {
+      "alert": {
+        "body": "New activity",
+        "title": "Sheprd"
+      },
+      "interruption-level": "active",
+      "mutable-content": 1,
+      "sound": "default",
+      "thread-id": "da3e621ffd4d063c/w1:p2"
+    },
+    "sealed": "BHE1-k_ZOgnc6Yu_aBtL_PUOfA1jVOYq-wv_KjQpYXhl7UwfAt25Aj7lalV-UV1qncZsEfIglg3llDNN9Yh3ZyQBAQEBAQEBAQEBAQFrMxOYQgmgCh1XkUmKZaf5eFivRZ3b13C97RO50BpxV5iCGigSZOme-02yzM5eVJKQhfwxCL4nj6kB0kbvjgpTFPSq2-NeIXcH1Oxtgta07faKhSD31qiTuMRhwB8RayGaCy4gcBVzI7_gLiRfa0ao8CmfNvyTlY6F4FnJdXcNoScFBmcVCU6D3efz2_9QJsqts7pYNiEXgiXLpek9EBWHJovTtJtW8XTxONFExKJDDz4duNUGxiJYMZuPplGTP1q7dynZV7XVV7DUqAmVtAAxMk3Oi8po6VJnCSTbkQXcCBHrFhLwMyXnaKBtUxlwrPfL_mqD9GHRHVw7bHH7gmZ9GDSqiiMOX0Pf6Ay9QUOZnXvJEjLBXDKTlVzC-zZfP_4kUmd8UtGSCwXTtR3O79Jyggl-rh7-Xt4jLpVgBe_1YghsXKaRef2-F8b923-ACWFJCqgjyBB3U12cmhq5U35bNi96SkZ7s7a1RTT0rVx0t4ELoYF4ZNjXxnIq5a-T1hU"
+  },
+  "device_private_key": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc",
+  "plaintext": {
+    "badge": 1,
+    "body": "Added the Open PR action to finished pushes.",
+    "clear": false,
+    "computer": "9E92A0DF1CE0967EC34C0C0146005FBC51654330E7D26EC9B5805055755E24F6",
+    "event": "5d0c3e1f9a7b4c2d8e6f1a0b9c8d7e6f",
+    "kind": "turn_ended",
+    "pane": "w1:p2",
+    "pr": "https://github.com/sheprd-labs/sheprd/pull/1642",
+    "subtitle": "herdr-gpui · Fix mise discovery",
+    "title": "Claude finished",
+    "v": 1
+  }
+}

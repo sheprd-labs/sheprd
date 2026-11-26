@@ -4,6 +4,7 @@
 # device setup card take their titles from settings.ftl.
 
 settings-cloud-unavailable = Cloud devices are unavailable on Windows. Accounts can still be edited here for other systems.
+settings-cloud-turned-off = Every cloud provider is turned off. Turn on Cloud providers and the ones you use in Settings > General, then restart Sheprd.
 settings-cloud-remove = Remove
 settings-cloud-none-yet = None yet.
 

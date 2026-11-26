@@ -385,6 +385,14 @@ edits only the local catalog: the host's own Herdr keeps running. When the
 device has its own GitHub sign-in, the confirmation also offers to delete it,
 since its account panel goes away with the device. Local's menu offers neither.
 
+**Pause device**, in the same menu of an SSH or cloud device, keeps the device
+listed but stops connecting to it: its header turns grey and says *paused*,
+its workspaces leave the sidebar, and nothing on it notifies. Choosing it
+again resumes the connection. It is the catalog's `enabled` flag, so an SSH
+device's pause is `herdr machine disable` (resume, `enable`); the host's own
+Herdr and its terminals keep running either way. `sheprd host pause|resume
+HOST` does the same from a pane.
+
 A cloud device's header (Azure, Boat, boxd, Coder, Container, Daytona,
 OpenSandbox, Railway, or Sprites) has a menu too: **Rename…** changes the name the sidebar
 shows, falling back to the machine's name when left empty; **Cloud device
@@ -442,26 +450,30 @@ never installs or starts anything while checking:
 - herdr-core (Herdr 2) installed with no compatible Herdr: the device is
   saved as it is, without `herdr machine add`, and its terminals run in
   herdr-core.
-- Herdr missing: the dialog asks "Herdr was not detected on the host. Should we
-  install it?" An outdated Herdr asks to update it instead.
+- Neither Herdr nor herdr-core detected, or only an outdated Herdr: the dialog
+  asks whether to install the pinned herdr-core (Herdr 2). Accepting installs
+  herdr-core into `~/.local/bin` over SSH (verifying its pinned SHA-256
+  checksum), adds `~/.local/bin` to the remote shell's PATH, and saves the
+  device directly without invoking Herdr 1's CLI.
 - SSH needs a prompt (unknown host key, password, passphrase), the check failed,
-  or saving without a terminal failed: the dialog offers to continue here.
+  or saving an existing Herdr 1 host without a terminal failed: the dialog
+  offers to continue here. When the host refused every SSH key, setup runs
+  `ssh-copy-id` in the dialog and then re-checks the host so a missing daemon
+  still offers to install herdr-core.
 
-Accepting keeps setup inside **Add Device**: progress is plain text,
-installation and restart approvals have **Yes** and **No** buttons, and SSH
+Accepting interactive setup keeps progress inside **Add Device**: output is
+plain text, restart approvals have **Yes** and **No** buttons, and SSH
 passwords or passphrases use a masked response field. Enter sends a response;
 confirmations require a button click. Nothing is automatically approved. No
 workspace or terminal tab is created, and the selected device stays selected;
 setup works even when the local daemon is disconnected.
 
-The setup itself, `herdr machine add` (after `ssh-copy-id` when the host refused
-every key), still runs as this app's child on a private terminal, using the
-user's login `PATH`, SSH config, agent, and security key. Before installing, it
-adds `~/.local/bin` to the remote shell's PATH: zsh's `.zshenv`, bash's
-`.bashrc` and existing login profile, fish's `conf.d`, or `.profile` for other
-POSIX shells. Existing content and symlinks are preserved; repeated setup does
-not duplicate the entry. Bash's entry precedes interactive-only early returns,
-so non-interactive SSH commands see it too.
+Before installing into `~/.local/bin`, setup adds `~/.local/bin` to the remote
+shell's PATH: zsh's `.zshenv`, bash's `.bashrc` and existing login profile,
+fish's `conf.d`, or `.profile` for other POSIX shells. Existing content and
+symlinks are preserved; repeated setup does not duplicate the entry. Bash's
+entry precedes interactive-only early returns, so non-interactive SSH commands
+see it too.
 
 Responses are not logged or saved; the field is cleared after sending.
 Output is bounded to one terminal viewport and terminal escapes cannot run UI
@@ -1294,7 +1306,13 @@ machine is read in process; each connected Linux or macOS remote host is read
 every two seconds over its own SSH shell, kept open while the host is connected
 (`/proc` on Linux; `vm_stat` and a one-second `iostat` on macOS; `df -Pk
 "$HOME"` on both, with `/proc/uptime` on Linux and `kern.boottime` on macOS).
-Other remote systems show it as unavailable. Set top-level `show_system_load = false`, or turn off **Show CPU
+A Windows SSH host, whose login shell is `cmd.exe` or PowerShell (or Git
+Bash, which has none of those tools), is read through one PowerShell kept
+open over SSH that prints a reading every two seconds: the `_Total`
+processor counters, `Win32_OperatingSystem` for memory and uptime, the
+volume holding the user's profile, and `nvidia-smi` when the GPU is shown.
+It needs nothing installed on the host, and ends itself when its SSH
+session does. Other remote systems show it as unavailable. Set top-level `show_system_load = false`, or turn off **Show CPU
 and memory** in Settings, to hide it and stop sampling while no
 [Devices overview](#devices-overview) is open.
 
@@ -1335,7 +1353,12 @@ machine never claim each other's servers.
 Every five seconds each host runs `ss -ltnp` (Linux) or `lsof -iTCP
 -sTCP:LISTEN` (macOS) in its own shell, this machine's locally, a connected
 remote host's over SSH, and a WSL distribution's through `wsl.exe` (see
-[WSL distributions](#wsl-distributions)), listing only your own processes. A remote server
+[WSL distributions](#wsl-distributions)), listing only your own processes.
+Windows has neither tool: a Windows SSH host, and this machine on a Windows
+client, run `Get-NetTCPConnection` in a PowerShell kept open (over SSH for a
+host), and read each listening process's environment for its workspace
+through the process's memory, which Windows allows for your own processes
+only. A remote server
 always opens at `http://127.0.0.1:<port>` through an SSH tunnel started on the
 first click, never at the address SSH reaches the host by (a Tailscale
 `HostName`, say): `ssh -N -L` from this machine's loopback, with the same
@@ -1350,8 +1373,7 @@ noninteractive authentication (keys or an agent). The tunnel stays up while
 the port is listed, is reused by later clicks, and closes when the port
 stops listening, the host disconnects, scanning is turned off, or the window
 closes; a page reopened after a dropped tunnel keeps its address while that
-local port is free. Windows clients
-do not scan this machine. Set top-level `show_listening_ports = false`, or
+local port is free. Set top-level `show_listening_ports = false`, or
 turn off **Show listening ports** in Settings, to hide them and stop scanning.
 Coding agents' own listeners, such as Claude Code's and Codex's, are left
 out; servers they start show under their own process names.
@@ -1940,6 +1962,8 @@ show ahead/behind counts against the configured upstream, without fetching.
 The last known folder is saved, so closing the last terminal or restarting
 the app preserves it and the automatic name.
 
+With the opt-in `tmux` Cargo feature, the same tabs can hold tmux terminals. Select **tmux** under **Settings → Tabs → Terminal backend**, or open one directly with `sheprd run new_tmux_terminal`. The desktop restores the owning backend from the saved terminal ID. See [Choosing a terminal backend](../../website/docs/terminals.md#choosing-a-terminal-backend).
+
 Herdr 2 (herdr-core) runs terminals that stay alive like Herdr's, but streams
 their raw output, so Sheprd emulates each one itself and draws it with the
 same painter as a Herdr pane. That lets a tab split into native panes. Herdr 1
@@ -1947,8 +1971,8 @@ and Herdr 2 run side by side: Herdr 2 tabs open in the same workspaces as
 Herdr 1 tabs, and nothing moves from one to the other.
 
 - **Opening one:** **New Herdr 2 Terminal** in the command palette, or
-  `sheprd run new_core_terminal`. With `herdr_2_terminals = true`
-  (**Settings > Tabs > New terminals use Herdr 2**), every new tab is one,
+  `sheprd run new_core_terminal`. With `terminal_backend = "herdr-core"`
+  (**Settings > Tabs > Terminal backend**), every new tab is one,
   on this computer and on an SSH, WSL, or cloud host, in that host's own
   herdr-core and folders. A host found to have no herdr-core keeps its new tabs
   in its Herdr; **Install Herdr 2** in the host's menu adds it.

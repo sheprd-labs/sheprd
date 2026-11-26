@@ -36,6 +36,10 @@ pub(crate) const BUDGET: Duration = Duration::from_millis(host_relay::CARRY_MS);
 
 /// What one host said about a request.
 #[derive(Debug)]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "one answer per host asked, matched by value as soon as it arrives"
+)]
 pub(crate) enum Answer {
     /// It ran `relay-enroll` and answered.
     Said(Outcome),

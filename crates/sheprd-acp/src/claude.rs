@@ -40,6 +40,9 @@ pub(crate) fn args(session: &str, resume: bool) -> Vec<OsString> {
         "stream-json",
         "--verbose",
         "--include-partial-messages",
+        // Echoes each user message as Claude takes it, which says when a
+        // prompt steered into a running turn reached it.
+        "--replay-user-messages",
         // Permission questions come here as `can_use_tool` requests.
         "--permission-prompt-tool",
         "stdio",

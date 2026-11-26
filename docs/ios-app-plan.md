@@ -696,8 +696,15 @@ field order:
   last two days (at most 128, `SeenAlerts`, in the App Group), and a copy
   that arrives again replaces the first silently, so the phone shows and
   buzzes once. Older daemons leave it out.
+- `pr` appears only on a `turn_ended` whose turn created or pushed to a
+  pull request (the last one), as `https://github.com/OWNER/REPO/pull/N`.
+  The notification then offers Open PR #N beside Reply, in a category
+  `finished.pr.N`; it opens the app's pull request screen, or Safari when
+  the app cannot name the host. The chat program lists such a pull request
+  once in every turn that touches it, so the daemon sees each turn's.
 - The privacy setting decides what `body` quotes.
-- `body` is shortened, ending in `…`, until the whole payload fits 4 KB.
+- `body` is shortened, ending in `…`, until the whole payload fits 4 KB;
+  `pr` is dropped before the push fails to fit.
 
 **A clear** (the last question was answered from any client) is push type
 `background`, priority 5:
@@ -715,7 +722,8 @@ notifications (those whose `computer` and `pane` match).
 - `previous`, the two steps before `step`, oldest first, for the step stack.
 
 The shared fixtures are `Fixtures/notify/alert.json` (device key, plaintext,
-whole payload) and `Fixtures/update.json`.
+whole payload), `Fixtures/notify/finished-pr.json` (a finished turn with its
+pull request), and `Fixtures/update.json`.
 
 ### Bluetooth on the desktop
 

@@ -14,7 +14,7 @@ use quinn::{ClientConfig, Connection, Endpoint, RecvStream, SendStream};
 use std::{net::SocketAddr, sync::Arc};
 
 mod reach;
-pub use reach::{first_reachable, reach};
+pub use reach::{first_reachable, reach, reach_pinned};
 
 /// Why reaching a relay, or a step on it, failed.
 #[derive(Debug, thiserror::Error)]
@@ -43,6 +43,8 @@ pub enum Error {
     NoQuic,
     #[error("could not trust the relay's certificate")]
     Pin(#[from] pin::Error),
+    #[error("the relay's QUIC certificate is not the one its pin names")]
+    PinMismatch,
     #[error("could not read from the relay")]
     Read(#[source] quinn::ReadExactError),
     #[error("the relay answered {0:?}")]

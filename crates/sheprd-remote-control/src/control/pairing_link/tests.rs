@@ -5,6 +5,7 @@ fn info(relays: usize) -> Info {
     Info {
         identity: "aWRlbnRpdHk".into(),
         labels: BTreeMap::new(),
+        pins: BTreeMap::new(),
         relays: (0..relays)
             .map(|index| format!("https://relay{index}.example.org"))
             .collect(),

@@ -252,6 +252,34 @@ impl SheprdWindow {
         carry: Option<&Settings>,
         cx: &gpui::App,
     ) -> Result<(), super::StartError> {
+        // The stand-in shell has a terminal address but no tab to split.
+        // A chat launched from it gets a tab in its own kept workspace.
+        let local = crate::core_terminals::Host::Local;
+        if let Some(id) = self.core_terminals.fallback_terminal()
+            && key_on(&local, id) == key
+        {
+            let scope = crate::browser::scope(&self.endpoints[self.selected_endpoint]);
+            let purpose = Purpose::Tab {
+                focus: false,
+                scope,
+                workspace: crate::core_terminals::WORKSPACE.to_owned(),
+                group: None,
+            };
+            if self.purpose_host(&purpose) != local {
+                return Err(super::StartError::NoWorkspace);
+            }
+            let backend = crate::config::TerminalBackend::owner(id);
+            let mut spawn = self.prepare_core_chat(agent, &local, carry)?;
+            spawn.cwd = self
+                .core_terminals
+                .reported(&local, id)
+                .and_then(|info| info.cwd.clone());
+            if !self.start_on_provider(purpose, spawn, None, Some(backend), cx) {
+                return Err(super::StartError::SlotBusy);
+            }
+            self.chats.last_started = Some(agent);
+            return Ok(());
+        }
         let (host, info) = self
             .core_terminals
             .routed_chat_terminals()

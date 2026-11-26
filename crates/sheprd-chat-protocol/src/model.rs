@@ -521,13 +521,25 @@ pub struct Mode {
 pub struct Queued {
     #[serde(default)]
     pub attachments: Vec<Attachment>,
+    /// Kept when the turn was stopped: it waits until sent now or
+    /// withdrawn, and no later turn's end sends it.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub held: bool,
     pub id: CommandId,
+    /// Already sent into the running turn, waiting for the agent to take it
+    /// at its next step; it can no longer be withdrawn.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub steered: bool,
     pub text: String,
 }
 
 /// Starts each line the transcript adds after a prompt's text, one per file
 /// the prompt carried.
 pub const ATTACHED: &str = "\u{1f4ce} ";
+
+fn is_false(value: &bool) -> bool {
+    !*value
+}
 
 fn is_zero(count: &usize) -> bool {
     *count == 0

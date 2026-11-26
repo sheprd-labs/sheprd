@@ -9,6 +9,7 @@ mod attachments;
 mod background;
 mod command_output;
 mod launch_policy;
+mod steering;
 
 const THREAD: &str = "01a160d5-4de7-7262-b413-0ce5180918ce";
 

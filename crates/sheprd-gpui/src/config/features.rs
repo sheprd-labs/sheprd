@@ -81,6 +81,39 @@ features! {
     // keep-sorted start
     acp_chats: AcpChats = true, "features-acp-chats",
         "features-acp-chats-description";
+    // Each cloud provider built in, read once at startup (`crate::cloud::enabled`)
+    // and only while `cloud_providers` is on. Off, the provider is offered
+    // nowhere and its saved devices stay in the file, hidden until it is back.
+    #[cfg(feature = "azure")]
+    cloud_azure: CloudAzure = true, "features-cloud-azure",
+        "features-cloud-azure-description";
+    #[cfg(feature = "boat")]
+    cloud_boat: CloudBoat = true, "features-cloud-boat",
+        "features-cloud-boat-description";
+    #[cfg(feature = "boxd")]
+    cloud_boxd: CloudBoxd = true, "features-cloud-boxd",
+        "features-cloud-boxd-description";
+    #[cfg(feature = "coder")]
+    cloud_coder: CloudCoder = true, "features-cloud-coder",
+        "features-cloud-coder-description";
+    #[cfg(feature = "container")]
+    cloud_container: CloudContainer = true, "features-cloud-container",
+        "features-cloud-container-description";
+    #[cfg(feature = "daytona")]
+    cloud_daytona: CloudDaytona = true, "features-cloud-daytona",
+        "features-cloud-daytona-description";
+    #[cfg(feature = "opensandbox")]
+    cloud_opensandbox: CloudOpenSandbox = true, "features-cloud-opensandbox",
+        "features-cloud-opensandbox-description";
+    #[cfg(feature = "cloud")]
+    cloud_providers: CloudProviders = true, "features-cloud-providers",
+        "features-cloud-providers-description";
+    #[cfg(feature = "railway")]
+    cloud_railway: CloudRailway = true, "features-cloud-railway",
+        "features-cloud-railway-description";
+    #[cfg(feature = "sprites")]
+    cloud_sprites: CloudSprites = true, "features-cloud-sprites",
+        "features-cloud-sprites-description";
     // `sheprd mcp`, the MCP server agents and other clients start
     // (`docs/mcp-plan.md`). The app refuses its requests while this is off.
     #[cfg(feature = "mcp")]

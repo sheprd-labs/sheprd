@@ -22,6 +22,14 @@ impl Localize for Error {
                 status = status.to_string(),
                 detail = detail.as_str()
             ),
+            Self::Pause { status, detail } if detail.is_empty() => {
+                fl!("error-devices-pause", status = status.to_string())
+            }
+            Self::Pause { status, detail } => fl!(
+                "error-devices-pause-detail",
+                status = status.to_string(),
+                detail = detail.as_str()
+            ),
             Self::Rename { status, detail } if detail.is_empty() => {
                 fl!("error-devices-rename", status = status.to_string())
             }

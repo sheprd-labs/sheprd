@@ -662,6 +662,9 @@ impl SettingsWindow {
         if self.sidebar_queued && self.closing.is_none() && !self.busy() {
             self.save_sidebar_draft(cx);
         }
+        if self.remote.pins_pending && self.closing.is_none() && !self.busy() {
+            self.follow_public_pins(cx);
+        }
         if !self.busy() && !self.theme_dirty() && self.closing.is_some() {
             if self.layout_intent.is_some() {
                 self.save_layout_draft(cx);

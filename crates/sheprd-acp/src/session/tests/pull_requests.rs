@@ -134,3 +134,75 @@ fn a_command_of_several_lines_is_read_from_the_calls_input() {
     assert_eq!(pulls.len(), 1, "the title shows only `cd repo`");
     assert_eq!(pulls[0].actions, [PullRequestAction::Merged]);
 }
+
+fn push_call(harness: &mut Harness, call: &str) {
+    harness.update(json!({
+        "sessionUpdate": "tool_call", "toolCallId": call,
+        "title": "`git push origin feat`", "kind": "execute",
+        "rawInput": {"command": "git push origin feat"},
+        "status": "completed",
+        "content": [{"type": "content", "content": {"type": "text",
+            "text": "remote: View pull request for 'feat':\nremote:   https://github.com/o/r/pull/7"}}],
+    }));
+}
+
+#[test]
+fn each_turn_lists_a_pull_request_it_pushed_to_again() {
+    let mut harness = ready();
+    let receiver = harness.subscribe(1, false, None);
+    drain(&receiver);
+    let turn = prompt(&mut harness, 1, "push it");
+    push_call(&mut harness, "one");
+    push_call(&mut harness, "one");
+    harness.respond(turn, json!({"stopReason": "end_turn"}));
+    let first = pull_request_changes(&receiver);
+    assert_eq!(
+        first.len(),
+        1,
+        "a repeated update of one call lists it once"
+    );
+    assert_eq!(first[0].actions, [PullRequestAction::Pushed]);
+    let turn = prompt(&mut harness, 1, "push again");
+    push_call(&mut harness, "three");
+    harness.respond(turn, json!({"stopReason": "end_turn"}));
+    let again = pull_request_changes(&receiver);
+    assert_eq!(again.len(), 1, "a new turn lists it again");
+    assert_eq!(harness.transcript().pull_requests.len(), 1);
+    assert_eq!(
+        harness.transcript().pull_requests[0].actions,
+        [PullRequestAction::Pushed],
+        "the transcript keeps it once"
+    );
+    // A merge in a later turn is no push: listed only for its new action.
+    prompt(&mut harness, 1, "merge");
+    merge_call(&mut harness, "tool_call", "completed");
+    merge_call(&mut harness, "tool_call_update", "completed");
+    assert_eq!(pull_request_changes(&receiver).len(), 1);
+}
+
+fn pushed_to(harness: &mut Harness, call: &str, number: u64) {
+    harness.update(json!({
+        "sessionUpdate": "tool_call", "toolCallId": call,
+        "title": "`git push origin feat`", "kind": "execute",
+        "rawInput": {"command": "git push origin feat"},
+        "status": "completed",
+        "content": [{"type": "content", "content": {"type": "text",
+            "text": format!("remote: View pull request for 'feat':\nremote:   https://github.com/o/r/pull/{number}")}}],
+    }));
+}
+
+#[test]
+fn a_later_push_in_the_turn_lists_its_pull_request_last() {
+    let mut harness = ready();
+    let receiver = harness.subscribe(1, false, None);
+    drain(&receiver);
+    prompt(&mut harness, 1, "push both");
+    pushed_to(&mut harness, "a", 7);
+    pushed_to(&mut harness, "b", 8);
+    pushed_to(&mut harness, "c", 7);
+    let numbers: Vec<u64> = pull_request_changes(&receiver)
+        .iter()
+        .map(|pull| pull.number)
+        .collect();
+    assert_eq!(numbers, [7, 8, 7], "the last one touched comes last");
+}

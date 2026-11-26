@@ -3,7 +3,7 @@ use crate::{CoreBackend, frame::Kind};
 use serde_json::{Value, json};
 use sheprd_backend::{
     AgentStatus, Backend, Change, Changes, ClientPaneInputEvent, Exit, KeyReporting, Role,
-    RunState, Size, SurfaceUpdate, Terminal as _, TerminalId,
+    RunState, Size, SurfaceUpdate, Terminal as _, TerminalId, WatchBackend,
 };
 use std::{thread, time::Duration};
 

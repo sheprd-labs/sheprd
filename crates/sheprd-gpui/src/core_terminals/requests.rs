@@ -39,6 +39,7 @@ impl CoreTerminals {
             .values()
             .filter(|tab| tab.host == host && !tab.observe)
             .flat_map(|tab| tab.panes.terminals())
+            .filter(|terminal| !terminal.is_tmux())
             .find(|terminal| crate::chat::core_pane::key_on(&host, terminal) == origin)
             .cloned()
     }
@@ -68,7 +69,7 @@ impl CoreTerminals {
             .filter(|backend| !backend.core().is_lost())?;
         remote
             .infos
-            .all()
+            .core_terminals()
             .find(|info| info.id == *terminal)?
             .labels
             .get(name)
@@ -115,12 +116,12 @@ impl CoreTerminals {
     pub(crate) fn label_requests(&mut self) -> Vec<LabelRequests> {
         let mut found = Vec::new();
         for (scope, remote) in &mut self.remote {
-            if remote.infos.lists() == 0 {
+            if remote.infos.core_read_at().is_none() {
                 continue;
             }
             let listed: HashSet<(TerminalId, String)> = remote
                 .infos
-                .all()
+                .core_terminals()
                 .flat_map(|info| {
                     info.labels
                         .keys()
@@ -136,7 +137,7 @@ impl CoreTerminals {
             // names are never reused.
             old.retain(|request| listed.contains(request));
             let host = Host::Remote(scope.clone());
-            for info in remote.infos.all() {
+            for info in remote.infos.core_terminals() {
                 let tokens: Vec<(String, String)> = info
                     .labels
                     .iter()

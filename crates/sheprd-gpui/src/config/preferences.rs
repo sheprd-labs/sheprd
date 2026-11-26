@@ -40,8 +40,8 @@ pub(crate) enum Preference {
     AgentCheckpoints(bool),
     ShowListeningPorts(bool),
     ShowAgentsHeader(bool),
-    /// `herdr_2_terminals`: new tabs on this computer run in herdr-core.
-    Herdr2Terminals(bool),
+    /// The terminal backend used when creating a tab.
+    TerminalBackend(TerminalBackend),
     /// `herdr_2_scrollback`: lines each Herdr 2 terminal keeps.
     Herdr2Scrollback(u32),
     ShowSidebarSearch(bool),
@@ -206,8 +206,8 @@ impl Config {
                 Preference::ShowAgentsHeader(value) => {
                     (None, "show_agents_header", Some(value.into()))
                 }
-                Preference::Herdr2Terminals(value) => {
-                    (None, "herdr_2_terminals", Some(value.into()))
+                Preference::TerminalBackend(value) => {
+                    (None, "terminal_backend", Some(value.name().into()))
                 }
                 Preference::Herdr2Scrollback(lines) => {
                     (None, "herdr_2_scrollback", Some(i64::from(lines).into()))

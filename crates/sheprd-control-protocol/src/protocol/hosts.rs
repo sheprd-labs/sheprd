@@ -26,6 +26,12 @@ pub enum HostOp {
         host: Option<String>,
         muted: bool,
     },
+    /// Pause `host` (an endpoint ID or label), a saved SSH or cloud device:
+    /// it stays listed but is not connected until resumed (`paused` false).
+    Pause {
+        host: String,
+        paused: bool,
+    },
     /// Replaces the tags that group `id` in the sidebar.
     Tag {
         id: String,

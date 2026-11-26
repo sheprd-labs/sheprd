@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::text::Line;
 use sheprd_chat_protocol::{
-    Attachment, Change, Command, Cursor, Device, EntryId, MAX_ATTACHMENTS, Origin, Rejection,
-    ServerMessage, Status, Transcript, Via,
+    Attachment, ByeReason, Change, Command, Cursor, Device, EntryId, MAX_ATTACHMENTS, Origin,
+    Rejection, ServerMessage, Status, Transcript, Via,
 };
 use unicode_width::UnicodeWidthChar;
 
@@ -21,7 +21,25 @@ const TYPED_HERE: Origin = Origin::new(Device::Terminal, Via::Local);
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Out {
     Command(Command),
-    Quit,
+    Quit(Quit),
+}
+
+/// The key that closed the view, said in the pane once it closes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Quit {
+    /// Ctrl+C pressed twice with nothing to clear or cancel.
+    CtrlC,
+    /// Ctrl+D on an empty prompt.
+    CtrlD,
+}
+
+impl std::fmt::Display for Quit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::CtrlC => "Ctrl+C was pressed twice",
+            Self::CtrlD => "Ctrl+D was pressed on an empty prompt",
+        })
+    }
 }
 
 /// What a message from the session meant for the view.
@@ -30,8 +48,8 @@ pub(crate) enum Received {
     Applied,
     /// The view lost track and must attach again for a snapshot.
     Resync,
-    /// The session ended.
-    Closed,
+    /// The session ended, saying why.
+    Closed(ByeReason),
 }
 
 #[derive(Default)]
@@ -177,7 +195,7 @@ impl View {
             ServerMessage::Ack { rejected, .. } => {
                 self.flash = rejected.map(|rejected: Rejection| rejected.to_string());
             }
-            ServerMessage::Bye { .. } => return Received::Closed,
+            ServerMessage::Bye { reason } => return Received::Closed(reason),
         }
         if self.choice >= self.options() {
             self.choice = 0;
@@ -352,7 +370,7 @@ impl View {
         }
         match key.code {
             KeyCode::Char('c') if ctrl => return self.interrupt(),
-            KeyCode::Char('d') if ctrl && empty => return Some(Out::Quit),
+            KeyCode::Char('d') if ctrl && empty => return Some(Out::Quit(Quit::CtrlD)),
             KeyCode::Char('j') if ctrl => self.composer.insert("\n"),
             KeyCode::Enter if alt || shift => self.composer.insert("\n"),
             KeyCode::Enter if asking && empty => return self.answer(self.choice),
@@ -431,7 +449,7 @@ impl View {
             return self.cancel();
         }
         if self.quit_armed {
-            return Some(Out::Quit);
+            return Some(Out::Quit(Quit::CtrlC));
         }
         self.quit_armed = true;
         self.flash = Some("Press Ctrl+C again to quit".to_owned());

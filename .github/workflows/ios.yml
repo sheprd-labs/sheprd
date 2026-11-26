@@ -94,6 +94,7 @@ jobs:
           cd ios
           xcodegen -q
           python3 tools/test_branding.py
+          python3 tools/test_next_build.py
           python3 tools/test_testflight_notes.py
           python3 tools/test_app_store_connect.py
           python3 tools/test_testflight_distribution.py

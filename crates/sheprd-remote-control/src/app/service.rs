@@ -117,6 +117,12 @@ impl Plan {
             for (option, value) in relay.label.args() {
                 args.extend([option.into(), value.into()]);
             }
+            if let Some(pin) = &relay.pin {
+                args.extend([
+                    "--relay-pin".into(),
+                    sheprd_relay::endpoint::encode_pin(pin).into(),
+                ]);
+            }
         }
         if let Some(socket) = &self.herdr_socket {
             args.extend(["--herdr-socket".into(), socket.clone().into()]);

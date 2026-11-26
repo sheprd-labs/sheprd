@@ -307,7 +307,13 @@ impl SheprdWindow {
     pub(crate) fn count_core_agents(&self, window: WindowId, connected: bool, cx: &mut App) {
         let agents = self
             .agent_terminals(cx)
-            .filter(|_| connected)
+            .filter(|info| {
+                if info.id.is_tmux() {
+                    self.core_terminals.infos.tmux_available()
+                } else {
+                    connected
+                }
+            })
             .filter(|info| matches!(info.agent, AgentStatus::Blocked | AgentStatus::Done))
             .filter(|info| !self.core_terminal_silenced(&super::Host::Local, &info.id, cx))
             .map(|info| crate::app_badge::CoreAgent {
@@ -358,7 +364,7 @@ impl SheprdWindow {
             .core_fallback_view()
             .map(|view| view.read(cx).terminal().clone());
         let shown = in_front(
-            connected && window.is_window_active(),
+            window.is_window_active(),
             page,
             terminal_shown.then_some(fallback).flatten(),
         );
@@ -369,7 +375,7 @@ impl SheprdWindow {
             .collect();
         let heard = cx.default_global::<Heard>();
         heard.show(id, shown, |window| open.contains(&window));
-        if !connected || (heard.due.is_empty() && heard.posts.is_empty()) {
+        if heard.due.is_empty() && heard.posts.is_empty() {
             return;
         }
         // A muted tab's agent plays and posts nothing, as a muted Herdr 1
@@ -383,7 +389,14 @@ impl SheprdWindow {
             .collect();
         let muted: HashSet<TerminalId> = waiting
             .into_iter()
-            .filter(|terminal| self.core_terminal_silenced(&super::Host::Local, terminal, cx))
+            .filter(|terminal| {
+                self.core_terminal_silenced(&super::Host::Local, terminal, cx)
+                    || if terminal.is_tmux() {
+                        !self.core_terminals.infos.tmux_available()
+                    } else {
+                        !connected
+                    }
+            })
             .collect();
         let heard = cx.default_global::<Heard>();
         heard.forget_due(|terminal| muted.contains(terminal));

@@ -95,7 +95,7 @@ impl Projector {
         Self::after(EntryId(self.next))
     }
 
-    fn next_id(&mut self) -> EntryId {
+    pub(crate) fn next_id(&mut self) -> EntryId {
         self.next += 1;
         EntryId(self.next)
     }

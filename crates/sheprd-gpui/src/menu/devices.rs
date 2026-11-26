@@ -16,6 +16,7 @@ mod host_key_choice;
 mod host_menu;
 mod local_network;
 mod nearby;
+mod pause;
 pub(super) mod picker;
 pub(super) mod rail;
 mod saved_warning;
@@ -27,6 +28,7 @@ pub(super) use add_device::Setup;
 pub(crate) use error::Error;
 pub(crate) use host_menu::HostMenu;
 pub(super) use nearby::NearbySetup;
+pub(crate) use pause::{Outcome as PauseOutcome, Pauses, Ticket as PauseTicket};
 pub(crate) use picker::LineAction;
 pub(crate) use scope::DeviceScope;
 pub(super) use wsl::WslSetup;
@@ -144,7 +146,7 @@ impl SheprdWindow {
         if crate::cloud::unavailable().is_some() {
             return Vec::new();
         }
-        crate::cloud::CloudProvider::ALL
+        crate::cloud::enabled()
             .iter()
             .copied()
             .filter(|provider| match provider {

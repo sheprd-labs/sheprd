@@ -680,8 +680,15 @@ impl SheprdWindow {
                 self.clear_all_notifications(window, cx);
                 return;
             }
+            Command::NewTmuxTerminal => {
+                #[cfg(feature = "tmux")]
+                self.new_provider_terminal(Some(crate::config::TerminalBackend::Tmux), window, cx);
+                #[cfg(not(feature = "tmux"))]
+                self.show_flash(Flash::warning(fl!("core-terminals-tmux-disabled")), cx);
+                return;
+            }
             Command::NewCoreTerminal => {
-                self.new_core_terminal(window, cx);
+                self.new_provider_terminal(Some(crate::config::TerminalBackend::Core), window, cx);
                 return;
             }
             // A herdr-core pane with the keyboard mirrors itself above.

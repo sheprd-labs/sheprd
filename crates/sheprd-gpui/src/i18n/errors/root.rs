@@ -226,6 +226,7 @@ impl Localize for Error {
             Self::WebView(error) => fl!("error-web-view", error = error.to_string()),
             #[cfg(any(target_os = "macos", windows))]
             Self::WindowHandle(error) => fl!("error-window-handle", error = error.to_string()),
+            Self::WindowsHost(error) => error.localize(),
             Self::WorkspaceCheckoutChanged => fl!("error-workspace-checkout-changed"),
             Self::WorkspaceGroupChanged => fl!("error-workspace-group-changed"),
             Self::WorkspaceRepositoryChanged => fl!("error-workspace-repository-changed"),

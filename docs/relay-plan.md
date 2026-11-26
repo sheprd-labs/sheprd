@@ -397,16 +397,20 @@ Relays and `sheprd remote relays` beside it):
 
 ```toml
 [remote]
-relays = "default"   # Sheprd's relays (the default). Or one of:
-# relays = "off"                                     # LAN and Tailscale only
-# relays = ["https://relay.example.org"]             # only these; ours are never contacted
-# relays = ["default", "https://relay.example.org"]  # both
+relays = []   # none (the default): LAN and Tailscale only
+# relays = ["https://relay.example.org"]   # a private relay
+# relays = [{ endpoint = "https://fra1.relay.sheprd.org", name = "Frankfurt",
+#             pin = "…" }]                  # one of Sheprd's, added from Settings
 ```
 
-- A list replaces the defaults unless it names `"default"`, so someone
-  running a private relay never touches ours, not even to look one up.
-- `"default"` means the relays listed at `https://sheprd.org/relays.json`
-  (`sheprd_relay_directory`, built), never a list compiled into the app:
+- **Sheprd's relays are opt-in.** No relay is used until the user adds
+  one, and the daemon never contacts sheprd.org: someone running a
+  private relay, or none, never touches ours, not even to look one up.
+  Settings fetches the list below only to offer Sheprd's relays, each
+  with an **Add** button, and adding one writes its endpoint, name, and
+  signed `pin` into `relays`.
+- Sheprd's relays are listed at `https://sheprd.org/relays.json`
+  (`sheprd_relay_directory`, built), never in a list compiled into the app:
 
   ```json
   { "version": 1, "relays": [
@@ -424,9 +428,15 @@ relays = "default"   # Sheprd's relays (the default). Or one of:
   ignored).
 - A relay listed with its `quic_pin` keeps its QUIC certificate across
   restarts (`RELAY_QUIC_IDENTITY_DIR`; `deploy/relay` keeps it in
-  `/opt/sheprd-relay/quic`). Clients pin that signed value rather than the
-  one `/v1/info` reports over ordinary HTTPS, which a TLS-inspecting proxy
-  or a mis-issued certificate could forge. `just relays-add` reads the pin
+  `/opt/sheprd-relay/quic`). Settings saves that signed value as the
+  relay's `pin`, the daemon takes it as `--relay-pin`, and refuses the
+  relay when `/v1/info` reports another, which a TLS-inspecting proxy or a
+  mis-issued certificate could forge; it also hands the pin to phones in
+  `GET /api/relay`. When Settings next loads a list whose pin for a saved
+  relay changed, it updates the saved one, waiting for any other save to
+  finish first. It keeps the newest serial it took
+  (`public-relays-serial.json` in its state directory) and refuses an
+  older list, so a replayed one cannot bring back a retired pin. `just relays-add` reads the pin
   from `/v1/info` and prints it, to compare with the `pin=` the relay logs
   at start before signing.
 - The list is signed (`sheprd_relay_directory::signed`), so changing
@@ -460,15 +470,12 @@ relays = "default"   # Sheprd's relays (the default). Or one of:
     hosts, or an IP-in-a-name service pointing at one, are refused.
   - The OpenPGP signing subkey expires on 2030-12-25: extend it, and ship
     the refreshed public key, before then.
-- The daemon fetches the list at start and every hour, and keeps the last
-  good one in its state directory, so a sheprd.org outage changes nothing.
-  It listens on every relay listed and stops on any removed. Settings and
-  `sheprd remote status` say which case holds:
-  - **The list is empty:** "No Sheprd relays are available for now." The
-    computer stays reachable on its LAN and private relays; phones keep
-    trying direct addresses.
-  - **The list could not be loaded, and none was saved:** "Could not load
-    Sheprd's relay list", with the reason, and it retries.
+- The list only offers relays: the daemon listens on the relays in
+  `[remote] relays`, so a sheprd.org outage, or a relay later dropped from
+  the list, changes nothing until the user removes it. Settings says when:
+  - **The list is empty:** "No Sheprd relays are available for now."
+  - **The list could not be loaded:** "Could not load Sheprd's relay
+    list", with the reason.
 - Each endpoint may have a listen token. Tokens are secrets, so they are not
   in the config: the daemon keeps them in `STATE_DIR/relay/tokens.json`
   (0600), keyed by endpoint, set through Settings or
@@ -543,10 +550,12 @@ machines) reaches them through the same relays:
 agent's relays to this computer's, and the device's record keeps them
 (Clients, Sheprd and SSH machines).
 
-**What is not built yet.** The `[remote] relays` setting, the token store,
-Settings, the command, and the phone's side arrive with the daemon and iOS
-work (phase 3). Until then no client reads a relay endpoint, so none of
-these is exposed as if it worked.
+**What is not built yet.** The iPhone does not yet use the pin
+`GET /api/relay` hands it: it still trusts the one each relay's
+`/v1/info` reports over HTTPS. Desktops adding or reaching each other
+through relays (`desktop-pair`, `relay-connect`), SSH machines reached
+through relay sharing, and `sheprd-relay-agent` get addresses only, and do
+the same.
 
 ### Choosing the nearest relay
 
@@ -2488,6 +2497,9 @@ keyless (the version `release.yml` pins), and attests build provenance. CI
 holds no relay secrets and deploys nothing.
 
 ### Before the first public relay
+
+The launch of Sheprd's own two relays is in
+[public-relays-plan.md](public-relays-plan.md).
 
 - Make the GHCR package public once.
 - Create the `relays` environment (allowed on `main`), store

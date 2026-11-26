@@ -23,6 +23,7 @@ use std::{
 
 mod error;
 mod failure;
+mod git_config;
 mod host_key;
 pub(crate) mod mux;
 mod unverified;
@@ -35,6 +36,9 @@ pub use host_key::{
 pub use unverified::{HostKeys, MAX_UNVERIFIED_HOSTS, set_host_keys, set_unverified_hosts};
 pub(crate) mod powershell;
 mod serve;
+#[cfg(all(test, unix))]
+use git_config::config_command;
+pub use git_config::{remote_config_value, remote_origin_url};
 pub use serve::{remote_socket, serve_command};
 
 pub(crate) const READY: &[u8] = b"herdr-remote-output-ready:1\n";
@@ -124,10 +128,13 @@ pub enum HostProbe {
     /// No compatible Herdr 1, but herdr-core (Herdr 2) is installed, which
     /// is a whole setup of its own: the host's terminals run in its core.
     Core,
+    /// The selected tmux backend is installed.
+    Tmux,
 }
 
 /// Every candidate reports its client and server status, one block each, so
 /// the choice between them stays with the same rules the bridge applies.
+#[cfg(all(test, unix))]
 fn probe_command(session: &str) -> String {
     format!("/bin/sh -c {}", quote(&probe_script(session)))
 }
@@ -154,6 +161,21 @@ printf '%s\n' '{PROBE_DONE}'"#,
     )
 }
 
+/// Prefer an installed tmux when the user selected it for new terminals.
+pub(crate) fn selected_probe_script(session: &str, tmux: bool) -> String {
+    let herdr = probe_script(session);
+    if !tmux {
+        return herdr;
+    }
+    format!(
+        r#"if PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin" command -v tmux >/dev/null 2>&1; then
+    printf '%s\n' 'sheprd-probe:tmux' '{PROBE_DONE}'
+    exit 0
+fi
+{herdr}"#
+    )
+}
+
 /// `None` when the script never finished, so partial output is not mistaken
 /// for a host without Herdr.
 pub(crate) fn classify_probe(output: &[u8]) -> Option<HostProbe> {
@@ -168,13 +190,16 @@ fn classify_probe_with(
     // Each block holds one candidate's client status, then its server status.
     let mut blocks: Vec<Vec<serde_json::Value>> = Vec::new();
     let mut core = false;
+    let mut tmux = false;
     for line in lines(output) {
         if line == PROBE_DONE.as_bytes() {
             let Some(statuses) = blocks
                 .iter()
                 .find(|statuses| statuses.iter().any(|s| compatible(s).is_some()))
             else {
-                return Some(if core {
+                return Some(if tmux {
+                    HostProbe::Tmux
+                } else if core {
                     HostProbe::Core
                 } else if blocks.is_empty() {
                     HostProbe::Missing
@@ -191,7 +216,9 @@ fn classify_probe_with(
                 HostProbe::Stopped
             });
         }
-        if line == PROBE_CORE.as_bytes() {
+        if line == b"sheprd-probe:tmux" {
+            tmux = true;
+        } else if line == PROBE_CORE.as_bytes() {
             core = true;
         } else if line == PROBE_CANDIDATE.as_bytes() {
             blocks.push(Vec::new());
@@ -219,9 +246,19 @@ pub fn probe_host(target: &str, session: &str) -> Result<HostProbe> {
 /// [`probe_host`] checking host keys as `keys` says, for a host whose choice
 /// is not saved yet.
 pub fn probe_host_with(target: &str, session: &str, keys: HostKeys) -> Result<HostProbe> {
+    probe_terminals(target, session, keys, false)
+}
+
+pub fn probe_terminals(
+    target: &str,
+    session: &str,
+    keys: HostKeys,
+    tmux: bool,
+) -> Result<HostProbe> {
     validate_target(target)?;
     session_socket(Path::new(""), session)?;
-    let mut command = command_with(target, &probe_command(session), keys);
+    let script = selected_probe_script(session, tmux);
+    let mut command = command_with(target, &format!("/bin/sh -c {}", quote(&script)), keys);
     // Stderr is read only to classify an `ssh` failure; its text is dropped.
     command.stderr(Stdio::piped());
     tracing::info!(category = "probe", "probing host");
@@ -271,63 +308,6 @@ fn probe_powershell_host(target: &str, session: &str, keys: HostKeys) -> Result<
     let probe = classify_probe_with(&output, powershell::compatible);
     tracing::info!(category = "probe", %status, ?probe, "PowerShell probe finished");
     probe.ok_or(Error::Closed.into())
-}
-
-/// The `remote.origin.url` of a repository on a saved host, read without a
-/// prompt. `git_dir` is the absolute Git directory the daemon reported for the
-/// workspace. `None` when the repository has no origin remote. Blocks for at
-/// most `timeout`: call it from a background thread.
-pub fn remote_origin_url(
-    target: &str,
-    git_dir: &str,
-    timeout: Duration,
-    cancelled: impl Fn() -> bool,
-) -> Result<Option<String>> {
-    remote_config_value(target, git_dir, "remote.origin.url", timeout, cancelled)
-}
-
-/// Read one Git configuration value on a saved host using bounded,
-/// noninteractive SSH. `dir` is an absolute Git directory or a directory in a
-/// working tree, since a daemon reports a workspace's Git directory only for
-/// some checkouts. Call only from a background thread.
-pub fn remote_config_value(
-    target: &str,
-    dir: &str,
-    key: &str,
-    timeout: Duration,
-    cancelled: impl Fn() -> bool,
-) -> Result<Option<String>> {
-    validate_target(target)?;
-    if !dir.starts_with('/') || dir.chars().any(char::is_control) {
-        return Err(crate::Error::InvalidGitDir);
-    }
-    let (status, output) = run_remote(target, &config_command(dir, key), timeout, cancelled)?;
-    match status.code() {
-        Some(0) => {}
-        // `git config --get` exits 1 when the key is absent.
-        Some(1) => return Ok(None),
-        _ => return Err(crate::Error::RemoteCommand(status)),
-    }
-    let value = String::from_utf8(output).map_err(|_| crate::Error::RemoteOutput)?;
-    let value = value.trim_end_matches(['\r', '\n']);
-    if value.is_empty() {
-        return Ok(None);
-    }
-    if value.len() > 2048 || value.chars().any(char::is_control) {
-        return Err(crate::Error::RemoteOutput);
-    }
-    Ok(Some(value.to_owned()))
-}
-
-fn config_command(dir: &str, key: &str) -> String {
-    // `-C` rather than `--git-dir`: Git finds the repository from either a
-    // Git directory or a working directory, and exits 1 outside one.
-    let script = format!(
-        "exec git -c core.fsmonitor=false -C {} config --get -- {}",
-        quote(dir),
-        quote(key)
-    );
-    format!("/bin/sh -c {}", quote(&script))
 }
 
 /// Where an SSH target connects, as the local SSH configuration resolves it.
@@ -627,10 +607,45 @@ pub fn shared_script_command(
     script: &str,
     lane: mux::Lane,
 ) -> Result<(Command, Option<SshChannel>)> {
+    shared_command(target, &format!("/bin/sh -c {}", quote(script)), lane)
+}
+
+/// A noninteractive `ssh` child that runs `script` on the Windows host
+/// `target`, whose login shell is `cmd.exe` or PowerShell, under
+/// `powershell.exe`, encoded so neither shell reinterprets it. PowerShell
+/// writes progress records to stderr as CLIXML, so callers reading output
+/// should discard stderr.
+///
+/// It connects on its own, never over a shared master, this process's or
+/// one the user's `ControlPath` names: Windows OpenSSH starts the script
+/// under the connection's `sshd`, which a closed channel leaves running, so
+/// only ending the connection tells a long-running script that its reader is
+/// gone. So a host that needs an interactively authenticated master cannot
+/// run one. The caller owns the child: its streams and reaping.
+pub fn powershell_command(target: &str, script: &str) -> Result<Command> {
+    validate_target(target)?;
+    let mut command = noninteractive(target, HostKeys::of(target));
+    command.args([
+        "-o",
+        "ControlPath=none",
+        "-o",
+        "ClearAllForwardings=yes",
+        "--",
+        target,
+    ]);
+    command.arg(powershell::encoded_command(script));
+    Ok(command)
+}
+
+fn shared_command(
+    target: &str,
+    remote_command: &str,
+    lane: mux::Lane,
+) -> Result<(Command, Option<SshChannel>)> {
     validate_target(target)?;
     let (command, channel) = mux::command(
         target,
-        &format!("/bin/sh -c {}", quote(script)),
+        remote_command,
         lane,
         Instant::now() + SHARED_WAIT,
         || false,

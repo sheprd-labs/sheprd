@@ -10,16 +10,26 @@ use sheprd_relay_directory::{
     self as directory, Directory,
     signed::{self, Signatures, Signer},
 };
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    path::Path,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 /// How long the list and its signatures may take, each.
 const TIMEOUT: Duration = Duration::from_secs(10);
+/// The newest list's serial, kept so an older signed list, which may name
+/// a retired certificate's pin, is refused rather than taken.
+const SERIAL_FILE: &str = "public-relays-serial.json";
+/// A serial is a number; anything longer is not this file.
+const SERIAL_MAX_BYTES: u64 = 64;
 
 /// The relays Sheprd lists, and who vouched for the list.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Listed {
     /// When the list stops being taken, in Unix seconds.
     pub(crate) expires: u64,
+    /// Its serial: no list with a lower one is taken after it.
+    pub(crate) serial: u64,
     pub(crate) relays: Vec<Public>,
     pub(crate) signer: Signer,
 }
@@ -47,11 +57,42 @@ pub(crate) struct Public {
     pub(crate) name: Option<String>,
     /// A short region code, such as `fra1`.
     pub(crate) region: Option<String>,
+    /// The SHA-256 of its QUIC certificate, signed with the list: once
+    /// added, the daemon trusts only that certificate there.
+    pub(crate) quic_pin: Option<[u8; 32]>,
 }
 
-/// Downloads the list and its signatures, and checks them. Blocking: run
-/// it off the UI thread.
+/// Downloads the list and its signatures, and checks them, refusing one
+/// older than the newest taken before. Blocking: run it off the UI thread.
 pub(crate) fn fetch() -> Result<Listed, Error> {
+    let path = crate::preferences::state_dir().map(|dir| dir.join(SERIAL_FILE));
+    let kept = path.as_deref().and_then(kept_serial);
+    let listed = download_list(kept)?;
+    if let Some(path) = &path
+        && kept.is_none_or(|kept| listed.serial > kept)
+        && let Err(error) = crate::state_file::write(path, &listed.serial)
+    {
+        tracing::warn!(%error, "Could not keep the relay list's serial");
+    }
+    Ok(listed)
+}
+
+/// The serial kept at `path`, if one was. A damaged file keeps nothing, as
+/// before any list was taken.
+pub(crate) fn kept_serial(path: &Path) -> Option<u64> {
+    let bytes = crate::state_file::read(path, SERIAL_MAX_BYTES)
+        .inspect_err(|error| tracing::warn!(%error, "Could not read the relay list's serial"))
+        .ok()??;
+    serde_json::from_slice(&bytes).ok()
+}
+
+/// Where [`fetch`] keeps the serial, for tests.
+#[cfg(test)]
+pub(crate) fn serial_path(dir: &Path) -> std::path::PathBuf {
+    dir.join(SERIAL_FILE)
+}
+
+fn download_list(kept: Option<u64>) -> Result<Listed, Error> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(TIMEOUT))
         .max_redirects(0)
@@ -60,7 +101,7 @@ pub(crate) fn fetch() -> Result<Listed, Error> {
     let bytes = download(&agent, directory::URL, directory::MAX_BYTES)?.ok_or(Error::Missing)?;
     let openpgp = download(&agent, signed::OPENPGP_URL, signed::MAX_SIGNATURE);
     let ed25519 = download(&agent, signed::ED25519_URL, signed::MAX_SIGNATURE);
-    settle(&bytes, openpgp, ed25519, now())
+    settle(&bytes, openpgp, ed25519, now(), kept)
 }
 
 /// What the list offers given how each signature's download went. One
@@ -72,6 +113,7 @@ pub(crate) fn settle(
     openpgp: Result<Option<Vec<u8>>, Error>,
     ed25519: Result<Option<Vec<u8>>, Error>,
     now: u64,
+    kept: Option<u64>,
 ) -> Result<Listed, Error> {
     let (openpgp, openpgp_failed) = arrived(openpgp);
     let (ed25519, ed25519_failed) = arrived(ed25519);
@@ -80,7 +122,7 @@ pub(crate) fn settle(
         ed25519: ed25519.as_deref(),
     };
     match (
-        listed(bytes, signatures, now),
+        listed(bytes, signatures, now, kept),
         openpgp_failed.or(ed25519_failed),
     ) {
         (Err(Error::Refused(directory::Error::Unsigned)), Some(failed)) => Err(failed),
@@ -96,15 +138,22 @@ fn arrived(download: Result<Option<Vec<u8>>, Error>) -> (Option<Vec<u8>>, Option
     }
 }
 
-/// What a downloaded list offers at `now` (Unix seconds), once checked.
-pub(crate) fn listed(bytes: &[u8], signatures: Signatures<'_>, now: u64) -> Result<Listed, Error> {
-    Ok(Directory::verify(bytes, signatures, now, None)?.into())
+/// What a downloaded list offers at `now` (Unix seconds), once checked,
+/// refused when its serial is below `kept`, the newest taken before.
+pub(crate) fn listed(
+    bytes: &[u8],
+    signatures: Signatures<'_>,
+    now: u64,
+    kept: Option<u64>,
+) -> Result<Listed, Error> {
+    Ok(Directory::verify(bytes, signatures, now, kept)?.into())
 }
 
 impl From<signed::Signed> for Listed {
     fn from(signed: signed::Signed) -> Self {
         Self {
             expires: signed.expires,
+            serial: signed.serial,
             relays: signed
                 .directory
                 .relays
@@ -113,6 +162,7 @@ impl From<signed::Signed> for Listed {
                     address: relay.endpoint.to_string(),
                     name: relay.name,
                     region: relay.region,
+                    quic_pin: relay.quic_pin,
                 })
                 .collect(),
             signer: signed.signer,

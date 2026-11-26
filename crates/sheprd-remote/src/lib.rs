@@ -44,6 +44,8 @@ pub mod teleport;
 #[cfg(all(test, unix))]
 #[path = "../../test-support/executable.rs"]
 mod test_executable;
+#[cfg(feature = "tmux")]
+pub mod tmux;
 pub mod work;
 
 pub use error::{Error, Result};

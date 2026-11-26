@@ -62,10 +62,16 @@
                   inherit (entry) url sha256;
                 };
               in
+              # The notices drop the page breaks fetch-herdr-core.py drops too.
               pkgs.runCommand "herdr-core" { } ''
-                mkdir -p $out/bin
-                tar -xzf ${tarball} -C $out/bin
+                mkdir -p $out/bin $out/share notices
+                tar -xzf ${tarball} -C $out/bin herdr-core
                 chmod 755 $out/bin/herdr-core
+                tar -xzf ${tarball} -C notices THIRD-PARTY-NOTICES
+                {
+                  printf 'herdr-core %s (THIRD-PARTY-NOTICES from its release archive)\n\n' '${herdrCoreData.version}'
+                  sed -E '/^\[[0-9]+ more lines in file\. Use offset=[0-9]+ to continue\.\]$/d' notices/THIRD-PARTY-NOTICES
+                } > $out/share/herdr-core-licenses.txt
               ''
             else
               null;
@@ -102,7 +108,6 @@
               ./scripts/release/org.sheprd.Sheprd.desktop
               # The herdr-core release a remote install pins is compiled in.
               ./scripts/release/herdr-core.json
-              ./scripts/release/herdr-core-licenses.txt
               # The Linux guest agent a virtual machine seed installs is compiled in.
               ./linux/sheprd-machine-agent/agent.py
               ./linux/sheprd-machine-agent/wayland.py
@@ -210,7 +215,9 @@
                 cp LICENSE NOTICE "$app/Contents/Resources/"
                 cp crates/sheprd-gpui/SOUND-NOTICE.md "$app/Contents/Resources/"
                 cp assets/icons/LICENSE-octicons "$app/Contents/Resources/"
-                cp scripts/release/herdr-core-licenses.txt "$app/Contents/Resources/HERDR-CORE-LICENSES.txt"
+                ${lib.optionalString (herdrCore != null) ''
+                  cp ${herdrCore}/share/herdr-core-licenses.txt "$app/Contents/Resources/HERDR-CORE-LICENSES.txt"
+                ''}
 
                 # Expose binaries on PATH via symlinks pointing into the bundle
                 mkdir -p $out/bin

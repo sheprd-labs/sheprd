@@ -161,6 +161,7 @@ pub fn request(command: Command, snapshot: &ClientShellSnapshot) -> Option<(Meth
         | Command::DevicesOverview
         | Command::NotificationHistory
         | Command::ClearAllNotifications
+        | Command::NewTmuxTerminal
         | Command::NewCoreTerminal
         | Command::MirrorCorePane
         | Command::ConvertToChat

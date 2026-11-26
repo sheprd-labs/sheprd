@@ -122,6 +122,9 @@ def act(name, action):
             time.sleep(args[1])
     elif kind == "click":
         machine(name, "click", str(args[0]), str(args[1]))
+    elif kind == "exec":
+        # A shell command in the machine, such as reopening the app.
+        machine(name, "exec", "--", "sh", "-c", args[0])
     elif kind == "repeat":
         for _ in range(args[0]):
             for inner in args[1]:
@@ -130,9 +133,10 @@ def act(name, action):
         sys.exit(f"unknown action {kind}")
 
 
-def launch(name, window, work):
+def launch(name, window, work, fill=True):
     """Quit Sheprd in the machine and open it in `window`, keeping a screenshot
-    of how it came up in work/preflight.png."""
+    of how it came up in work/preflight.png. Without `fill`, the window keeps
+    the size it reopened at."""
     # Activate it first: Command-Q goes to whichever app is in front.
     machine(name, "exec", "--", "sh", "-c", f"open {APP}")
     time.sleep(1)
@@ -161,8 +165,11 @@ def launch(name, window, work):
     time.sleep(1)
     # Window > Fill (Globe-Control-F): unlike a title bar double-click, it
     # fills the screen whatever the window's size was, never toggling back.
-    machine(name, "key", "ctrl+fn+f")
-    time.sleep(1.5)
+    if fill:
+        # Sheprd Agent can leave Control held after this shortcut, turning
+        # later clicks into right-clicks until the agent restarts.
+        machine(name, "key", "ctrl+fn+f")
+        time.sleep(1.5)
     work.mkdir(parents=True, exist_ok=True)
     machine(name, "screenshot", str(work / "preflight.png"))
 
@@ -385,7 +392,7 @@ def main():
             fits(saved["slots"], slots, window)
             starts = saved["starts"]
         else:
-            launch(a.machine, window, work / window)
+            launch(a.machine, window, work / window, spec.get("fill", True))
             starts = record(spec, a.machine, slots, work / window)
         print(window, "segments start at", ", ".join(f"{s:.1f}s" for s in starts))
         for provider in providers:

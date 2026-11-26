@@ -284,7 +284,9 @@ pub fn dispatch(
         }
         Command::SetOption { id, value } => model_change(thread, providers, id, value)?,
         Command::SetMode { .. } => return Err(Rejection::UnknownMode),
-        Command::Unqueue { .. } => return Err(Rejection::UnknownQueued),
+        Command::Unqueue { .. } | Command::SendNow { .. } => {
+            return Err(Rejection::UnknownQueued);
+        }
         Command::StopActivity { .. } => return Err(Rejection::UnknownActivity),
         Command::SetAutoAccept { .. }
         | Command::SetAgent { .. }

@@ -60,6 +60,10 @@ websocket-server = ["dep:axum", "dep:futures-util", "dep:tokio", "dep:tracing", 
 name              = "sheprd-relay"
 required-features = ["server"]
 
+[[example]]
+name              = "probe"
+required-features = ["client"]
+
 [dependencies]
 base64.workspace     = true
 getrandom.workspace  = true

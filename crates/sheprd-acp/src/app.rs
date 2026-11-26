@@ -25,6 +25,8 @@ const ADAPTER_VARIABLE: &str = "HERDR_ACP_ADAPTER";
 /// What a chat runs and shows of its agent.
 struct Agent {
     display: String,
+    /// How the agent gets the server that reads its thread.
+    given: crate::thread_mcp::Given,
     /// What the agent's own log says of a session it will not replay.
     history: Option<crate::history::Result<sheprd_chat_protocol::Transcript>>,
     login_hint: Option<String>,
@@ -46,10 +48,20 @@ struct Started {
     process: process::AgentProcess,
 }
 
-fn agent(options: &Options, cwd: &std::path::Path) -> Agent {
+fn agent(
+    options: &Options,
+    cwd: &std::path::Path,
+    server: Option<&crate::thread_mcp::Server>,
+) -> Agent {
     match &options.agent {
         AgentChoice::Builtin { agent, args: extra } => {
-            let mut built = builtin(*agent, options.load.as_deref(), adapter(options), cwd);
+            let mut built = builtin(
+                *agent,
+                options.load.as_deref(),
+                adapter(options),
+                cwd,
+                server,
+            );
             built.start.args.extend(extra.iter().cloned());
             if let Some(name) = &options.name {
                 built.display.clone_from(name);
@@ -62,6 +74,7 @@ fn agent(options: &Options, cwd: &std::path::Path) -> Agent {
                     .file_name()
                     .map_or_else(|| "Agent".to_owned(), |n| n.to_string_lossy().into_owned())
             }),
+            given: crate::thread_mcp::Given::Not,
             history: None,
             login_hint: None,
             start: Start {
@@ -74,20 +87,27 @@ fn agent(options: &Options, cwd: &std::path::Path) -> Agent {
     }
 }
 
-/// A built-in agent, continuing its session `load` when set.
+/// A built-in agent, continuing its session `load` when set, given
+/// `server` to read its thread with when its harness takes one.
 fn builtin(
     agent: crate::agents::Agent,
     load: Option<&str>,
     adapter: bool,
     cwd: &std::path::Path,
+    server: Option<&crate::thread_mcp::Server>,
 ) -> Agent {
+    use crate::thread_mcp::Given;
     let path = search_path();
     let mut env = Vec::new();
     let mut history = None;
+    let mut given = Given::Not;
     let (program, args, reach): (_, _, Box<dyn Reach>) =
         match crate::agents::launch(agent, Some(&path), adapter) {
             Launch::Native(program) => {
-                let (args, reach) = native(agent, load);
+                let (args, reach, launched) = native(agent, load, server);
+                if launched {
+                    given = Given::Launched;
+                }
                 history = native_history(agent, load, cwd);
                 if matches!(agent, crate::agents::Agent::Claude) {
                     let set = std::env::var_os(crate::claude::TODO_TOOLS);
@@ -96,10 +116,16 @@ fn builtin(
                 (program.into_os_string(), args, reach)
             }
             // An ACP agent replays its own history on `session/load`.
-            Launch::Acp(program, args) => (program, args, Box::new(Acp)),
+            Launch::Acp(program, args) => {
+                if let Some(server) = server {
+                    given = Given::InSession(server.clone());
+                }
+                (program, args, Box::new(Acp))
+            }
         };
     Agent {
         display: agent.display_name().to_owned(),
+        given,
         history,
         login_hint: Some(agent.login_hint().to_owned()),
         start: Start {
@@ -302,22 +328,31 @@ fn adapter(options: &Options) -> bool {
 }
 
 /// The arguments that start `agent`'s own program, and the translator that
-/// reaches it, continuing session `load` when set.
+/// reaches it, continuing session `load` when set; `true` when they give it
+/// `server`, which Pi takes no way to.
 fn native(
     agent: crate::agents::Agent,
     load: Option<&str>,
-) -> (Vec<std::ffi::OsString>, Box<dyn Reach>) {
+    server: Option<&crate::thread_mcp::Server>,
+) -> (Vec<std::ffi::OsString>, Box<dyn Reach>, bool) {
     use crate::agents::Agent;
     match agent {
-        Agent::Codex => (crate::codex::args(), crate::codex::reach()),
-        Agent::Pi => (crate::pi::args(load), crate::pi::reach()),
+        Agent::Codex => {
+            let mut args: Vec<std::ffi::OsString> = server
+                .map(|server| server.codex_overrides().map(Into::into).to_vec())
+                .unwrap_or_default();
+            args.extend(crate::codex::args());
+            (args, crate::codex::reach(), server.is_some())
+        }
+        Agent::Pi => (crate::pi::args(load), crate::pi::reach(), false),
         // `launch` reaches no other agent natively; Claude is the default.
         _ => {
             let session = load.map_or_else(|| uuid::Uuid::new_v4().to_string(), str::to_owned);
-            (
-                crate::claude::args(&session, load.is_some()),
-                crate::claude::reach(session),
-            )
+            let mut args = crate::claude::args(&session, load.is_some());
+            if let Some(server) = server {
+                args.extend(["--mcp-config".into(), server.claude_config().into()]);
+            }
+            (args, crate::claude::reach(session), server.is_some())
         }
     }
 }
@@ -353,7 +388,18 @@ pub(crate) fn run_owned(
     let cwd = cwd
         .canonicalize()
         .with_context(|| format!("no directory {}", cwd.display()))?;
-    let agent = agent(&options, &cwd);
+    // A built-in agent's chat is a thread, `--thread`'s or a new one,
+    // which a restore continues.
+    let thread_id = match &options.agent {
+        AgentChoice::Builtin { .. } => Some(
+            options
+                .thread
+                .unwrap_or_else(sheprd_chat_protocol::thread::ThreadId::random),
+        ),
+        AgentChoice::Command { .. } => None,
+    };
+    let server = thread_id.and_then(crate::thread_mcp::Server::of);
+    let agent = agent(&options, &cwd, server.as_ref());
     let (inputs, receiver) = bounded::<Input>(INPUTS);
     // Where the chat listens is chosen before its agent starts, so the agent
     // can be told.
@@ -397,35 +443,6 @@ pub(crate) fn run_owned(
     };
     let listens = endpoint.is_some();
     let target = Target::from_env();
-    let keeper = if target.is_none() && std::env::var_os("HC_TERMINAL_ID").is_some() {
-        crate::restore::Keeper::core(
-            sheprd_chat_protocol::restore::restore_dir(),
-            endpoint.as_ref(),
-            &options.agent,
-            adapter(&options),
-            &cwd,
-            |name| std::env::var_os(name),
-        )
-    } else {
-        crate::restore::Keeper::new(
-            sheprd_chat_protocol::restore::restore_dir(),
-            target.as_ref(),
-            endpoint.as_ref(),
-            &options.agent,
-            adapter(&options),
-            &cwd,
-        )
-    };
-    // A built-in agent's chat is a thread, `--thread`'s or a new one,
-    // which a restore continues.
-    let thread_id = match &options.agent {
-        AgentChoice::Builtin { .. } => Some(
-            options
-                .thread
-                .unwrap_or_else(sheprd_chat_protocol::thread::ThreadId::random),
-        ),
-        AgentChoice::Command { .. } => None,
-    };
     let thread = thread_id
         .zip(sheprd_chat_protocol::thread::threads_dir())
         .and_then(
@@ -440,17 +457,20 @@ pub(crate) fn run_owned(
                 }
             },
         );
-    let mut keeper = keeper.map(|keeper| keeper.with_thread(thread_id));
+    let keeper = crate::restore::keeper(
+        target.as_ref(),
+        endpoint.as_ref(),
+        &options.agent,
+        adapter(&options),
+        &cwd,
+        agent_process.id(),
+        thread_id,
+    );
     let resumer = crate::resume::from_env(&options, adapter(&options), &cwd, thread_id);
     let session_resumer = resumer.clone();
-    if let Some(keeper) = &mut keeper {
-        keeper.child = Some(agent_process.id());
-    }
-    if target.is_none()
-        && let Some(keeper) = &keeper
+    if let Some(keeper) = &keeper
         && let Err(error) = keeper.agent_started(agent_process.id())
     {
-        // A later restore then refuses rather than guessing the agent ended.
         notices.push((
             NoticeLevel::Warning,
             format!("This chat cannot be restored if it is lost: {error:#}"),
@@ -462,11 +482,15 @@ pub(crate) fn run_owned(
             agent.display.clone(),
             endpoint.map(|id| id.to_string()),
         )?),
+        #[cfg(feature = "tmux")]
+        None => Reporter::on_tmux(agent.display.clone(), endpoint.map(|id| id.to_string()))?,
+        #[cfg(not(feature = "tmux"))]
         None => None,
     };
     let report = reporter.as_ref().map(Reporter::handle);
-    let mut session_keeper = keeper.clone();
-    let switch_keeper = keeper.clone();
+    let mut session_keeper = keeper.as_ref().map(|k| k.copy());
+    let keep_history = keeper.is_some();
+    let switch_keeper = keeper.as_ref().map(|k| k.copy());
     let adapter = adapter(&options);
 
     let harness = match &options.agent {
@@ -515,6 +539,7 @@ pub(crate) fn run_owned(
         cwd: cwd.clone(),
         exit_with_agent: options.headless,
         gemini_auth_method: Some(gemini_auth_method()),
+        given: agent.given,
         harness,
         history,
         known: settings_dir
@@ -579,6 +604,9 @@ pub(crate) fn run_owned(
                     }
                 }
             });
+            if keep_history && let Some(dir) = sheprd_chat_protocol::restore::restore_dir() {
+                session.keep_history(dir.with_file_name("conversations"));
+            }
             if let Some(brief) = &brief {
                 session.link_delegation(&brief.text);
             }
@@ -632,12 +660,12 @@ pub(crate) fn run_owned(
                             session.launch_failed(&error);
                             continue;
                         }
-                        let next = builtin(agent, load.as_deref(), adapter, &cwd);
+                        let next = builtin(agent, load.as_deref(), adapter, &cwd, server.as_ref());
                         match start(next.start, &cwd, &launcher, harness, chat.as_ref()) {
                             Ok(started) => {
                                 let pid = started.process.id();
                                 current = Some(started.process);
-                                session.launched(started.outbox, pid);
+                                session.launched(started.outbox, pid, next.given);
                             }
                             Err(error) => session.launch_failed(&error),
                         }

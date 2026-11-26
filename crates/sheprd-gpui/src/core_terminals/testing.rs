@@ -40,8 +40,8 @@ impl CoreTerminals {
     /// The latest terminal waiting to start, as no core answers in tests.
     #[cfg(feature = "cloud")]
     pub(crate) fn last_wanted_for_test(&self) -> Option<(&Purpose, &Spawn)> {
-        let (purpose, _, spawn, _) = self.wanted.back()?;
-        Some((purpose, spawn))
+        let wanted = self.wanted.back()?;
+        Some((&wanted.purpose, &wanted.spawn))
     }
 
     /// Places `tab` in `workspace` of `scope`, as showing the workspace does.

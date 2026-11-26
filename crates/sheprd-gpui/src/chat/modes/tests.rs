@@ -119,6 +119,8 @@ fn a_chat_under_way_or_only_watched_is_not_fresh() {
     queued.queued.push(Queued {
         attachments: Vec::new(),
         id: CommandId(uuid::Uuid::nil()),
+        held: false,
+        steered: false,
         text: "hi".to_owned(),
     });
     assert!(!fresh(&queued));

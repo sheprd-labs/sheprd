@@ -71,3 +71,41 @@ fn a_label_needs_a_relay_and_must_be_usable() {
         })
     );
 }
+
+#[test]
+fn a_pin_names_the_relay_before_it_and_must_be_a_pin() {
+    let pin = sheprd_relay::endpoint::encode_pin(&[7; 32]);
+    let options = serve(&[
+        "serve",
+        "--state-dir",
+        "/s",
+        "--relay",
+        "https://sfo3.example.org",
+        "--relay",
+        "https://fra1.relay.example.org",
+        "--relay-pin",
+        &pin,
+    ]);
+    let pins: Vec<_> = options.relays.iter().map(|relay| relay.pin).collect();
+    assert_eq!(pins, [None, Some([7; 32])]);
+    assert_eq!(
+        parse(args(&["serve", "--state-dir", "/s", "--relay-pin", &pin])),
+        Err(ParseError::NoRelay {
+            option: "--relay-pin"
+        })
+    );
+    assert_eq!(
+        parse(args(&[
+            "serve",
+            "--state-dir",
+            "/s",
+            "--relay",
+            "https://fra1.relay.example.org",
+            "--relay-pin",
+            "not-a-pin",
+        ])),
+        Err(ParseError::Value {
+            option: "--relay-pin"
+        })
+    );
+}

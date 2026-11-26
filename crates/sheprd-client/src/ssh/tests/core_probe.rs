@@ -47,3 +47,13 @@ fn a_compatible_herdr_1_still_wins_beside_herdr_core() {
     // A probe cut short says nothing, core or not.
     assert_eq!(probe(&[PROBE_CORE]), None);
 }
+
+#[test]
+fn tmux_setup_requires_a_completed_probe() {
+    assert_eq!(
+        probe(&["sheprd-probe:tmux", PROBE_DONE]),
+        Some(HostProbe::Tmux)
+    );
+    assert_eq!(probe(&["sheprd-probe:tmux"]), None);
+    assert!(!selected_probe_script("default", false).contains("sheprd-probe:tmux"));
+}

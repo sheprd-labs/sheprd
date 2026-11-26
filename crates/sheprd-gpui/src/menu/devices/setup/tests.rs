@@ -249,6 +249,46 @@ fn rename_passes_the_label_as_one_value_even_when_it_looks_like_a_flag() -> Resu
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn pausing_disables_the_profile_and_resuming_enables_it() -> Result<()> {
+    let root = std::env::temp_dir().join(format!("herdr-device-pause-{}", std::process::id()));
+    std::fs::create_dir_all(&root)?;
+    let binary = root.join("herdr");
+    let log = root.join("log");
+    crate::test_executable::write(
+        &binary,
+        format!(
+            "#!/bin/sh\nprintf '%s|' \"$@\" >> '{}'\n[ \"$3\" = ffffffffffffffffffffffffffffffff ] && {{ echo 'machine profile was not found' >&2; exit 1; }}\nexit 0\n",
+            log.display()
+        ),
+        0o700,
+    )?;
+    let id = "0123456789abcdef0123456789abcdef";
+    set_enabled_with(binary.as_os_str(), id, false)?;
+    set_enabled_with(binary.as_os_str(), id, true)?;
+    assert_eq!(
+        std::fs::read_to_string(&log)?,
+        format!("machine|disable|{id}|machine|enable|{id}|")
+    );
+    match set_enabled_with(
+        binary.as_os_str(),
+        "ffffffffffffffffffffffffffffffff",
+        false,
+    ) {
+        Err(crate::Error::Devices(Error::Pause { detail, .. })) => {
+            assert_eq!(detail, "machine profile was not found");
+        }
+        other => panic!("expected a pause failure, got {other:?}"),
+    }
+    assert!(matches!(
+        set_enabled_with(binary.as_os_str(), "../x", false),
+        Err(crate::Error::Devices(Error::NoProfile))
+    ));
+    std::fs::remove_dir_all(&root)?;
+    Ok(())
+}
+
 #[test]
 fn same_host_means_same_ssh_target_and_session() -> Result<()> {
     // An empty session is the default one, as `machine add` saves it.

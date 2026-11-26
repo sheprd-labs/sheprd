@@ -4,6 +4,9 @@
 host-menu-rename = Rename…
 # A switch: the device uses the keys its Herdr server binds.
 host-menu-mute = Mute notifications
+# A switch: the device stays listed, but nothing connects to it until it is
+# switched off again. Its own Herdr keeps running.
+host-menu-pause = Pause device
 host-menu-server-keybindings = Use server keybindings
 host-menu-forward-port = Forward port…
 host-menu-theme = Terminal theme…
@@ -13,6 +16,10 @@ host-menu-run-setup = Run setup script
 # Installs herdr-core, the Herdr 2 terminal server, on the device.
 host-menu-install-core = Install Herdr 2
 host-menu-local-keybindings = Using local keybindings: { $error }
+# $device is the device's name.
+# Why a queued pause was not written: the device was removed meanwhile.
+host-menu-pause-gone = The device is no longer saved
+host-menu-pause-failed = Pause or resume { $device }: { $error }
 host-menu-remove-failed = Remove { $device }: { $error }
 host-menu-github-left = Removed { $device }, but could not delete its GitHub sign-in: { $error }
 

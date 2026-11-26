@@ -1,14 +1,14 @@
 //! One reading of a host's CPU, memory, GPU, home disk and uptime, and the text a
-//! remote shell prints for it. Linux and macOS hosts answer with different tools; both answers
-//! parse into the same [`Sample`], counted the way `sysinfo` counts this
-//! machine so a local and a remote host read alike.
+//! remote shell prints for it. Linux, macOS and Windows hosts answer with
+//! different tools; their answers parse into the same [`Sample`], counted the
+//! way `sysinfo` counts this machine so a local and a remote host read alike.
 
 use super::Error;
 use super::gpu::{self, Gpu};
 use crate::Result;
 
-/// Bytes of memory in use: total less available on Linux; active, wired,
-/// compressed and speculative pages on macOS.
+/// Bytes of memory in use: total less available on Linux and Windows;
+/// active, wired, compressed and speculative pages on macOS.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Memory {
     pub used: u64,
@@ -58,7 +58,8 @@ pub(crate) struct Sample {
     pub gpu: Option<Gpu>,
 }
 
-/// Cumulative CPU time from Linux `/proc/stat`, in clock ticks.
+/// Cumulative CPU time: from Linux `/proc/stat`, in clock ticks, or from
+/// Windows' processor counters, in 100 ns units.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Ticks {
     busy: u64,
@@ -170,6 +171,16 @@ pub(crate) fn parse(text: &str, previous: Option<Ticks>) -> Result<Answer> {
             fields.load = load(rest.split_whitespace());
         } else if let Some(rest) = line.strip_prefix("cpu ") {
             fields.ticks = ticks(rest);
+        } else if let Some(rest) = line.strip_prefix("cpu-idle ") {
+            fields.ticks = idle_ticks(rest);
+        } else if let Some(rest) = line.strip_prefix("memory-kb ") {
+            let mut words = rest.split_whitespace().map(str::parse::<u64>);
+            if let (Some(Ok(total)), Some(Ok(free))) = (words.next(), words.next()) {
+                fields.mem_total_kb = Some(total);
+                fields.mem_available_kb = Some(free.min(total));
+            }
+        } else if let Some(rest) = line.strip_prefix("disk-bytes ") {
+            fields.disk = disk_bytes(rest);
         } else if let Some(rest) = line.strip_prefix(MEM_TOTAL) {
             fields.mem_total_kb = kilobytes(rest);
         } else if let Some(rest) = line.strip_prefix(MEM_AVAILABLE) {
@@ -285,6 +296,33 @@ fn ticks(rest: &str) -> Option<Ticks> {
     let idle = columns[3].saturating_add(columns.get(4).copied().unwrap_or(0));
     Some(Ticks {
         busy: total.saturating_sub(idle),
+        total,
+    })
+}
+
+/// `idle timestamp` from Windows' `_Total` processor counters, both in 100 ns
+/// units: idle time averaged over the cores, and the time it was read. The
+/// busy share between two readings is then one less the idle share.
+fn idle_ticks(rest: &str) -> Option<Ticks> {
+    let mut words = rest.split_whitespace().map(str::parse::<u64>);
+    let (Some(Ok(idle)), Some(Ok(total))) = (words.next(), words.next()) else {
+        return None;
+    };
+    Some(Ticks {
+        busy: total.saturating_sub(idle),
+        total,
+    })
+}
+
+/// `total available`, in bytes, of the volume holding a Windows user's
+/// profile; available is what is left to that user.
+fn disk_bytes(rest: &str) -> Option<Disk> {
+    let mut words = rest.split_whitespace().map(str::parse::<u64>);
+    let (Some(Ok(total)), Some(Ok(available))) = (words.next(), words.next()) else {
+        return None;
+    };
+    (total > 0).then_some(Disk {
+        available: available.min(total),
         total,
     })
 }

@@ -422,10 +422,11 @@ impl SheprdWindow {
             .nearby_setup
             .as_ref()
             .map_or(0, |setup| setup.attempt);
+        let tmux = self.config.terminal_backend == crate::config::TerminalBackend::Tmux;
         let saving = target.clone();
         let saved = cx
             .background_executor()
-            .spawn(async move { save(&saving, &label) });
+            .spawn(async move { save(&saving, &label, tmux) });
         cx.spawn_in(window, async move |this, cx| {
             let outcome = saved.await;
             let _ = this.update_in(cx, |this, window, cx| {
@@ -499,9 +500,14 @@ impl SheprdWindow {
 /// a compatible copy, or herdr-core, answers. A stopped server is fine: the
 /// bridge starts it on the first connection. The same machine paired again
 /// keeps its device. Blocking: runs on the background executor.
-fn save(target: &str, label: &str) -> Outcome {
-    match sheprd_client::probe_host(target, SESSION) {
-        Ok(HostProbe::Core | HostProbe::Running | HostProbe::Stopped) => {
+fn save(target: &str, label: &str, tmux: bool) -> Outcome {
+    match sheprd_client::ssh::probe_terminals(
+        target,
+        SESSION,
+        sheprd_client::HostKeys::of(target),
+        tmux,
+    ) {
+        Ok(HostProbe::Tmux | HostProbe::Core | HostProbe::Running | HostProbe::Stopped) => {
             let host = SavedHost {
                 id: uuid::Uuid::new_v4().simple().to_string(),
                 label: label.to_owned(),

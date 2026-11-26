@@ -55,6 +55,7 @@ sheprd-remote-control.workspace         = true
 # the access file the app hands it (Settings > Fleet).
 sheprd-relay-agent.workspace            = true
 sheprd-updater.workspace        = true
+sheprd-tmux = { optional = true, workspace = true }
 sheprd-traces.workspace         = true
 sheprd-usage.workspace          = true
 sheprd-vcs.workspace            = true
@@ -122,6 +123,7 @@ test-case.workspace = true
 libc.workspace = true
 
 [features]
+tmux = ["dep:sheprd-tmux", "sheprd-commands/tmux", "sheprd-remote/tmux"]
 default = ["azure", "boat", "boxd", "coder", "container", "daytona", "mcp", "moonframe", "opensandbox", "railway", "sprites"]
 # Machines from cloud providers as devices: the shared device list, background
 # jobs, and connector. Turned on by each provider below; not useful alone.

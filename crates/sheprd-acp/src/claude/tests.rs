@@ -26,6 +26,7 @@ fn claude_runs_in_its_streaming_mode_for_one_session() {
         "-p",
         "--verbose",
         "--include-partial-messages",
+        "--replay-user-messages",
         "--allow-dangerously-skip-permissions",
     ] {
         assert!(new.iter().any(|arg| arg == flag), "{flag}");
@@ -110,6 +111,7 @@ fn a_whole_turn_reaches_the_transcript_through_the_bridge() {
         cwd: PathBuf::from("/work"),
         exit_with_agent: false,
         gemini_auth_method: None,
+        given: crate::thread_mcp::Given::Not,
         harness: Some(crate::agents::Agent::Claude),
         history: None,
         known: Default::default(),

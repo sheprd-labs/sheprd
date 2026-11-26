@@ -228,3 +228,30 @@ fn two_spellings_of_a_tag_are_one_section(cx: &mut gpui::TestAppContext) {
     assert!(cx.debug_bounds("device-tag-section-work").is_some());
     assert!(cx.debug_bounds("device-tag-section-Work").is_none());
 }
+
+#[gpui::test]
+fn herdr_core_only_hosts_are_reachable_for_fleet_and_tags(cx: &mut gpui::TestAppContext) {
+    let (view, cx) = cx.add_window_view(fixture_window);
+    view.update(cx, |view, _| {
+        view.endpoints.push(crate::endpoint::Endpoint::new(
+            "ssh:core-only".into(),
+            "Core Box".into(),
+            ConnectTarget::Ssh {
+                target: "dev@core-box".into(),
+                session: "default".into(),
+            },
+            true,
+        ));
+        let core_host =
+            crate::core_terminals::Host::Remote(crate::browser::Scope::endpoint("ssh:core-only"));
+        // Without herdr-core connected (and Herdr 1 disconnected), it is not reachable.
+        assert!(
+            !view
+                .reachable_daemons(|_| false)
+                .contains_key("ssh:core-only")
+        );
+        // Once herdr-core connects, it reaches Fleet and tags even without Herdr 1.
+        let reached = view.reachable_daemons(|host| *host == core_host);
+        assert!(reached.contains_key("ssh:core-only"));
+    });
+}

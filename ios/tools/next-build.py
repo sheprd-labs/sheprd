@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Prints the next build number for an app: one more than the highest
-build App Store Connect has for it, across every version, or 1 for an
-app with none yet.
+"""Prints the next build number for an app: the UTC timestamp YYYYMMDDHHMM,
+or one more than the highest build App Store Connect already has across
+every version if that is at or ahead of the clock.
 
 Usage: python3 next-build.py BUNDLE_ID
 """
 
+from datetime import datetime, timezone
 import sys
 
 import app_store_connect as asc
@@ -19,6 +20,15 @@ def highest_build(versions: list) -> int:
     """The highest numeric build among `versions`; others are skipped."""
     numbers = [int(version) for version in versions if version.isdigit()]
     return max(numbers, default=0)
+
+
+def next_build(versions: list, now=None) -> int:
+    """UTC YYYYMMDDHHMM, or `highest_build(versions) + 1` if higher."""
+    current = datetime.now(timezone.utc) if now is None else now
+    if current.tzinfo is None:
+        raise ValueError("now must be timezone-aware")
+    timestamp = int(current.astimezone(timezone.utc).strftime("%Y%m%d%H%M"))
+    return max(timestamp, highest_build(versions) + 1)
 
 
 def main() -> None:
@@ -42,7 +52,7 @@ def main() -> None:
         },
         bearer,
     )
-    print(highest_build([item["attributes"]["version"] for item in builds["data"]]) + 1)
+    print(next_build([item["attributes"]["version"] for item in builds["data"]]))
 
 
 if __name__ == "__main__":

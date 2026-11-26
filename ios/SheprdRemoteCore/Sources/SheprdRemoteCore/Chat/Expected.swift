@@ -30,7 +30,7 @@ public enum Expected: Hashable, Sendable {
         case let .answer(permission, _), let .answerQuestion(permission, _): self = .answer(permission)
         case let .unqueue(id): self = .unqueue(id)
         case let .setAgent(agent): self = .agent(agent)
-        case .prompt, .cancel, .stopActivity: return nil
+        case .prompt, .cancel, .stopActivity, .sendNow: return nil
         }
     }
 

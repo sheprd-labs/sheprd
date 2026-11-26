@@ -60,6 +60,18 @@ impl TerminalId {
         Ok(Self(id))
     }
 
+    /// Whether the saved address names a Sheprd tmux session, independently of
+    /// which backend implementations the current binary includes.
+    pub fn is_tmux(&self) -> bool {
+        self.0.strip_prefix("tmux-").is_some_and(|id| {
+            id.len() == 36
+                && id.bytes().enumerate().all(|(i, b)| match i {
+                    8 | 13 | 18 | 23 => b == b'-',
+                    _ => b.is_ascii_digit() || (b'a'..=b'f').contains(&b),
+                })
+        })
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }

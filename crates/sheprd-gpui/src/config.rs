@@ -109,6 +109,7 @@ pub use padding::Padding;
 pub(crate) use padding::{Axis, MAX_PADDING, Side, Sides};
 pub use remote::RemoteConfig;
 use serde::Deserialize;
+pub use sheprd_backend::TerminalBackend;
 pub use sheprd_orchestrator::azure::Config as AzureDevOpsConfig;
 pub use sheprd_orchestrator::gitlab::Config as GitLabConfig;
 pub use sheprd_remote::config::AzureConfig;
@@ -325,6 +326,7 @@ pub struct Config {
     pub tab_layout: TabLayoutMode,
     pub tabs: FontConfig,
     pub terminal: FontConfig,
+    pub terminal_backend: TerminalBackend,
     /// Blank space around every terminal's cells.
     pub terminal_padding: Padding,
     pub theme: String,
@@ -508,6 +510,7 @@ impl Default for Config {
             // sidebar and terminal use, as they do in the reference UI.
             tabs: font(monospace, 12.0),
             terminal: font(monospace, 14.0),
+            terminal_backend: TerminalBackend::Herdr,
             terminal_padding: Padding::default(),
             theme: "Default".into(), // i18n: data
             ui: font(ui, 12.0),
@@ -599,6 +602,7 @@ struct Settings {
     tab_layout: TabLayoutMode,
     tabs: FontSettings,
     terminal: FontSettings,
+    terminal_backend: Option<TerminalBackend>,
     theme: Option<String>,
     ui: FontSettings,
     undo_close_tab: undo_close::UndoCloseTabSettings,
@@ -961,7 +965,12 @@ impl Config {
         config.open_files_in = settings.open_files_in;
         config.editor_command = settings.editor_command;
         config.keep_selection_after_copy = settings.keep_selection_after_copy.unwrap_or(true);
-        config.herdr_2_terminals = settings.herdr_2_terminals.unwrap_or(false);
+        config.terminal_backend = TerminalBackend::selected(
+            settings.terminal_backend,
+            settings.herdr_2_terminals.unwrap_or(false),
+            cfg!(feature = "tmux"),
+        );
+        config.herdr_2_terminals = config.terminal_backend == TerminalBackend::Core;
         config.herdr_2_scrollback = herdr_2::scrollback(settings.herdr_2_scrollback);
         for (name, font, settings) in [
             ("sidebar", &mut config.sidebar, settings.sidebar.font),

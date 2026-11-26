@@ -107,6 +107,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUser
             model.open(ChatLink(computer: name, computerId: computer, pane: pane, terminal: terminal).url)
             return
         }
+        if response.actionIdentifier == AlertPresentation.openPullRequestAction {
+            if let address = info[AlertKeys.pullRequest] as? String, let pull = AlertPullRequest(address) {
+                model.openPullRequest(pull)
+            }
+            return
+        }
         let permission = (info[AlertKeys.permission] as? NSNumber).map { PermissionId($0.uint64Value) }
         let text = (response as? UNTextInputNotificationResponse)?.userText
         guard let command = AlertPresentation.command(action: response.actionIdentifier, permission: permission, text: text) else { return }

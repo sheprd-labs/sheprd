@@ -22,6 +22,14 @@ fn every_devices_variant_has_a_message() {
             status: exit_status(),
             detail: detail(),
         },
+        Error::Pause {
+            status: exit_status(),
+            detail: String::new(),
+        },
+        Error::Pause {
+            status: exit_status(),
+            detail: detail(),
+        },
         Error::Rename {
             status: exit_status(),
             detail: String::new(),

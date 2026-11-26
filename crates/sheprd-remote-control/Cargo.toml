@@ -14,6 +14,7 @@ workspace = true
 # The daemon itself. Sheprd depends on this crate without it, for the
 # control protocol and `app` alone, so Tokio never reaches the GUI.
 default = ["server"]
+tmux = ["dep:sheprd-tmux"]
 server = [
     "dep:aes-gcm",
     "dep:axum",
@@ -119,6 +120,7 @@ sheprd-backend = { optional = true, workspace = true }
 sheprd-core-client.workspace = true
 sheprd-session = { optional = true, workspace = true }
 sheprd-terminal = { optional = true, workspace = true }
+sheprd-tmux = { optional = true, workspace = true }
 sheprd-tunnel  = { features = ["tokio"], optional = true, workspace = true }
 socket2        = { optional = true, workspace = true }
 # This computer's CPU and memory, shown above its workspaces on a phone.

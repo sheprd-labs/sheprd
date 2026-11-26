@@ -91,6 +91,7 @@ pub(super) fn question() -> Notification {
             title: "Run `git push origin fix/mise`?".to_owned(),
         }),
         subtitle: "herdr-gpui \u{b7} Fix mise discovery".to_owned(),
+        pr: None,
         tag: "chat-w1:p2".to_owned(),
         title: "Claude needs an answer".to_owned(),
         urgency: Urgency::High,

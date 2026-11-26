@@ -185,6 +185,20 @@ pub(super) struct Endpoint {
 }
 
 impl Endpoint {
+    /// Whether connecting may start Herdr 1 on this computer. Choosing tmux
+    /// only joins a running one, unless the app saved tabs here in Herdr 1's
+    /// workspaces: they keep their backend, so a reboot must not hide them.
+    pub(crate) fn starts_herdr(
+        &self,
+        backend: crate::config::TerminalBackend,
+        cx: &gpui::App,
+    ) -> bool {
+        backend != crate::config::TerminalBackend::Tmux
+            || cx
+                .try_global::<crate::browser::Store>()
+                .is_some_and(|store| store.holds_herdr_tabs(&crate::browser::scope(self)))
+    }
+
     pub fn surface_requested(&self) -> bool {
         self.initial_surface
     }
@@ -585,6 +599,8 @@ impl SheprdWindow {
         #[cfg(feature = "container")]
         crate::container::lifecycle::resume(&self.endpoints[index].connection.target);
         self.endpoints[index].attempts = 0;
+        self.endpoints[index].connection.start_local_herdr =
+            self.endpoints[index].starts_herdr(self.config.terminal_backend, cx);
         self.endpoints[index].connect(self.options, index == 0);
         self.reset_selected(cx);
     }

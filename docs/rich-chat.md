@@ -229,6 +229,25 @@ change. It is off by default.
 
 ## Chats after a reboot
 
+On a tmux-enabled build, opening a saved driving pane after its host reboots
+restarts the chat helper under the original terminal ID and endpoint. The
+helper asks the provider to load the exact recorded conversation. Native
+Codex and Claude read history from their session logs. ACP adapters can replay
+history through `session/load`. A provider that cannot load the saved session
+reports the failure. Closing a chat clears its continuation record. If the tmux-enabled remote service starts before the desktop, it resumes the recorded chats so paired clients can reconnect. Other shells wait for an owning desktop view.
+
+For managed chats, Sheprd also keeps a private conversation checkpoint in
+`conversations` beside the restore directory. When a provider successfully
+loads the exact session but returns no conversation, Sheprd can display its
+own saved entries. It also restores the chat’s pull-request references.
+Permissions and queued commands are live state and require a new request.
+Checkpoints keep the same bounded history as the chat view. The host retains
+up to 64 recent session checkpoints.
+
+On herdr-core, its kept terminal and the recovery document identify the
+conversation. When Sheprd reconnects to that core, it resumes the chat and
+maps the replacement terminal to its saved pane.
+
 When Herdr restores its panes after a reboot or a server restart, a pane that
 ran a chat comes back as a shell in the chat's folder: Herdr keeps neither the
 `sheprd-acp` that ran there nor the token Sheprd found it by. Sheprd
@@ -592,6 +611,21 @@ Settings > Text Shortcuts, or **Edit Shortcuts…** at the foot of the popover;
 computer's and every connected SSH host's that has the program, keeps the
 latest edit, and offers it to the others, so an edit made anywhere reaches all
 of them. A host without the program is skipped.
+
+A prompt sent while Claude Code, Codex or pi works goes into the running turn
+rather than waiting for it to end: the agent reads it at its next step, such
+as after the tool call running now, and the conversation shows it there. Until
+then it waits above the composer marked **Steering**, and cannot be withdrawn,
+as the agent already has it. One the agent did not take before its turn ended
+goes as the next prompt. Other agents, and a prompt sent behind one still
+waiting to be sent, keep the queue: it waits marked **Queued** until the turn
+ends, and its × withdraws it.
+
+**Send now** on a queued prompt sends it ahead of the others: into the running
+turn when the agent steers, otherwise in place of the turn, which it stops.
+**Stop** keeps what you typed: queued prompts, and those still marked
+**Steering**, wait marked **Held**, and no later turn sends them on its own.
+Send one now, or withdraw it with ×; a new prompt goes at once meanwhile.
 
 ACP chats retain their native composer, permissions, tools, plans, context
 information and file attachments. Tool and thinking cards start collapsed and

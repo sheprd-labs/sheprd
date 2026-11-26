@@ -110,7 +110,11 @@ impl Hub {
 /// `answering` nor installed here, or the user chose Herdr 2 for new
 /// terminals. Blocking: it reads settings and the login shell's PATH.
 fn core_program(answering: bool) -> Option<PathBuf> {
-    let chosen = settings_path().is_some_and(|path| herdr_2_chosen(&path));
+    let selected = settings_path().map(|path| chosen(&path));
+    if selected == Some(sheprd_backend::TerminalBackend::Tmux) {
+        return None;
+    }
+    let chosen = selected == Some(sheprd_backend::TerminalBackend::Core);
     if answering && !chosen {
         return None;
     }
@@ -121,29 +125,71 @@ fn core_program(answering: bool) -> Option<PathBuf> {
     find(sheprd_core_client::PROGRAM, login.as_deref())
 }
 
+/// Lines of scrollback kept when the user's config names none.
+#[cfg(feature = "tmux")]
+pub(super) const DEFAULT_SCROLLBACK: usize = 10_000;
+#[cfg(feature = "tmux")]
+const MIN_SCROLLBACK: usize = 1_000;
+#[cfg(feature = "tmux")]
+const MAX_SCROLLBACK: usize = 100_000;
+
 /// Sheprd's settings on this computer.
-fn settings_path() -> Option<PathBuf> {
+pub(super) fn settings_path() -> Option<PathBuf> {
     let root = sheprd_client::local_path::config_root().ok()?;
     Some(root.join("herdr/config-gpui.toml"))
 }
 
-/// Whether the settings at `path` say new terminals use Herdr 2: the
-/// user's overrides first, then the file itself, off when neither says.
-pub(super) fn herdr_2_chosen(path: &std::path::Path) -> bool {
-    let read = |path: &std::path::Path| -> Option<bool> {
-        let text = sheprd_client::settings_files::read(path).ok()??;
-        text.parse::<toml::Table>()
-            .ok()?
-            .get(HERDR_2_TERMINALS)?
-            .as_bool()
-    };
-    read(&sheprd_client::settings_files::overrides_path(path))
-        .or_else(|| read(path))
-        .unwrap_or(false)
+fn read_settings(path: &std::path::Path) -> (Option<toml::Table>, Option<toml::Table>) {
+    fn read(path: &std::path::Path) -> Option<toml::Table> {
+        sheprd_client::settings_files::read(path)
+            .ok()??
+            .parse()
+            .ok()
+    }
+    (
+        read(&sheprd_client::settings_files::overrides_path(path)),
+        read(path),
+    )
 }
 
-/// The setting "New terminals use Herdr 2".
-const HERDR_2_TERMINALS: &str = "herdr_2_terminals";
+/// Whether the settings at `path` say new terminals use Herdr 2: the
+/// user's overrides first, then the file itself, off when neither says.
+pub(super) fn chosen(path: &std::path::Path) -> sheprd_backend::TerminalBackend {
+    use sheprd_backend::TerminalBackend;
+    let (overrides, settings) = read_settings(path);
+    let value = |key| {
+        overrides
+            .as_ref()
+            .and_then(|table| table.get(key))
+            .or_else(|| settings.as_ref().and_then(|table| table.get(key)))
+    };
+    let backend = value("terminal_backend").and_then(|value| value.clone().try_into().ok());
+    let legacy = value("herdr_2_terminals")
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(false);
+    TerminalBackend::selected(backend, legacy, cfg!(feature = "tmux"))
+}
+
+/// Configured scrollback lines from `path` (overrides first, then settings),
+/// clamped to the desktop's bounds or defaulting to [`DEFAULT_SCROLLBACK`].
+#[cfg(feature = "tmux")]
+pub(super) fn scrollback(path: &std::path::Path) -> usize {
+    let (overrides, settings) = read_settings(path);
+    let value = overrides
+        .as_ref()
+        .and_then(|table| table.get("herdr_2_scrollback"))
+        .or_else(|| {
+            settings
+                .as_ref()
+                .and_then(|table| table.get("herdr_2_scrollback"))
+        });
+    value
+        .and_then(toml::Value::as_integer)
+        .and_then(|lines| usize::try_from(lines).ok())
+        .map_or(DEFAULT_SCROLLBACK, |lines| {
+            lines.clamp(MIN_SCROLLBACK, MAX_SCROLLBACK)
+        })
+}
 
 /// `program` where the daemon looks, else on the login shell's `login`
 /// PATH: a service's own PATH can leave out a directory the user's shell

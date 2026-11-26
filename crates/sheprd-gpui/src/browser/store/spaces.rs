@@ -239,8 +239,9 @@ pub(crate) enum Record<'a> {
 fn drives(tab: &Tab) -> bool {
     tab.place == Place::Group
         && matches!(
-            tab.location,
-            Some(Location::CoreTerminal { observe: false, .. })
+            &tab.location,
+            Some(Location::CoreTerminal { observe: false, panes, .. })
+                if !panes.terminals().into_iter().any(TerminalId::is_tmux)
         )
 }
 

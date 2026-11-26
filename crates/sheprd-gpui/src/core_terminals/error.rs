@@ -18,6 +18,9 @@ pub enum Error {
     /// A remote core was asked of a target on this computer.
     #[error("This host is on this computer")]
     NotRemote,
+    #[cfg(feature = "tmux")]
+    #[error(transparent)]
+    Tmux(#[from] sheprd_tmux::Error),
     #[error("Could not start a worker for the terminal: {0}")]
     Worker(#[source] std::io::Error),
     // keep-sorted end

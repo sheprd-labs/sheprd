@@ -44,6 +44,18 @@ chat-jump-to-end = Scroll to the latest message
 chat-jump-waiting = New output below
 chat-pinned-prompt = Go to this prompt
 
+# The center of a connected chat before its first message arrives.
+chat-empty-starting-title = Starting your agent
+chat-empty-starting-hint = Your agent is getting ready. Its replies will appear here.
+chat-empty-working-title = Your agent is working
+chat-empty-working-hint = Its first reply will appear here.
+chat-empty-ended-title = No conversation yet
+chat-empty-ended-hint = The agent stopped before the conversation began.
+chat-empty-title = Start a conversation
+chat-empty-prompt-hint = Ask a question or describe a task in the composer below.
+chat-empty-terminal-hint = Type in the agent's terminal to begin a conversation.
+chat-empty-read-only-hint = This chat cannot take prompts; its conversation will appear here.
+
 # The composer.
 chat-composer-placeholder = Message the agent — / for commands, Shift-Enter for a new line
 chat-composer-closed = The agent cannot take prompts
@@ -86,6 +98,9 @@ chat-you = You
 chat-delivered = Delivered
 chat-typing = typing…
 chat-queued = Queued
+chat-steering = Steering
+chat-held = Held
+chat-send-now = Send now
 chat-working = Working
 chat-working-writing = Writing
 chat-working-thinking = Thinking

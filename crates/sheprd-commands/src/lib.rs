@@ -72,6 +72,8 @@ pub enum Command {
     ClearAllNotifications,
     /// Starts a shell in herdr-core (Herdr 2) and shows it in a tab.
     NewCoreTerminal,
+    /// Opens a terminal on this computer’s dedicated tmux server.
+    NewTmuxTerminal,
     /// Opens a watch-only view of the focused herdr-core pane in a new tab.
     MirrorCorePane,
     /// Moves the focused terminal agent into a chat, in the same pane and
@@ -670,6 +672,12 @@ pub const COMMANDS: &[CommandInfo] = &[
         command: Command::NewCoreTerminal,
         name: "new_core_terminal",
         message: "commands-new-core-terminal",
+    },
+    #[cfg(feature = "tmux")]
+    CommandInfo {
+        command: Command::NewTmuxTerminal,
+        name: "new_tmux_terminal",
+        message: "commands-new-tmux-terminal",
     },
     CommandInfo {
         command: Command::MirrorCorePane,

@@ -39,6 +39,8 @@ case "$round" in
      ipad="" ;;
   ghsignin) phone="ghsettings-A-0 ghsettings-A-1 ghsettings-A-2 ghsettings-A-3 ghsettings-B-0 ghsettings-B-1 ghsettings-C-0 ghsettings-C-1 ghsettings-D-0 ghsettings-D-1 ghsignin-A-0 ghsignin-A-1 ghsignin-A-2 ghsignin-A-3 ghsignin-A-4 ghsignin-B-0 ghsignin-B-1 ghsignin-B-2 ghsignin-B-3 ghsignin-B-4 ghsignin-C-0 ghsignin-C-1 ghsignin-C-2 ghsignin-C-3 ghsignin-C-4"
      ipad="" ;;
+  pushpr) phone="pushpr-A-0 pushpr-A-1 pushpr-B-0 pushpr-B-1 pushpr-C-0 pushpr-C-1 pushpr-D-0 pushpr-D-1"
+     ipad="" ;;
   agentpr) phone="agentpr-A-0 agentpr-B-0 agentpr-C-0"
      ipad="" ;;
   brief) phone="brief-Now-0 brief-A-0 brief-A-1 brief-B-0 brief-B-1 brief-C-0 brief-C-1 brief-D-0 brief-D-1 brief-Mix-0 brief-Mix-1"

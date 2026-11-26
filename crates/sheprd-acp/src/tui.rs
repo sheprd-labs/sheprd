@@ -11,7 +11,7 @@ mod view;
 use std::{
     io::{Write, stdout},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use crossbeam_channel::{Receiver, Sender, bounded, never, select};
@@ -22,10 +22,10 @@ use crossterm::{
     },
     execute,
 };
-use sheprd_chat_protocol::{CommandId, Cursor, ServerMessage};
+use sheprd_chat_protocol::{ByeReason, CommandId, Cursor, ServerMessage};
 
 use crate::session::{Attach, ConnId, Input};
-use view::{Out, Received, View};
+use view::{Out, Quit, Received, View};
 
 /// The view's own connection id; attached clients start at 1.
 const LOCAL: ConnId = ConnId(0);
@@ -46,7 +46,37 @@ fn frame_interval(status: &str, remote_clients: u32) -> Option<Duration> {
     })
 }
 
+/// Why the view closed without an error.
+#[derive(Debug, PartialEq, Eq)]
+enum Ended {
+    Key(Quit),
+    Session(ByeReason),
+}
+
+impl std::fmt::Display for Ended {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Key(quit) => quit.fmt(f),
+            Self::Session(ByeReason::Exiting) => f.write_str("the session is exiting"),
+            Self::Session(ByeReason::Handshake) => f.write_str("the session refused the view"),
+            Self::Session(ByeReason::Version { supported }) => {
+                write!(f, "the session speaks protocol version {supported}")
+            }
+        }
+    }
+}
+
+/// The line left in the pane once the view closes, so a chat that closed
+/// by itself says why, and how soon, after the screen is gone.
+fn closing_line(ended: &Ended, ran: Duration) -> String {
+    format!(
+        "sheprd-acp: the chat closed after {:.1}s: {ended}",
+        ran.as_secs_f64()
+    )
+}
+
 pub(crate) fn run(inputs: &Sender<Input>) -> anyhow::Result<()> {
+    let opened = Instant::now();
     let mut terminal = ratatui::try_init()?;
     let mut out = stdout();
     let _ = execute!(out, EnableBracketedPaste);
@@ -67,7 +97,9 @@ pub(crate) fn run(inputs: &Sender<Input>) -> anyhow::Result<()> {
     let _ = execute!(out, DisableBracketedPaste);
     let _ = write!(out, "\x1b]7501;state=clear\x1b\\");
     ratatui::restore();
-    result
+    let ended = result?;
+    eprintln!("{}", closing_line(&ended, opened.elapsed()));
+    Ok(())
 }
 
 fn attach(inputs: &Sender<Input>, since: Option<Cursor>) -> Receiver<ServerMessage> {
@@ -117,7 +149,7 @@ fn terminal_event(
 fn event_loop(
     terminal: &mut ratatui::DefaultTerminal,
     inputs: &Sender<Input>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Ended> {
     let events = terminal_events()?;
     let mut view = View::default();
     let mut session = attach(inputs, None);
@@ -151,14 +183,14 @@ fn event_loop(
                             session = attach(inputs, None);
                             break;
                         }
-                        Received::Closed => return Ok(()),
+                        Received::Closed(reason) => return Ok(Ended::Session(reason)),
                     }
                     next = session.try_recv().ok();
                 }
             }
             recv(events) -> event => match terminal_event(event)? {
                 Event::Key(key) => match view.key(key) {
-                    Some(Out::Quit) => return Ok(()),
+                    Some(Out::Quit(quit)) => return Ok(Ended::Key(quit)),
                     Some(Out::Command(command)) => {
                         let id = CommandId::random();
                         let _ = inputs.send(Input::Command { command, conn: LOCAL, id });

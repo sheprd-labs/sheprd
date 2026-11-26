@@ -28,6 +28,16 @@
 //! ]
 //! ```
 //!
+//! One of Sheprd's own relays, added from its signed list, also keeps that
+//! list's `pin` for its QUIC certificate, so the daemon trusts only that
+//! certificate, whatever the relay's `/v1/info` reports:
+//!
+//! ```toml
+//! [remote]
+//! relays = [{ endpoint = "https://fra1.relay.sheprd.org", name = "Frankfurt",
+//!             pin = "base64url SHA-256 of its QUIC certificate" }]
+//! ```
+//!
 //! Secrets and device keys never go here: the daemon keeps them in its own
 //! private state directory.
 
@@ -141,18 +151,23 @@ impl RemoteConfig {
     }
 }
 
-/// One relay in `[remote] relays`: its address, and what the user calls it.
+/// One relay in `[remote] relays`: its address, what the user calls it,
+/// and, for one of Sheprd's relays, the QUIC certificate pin its signed
+/// list carries.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Relay {
     pub endpoint: String,
     pub label: RelayLabel,
+    /// The SHA-256 of the relay's QUIC certificate, the only one the
+    /// daemon then trusts on it.
+    pub pin: Option<[u8; 32]>,
 }
 
 impl From<String> for Relay {
     fn from(endpoint: String) -> Self {
         Self {
             endpoint,
-            label: RelayLabel::default(),
+            ..Self::default()
         }
     }
 }
@@ -164,7 +179,8 @@ impl From<&str> for Relay {
 }
 
 impl<'de> Deserialize<'de> for Relay {
-    /// `"ENDPOINT"`, or `{ endpoint = "ENDPOINT", name, description, tags }`.
+    /// `"ENDPOINT"`, or `{ endpoint = "ENDPOINT", name, description, tags,
+    /// pin }`. A pin that is not 32 bytes in base64url is an error.
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         #[derive(Deserialize)]
         #[serde(deny_unknown_fields)]
@@ -176,13 +192,15 @@ impl<'de> Deserialize<'de> for Relay {
             description: Option<String>,
             #[serde(default)]
             tags: Vec<String>,
+            #[serde(default)]
+            pin: Option<String>,
         }
         struct Visitor;
         impl<'de> serde::de::Visitor<'de> for Visitor {
             type Value = Relay;
 
             fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.write_str("a relay address, or { endpoint, name, description, tags }")
+                f.write_str("a relay address, or { endpoint, name, description, tags, pin }")
             }
 
             fn visit_str<E: serde::de::Error>(self, endpoint: &str) -> Result<Relay, E> {
@@ -195,7 +213,18 @@ impl<'de> Deserialize<'de> for Relay {
                     name,
                     description,
                     tags,
+                    pin,
                 } = Labeled::deserialize(serde::de::value::MapAccessDeserializer::new(map))?;
+                let pin = pin
+                    .map(|text| {
+                        sheprd_relay::endpoint::decode_pin(&text).ok_or_else(|| {
+                            serde::de::Error::invalid_value(
+                                serde::de::Unexpected::Str(&text),
+                                &"a QUIC certificate pin: 32 bytes in base64url",
+                            )
+                        })
+                    })
+                    .transpose()?;
                 Ok(Relay {
                     endpoint,
                     label: RelayLabel {
@@ -203,6 +232,7 @@ impl<'de> Deserialize<'de> for Relay {
                         name,
                         tags,
                     },
+                    pin,
                 })
             }
         }
@@ -393,23 +423,36 @@ impl Edit {
                 // list matches the relays its status reports.
                 // A relay named twice keeps its first place and the label
                 // the daemon goes by: the last one given.
-                let mut merged: Vec<(String, RelayLabel)> = Vec::new();
-                for Relay { endpoint, label } in relays {
+                // A pin given for either is kept, the last one winning.
+                let mut merged: Vec<Relay> = Vec::new();
+                for Relay {
+                    endpoint,
+                    label,
+                    pin,
+                } in relays
+                {
                     let address = relay_address(&endpoint)?;
                     label.check().map_err(|source| Error::RelayLabel {
                         relay: address.clone(),
                         source,
                     })?;
-                    match merged.iter_mut().find(|(listed, _)| *listed == address) {
-                        Some((_, kept)) if !label.is_empty() => *kept = label,
-                        Some(_) => {}
-                        None => merged.push((address, label)),
+                    match merged.iter_mut().find(|kept| kept.endpoint == address) {
+                        Some(kept) => {
+                            if !label.is_empty() {
+                                kept.label = label;
+                            }
+                            if pin.is_some() {
+                                kept.pin = pin;
+                            }
+                        }
+                        None => merged.push(Relay {
+                            endpoint: address,
+                            label,
+                            pin,
+                        }),
                     }
                 }
-                let listed = merged
-                    .into_iter()
-                    .map(|(address, label)| relay_value(&address, label))
-                    .collect();
+                let listed = merged.into_iter().map(relay_value).collect();
                 ("relays", toml_edit::Value::Array(listed))
             }
         })
@@ -417,13 +460,19 @@ impl Edit {
 }
 
 /// A relay as the config file writes it: its address alone, or a table
-/// with its label.
-fn relay_value(address: &str, label: RelayLabel) -> toml_edit::Value {
-    if label.is_empty() {
-        return address.into();
+/// with its label and pin.
+fn relay_value(
+    Relay {
+        endpoint,
+        label,
+        pin,
+    }: Relay,
+) -> toml_edit::Value {
+    if label.is_empty() && pin.is_none() {
+        return endpoint.into();
     }
     let mut table = toml_edit::InlineTable::new();
-    table.insert("endpoint", address.into());
+    table.insert("endpoint", endpoint.into());
     if let Some(name) = label.name {
         table.insert("name", name.into());
     }
@@ -435,6 +484,9 @@ fn relay_value(address: &str, label: RelayLabel) -> toml_edit::Value {
             "tags",
             label.tags.iter().collect::<toml_edit::Array>().into(),
         );
+    }
+    if let Some(pin) = pin {
+        table.insert("pin", sheprd_relay::endpoint::encode_pin(&pin).into());
     }
     toml_edit::Value::InlineTable(table)
 }

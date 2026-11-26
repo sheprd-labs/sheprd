@@ -6,7 +6,6 @@ fn every_listening_ports_variant_has_a_message() {
     assert_localized(&[
         Error::Scan(Box::new(crate::Error::NotConnected)),
         Error::Tool,
-        Error::Unsupported,
     ]);
 }
 

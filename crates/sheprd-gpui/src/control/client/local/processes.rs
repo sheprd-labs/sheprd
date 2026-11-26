@@ -163,7 +163,7 @@ fn chosen(
         (Some(_), Some(_)) => Err(refused("Name either --pane or --terminal, not both").into()),
         (Some(pane), None) => Ok(Pane::Herdr(pane.to_owned())),
         (None, Some(terminal)) => Ok(Pane::Core(terminal.to_owned())),
-        (None, None) => var("HC_TERMINAL_ID")
+        (None, None) => crate::control::client::caller_terminal(&var)
             .map(Pane::Core)
             .or_else(|| var("HERDR_PANE_ID").map(Pane::Herdr))
             .ok_or_else(|| {
@@ -189,6 +189,11 @@ fn core_endpoint() -> crate::Result<sheprd_core_client::Endpoint> {
 
 pub(crate) fn processes(pane: Option<&str>, terminal: Option<&str>) -> crate::Result<Output> {
     let source = match chosen(pane, terminal, env_id)? {
+        Pane::Core(terminal)
+            if sheprd_backend::TerminalId::new(&terminal).is_ok_and(|id| id.is_tmux()) =>
+        {
+            Source::AppCore { terminal }
+        }
         Pane::Core(terminal) => Source::Core {
             endpoint: core_endpoint()?,
             terminal,

@@ -405,7 +405,8 @@ fn read_bounded(path: &Path) -> Result<Vec<u8>, Error> {
     Ok(bytes)
 }
 
-fn write_private(dir: &Path, path: &Path, bytes: &[u8]) -> Result<(), Error> {
+/// Atomically replace a chat state file inside its private directory.
+pub fn write_private(dir: &Path, path: &Path, bytes: &[u8]) -> Result<(), Error> {
     Ok(crate::private::write(dir, path, bytes)?)
 }
 

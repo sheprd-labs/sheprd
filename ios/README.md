@@ -244,9 +244,10 @@ app, once the repository's `testflight` environment holds these secrets:
   signs with the team's cloud-managed distribution certificate.
 - **What it uploads:** the export re-signs for distribution and uploads to
   App Store Connect.
-- **Build number:** one more than the highest build App Store Connect has
-  for the app, asked for with the same key (`ios/tools/next-build.py`), so
-  CI and local uploads count up together. Set `BUILD_NUMBER` to choose one.
+- **Build number:** the UTC timestamp `YYYYMMDDHHMM`, or one more than the
+  highest build App Store Connect already has when that is at or ahead of the
+  clock (`ios/tools/next-build.py`), so CI and local uploads stay strictly
+  increasing. Set `BUILD_NUMBER` to choose one.
 - **What to Test:** the commits that touched the app since the last build,
   grouped as the release notes are (`ios/tools/testflight_notes.py`). The
   text ends in a `Source:` line naming the commit, which is how the next

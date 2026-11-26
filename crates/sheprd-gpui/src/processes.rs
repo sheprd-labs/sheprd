@@ -147,6 +147,22 @@ impl Source {
             Self::Herdr { daemon, pane } => daemon.process_info(pane, cancelled),
             Self::Core { endpoint, terminal } => core_process_info(endpoint, terminal),
             Self::AppCore { terminal } => {
+                if let Ok(id) = sheprd_backend::TerminalId::new(terminal)
+                    && id.is_tmux()
+                {
+                    #[cfg(not(feature = "tmux"))]
+                    return Err(Error::TmuxDisabled.into());
+                    #[cfg(feature = "tmux")]
+                    {
+                        let pid = sheprd_tmux::Tmux::new(0)
+                            .root_pid(&id)
+                            .map_err(Error::Tmux)?;
+                        return Ok(crate::teleport::ProcessInfo {
+                            shell_pid: Some(pid),
+                            ..Default::default()
+                        });
+                    }
+                }
                 let endpoint = sheprd_core_client::Endpoint::resolve(sheprd_client::login_env::var)
                     .map_err(Error::Core)?;
                 core_process_info(&endpoint, terminal)

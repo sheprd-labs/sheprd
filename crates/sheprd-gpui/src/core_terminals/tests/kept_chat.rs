@@ -20,7 +20,7 @@ fn the_shell_starts_before_the_chat(cx: &mut TestAppContext) {
                 .core_terminals
                 .wanted
                 .iter()
-                .map(|(_, _, spawn, _)| spawn)
+                .map(|wanted| &wanted.spawn)
                 .collect();
             assert_eq!(wanted.len(), 2);
             assert!(
@@ -53,7 +53,7 @@ fn a_refused_chat_leaves_the_shell(cx: &mut TestAppContext) {
                 .core_terminals
                 .wanted
                 .iter()
-                .map(|(_, _, spawn, _)| spawn)
+                .map(|wanted| &wanted.spawn)
                 .collect();
             assert_eq!(wanted.len(), 1);
             assert!(wanted[0].argv.is_empty());

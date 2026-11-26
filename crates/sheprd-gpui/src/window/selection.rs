@@ -144,7 +144,7 @@ impl SheprdWindow {
     }
 
     /// Herdr's shared `ui.copy_on_select`, on until the shared config loads.
-    pub(super) fn copy_on_select(&self) -> bool {
+    pub(crate) fn copy_on_select(&self) -> bool {
         self.settings
             .shared
             .as_ref()

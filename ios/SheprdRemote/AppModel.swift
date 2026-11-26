@@ -90,6 +90,9 @@ final class AppModel {
     var creating: Creating?
     /// A spoken command under way, shown as a sheet over every tab.
     var voice: VoiceSession?
+    /// A pull request a notification's Open PR asked for, shown as a
+    /// sheet over every tab (`openPullRequest`).
+    var pendingPullRequest: PullRequestRoute?
     /// A command asked for while the app was locked; the unlock runs it.
     struct PendingTalk { var words: String? }
     @ObservationIgnored var pendingTalk: PendingTalk?

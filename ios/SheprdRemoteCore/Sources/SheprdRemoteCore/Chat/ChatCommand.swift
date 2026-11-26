@@ -5,7 +5,8 @@ import Foundation
 public enum ChatCommand: Encodable, Hashable, Sendable {
     /// `attachments` are ids the daemon gave uploaded pictures, never paths.
     case prompt(text: String, attachments: [String] = [])
-    /// Ends the running turn, declines its questions, and drops the queue.
+    /// Ends the running turn and declines its questions; the queue is held
+    /// until a prompt in it is sent now or withdrawn.
     case cancel
     case answer(permission: PermissionId, option: String)
     /// Option labels, or the person's own words, for a permission that
@@ -14,6 +15,9 @@ public enum ChatCommand: Encodable, Hashable, Sendable {
     case setMode(String)
     case setOption(id: String, value: OptionValue)
     case unqueue(UUID)
+    /// Sends a queued or held prompt ahead of the others: into the running
+    /// turn when the agent steers, else in place of it.
+    case sendNow(UUID)
     case setAutoAccept(Bool)
     /// Ends one running sub-agent, shell, or monitor the agent marked
     /// stoppable, leaving the turn and everything else running.
@@ -71,6 +75,9 @@ public enum ChatCommand: Encodable, Hashable, Sendable {
             }
         case let .unqueue(id):
             try c.encode("unqueue", forKey: .command)
+            try c.encode(id, forKey: .id)
+        case let .sendNow(id):
+            try c.encode("send_now", forKey: .command)
             try c.encode(id, forKey: .id)
         case let .setAutoAccept(on):
             try c.encode("set_auto_accept", forKey: .command)

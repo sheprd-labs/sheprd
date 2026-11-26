@@ -171,6 +171,7 @@ pub(crate) struct CoreTerminalView {
     /// The connection to herdr-core dropped: the last frame stays, dimmed,
     /// and nothing typed is sent until the terminal is attached again.
     stale: bool,
+    tmux_retry: Option<std::time::Instant>,
     /// The window's end; a view on its own, as in tests, has none.
     to_window: Option<WindowCall>,
     /// Wheel motion short of a whole row, kept for the next event.
@@ -236,6 +237,7 @@ impl CoreTerminalView {
             sent_focus: None,
             sent_size: None,
             stale: false,
+            tmux_retry: None,
             to_window: None,
             wheel_rest: 0.,
         }
@@ -250,6 +252,13 @@ impl CoreTerminalView {
 
     pub(crate) fn is_stale(&self) -> bool {
         self.stale
+    }
+
+    pub(super) fn ready_to_relink(&self) -> bool {
+        self.stale
+            && self
+                .tmux_retry
+                .is_none_or(|when| std::time::Instant::now() >= when)
     }
 
     /// Attaches the terminal again through `link` after a dropped
@@ -267,6 +276,7 @@ impl CoreTerminalView {
         self.copying = None;
         self.editing = None;
         self.stale = false;
+        self.tmux_retry = None;
         self.screen.failure = None;
         self.sent_focus = None;
         self.sent_size = None;
@@ -397,6 +407,11 @@ impl CoreTerminalView {
                 });
             }
             let before = std::mem::replace(&mut self.screen, screen);
+            if self.screen.failure.is_some() && self.terminal().is_tmux() {
+                self.stale = true;
+                self.tmux_retry =
+                    Some(std::time::Instant::now() + std::time::Duration::from_secs(5));
+            }
             self.slide_from(&before);
             // Output into a full history drops its oldest lines, a clear
             // drops them all, and a resize rewraps them, so the rows a

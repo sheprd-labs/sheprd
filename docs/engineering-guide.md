@@ -125,7 +125,7 @@ agents in Herdr panes can use what only this client shows or keeps
 - Cancellation must not flush queued work, replay commands, or join a worker on the UI thread. Do not add automatic reconnect/replay as an incidental refactor.
 - Crossbeam receiver clones compete for events; they are not broadcast subscribers.
 - Treat terminal content and daemon messages as untrusted data. Do not execute terminal escapes, follow graphics file paths, or run displayed update commands automatically. The one exception is the daemon's OSC 52 `ServerMessage::Clipboard`: decode it and put only its bounded UTF-8 text on the pasteboard, never arbitrary bytes, files, or images.
-- The normal app never installs, stops, migrates, or upgrades a personal daemon. It starts one only to connect: `herdr server` when Herdr 1 is installed, and herdr-core for Herdr 2 terminals (or when no Herdr 1 is installed), the user's own or else the pinned one every release bundles beside the app as a companion like `sheprd-acp` (`scripts/release/herdr-core.json`, licenses in `herdr-core-licenses.txt`), never when a core already answers. Herdr 1 sessions stay where they are: moving users to Herdr 2 is their choice, never an automatic switch. Explicit sockets refer to the binary client socket, not the JSON API socket.
+- The normal app never installs, stops, migrates, or upgrades a personal daemon. It starts one only to connect: `herdr server` when Herdr 1 is installed, and herdr-core for Herdr 2 terminals (or when no Herdr 1 is installed), the user's own or else the pinned one every release bundles beside the app as a companion like `sheprd-acp` (`scripts/release/herdr-core.json`; `fetch-herdr-core.py` takes its licenses from the same verified archive), never when a core already answers. Herdr 1 sessions stay where they are: moving users to Herdr 2 is their choice, never an automatic switch. Explicit sockets refer to the binary client socket, not the JSON API socket.
 - Never commit secrets, credentials, private terminal output, or machine-local configuration.
 
 ## Dependencies And Features
@@ -133,6 +133,12 @@ agents in Herdr panes can use what only this client shows or keeps
 - Put dependency versions in root `[workspace.dependencies]`; member crates inherit with `{ workspace = true }`.
 - Use the pinned `rust-toolchain.toml` and GPUI version. Do not copy toolchain, feature, or release assumptions from Moltis/Arbor.
 - Keep workspace lint inheritance and fix warnings rather than widening allowances.
+- Give every `sheprd-gpui` Cargo feature that users would see a `[features]`
+  switch behind the same `#[cfg]` (`src/config/features.rs`), so it can ship
+  compiled in and still be turned off later. A feature that only shapes the
+  build (test code, development tools, the App Store build) goes in
+  `BUILD_ONLY` in `src/config/tests/features.rs` with its reason instead; that
+  test fails until a new Cargo feature is in one list or the other.
 - Keep `integration-test` opt-in. Gate imports, modules, and call sites consistently, and verify both default and all-feature builds.
 - Do not introduce Tokio or another runtime to wrap the existing blocking socket worker.
 - Avoid unrelated lockfile upgrades. Use `--locked` for reproducible verification.

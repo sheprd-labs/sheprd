@@ -12,7 +12,6 @@ impl Localize for Error {
         match self {
             Self::Scan(_) => fl!("error-listening-ports-scan"),
             Self::Tool => fl!("error-listening-ports-tool"),
-            Self::Unsupported => fl!("error-listening-ports-unsupported"),
         }
     }
 }

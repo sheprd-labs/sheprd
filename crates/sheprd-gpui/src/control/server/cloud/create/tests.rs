@@ -145,3 +145,26 @@ fn asking_opens_the_question_and_creates_nothing(cx: &mut TestAppContext) {
         })
     });
 }
+
+#[gpui::test]
+fn a_provider_turned_off_cannot_create_machines(cx: &mut TestAppContext) {
+    if cloud::unavailable().is_some() {
+        return;
+    }
+    let Some((&off, on)) = CloudProvider::ALL.split_first() else {
+        return;
+    };
+    let _enabled = cloud::enable_for_test(on);
+    let (view, cx) = cx.add_window_view(fixture_window);
+    cx.update(|_, cx| {
+        let view = view.read(cx);
+        let registry = Registry::default();
+        let Err(Response::Error { code, message, .. }) =
+            creation(view, op(off.key(), 1), &registry)
+        else {
+            panic!("{off:?} is turned off");
+        };
+        assert_eq!(code, ErrorCode::Unsupported);
+        assert!(message.contains("turned off"), "{message}");
+    });
+}

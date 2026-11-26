@@ -294,6 +294,15 @@ impl Chat {
         (self.view(), receiver)
     }
 
+    /// The new-chat workflow may send its first prompt after the private
+    /// transport is connected and the provider has answered session/open.
+    pub(super) fn ready_to_open(&self) -> bool {
+        let state = lock(&self.state);
+        state.connected
+            && state.cursor.is_some()
+            && state.transcript.status != sheprd_chat_protocol::Status::Starting
+    }
+
     pub(crate) fn view(&self) -> View {
         let state = lock(&self.state);
         View {

@@ -145,6 +145,27 @@ fn the_last_folder_and_user_name_survive_serialization() {
 }
 
 #[test]
+fn only_a_tab_in_a_herdr_workspace_needs_herdr() {
+    let (here, there) = (Scope::endpoint("here"), Scope::endpoint("there"));
+    let mut store = Store::default();
+    assert!(!store.holds_herdr_tabs(&here), "nothing saved");
+    store.open(here.clone(), sheprd_session::DEFAULT_WORKSPACE, None, None);
+    let kept = store
+        .keep_workspace(&here, "api", "/src/api", false)
+        .unwrap();
+    store.open(here.clone(), &kept, None, None);
+    assert!(
+        !store.holds_herdr_tabs(&here),
+        "the app lists its own workspaces"
+    );
+    store.open(there.clone(), "w2", None, None);
+    assert!(!store.holds_herdr_tabs(&here), "another host's tab");
+    assert!(store.holds_herdr_tabs(&there));
+    store.open(here.clone(), "w2", None, None);
+    assert!(store.holds_herdr_tabs(&here));
+}
+
+#[test]
 fn an_automatic_name_follows_its_folder_and_a_user_name_stays() {
     let scope = Scope::endpoint("here");
     let mut store = Store::default();

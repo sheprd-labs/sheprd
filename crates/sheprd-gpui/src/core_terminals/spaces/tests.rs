@@ -165,3 +165,17 @@ fn tab(label: &str, terminals: &[&str]) -> (String, Vec<String>) {
         terminals.iter().map(|t| (*t).to_owned()).collect(),
     )
 }
+
+#[test]
+fn core_sync_leaves_a_tmux_tab_on_its_desktop() {
+    let mut client = Client::new();
+    let workspace = client.keep("mixed", "/tmp");
+    let tmux = TerminalId::new("tmux-01234567-89ab-cdef-0123-456789abcdef").unwrap();
+    let local = client.open(&workspace, tmux.as_str());
+    client.open(&workspace, "t1");
+    client.settle(&mut FakeCore::default());
+    assert!(client.store.get(local).unwrap().space.is_none());
+    let shared = client.store.shared_view(&scope());
+    assert_eq!(shared.tabs.len(), 1);
+    assert!(shared.tabs[0].panes.contains(&id("t1")));
+}

@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+mod choice;
 mod error;
 mod history;
 mod terminal;
@@ -10,6 +11,7 @@ mod tests;
 
 use std::time::Duration;
 
+pub use choice::TerminalBackend;
 pub use error::{Error, Result};
 pub use history::{
     CopyMotion, History, HistoryAnswer, MAX_SEARCH_MATCHES, MAX_SEARCH_QUERY_BYTES, Matches,
@@ -34,23 +36,15 @@ pub enum Generation {
     Herdr2,
 }
 
-/// One host's terminals, whichever generation runs them.
+/// The lifecycle of one host's terminals.
 ///
 /// Shared between workers, so implementations are `Send + Sync`. Every
 /// method may block on the backend: never call one on the UI thread.
 pub trait Backend: Send + Sync {
     type Error: std::error::Error + Send + Sync + 'static;
     type Terminal: Terminal<Error = Self::Error>;
-    type Changes: Changes<Error = Self::Error>;
-
-    fn generation(&self) -> Generation;
-
     /// The terminals running now.
     fn terminals(&self) -> Result<Vec<TerminalInfo>, Self::Error>;
-
-    /// The terminals now, and every change after that snapshot with no gap
-    /// between the two.
-    fn watch(&self) -> Result<(Vec<TerminalInfo>, Self::Changes), Self::Error>;
 
     /// Shows `id` at `size`. An observer never types into or resizes it.
     fn attach(
@@ -65,6 +59,15 @@ pub trait Backend: Send + Sync {
 
     /// Ends `id` and its program.
     fn kill(&self, id: &TerminalId) -> Result<(), Self::Error>;
+}
+
+/// A backend that publishes an ordered inventory stream.
+pub trait WatchBackend: Backend {
+    type Changes: Changes<Error = Self::Error>;
+
+    /// The terminals now, and every change after that snapshot with no gap
+    /// between the two.
+    fn watch(&self) -> Result<(Vec<TerminalInfo>, Self::Changes), Self::Error>;
 }
 
 /// One attached terminal, owned by the worker that drains it.
@@ -91,7 +94,7 @@ pub trait Terminal: Send {
     fn history(&mut self, request: &History) -> Result<HistoryAnswer, Self::Error>;
 }
 
-/// Changes to a host's terminals after a `Backend::watch` snapshot.
+/// Changes to a host's terminals after a `WatchBackend::watch` snapshot.
 pub trait Changes: Send {
     type Error: std::error::Error + Send + Sync + 'static;
 

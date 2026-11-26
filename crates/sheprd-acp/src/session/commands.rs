@@ -9,6 +9,17 @@ use sheprd_chat_protocol::{
 use crate::project::STOP_METHOD;
 use crate::session::{ConnId, Pending, Session, Update};
 
+/// A prompt ready for the agent, and what the transcript shows of it.
+#[derive(Debug)]
+pub(super) struct Outgoing {
+    pub(super) blocks: Vec<wire::ContentBlock>,
+    pub(super) files: usize,
+    pub(super) handoff: Option<String>,
+    pub(super) images: Vec<sheprd_chat_protocol::Image>,
+    pub(super) sent: Option<String>,
+    pub(super) shown: String,
+}
+
 /// Prompts waiting behind a turn, and their text in bytes: the queue is
 /// copied into every change and snapshot, so it stays well inside a frame.
 const MAX_QUEUED: usize = 32;
@@ -38,6 +49,7 @@ impl<R: FnMut(Update)> Session<R> {
             Command::SetMode { id } => self.set_mode(id),
             Command::SetOption { id, value } => self.set_option(id, &value),
             Command::Unqueue { id } => self.unqueue(id),
+            Command::SendNow { id } => self.send_now(id),
             Command::SetAutoAccept { on } => {
                 self.set_auto_accept(on);
                 Ok(())
@@ -78,13 +90,18 @@ impl<R: FnMut(Update)> Session<R> {
             if waiting.len() >= MAX_QUEUED || text_size + text.len() > MAX_QUEUED_TEXT {
                 return Err(Rejection::QueueFull);
             }
+            // A prompt typed while the agent works goes into its turn, if
+            // its harness can take one and nothing waits ahead of it.
+            let steered = self.can_steer() && self.steer(id, &text, &attachments, origin.clone());
             let mut queued = self.transcript.queued.clone();
             queued.push(Queued {
                 attachments,
                 id,
+                held: false,
+                steered,
                 text,
             });
-            if let Some(origin) = origin {
+            if let Some(origin) = origin.filter(|_| !steered) {
                 self.queued_origins.insert(id, origin);
             }
             self.queue_changed(queued);
@@ -95,13 +112,26 @@ impl<R: FnMut(Update)> Session<R> {
     }
 
     /// Sends a prompt with its files, read now, and shows it in the
-    /// transcript: the text with a line per file, then the pictures. What
-    /// Sheprd tells the agent besides goes first, and the transcript leaves
-    /// it out.
+    /// transcript.
     fn send_prompt(&mut self, text: &str, attachments: &[Attachment], origin: Option<Origin>) {
-        let Some(session) = self.acp_session.clone() else {
-            return;
-        };
+        if let Some(outgoing) = self.outgoing(text, attachments, origin, true) {
+            self.send_outgoing(outgoing);
+        }
+    }
+
+    /// A prompt as the agent gets it: the text with a line per file shown
+    /// in the transcript, then the pictures. What Sheprd tells the agent
+    /// besides goes first, and the transcript leaves it out. A prompt that
+    /// starts a turn carries the conversation an agent that took over
+    /// hears next; one steered into a running turn does not.
+    pub(super) fn outgoing(
+        &mut self,
+        text: &str,
+        attachments: &[Attachment],
+        origin: Option<Origin>,
+        starts_turn: bool,
+    ) -> Option<Outgoing> {
+        self.acp_session.as_ref()?;
         let prepared: Vec<_> = attachments
             .iter()
             .map(|attachment| crate::files::prepare(attachment, self.accepts))
@@ -121,9 +151,7 @@ impl<R: FnMut(Update)> Session<R> {
         if let Some(note) = &note {
             blocks.push(wire::ContentBlock::Text(wire::TextContent::new(note)));
         }
-        // The agent that took over hears the conversation next, apart from
-        // what the user wrote.
-        let handoff = self.thread.take_handoff();
+        let handoff = starts_turn.then(|| self.thread.take_handoff()).flatten();
         if let Some(handoff) = &handoff {
             blocks.push(wire::ContentBlock::Text(wire::TextContent::new(handoff)));
         }
@@ -134,18 +162,41 @@ impl<R: FnMut(Update)> Session<R> {
             .flatten()
             .collect::<Vec<_>>();
         let sent = (!sent.is_empty()).then(|| sent.join("\n\n"));
-        let prompt = self.projector.prompt(&shown, attachments.len(), sent);
-        self.emit(prompt);
         if !text.trim().is_empty() {
             blocks.push(wire::ContentBlock::Text(wire::TextContent::new(text)));
         }
+        let mut images = Vec::new();
         for item in prepared {
-            if let Some(image) = item.image {
-                let change = self.projector.image(Author::User, image);
-                self.emit(change);
-            }
+            images.extend(item.image);
             blocks.push(item.block);
         }
+        Some(Outgoing {
+            blocks,
+            files: attachments.len(),
+            handoff,
+            images,
+            sent,
+            shown,
+        })
+    }
+
+    /// Starts a turn with `outgoing`, shown in the transcript.
+    pub(super) fn send_outgoing(&mut self, outgoing: Outgoing) {
+        let Some(session) = self.acp_session.clone() else {
+            if let Some(handoff) = outgoing.handoff {
+                self.thread.restore_handoff(handoff);
+            }
+            return;
+        };
+        let Outgoing {
+            blocks,
+            files,
+            handoff,
+            images,
+            sent,
+            shown,
+        } = outgoing;
+        self.show_prompt(&shown, files, sent, images);
         let request = wire::PromptRequest::new(session, blocks);
         if self.request("session/prompt", &request, Pending::Prompt) {
             // Only a prompt the agent received names the chat and starts
@@ -166,26 +217,58 @@ impl<R: FnMut(Update)> Session<R> {
         }
     }
 
-    /// Sends the oldest queued prompt once the agent is free.
+    /// Shows the person's prompt in the transcript: its text, then its
+    /// pictures.
+    pub(super) fn show_prompt(
+        &mut self,
+        shown: &str,
+        files: usize,
+        sent: Option<String>,
+        images: Vec<sheprd_chat_protocol::Image>,
+    ) {
+        let prompt = self.projector.prompt(shown, files, sent);
+        self.emit(prompt);
+        for image in images {
+            let change = self.projector.image(Author::User, image);
+            self.emit(change);
+        }
+    }
+
+    /// Sends the oldest queued prompt once the agent is free; those held
+    /// when a turn was stopped wait to be sent now.
     pub(super) fn next_queued(&mut self) {
         if self.turn.is_some() || !self.ready || self.carrying() {
             return;
         }
         let mut queued = self.transcript.queued.clone();
-        if queued.is_empty() {
+        let Some(index) = queued.iter().position(|queued| !queued.held) else {
             return;
-        }
-        let next = queued.remove(0);
+        };
+        let next = queued.remove(index);
         let origin = self.queued_origins.get(&next.id).cloned();
+        // A prompt steered into a turn that ended without it goes as it was
+        // sent: what it told the agent besides is not told again, and its
+        // files as they were then. Taken before the queue changes, which
+        // drops what prompts no longer waiting were prepared with.
+        let sent = self.steering.remove(&next.id);
         self.queue_changed(queued);
-        self.send_prompt(&next.text, &next.attachments, origin);
+        match sent {
+            Some(outgoing) => self.send_outgoing(outgoing),
+            None => self.send_prompt(&next.text, &next.attachments, origin),
+        }
     }
 
     fn cancel(&mut self) -> Result<(), Rejection> {
-        if self.turn.is_none() && self.transcript.queued.is_empty() {
+        let waiting = self.transcript.queued.iter().any(|queued| !queued.held);
+        if self.turn.is_none() && !waiting {
             return Err(Rejection::NotWorking);
         }
-        self.clear_queue();
+        self.hold_queue();
+        self.stop_turn()
+    }
+
+    /// Ends the running turn, declining what it asked.
+    pub(super) fn stop_turn(&mut self) -> Result<(), Rejection> {
         self.resolve_all();
         self.watchdog.clear();
         if self.turn.is_some()
@@ -351,9 +434,10 @@ impl<R: FnMut(Update)> Session<R> {
 
     fn unqueue(&mut self, id: CommandId) -> Result<(), Rejection> {
         let mut queued = self.transcript.queued.clone();
+        // A steered prompt is already with the agent.
         let index = queued
             .iter()
-            .position(|queued| queued.id == id)
+            .position(|queued| queued.id == id && !queued.steered)
             .ok_or(Rejection::UnknownQueued)?;
         queued.remove(index);
         self.queue_changed(queued);

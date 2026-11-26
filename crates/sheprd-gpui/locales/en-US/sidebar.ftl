@@ -12,6 +12,8 @@ sidebar-label = Sidebar
 sidebar-workspaces-label = Workspaces
 sidebar-devices-label = Devices
 sidebar-agents-label = Agents
+# After a paused device's name: it is listed, but not connected.
+sidebar-host-paused = paused
 # The heading's button that folds every host, or unfolds them all when
 # they all are; its tooltip and its name for screen readers.
 sidebar-collapse-all-hosts = Collapse all hosts

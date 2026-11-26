@@ -4,6 +4,7 @@
 //! of its own, so the session cannot tell the two apart.
 
 pub(crate) mod out;
+pub(crate) mod steer;
 pub(crate) mod streaming;
 
 use std::{

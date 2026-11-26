@@ -120,7 +120,7 @@ impl CoreTerminals {
 
     /// Whether `host`'s core is connected now.
     pub(crate) fn answers(&self, host: &Host) -> bool {
-        self.backend_of(host).is_some()
+        self.backend_of(host).is_some() || self.infos_of(host).is_some_and(Infos::tmux_available)
     }
 
     pub(super) fn infos_of(&self, host: &Host) -> Option<&Infos> {
@@ -286,7 +286,9 @@ impl CoreTerminals {
         outcome: Result<TerminalInfo, sheprd_core_client::Error>,
     ) {
         let (send, receive) = std::sync::mpsc::sync_channel(1);
-        let _ = send.send(super::start::Outcome::unwatched(outcome));
+        let _ = send.send(super::start::Outcome::unwatched(
+            outcome.map_err(Into::into),
+        ));
         self.starting = Some((purpose, host, receive));
     }
 
@@ -298,18 +300,42 @@ impl CoreTerminals {
 
     /// Reads what each core reports while any of its tabs is known, for
     /// split chrome and the sidebar's rows. True when what is known changed.
-    pub(super) fn poll_infos(&mut self, now: Instant, dispatching: bool) -> bool {
+    pub(super) fn poll_infos(
+        &mut self,
+        now: Instant,
+        dispatching: bool,
+        tmux_preferred: bool,
+    ) -> bool {
         let mut changed = false;
         for host in self.hosts() {
+            if !self
+                .infos_of(&host)
+                .is_some_and(|infos| infos.needs_poll(now))
+            {
+                continue;
+            }
             // This computer's core is read while it answers, tabs or not:
             // a phone may start a terminal there for one of its workspaces
             // (`adopt`), and its stand-in shell runs agents too.
             let listed = dispatching
                 || host == Host::Local
                 || self.tabs.values().any(|shown| shown.host == host);
-            let backend = listed.then(|| self.backend_of(&host).cloned()).flatten();
+            let core = listed
+                .then(|| self.backend_of(&host).cloned())
+                .flatten()
+                .map(super::provider::Provider::Core);
+            let tmux = if cfg!(feature = "tmux")
+                && ((host == Host::Local && tmux_preferred)
+                    || self.tabs.values().any(|shown| {
+                        shown.host == host
+                            && shown.panes.terminals().into_iter().any(TerminalId::is_tmux)
+                    })) {
+                self.tmux_on(&host, 0)
+            } else {
+                None
+            };
             if let Some(infos) = self.infos_of_mut(&host) {
-                changed |= infos.poll(backend.as_ref(), now);
+                changed |= infos.poll(core, tmux, now);
             }
         }
         changed
@@ -328,7 +354,7 @@ impl CoreTerminals {
         let tabs = &self.tabs;
         self.views
             .retain(|(tab, _), _| tabs.get(tab).is_none_or(|shown| shown.host != *host));
-        self.wanted.retain(|(_, wanted, _, _)| wanted != host);
+        self.wanted.retain(|wanted| &wanted.host != host);
         if self
             .starting
             .as_ref()
@@ -340,14 +366,16 @@ impl CoreTerminals {
 
     /// Whether a terminal waits for `host`'s core to connect.
     pub(super) fn waits_on(&self, host: &Host) -> bool {
-        self.wanted.iter().any(|(_, wanted, ..)| wanted == host)
+        self.wanted.iter().any(|wanted| {
+            &wanted.host == host && wanted.backend != crate::config::TerminalBackend::Tmux
+        })
     }
 
     /// How many agents `host`'s core last reported working, for ranking
     /// hosts by how busy they are. Dispatch samples connected cores even
     /// without open tabs; a disconnected core contributes no stale load.
     pub(crate) fn working(&self, host: &Host) -> u32 {
-        if !self.is_connected(host) {
+        if !self.answers(host) {
             return 0;
         }
         self.infos_of(host).map_or(0, Infos::working)
@@ -370,7 +398,9 @@ impl SheprdWindow {
     /// attached anew; nothing is started or replayed.
     pub(super) fn poll_core_hubs(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let mut changed = self.forget_stale_core_hosts(cx);
-        if self.dispatch_sampling() {
+        if self.dispatch_sampling()
+            && self.config.terminal_backend != crate::config::TerminalBackend::Tmux
+        {
             let hosts: Vec<_> = self
                 .endpoints
                 .iter()
@@ -406,14 +436,18 @@ impl SheprdWindow {
                 let terminals = &self.core_terminals;
                 let fallback = (host == Host::Local)
                     .then(|| match &terminals.fallback {
-                        super::fallback::Fallback::Shown(view) => Some(view.clone()),
+                        super::fallback::Fallback::Shown(_, view)
+                            if !view.read(cx).terminal().is_tmux() =>
+                        {
+                            Some(view.clone())
+                        }
                         _ => None,
                     })
                     .flatten();
                 let views: Vec<_> = terminals
                     .views
                     .iter()
-                    .filter(|((tab, _), _)| terminals.host_of(*tab) == host)
+                    .filter(|((tab, id), _)| terminals.host_of(*tab) == host && !id.is_tmux())
                     .map(|(_, view)| view.clone())
                     .chain(fallback)
                     .collect();
@@ -428,13 +462,14 @@ impl SheprdWindow {
             // Every terminal waiting for a core that cannot start is
             // dropped, and the user is told once.
             if let Some(error) = failed {
-                let (here, others) =
-                    std::mem::take(&mut self.core_terminals.wanted)
-                        .into_iter()
-                        .partition::<VecDeque<_>, _>(|(_, wanted, _, _)| *wanted == host);
+                let (here, others) = std::mem::take(&mut self.core_terminals.wanted)
+                    .into_iter()
+                    .partition::<VecDeque<_>, _>(|wanted| {
+                    wanted.host == host && wanted.backend != crate::config::TerminalBackend::Tmux
+                });
                 self.core_terminals.wanted = others;
-                if let Some((purpose, ..)) = here.into_iter().next() {
-                    self.core_unavailable(purpose, &error, window, cx);
+                if let Some(wanted) = here.into_iter().next() {
+                    self.core_unavailable(wanted.purpose, &error, window, cx);
                 }
             }
         }
@@ -528,9 +563,12 @@ impl SheprdWindow {
     }
 
     /// Where the saved device `scope` names connects now.
+    /// A paused device names none, so its hub goes and no new one opens
+    /// until it is resumed.
     pub(crate) fn saved_target(&self, scope: &Scope) -> Option<&ConnectTarget> {
         self.endpoints
             .iter()
+            .filter(|endpoint| endpoint.enabled)
             .find(|endpoint| crate::browser::scope(endpoint) == *scope)
             .map(|endpoint| &endpoint.connection.target)
     }

@@ -52,6 +52,9 @@ impl<'a> Listed<'a> {
     pub(crate) fn favorite_key(&self) -> Option<String> {
         match self {
             Self::Herdr1 { agent, .. } => Some(agent.pane_id.clone()),
+            Self::Core(core) if core.info.is_some_and(|info| info.id.is_tmux()) => Some(
+                sheprd_remote_control::control::favorites::tmux_pane(&core.agent.pane),
+            ),
             Self::Core(core) => core.core.map(|id| {
                 sheprd_remote_control::control::favorites::core_pane(id, &core.agent.pane)
             }),

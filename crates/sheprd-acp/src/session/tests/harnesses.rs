@@ -52,7 +52,9 @@ const SECOND_PID: u32 = 4242;
 /// [`Flow::Launch`], and returns what the session writes to it.
 pub(super) fn launch(harness: &mut Harness) -> Receiver<Vec<u8>> {
     let (sender, agent) = bounded(64);
-    harness.session.launched(Outbox(sender), SECOND_PID);
+    harness
+        .session
+        .launched(Outbox(sender), SECOND_PID, crate::thread_mcp::Given::Not);
     agent
 }
 

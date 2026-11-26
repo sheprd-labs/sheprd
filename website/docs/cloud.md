@@ -97,7 +97,7 @@ Each card takes the service's API URL and an API key or token, then **Create mac
 
 ## Removing a machine
 
-Right-click a cloud device's header in the sidebar for **Rename…**, **Cloud device settings…**, **Run setup script**, and **Remove device…**. For every provider except Railway, removing deletes the machine at the provider by default, with **Remove from Herdr only** beside it. A Railway VM is only forgotten and expires on its own.
+Right-click a cloud device's header in the sidebar for **Rename…**, **Cloud device settings…**, **Run setup script**, **Pause device** (it stays listed, greyed, but Sheprd stops connecting until you choose it again; the machine itself is left as it is), and **Remove device…**. For every provider except Railway, removing deletes the machine at the provider by default, with **Remove from Herdr only** beside it. A Railway VM is only forgotten and expires on its own.
 
 Before deleting, the dialog searches the machine's home directory for Git checkouts with changed or untracked files, or commits on no remote. When it finds some, it names them and the button becomes **Delete anyway**. A machine it cannot reach is reported as unchecked, never as clean.
 

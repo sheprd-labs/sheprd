@@ -44,13 +44,6 @@ impl SheprdWindow {
     /// is no core id to name it by.
     pub(crate) fn core_pane_favorite(&self, tab: TabId, terminal: &TerminalId) -> Option<Starred> {
         let host = self.core_terminals.host_of(tab);
-        let core = &self
-            .core_terminals
-            .backend_of(&host)?
-            .core()
-            .hello()
-            .core
-            .id;
         let endpoint = self
             .endpoints
             .iter()
@@ -63,7 +56,12 @@ impl SheprdWindow {
         {
             return None;
         }
-        let key = core_pane(core, terminal.as_str());
+        let key = if terminal.is_tmux() {
+            sheprd_remote_control::control::favorites::tmux_pane(terminal.as_str())
+        } else {
+            let core = self.core_terminals.backend_of(&host)?.core();
+            core_pane(&core.hello().core.id, terminal.as_str())
+        };
         let favorite = self.agent_favorites.contains(&endpoint.id, &key);
         Some(Starred {
             endpoint: endpoint.id.clone(),

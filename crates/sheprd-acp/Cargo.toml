@@ -17,11 +17,14 @@ base64.workspace              = true
 chrono.workspace              = true
 crossbeam-channel.workspace   = true
 crossterm.workspace           = true
+sheprd-backend = { optional = true, workspace = true }
 sheprd-chat-protocol.workspace = true
 sheprd-client.workspace        = true
+sheprd-mcp.workspace           = true
 sheprd-memory.workspace        = true
 sheprd-core-client.workspace   = true
 sheprd-t3.workspace            = true
+sheprd-tmux = { optional = true, workspace = true }
 sheprd-traces.workspace        = true
 ratatui.workspace             = true
 serde.workspace               = true
@@ -41,3 +44,6 @@ rustix.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 sysinfo.workspace = true
+
+[features]
+tmux = ["dep:sheprd-tmux", "dep:sheprd-backend"]

@@ -16,6 +16,10 @@ impl Localize for Error {
             Self::RootExited => fl!("error-processes-root-exited"),
             Self::Stopped => fl!("error-processes-stopped"),
             Self::TerminalGone => fl!("error-processes-terminal-gone"),
+            #[cfg(feature = "tmux")]
+            Self::Tmux(error) => error.to_string(),
+            #[cfg(not(feature = "tmux"))]
+            Self::TmuxDisabled => fl!("core-terminals-tmux-disabled"),
             Self::Worker(_) => fl!("error-processes-worker"),
         }
     }

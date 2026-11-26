@@ -211,7 +211,7 @@ fn a_wanted_host_is_sampled_and_a_dropped_one_forgotten() {
 
 #[test]
 fn this_machine_answers_with_memory_then_cpu() {
-    let mut source = Source::open(&Host::Local).unwrap();
+    let mut source = Source::open(&Host::Local, false, false).unwrap();
     let first = source.sample(false).unwrap();
     assert_eq!(first.cpu, None);
     let memory = first.memory.expect("this machine reports memory");
@@ -253,3 +253,4 @@ mod gpu;
 mod gpu_tool;
 mod hosted;
 mod hosted_gpu;
+mod windows;

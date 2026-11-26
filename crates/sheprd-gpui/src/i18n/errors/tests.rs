@@ -66,6 +66,7 @@ mod terminal_attach;
 mod updater;
 mod usage;
 mod vcs;
+mod windows_host;
 mod worktree_identity;
 mod worktree_scripts;
 mod wsl_drop;

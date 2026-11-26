@@ -158,7 +158,8 @@ fn a_new_tab_starts_in_its_kept_workspaces_folder(cx: &mut TestAppContext) {
         view.update(cx, |view, cx| {
             view.open_kept_workspace(None, Path::new("/src/tools"), core_tab("t3"), window, cx);
             view.new_core_terminal(window, cx);
-            let (purpose, _, spawn, _) = view.core_terminals.wanted.back().unwrap();
+            let wanted = view.core_terminals.wanted.back().unwrap();
+            let (purpose, spawn) = (&wanted.purpose, &wanted.spawn);
             let (purpose, spawn) = (purpose.clone(), spawn.clone());
             assert_eq!(spawn.cwd.as_deref(), Some(Path::new("/src/tools")));
             let crate::core_terminals::Purpose::Tab {
@@ -190,7 +191,7 @@ fn workspaces_made_in_a_row_each_start_a_shell(cx: &mut TestAppContext) {
                 .core_terminals
                 .wanted
                 .iter()
-                .map(|(_, _, spawn, _)| spawn.cwd.clone().unwrap())
+                .map(|wanted| wanted.spawn.cwd.clone().unwrap())
                 .collect();
             assert_eq!(folders, [Path::new("/src/api"), Path::new("/src/web")]);
         })
@@ -266,3 +267,34 @@ fn a_local_project_opens_in_herdr_2_while_another_host_is_shown(cx: &mut TestApp
 mod behind;
 mod removed;
 mod run_terminal;
+
+#[cfg(feature = "tmux")]
+#[gpui::test]
+fn tmux_uses_the_kept_workspace_without_a_herdr_daemon(cx: &mut TestAppContext) {
+    use crate::{
+        config::TerminalBackend,
+        core_terminals::{Host, provider::Provider},
+    };
+    let (view, cx) = window(cx, false);
+    view.update(cx, |view, cx| {
+        view.config.terminal_backend = TerminalBackend::Tmux;
+        assert!(view.new_workspaces_use_core());
+        assert!(view.default_workspace_kept(cx));
+        assert!(!view.needs_herdr_install());
+        let id = sheprd_tmux::Tmux::named_id("restore").unwrap();
+        view.config.terminal_backend = TerminalBackend::Herdr;
+        assert!(matches!(
+            view.core_terminals.owner(&Host::Local, &id, 100),
+            Some(Provider::Tmux(_))
+        ));
+        assert!(
+            view.core_terminals
+                .owner(
+                    &Host::Remote(crate::browser::Scope::endpoint("missing")),
+                    &id,
+                    100
+                )
+                .is_none()
+        );
+    });
+}

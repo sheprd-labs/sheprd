@@ -100,8 +100,8 @@ pub enum Command {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         origin: Option<Origin>,
     },
-    /// Ends the running turn, declines its pending permission requests, and
-    /// drops queued prompts.
+    /// Ends the running turn and declines its pending permission requests.
+    /// Queued prompts stay, held until sent now or withdrawn.
     Cancel,
     Answer {
         option: String,
@@ -123,6 +123,11 @@ pub enum Command {
     },
     /// Withdraws a queued prompt before it is sent.
     Unqueue {
+        id: CommandId,
+    },
+    /// Sends a queued prompt ahead of the others: into the running turn when
+    /// the agent steers, else in place of it, as the turn is stopped.
+    SendNow {
         id: CommandId,
     },
     /// Answers permission requests with their allow option from now on,

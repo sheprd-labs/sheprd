@@ -55,6 +55,10 @@ def package(version, target, binary, launcher, output_dir, notices):
     for companion in companions:
         if not companion.is_file():
             raise ValueError(f"A {companion.name} beside the binary required")
+    # herdr-core's notices, which fetch-herdr-core.py leaves beside it.
+    core_licenses = binary.parent / "herdr-core-licenses.txt"
+    if not core_licenses.is_file() or not core_licenses.stat().st_size:
+        raise ValueError("herdr-core licenses beside the binary required")
     if not notices.is_file() or not notices.stat().st_size:
         raise ValueError("Nonempty third-party notices file required")
     name = f"Sheprd-{version}-{target}"
@@ -77,8 +81,7 @@ def package(version, target, binary, launcher, output_dir, notices):
             for source in LICENSES:
                 add(archive, f"{name}/licenses/{Path(source).name}", (ROOT / source).read_bytes())
             add(archive, f"{name}/licenses/THIRD-PARTY-NOTICES.txt", notices.read_bytes())
-            add(archive, f"{name}/licenses/HERDR-CORE-LICENSES.txt",
-                (ROOT / "scripts/release/herdr-core-licenses.txt").read_bytes())
+            add(archive, f"{name}/licenses/HERDR-CORE-LICENSES.txt", core_licenses.read_bytes())
         if output.exists() or output.is_symlink():
             raise ValueError(f"Output already exists: {output}")
         partial.replace(output)

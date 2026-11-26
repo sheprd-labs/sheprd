@@ -17,6 +17,7 @@ mod auto_accept;
 mod bounds;
 mod briefs;
 mod carry;
+mod checkpoint;
 mod commands;
 mod continued;
 mod flow;
@@ -36,9 +37,12 @@ mod prompt_titles;
 mod pull_requests;
 mod questions;
 mod resume;
+mod send_now;
 mod sent_notes;
 mod settings;
+mod steering;
 mod streaming;
+mod thread_read;
 mod threads;
 mod watchdog;
 
@@ -70,6 +74,7 @@ fn config() -> Config {
         cwd: PathBuf::from("/work"),
         exit_with_agent: false,
         gemini_auth_method: None,
+        given: crate::thread_mcp::Given::Not,
         harness: Some(Agent::Claude),
         history: None,
         known: Default::default(),

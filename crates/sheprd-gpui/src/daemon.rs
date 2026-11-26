@@ -40,6 +40,7 @@ pub(super) fn is_missing_installation(error: &io::Error) -> bool {
 pub fn connect(
     target: &ConnectTarget,
     stop: &AtomicBool,
+    start_local: bool,
     on_start: impl FnOnce(),
 ) -> io::Result<(Stream, LocalPeer)> {
     let socket = target
@@ -60,7 +61,7 @@ pub fn connect(
             pin_config_home(&mut command, sheprd_client::local_var("XDG_CONFIG_HOME"));
             command
         },
-        may_start(target),
+        start_local && may_start(target),
     )?;
     let local = local_peer(&stream, target, &socket);
     Ok((stream, local))

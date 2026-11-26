@@ -90,7 +90,7 @@ fn unqueue_withdraws_a_waiting_prompt() {
 }
 
 #[test]
-fn cancel_ends_the_turn_and_drops_the_queue() {
+fn cancel_ends_the_turn_and_holds_the_queue() {
     let mut harness = ready();
     let id = prompt(&mut harness, 0, "one");
     harness.command(
@@ -105,7 +105,9 @@ fn cancel_ends_the_turn_and_drops_the_queue() {
     let cancel = harness.last_request("session/cancel");
     assert_eq!(cancel["params"]["sessionId"], "s1");
     assert!(cancel.get("id").is_none());
-    assert!(harness.transcript().queued.is_empty());
+    let queued = &harness.transcript().queued;
+    assert_eq!(queued.len(), 1);
+    assert!(queued[0].held, "kept, not sent when the turn ends");
     harness.respond(id, json!({"stopReason": "cancelled"}));
     assert_eq!(harness.transcript().status, Status::Idle);
     assert!(

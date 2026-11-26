@@ -61,7 +61,10 @@ Copy `scripts/screencast/features/themes.json` to `features/NAME.json`:
   languages' text so they are ready) and the `actions` shown while it plays:
   `["key", "cmd+shift+p"]`, `["type", "text"]`, `["slowtype", "text", 0.05]`,
   `["click", x, y]` in screenshot pixels, `["wait", seconds]`,
-  `["repeat", n, [actions]]`.
+  `["repeat", n, [actions]]`, `["exec", "shell command"]` run in the
+  machine (to reopen the app mid-take, for example).
+- `"fill": false` skips Window > Fill when the window already fills the
+  screen (see Gotchas).
 - `teardown`: undo what the video changed, such as the theme.
 
 Narration: plain words a new user understands, the action before the result,
@@ -128,6 +131,17 @@ it without their explicit go-ahead for that post.
 - After a dialog closes or the app relaunches, click inside the window
   before typing.
 - Window > Fill (`ctrl+fn+f`) maximizes; a title bar double-click toggles.
+  Sheprd Agent can leave Control held after it, so every later click opens
+  a context menu and typing sends control characters. Restart Sheprd Agent
+  in the machine to clear it, and set `"fill": false` once the window fills.
+- Click into a terminal pane before typing into it: text typed right after
+  a new tab or split can lose its first characters.
+- A machine without Apple's command line tools shows an install dialog
+  whenever Sheprd runs `git`. Install them once (`softwareupdate -i`, with
+  the `.installondemand.in-progress` file in `/tmp`), and kill any dialog
+  left over as root; it comes forward whenever Sheprd quits.
+- A feature that needs a reboot is two feature files recorded on either side
+  of it (`tmux-sessions.json`, `tmux-reboot.json`), joined afterwards.
 - A theme set in a run sticks: `setup` must reset it.
 - `machine exec` keeps only the last 64 KB of output and refuses `rm` inside
   `sh -c`; truncate with `cp /dev/null FILE`. `osascript` hangs on a hidden

@@ -71,30 +71,11 @@ impl SheprdWindow {
         })
     }
 
-    /// Tells the tags and the text shortcuts which devices this window can
-    /// reach now: this computer, and the machines connected, so no exchange
-    /// waits on one that is away.
+    /// Tells the tags, shortcuts, relay sharing, and fleet which devices this
+    /// window can reach now: this computer, and every remote host connected
+    /// through Herdr 1 or herdr-core, so no exchange waits on one that is away.
     pub(crate) fn reach_device_tags(&self, cx: &mut Context<Self>) {
-        let reachable = self
-            .endpoints
-            .iter()
-            .enumerate()
-            .filter_map(|(index, endpoint)| {
-                if endpoint.id == crate::endpoint::LOCAL {
-                    return Some((endpoint.id.clone(), Daemon::Local));
-                }
-                let live = if index == self.selected_endpoint {
-                    &self.live
-                } else {
-                    &endpoint.live
-                };
-                let target = &endpoint.connection.target;
-                let remote = crate::automations::Machine::of(target)
-                    .is_some_and(|machine| !machine.is_local());
-                (endpoint.enabled && live.status.is_connected() && remote)
-                    .then(|| (endpoint.id.clone(), Daemon::Remote(target.clone())))
-            })
-            .collect();
+        let reachable = self.reachable_daemons(|host| self.core_terminals.is_connected(host));
         // The same computers keep the text shortcuts.
         crate::text_shortcuts::Store::reach(cx, &reachable);
         // And their favorite agents.
@@ -115,6 +96,33 @@ impl SheprdWindow {
             .collect();
         crate::fleet::Fleet::reach(cx, window, &reachable, &names);
         DeviceTags::reach(cx, reachable);
+    }
+
+    pub(super) fn reachable_daemons(
+        &self,
+        core_connected: impl Fn(&crate::core_terminals::Host) -> bool,
+    ) -> std::collections::BTreeMap<String, Daemon> {
+        self.endpoints
+            .iter()
+            .enumerate()
+            .filter_map(|(index, endpoint)| {
+                if endpoint.id == crate::endpoint::LOCAL {
+                    return Some((endpoint.id.clone(), Daemon::Local));
+                }
+                let live = if index == self.selected_endpoint {
+                    &self.live
+                } else {
+                    &endpoint.live
+                };
+                let target = &endpoint.connection.target;
+                let remote = crate::automations::Machine::of(target)
+                    .is_some_and(|machine| !machine.is_local());
+                let core = crate::core_terminals::Host::Remote(crate::browser::scope(endpoint));
+                let connected = live.status.is_connected() || core_connected(&core);
+                (endpoint.enabled && connected && remote)
+                    .then(|| (endpoint.id.clone(), Daemon::Remote(target.clone())))
+            })
+            .collect()
     }
 
     /// Lists only `tag`'s devices, from the top, as a device scope does.

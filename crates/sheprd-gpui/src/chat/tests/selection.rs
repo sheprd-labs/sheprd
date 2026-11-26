@@ -260,3 +260,31 @@ fn dragging_a_link_selects_its_label_and_a_plain_click_still_opens_it(cx: &mut T
         Some("https://example.org/selection")
     );
 }
+
+#[gpui::test]
+fn releasing_a_transcript_drag_copies_only_while_copy_on_select_is_on(cx: &mut TestAppContext) {
+    for copy_on_select in [true, false] {
+        let (view, _peer, cx) = open(cx, ConnectTarget::Local);
+        view.update(cx, |view, _| {
+            let text = format!("[ui]\ncopy_on_select = {copy_on_select}\n");
+            view.settings.shared =
+                Some(crate::herdr_settings::Settings::parse_text(&text).unwrap());
+        });
+        let program = Program::new();
+        let _stream = attach_with(
+            &view,
+            &program,
+            snapshot(cursor(1, 0), vec![agent(1, "Copy this selection")]),
+            cx,
+        );
+        let from = position(&view, caret(&view, 0, 0, 0, "Copy ".len(), cx), cx);
+        let to = position(&view, caret(&view, 0, 0, 0, "Copy this".len(), cx), cx);
+        cx.write_to_clipboard(gpui::ClipboardItem::new_string("before".into()));
+        drag(cx, from, to);
+        let expected = if copy_on_select { "this" } else { "before" };
+        assert_eq!(clipboard(cx).as_deref(), Some(expected));
+        // The highlight stays, so Cmd-C still copies it either way.
+        cx.simulate_keystrokes(copy_key());
+        assert_eq!(clipboard(cx).as_deref(), Some("this"));
+    }
+}

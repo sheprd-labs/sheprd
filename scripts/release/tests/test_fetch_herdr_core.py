@@ -1,4 +1,4 @@
-"""The bundled herdr-core is pinned by checksum and extracted by name."""
+"""The bundled herdr-core is pinned by checksum and extracted, with its notices, by name."""
 import hashlib
 import importlib.util
 import io
@@ -41,12 +41,42 @@ class FetchHerdrCoreTests(unittest.TestCase):
 
     def test_the_binary_is_found_by_name_in_either_archive(self):
         self.assertEqual(fetch.executable(tar_gz({"dir/herdr-core": b"elf", "LICENSE": b"x"}), "herdr-core"), b"elf")
+        self.assertEqual(
+            fetch.executable(
+                tar_gz({
+                    "herdr-core": b"top-macho",
+                    "Herdr Core.app/Contents/MacOS/herdr-core": b"app-macho",
+                }),
+                "herdr-core",
+            ),
+            b"top-macho",
+        )
         data = io.BytesIO()
         with zipfile.ZipFile(data, "w") as archive:
             archive.writestr("herdr-core.exe", b"pe")
         self.assertEqual(fetch.executable(data.getvalue(), "herdr-core.exe"), b"pe")
         with self.assertRaises(SystemExit):
             fetch.executable(tar_gz({"other": b"x"}), "herdr-core")
+
+    def test_the_notices_come_from_either_archive_without_page_breaks(self):
+        body = (b"hc (herdr-core) is Apache-2.0.\n\nOF CONTRACT\n\n"
+                b"[7866 more lines in file. Use offset=401 to continue.]\nIN CONNECTION\n")
+        expected = "herdr-core 9.9.9 (THIRD-PARTY-NOTICES from its release archive)\n\n" \
+                   "hc (herdr-core) is Apache-2.0.\n\nOF CONTRACT\n\nIN CONNECTION\n"
+        tarball = tar_gz({"herdr-core": b"elf", "THIRD-PARTY-NOTICES": body})
+        self.assertEqual(fetch.notices(tarball, "9.9.9"), expected)
+        data = io.BytesIO()
+        with zipfile.ZipFile(data, "w") as archive:
+            archive.writestr("THIRD-PARTY-NOTICES/", b"")
+            archive.writestr("THIRD-PARTY-NOTICES/herdr-core.txt", body.replace(b"\n", b"\r\n"))
+            archive.writestr("THIRD-PARTY-NOTICES/ConPTY-LICENSE.txt", b"other")
+        self.assertEqual(fetch.notices(data.getvalue(), "9.9.9"), expected)
+
+    def test_missing_or_unlicensed_notices_fail(self):
+        for members in ({"herdr-core": b"elf"}, {"THIRD-PARTY-NOTICES": b"no license named"},
+                        {"docs/THIRD-PARTY-NOTICES": b"Apache-2.0"}):
+            with self.subTest(members=list(members)), self.assertRaises(SystemExit):
+                fetch.notices(tar_gz(members), "9.9.9")
 
     def test_an_unknown_target_is_refused(self):
         with self.assertRaises(SystemExit):
@@ -62,11 +92,6 @@ class BundledHerdrCoreTests(unittest.TestCase):
             self.assertIn(core, targets)
             self.assertEqual(fetch.pinned(rust), targets[core])
 
-    def test_the_bundled_licenses_are_the_pinned_version_s(self):
-        version = json.loads(fetch.PINNED.read_text())["version"]
-        licenses = (ROOT / "scripts/release/herdr-core-licenses.txt").read_text()
-        self.assertTrue(licenses.startswith(f"herdr-core {version} "), licenses[:80])
-        self.assertIn("Apache-2.0", licenses)
 
 
 if __name__ == "__main__":

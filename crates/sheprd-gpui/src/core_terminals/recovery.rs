@@ -82,7 +82,9 @@ impl SheprdWindow {
             .filter_map(|host| {
                 let infos = self.core_terminals.infos_of(&host)?;
                 let mapping = sheprd_core_client::chat_recovery::mapping(
-                    infos.all().map(|info| (info.id.as_str(), &info.labels)),
+                    infos
+                        .core_terminals()
+                        .map(|info| (info.id.as_str(), &info.labels)),
                 );
                 (!mapping.is_empty()).then_some((host, mapping))
             })

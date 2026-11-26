@@ -55,3 +55,42 @@ fn an_unavailable_herdr_1_still_retries_when_it_is_not_known_to_be_absent(
         assert!(view.endpoints[0].generation > generation);
     });
 }
+
+#[gpui::test]
+fn choosing_herdr_after_a_tmux_only_probe_retries_local_start(cx: &mut gpui::TestAppContext) {
+    let (view, cx) = cx.add_window_view(crate::sidebar::layout_tests::fixture_window);
+    view.update(cx, |view, cx| {
+        disconnected(view, true);
+        view.config.terminal_backend = crate::config::TerminalBackend::Herdr;
+        view.endpoints[0].connection.start_local_herdr = false;
+        let before = view.endpoints[0].generation;
+        view.poll_endpoints(cx);
+        assert!(view.endpoints[0].generation > before);
+        assert!(view.endpoints[0].connection.start_local_herdr);
+    });
+}
+
+#[gpui::test]
+fn tmux_starts_herdr_1_after_a_reboot_for_tabs_saved_in_its_workspaces(
+    cx: &mut gpui::TestAppContext,
+) {
+    let (view, cx) = cx.add_window_view(crate::sidebar::layout_tests::fixture_window);
+    view.update(cx, |view, cx| {
+        disconnected(view, true);
+        view.config.terminal_backend = crate::config::TerminalBackend::Tmux;
+        view.endpoints[0].connection.start_local_herdr = false;
+        let before = view.endpoints[0].generation;
+        view.poll_endpoints(cx);
+        assert_eq!(
+            view.endpoints[0].generation, before,
+            "nothing saved needs Herdr 1"
+        );
+        assert!(!view.endpoints[0].connection.start_local_herdr);
+
+        let scope = crate::browser::scope(&view.endpoints[0]);
+        crate::browser::Store::update(cx, |store| store.open(scope, "w2", None, None));
+        view.poll_endpoints(cx);
+        assert!(view.endpoints[0].generation > before);
+        assert!(view.endpoints[0].connection.start_local_herdr);
+    });
+}

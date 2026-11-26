@@ -108,12 +108,12 @@ impl SheprdWindow {
             self.core_terminals.draw(view);
         }
         let Some(shown) = self.core_terminals.tabs.get(&tab.id) else {
-            return self.core_placeholder(&super::Host::of(&tab.scope));
+            return self.core_placeholder(&super::Host::of(&tab.scope), None);
         };
         if shown.panes.count() == 1 {
             let key = (tab.id, shown.panes.first().clone());
             let Some(view) = self.core_terminals.views.get(&key).cloned() else {
-                return self.core_placeholder(&super::Host::of(&tab.scope));
+                return self.core_placeholder(&super::Host::of(&tab.scope), Some(&key.1));
             };
             view.update(cx, |view, _| view.set_pane(None));
             return self.core_pane_body(key.0, &key.1, &view, cx);
@@ -305,6 +305,9 @@ impl SheprdWindow {
     ) -> AnyElement {
         let (tab, chrome) = (draw.tab, draw.chrome);
         let Some(view) = self.core_terminals.views.get(&(tab, terminal.clone())) else {
+            if !crate::config::TerminalBackend::owner(terminal).available(cfg!(feature = "tmux")) {
+                return self.core_placeholder(&self.core_terminals.host_of(tab), Some(terminal));
+            }
             return div().flex_1().into_any_element();
         };
         let is_active = *terminal == draw.active;
@@ -396,8 +399,14 @@ impl SheprdWindow {
     }
 
     /// What a herdr-core tab shows before its panes have views.
-    fn core_placeholder(&self, host: &super::Host) -> AnyElement {
+    fn core_placeholder(&self, host: &super::Host, terminal: Option<&TerminalId>) -> AnyElement {
         let note = match self.core_terminals.hub_of(host).map(super::Hub::state) {
+            _ if terminal.is_some_and(|id| {
+                !crate::config::TerminalBackend::owner(id).available(cfg!(feature = "tmux"))
+            }) =>
+            {
+                fl!("core-terminals-tmux-disabled")
+            }
             Some(State::Unavailable(error)) => {
                 let reason = error.to_string();
                 fl!("core-terminals-unavailable", reason = reason)
