@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review Changes · Sheprd</title><meta name="description" content="Review an agent&#x27;s changes file by file, leave notes on lines, and mark files viewed.">
+<link rel="canonical" href="https://sheprd.org/features/review-changes/">
+<link rel="icon" href="/assets/paw.svg"><link rel="stylesheet" href="/assets/base.css"><link rel="stylesheet" href="/assets/site.css"><link rel="stylesheet" href="/assets/feature-pages.css">
+<script src="/assets/feature-demo.js" defer></script></head><body class="feature-page">
+<a class="skip-link" href="#main">Skip to content</a><header class="masthead">
+  <div class="masthead-inner">
+    <a class="brand" href="/" aria-label="Sheprd, home">
+      <img src="/assets/paw.svg" alt="" width="34" height="34">
+      <span>Sheprd</span>
+    </a>
+    <nav aria-label="Site">
+      <ul>
+        <li><a href="/features/" aria-current="page">Features</a></li>
+        <li class="nav-docs"><a href="/docs/">Docs</a></li>
+        <li><a class="repo" href="https://discord.gg/GE4JRp8kaX" aria-label="Discord"><svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg><span class="repo-name">Discord</span></a></li>
+        <li><a class="repo" href="https://github.com/sheprd-labs/sheprd"><svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg><span class="repo-name">GitHub</span><span class="stars" id="stars" hidden><span id="stars-n"></span></span></a></li>
+        <li><a class="nav-install" href="/#get">Get Sheprd</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+<div class="feature-breadcrumb"><a href="/features/">← All features</a><span>02 / Review</span></div>
+<section class="feature-title"><div><p class="kicker">Review Changes</p><h1>Read it<br>before it ships.</h1></div><p class="feature-dek">Every file an agent touched, beside the code it replaces, with notes that go straight back to the agent.</p></section>
+<figure class="demo"><video id="feature-demo" controls playsinline preload="metadata" poster="/assets/feature-clips/review-changes.jpg" data-clips="/assets/feature-clips/review-changes" data-window="moonframe" aria-label="Review Changes, narrated demonstration">
+<source src="/assets/feature-clips/review-changes.moonframe.en.mp4" type="video/mp4"><track kind="captions" src="/assets/feature-clips/review-changes.moonframe.en.vtt" srclang="en" label="English">
+<a href="/assets/feature-clips/review-changes.moonframe.en.mp4">Download the demo</a>.</video>
+<figcaption><span class="demo-switches"><span class="demo-langs" role="group" aria-label="Narration language"><button type="button" data-lang="en" aria-pressed="true" lang="en">English</button><button type="button" data-lang="fr" aria-pressed="false" lang="fr">Français</button></span></span><span>23 seconds · narration &amp; captions</span></figcaption></figure>
+<nav class="demo-chapters" aria-label="Video chapters"><button type="button" data-seek="5.10"><span>01</span> Open the review <time>0:05</time></button><button type="button" data-seek="13.63"><span>02</span> Leave a note <time>0:13</time></button><button type="button" data-seek="17.33"><span>03</span> Mark it viewed <time>0:17</time></button></nav>
+<section class="feature-how"><div><p class="kicker">Try it yourself</p><h2>Review Changes</h2><a class="text-link" href="/docs/review/">Review and commit ↗</a></div><ol><li><h3>Open Review Changes</h3><p>Search for it in the command palette. It lists every file with uncommitted changes, or everything since the base branch.</p></li><li><h3>Note what should change</h3><p>Click a line number, describe the change and add the note. Notes go to the workspace&#x27;s agent.</p></li><li><h3>Keep track</h3><p>Mark each file viewed once it looks right, and hide viewed files to see what is left.</p></li></ol></section>
+<details class="demo-transcript"><summary>Read the video transcript</summary><p>Before you ship what an agent wrote, review it in Sheprd.</p><p>Open Review Changes from the palette: every file the work touched.</p><p>Each change sits beside the code it replaces.</p><p>Click a line number to leave a note for the agent.</p><p>Then mark the file viewed, and move on to the next.</p></details>
+<nav class="feature-pager" aria-label="More features"><a rel="prev" href="/features/agent-chat/"><span>← Previous</span>Native agent chats</a><a rel="next" href="/features/command-palette/"><span>Next →</span>The command palette</a></nav>
+</main>
+<footer class="feature-footer wrap"><a class="brand" href="/">Sheprd</a><p>Your agents. One place.</p><a href="/docs/">Read the docs ↗</a></footer>
+</body></html>

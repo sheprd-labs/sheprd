@@ -144,7 +144,7 @@ fn a_narrow_review_hides_its_panels_until_asked(cx: &mut gpui::TestAppContext) {
 #[gpui::test]
 fn a_wide_review_shows_its_panels_unless_hidden(cx: &mut gpui::TestAppContext) {
     let (view, cx) = window(cx, None);
-    cx.simulate_resize(gpui::size(px(1600.), px(900.)));
+    cx.simulate_resize(gpui::size(px(2200.), px(900.)));
     cx.update(|window, cx| {
         view.update(cx, |view, cx| {
             view.seed_review(changes(), window, cx);

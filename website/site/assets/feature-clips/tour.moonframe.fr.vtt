@@ -1,0 +1,69 @@
+WEBVTT
+
+1
+00:00:01.000 --> 00:00:06.880
+Voici Sheprd : vos terminaux et vos agents de code, réunis dans une seule fenêtre.
+
+2
+00:00:07.282 --> 00:00:13.082
+À gauche, vos espaces, un par projet, et en dessous chaque agent au travail.
+
+3
+00:00:13.883 --> 00:00:17.763
+Cliquez sur « new » pour créer un nouvel espace.
+
+4
+00:00:17.767 --> 00:00:23.967
+Dans un dépôt, un nouveau worktree donne à un agent sa propre branche et son propre dossier.
+
+5
+00:00:25.751 --> 00:00:33.311
+Le bouton d'agent, à côté du bouton de nouvel onglet, ouvre un chat avec Claude, Codex, Gemini ou un autre agent.
+
+6
+00:00:33.955 --> 00:00:40.235
+Demandez une modification, et suivez chaque fichier lu, chaque modification et chaque test.
+
+7
+00:00:40.555 --> 00:00:49.075
+Un chat est une vue native d'un agent qui tourne dans un terminal. Ce bouton affiche ce terminal, et « Chat » ramène le chat.
+
+8
+00:00:49.075 --> 00:00:55.195
+Chaque espace contient des onglets, et chaque onglet peut se diviser en volets, côte à côte.
+
+9
+00:00:55.201 --> 00:01:03.881
+La barre d'activité donne accès au reste : une vue d'ensemble de vos agents, les pull requests, les tickets, l'utilisation, et plus.
+
+10
+00:01:06.234 --> 00:01:11.954
+La barre d'état surveille la machine, et affiche l'utilisation de vos abonnements si vous l'activez.
+
+11
+00:01:11.959 --> 00:01:20.959
+« Devices » liste chaque machine sur laquelle vous travaillez. Ajoutez des hôtes SSH ou des machines cloud, et leurs agents apparaissent ici aussi.
+
+12
+00:01:20.960 --> 00:01:27.720
+Les agents peuvent aussi ouvrir des pages web à côté de vous. Demandez un aperçu, et la page s'ouvre dans un onglet.
+
+13
+00:01:27.726 --> 00:01:34.406
+Annotez-la : cliquez sur n'importe quel élément, écrivez ce qui doit changer, et envoyez-le à l'agent.
+
+14
+00:01:36.100 --> 00:01:41.340
+L'agent reçoit votre note, fait la modification, et la page se recharge.
+
+15
+00:01:41.341 --> 00:01:46.901
+Les réglages s'ouvrent sur les thèmes : survolez-en un pour l'essayer sur toute la fenêtre.
+
+16
+00:01:50.407 --> 00:01:56.847
+Choisissez la disposition de la barre latérale, les indicateurs d'état, et l'apparence des onglets.
+
+17
+00:02:00.540 --> 00:02:05.860
+Voilà pour la visite. Chaque fonctionnalité a son propre petit guide ci-dessous.

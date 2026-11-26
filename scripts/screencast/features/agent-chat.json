@@ -1,0 +1,210 @@
+{
+  "id": "agent-chat",
+  "feature": "ACP chats",
+  "setup": [
+    [
+      "exec",
+      "cd ~/code/forecast && git reset -q --hard && git clean -qfd; sed -i '' 's/^theme = .*/theme = \"Default\"/' ~/.config/herdr/config-gpui.local.toml; sleep 1"
+    ],
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "click",
+      1600,
+      1000
+    ],
+    [
+      "key",
+      "cmd+shift+n"
+    ],
+    [
+      "wait",
+      1.5
+    ],
+    [
+      "type",
+      "cd ~/code/forecast && clear"
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      1.2
+    ],
+    [
+      "exec",
+      "cd ~/code/forecast && ~/Apps/Sheprd.app/Contents/MacOS/sheprd chat new gemini >/dev/null; sleep 4"
+    ],
+    [
+      "click",
+      1900,
+      600
+    ],
+    [
+      "key",
+      "cmd+w"
+    ],
+    [
+      "wait",
+      1.5
+    ],
+    [
+      "click",
+      700,
+      700
+    ]
+  ],
+  "segments": [
+    {
+      "actions": []
+    },
+    {
+      "actions": [
+        [
+          "wait",
+          0.4
+        ],
+        [
+          "click",
+          {
+            "moonframe": [
+              883,
+              92
+            ],
+            "classic": [
+              880,
+              94
+            ]
+          }
+        ],
+        [
+          "wait",
+          2.5
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          "wait",
+          0.3
+        ],
+        [
+          "click",
+          {
+            "moonframe": [
+              1825,
+              1313
+            ],
+            "classic": [
+              1825,
+              1313
+            ]
+          }
+        ],
+        [
+          "wait",
+          2.2
+        ],
+        [
+          "key",
+          "escape"
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          "wait",
+          0.2
+        ],
+        [
+          "click",
+          {
+            "moonframe": [
+              1900,
+              1252
+            ],
+            "classic": [
+              1900,
+              1252
+            ]
+          }
+        ],
+        [
+          "type",
+          "Add a --json flag to the forecast command"
+        ],
+        [
+          "wait",
+          0.5
+        ],
+        [
+          "key",
+          "return"
+        ]
+      ]
+    },
+    {
+      "actions": []
+    },
+    {
+      "actions": []
+    }
+  ],
+  "teardown": [
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "click",
+      1600,
+      1000
+    ],
+    [
+      "key",
+      "cmd+shift+p"
+    ],
+    [
+      "wait",
+      0.8
+    ],
+    [
+      "type",
+      "close workspace"
+    ],
+    [
+      "wait",
+      0.8
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      1.2
+    ],
+    [
+      "type",
+      "close"
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      1.5
+    ]
+  ]
+}

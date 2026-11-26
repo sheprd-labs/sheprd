@@ -1,0 +1,66 @@
+{
+  "paris": [
+    {
+      "date": "Mon",
+      "high": 14,
+      "low": 8,
+      "sky": "cloudy"
+    },
+    {
+      "date": "Tue",
+      "high": 16,
+      "low": 9,
+      "sky": "sunny"
+    },
+    {
+      "date": "Wed",
+      "high": 13,
+      "low": 7,
+      "sky": "rain"
+    },
+    {
+      "date": "Thu",
+      "high": 15,
+      "low": 8,
+      "sky": "sunny"
+    },
+    {
+      "date": "Fri",
+      "high": 17,
+      "low": 10,
+      "sky": "sunny"
+    }
+  ],
+  "lyon": [
+    {
+      "date": "Mon",
+      "high": 14,
+      "low": 8,
+      "sky": "cloudy"
+    },
+    {
+      "date": "Tue",
+      "high": 16,
+      "low": 9,
+      "sky": "sunny"
+    },
+    {
+      "date": "Wed",
+      "high": 13,
+      "low": 7,
+      "sky": "rain"
+    },
+    {
+      "date": "Thu",
+      "high": 15,
+      "low": 8,
+      "sky": "sunny"
+    },
+    {
+      "date": "Fri",
+      "high": 17,
+      "low": 10,
+      "sky": "sunny"
+    }
+  ]
+}

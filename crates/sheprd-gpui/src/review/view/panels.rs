@@ -1,14 +1,14 @@
 //! Whether a review shows its file list and its notes beside the diff. A
-//! review narrower than `NARROW` gives the diff all its room until the user
-//! says otherwise with the header's icons; a note being written always shows
-//! the notes, so the composer is never hidden.
+//! review narrower than `NARROW`, as on a laptop, gives the diff all its room
+//! until the user says otherwise with the header's icons; a note being
+//! written always shows the notes, so the composer is never hidden.
 use super::Review;
 use crate::{SheprdWindow, browser::TabId, i18n::fl};
 use gpui::{prelude::*, *};
 use std::{cell::Cell, rc::Rc};
 
 /// Below this width, in pixels, a review starts with both panels hidden.
-pub(super) const NARROW: f32 = 1000.;
+pub(super) const NARROW: f32 = 1600.;
 
 /// A side panel of a review.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

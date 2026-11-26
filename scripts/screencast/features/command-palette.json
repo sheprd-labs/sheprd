@@ -1,0 +1,202 @@
+{
+  "id": "command-palette",
+  "feature": "Command palette",
+  "setup": [
+    [
+      "exec",
+      "cd ~/code/forecast && git reset -q --hard && git clean -qfd; sed -i '' 's/^theme = .*/theme = \"Default\"/' ~/.config/herdr/config-gpui.local.toml; sleep 1"
+    ],
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "click",
+      1600,
+      1000
+    ],
+    [
+      "key",
+      "cmd+shift+n"
+    ],
+    [
+      "wait",
+      1.5
+    ],
+    [
+      "type",
+      "cd ~/code/forecast && clear"
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      1.2
+    ]
+  ],
+  "segments": [
+    {
+      "actions": []
+    },
+    {
+      "actions": [
+        [
+          "wait",
+          0.6
+        ],
+        [
+          "key",
+          "cmd+shift+p"
+        ],
+        [
+          "wait",
+          1.6
+        ],
+        [
+          "key",
+          "down"
+        ],
+        [
+          "wait",
+          0.5
+        ],
+        [
+          "key",
+          "down"
+        ]
+      ],
+      "shortcut": "ctrl-shift-p"
+    },
+    {
+      "actions": [
+        [
+          "wait",
+          0.3
+        ],
+        [
+          "slowtype",
+          "split ri",
+          0.03
+        ],
+        [
+          "wait",
+          0.8
+        ],
+        [
+          "key",
+          "return"
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          "wait",
+          0.4
+        ],
+        [
+          "key",
+          "cmd+shift+p"
+        ],
+        [
+          "wait",
+          0.9
+        ],
+        [
+          "click",
+          {
+            "classic": [
+              901,
+              351
+            ],
+            "moonframe": [
+              879,
+              347
+            ]
+          }
+        ],
+        [
+          "wait",
+          1.0
+        ],
+        [
+          "key",
+          "down"
+        ],
+        [
+          "wait",
+          0.4
+        ],
+        [
+          "key",
+          "down"
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          "wait",
+          0.5
+        ],
+        [
+          "key",
+          "escape"
+        ]
+      ]
+    }
+  ],
+  "teardown": [
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "click",
+      1600,
+      1000
+    ],
+    [
+      "key",
+      "cmd+shift+p"
+    ],
+    [
+      "wait",
+      0.8
+    ],
+    [
+      "type",
+      "close workspace"
+    ],
+    [
+      "wait",
+      0.8
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      1.2
+    ],
+    [
+      "type",
+      "close"
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      1.5
+    ]
+  ]
+}

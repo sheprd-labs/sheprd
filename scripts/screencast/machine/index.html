@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Forecast</title>
+<style>
+  body { font: 18px/1.5 -apple-system, sans-serif; background: #f6f1ea; color: #222; margin: 0; padding: 48px; }
+  h1 { font-size: 40px; margin: 0 0 4px; }
+  p.sub { color: #777; margin: 0 0 28px; }
+  .days { display: flex; gap: 14px; }
+  .day { background: #fff; border-radius: 14px; padding: 18px 22px; box-shadow: 0 6px 18px #0001; text-align: center; min-width: 90px; }
+  .day b { display: block; font-size: 15px; color: #888; }
+  .day span { font-size: 28px; }
+  button#subscribe { margin-top: 30px; font-size: 18px; padding: 12px 24px; border: 0; border-radius: 10px; background: #8a8f98; color: white; }
+</style></head>
+<body>
+  <h1>Paris</h1>
+  <p class="sub">Five-day forecast</p>
+  <div class="days">
+    <div class="day"><b>Mon</b><span>☁️</span><div>14° / 8°</div></div>
+    <div class="day"><b>Tue</b><span>☀️</span><div>16° / 9°</div></div>
+    <div class="day"><b>Wed</b><span>🌧️</span><div>13° / 7°</div></div>
+    <div class="day"><b>Thu</b><span>☀️</span><div>15° / 8°</div></div>
+    <div class="day"><b>Fri</b><span>☀️</span><div>17° / 10°</div></div>
+  </div>
+  <button id="subscribe">Get daily updates</button>
+</body></html>

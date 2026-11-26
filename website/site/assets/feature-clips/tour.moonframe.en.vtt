@@ -1,0 +1,69 @@
+WEBVTT
+
+1
+00:00:01.000 --> 00:00:07.280
+This is Sheprd: your terminals and your coding agents, together in one window.
+
+2
+00:00:07.282 --> 00:00:13.882
+On the left are your spaces, one per project, and below them every agent at work.
+
+3
+00:00:13.883 --> 00:00:17.203
+Click new to start a fresh space.
+
+4
+00:00:17.767 --> 00:00:24.207
+For a repository, a new worktree gives an agent its own branch and folder to work in.
+
+5
+00:00:25.751 --> 00:00:33.951
+The agent button, next to the new tab button, opens a chat with Claude, Codex, Gemini or another agent.
+
+6
+00:00:33.955 --> 00:00:40.555
+Ask for a change, and follow every file it reads, every edit and every test.
+
+7
+00:00:40.555 --> 00:00:49.075
+A chat is a native view of an agent running in a terminal. This button shows that terminal, and Chat brings the chat back.
+
+8
+00:00:49.075 --> 00:00:55.115
+Each space holds tabs, and each tab can split into panes, side by side.
+
+9
+00:00:55.201 --> 00:01:02.921
+The activity bar opens more: an overview of your agents, pull requests, issues, usage and more.
+
+10
+00:01:06.234 --> 00:01:11.954
+The status bar keeps an eye on the machine, and shows your plan usage when you turn it on.
+
+11
+00:01:11.959 --> 00:01:20.319
+Devices lists every machine you work on. Add SSH hosts or cloud machines, and their agents show up here too.
+
+12
+00:01:20.960 --> 00:01:27.560
+Agents can open web pages beside you too. Ask for a preview, and the page opens in a tab.
+
+13
+00:01:27.726 --> 00:01:34.406
+Annotate it: click anything on the page, write what should change, and send it to the agent.
+
+14
+00:01:36.100 --> 00:01:41.020
+The agent gets your note, makes the change, and the page reloads.
+
+15
+00:01:41.341 --> 00:01:46.741
+Settings opens on themes: hover one to try it on the whole window.
+
+16
+00:01:50.407 --> 00:01:55.727
+Pick the sidebar layout, the status indicators, and how tabs look.
+
+17
+00:02:00.540 --> 00:02:05.300
+That's the tour. Every feature has its own short guide below.

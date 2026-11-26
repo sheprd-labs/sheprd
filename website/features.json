@@ -1,0 +1,228 @@
+{
+  "_comment": "The feature guides on sheprd.org/features, in the order shown. Each id names its screencast, scripts/screencast/features/ID.json, whose narration is the page's transcript. Run website/tools/features.py after changing this file or a clip. `poster` (seconds) picks the still a page shows before playing; change it and run `features.py posters`.",
+  "features": [
+    {
+      "id": "agent-chat",
+      "category": "Agents",
+      "kicker": "Native agent chats",
+      "headline": "Talk to your agents.<br>See their work.",
+      "dek": "Claude, Codex, Gemini and more in a real chat beside the terminal. Switch agents any time; every read, edit and test run is a card you can open.",
+      "description": "Run Claude, Codex, Gemini and other coding agents in native chats beside your terminal, switch between them, and follow each step.",
+      "chapters": [
+        [
+          1,
+          "Start a chat"
+        ],
+        [
+          2,
+          "Switch agents"
+        ],
+        [
+          3,
+          "Watch it work"
+        ],
+        [
+          5,
+          "Read the answer"
+        ]
+      ],
+      "how": [
+        [
+          "Start a chat",
+          "Click the agent button next to the new tab button. It starts the agent you used last; hover it to pick another."
+        ],
+        [
+          "Pick your agent",
+          "The agent menu under the message box switches the chat to Claude, Codex, Gemini, Copilot, OpenCode, Kimi or Pi, whichever you have installed."
+        ],
+        [
+          "Follow every step",
+          "Each read, edit and command shows as a card with its files and output, so nothing happens out of sight."
+        ]
+      ],
+      "docs": [
+        "/docs/chat/",
+        "Agent chats"
+      ],
+      "keywords": "ACP agent chat claude codex gemini copilot opencode kimi pi switch agent assistant conversation prompt tool calls"
+    },
+    {
+      "id": "review-changes",
+      "category": "Review",
+      "kicker": "Review Changes",
+      "headline": "Read it<br>before it ships.",
+      "dek": "Every file an agent touched, beside the code it replaces, with notes that go straight back to the agent.",
+      "description": "Review an agent's changes file by file, leave notes on lines, and mark files viewed.",
+      "chapters": [
+        [
+          1,
+          "Open the review"
+        ],
+        [
+          3,
+          "Leave a note"
+        ],
+        [
+          4,
+          "Mark it viewed"
+        ]
+      ],
+      "how": [
+        [
+          "Open Review Changes",
+          "Search for it in the command palette. It lists every file with uncommitted changes, or everything since the base branch."
+        ],
+        [
+          "Note what should change",
+          "Click a line number, describe the change and add the note. Notes go to the workspace's agent."
+        ],
+        [
+          "Keep track",
+          "Mark each file viewed once it looks right, and hide viewed files to see what is left."
+        ]
+      ],
+      "docs": [
+        "/docs/review/",
+        "Review and commit"
+      ],
+      "keywords": "diff git code review notes comments uncommitted branch viewed"
+    },
+    {
+      "id": "command-palette",
+      "category": "Navigation",
+      "kicker": "The command palette",
+      "headline": "Everything,<br>one shortcut away.",
+      "dek": "Workspaces, terminals, agents and every command in one list. Type a few letters, press Return.",
+      "description": "Find any workspace, terminal, agent or command in Sheprd's command palette.",
+      "chapters": [
+        [
+          1,
+          "Open the palette"
+        ],
+        [
+          2,
+          "Run a command"
+        ],
+        [
+          3,
+          "Filter the list"
+        ]
+      ],
+      "how": [
+        [
+          "Open it",
+          "Press Command Shift P (Control Shift P on Linux and Windows)."
+        ],
+        [
+          "Type and go",
+          "A few letters find a workspace, a terminal, an agent or a command. Return runs it."
+        ],
+        [
+          "Narrow it down",
+          "The chips at the top keep only navigation, commands, projects or notes."
+        ]
+      ],
+      "docs": [
+        "/docs/keyboard/",
+        "Keyboard and commands"
+      ],
+      "keywords": "search shortcut keyboard actions commands navigation quick open"
+    },
+    {
+      "id": "browser-tabs",
+      "category": "Browser",
+      "kicker": "Browser annotations",
+      "headline": "Show your agent<br>which button you mean.",
+      "dek": "Pin a note to a button in the live preview. The agent gets your request and the element it belongs to in one message.",
+      "description": "Annotate a local browser preview, send the selected element to its agent, and see the page reload after the edit.",
+      "chapters": [
+        [
+          0,
+          "Open the preview"
+        ],
+        [
+          1,
+          "Pick an element"
+        ],
+        [
+          2,
+          "Add a note"
+        ],
+        [
+          3,
+          "Send to the agent"
+        ],
+        [
+          4,
+          "See the edit"
+        ]
+      ],
+      "how": [
+        [
+          "Ask for a preview",
+          "Have the agent open the local page with sheprd browser open. The preview opens beside the chat."
+        ],
+        [
+          "Pick the button",
+          "Choose Annotate and click a page element. Describe the change and choose Add note to pin it."
+        ],
+        [
+          "Send your feedback",
+          "Choose Send to agent. Sheprd includes the element and the note so the agent can find the exact button."
+        ]
+      ],
+      "docs": [
+        "/docs/browser/",
+        "Browser tabs"
+      ],
+      "keywords": "web page preview localhost annotate notes webview url",
+      "poster": 15.0
+    },
+    {
+      "id": "themes",
+      "category": "Appearance",
+      "kicker": "Themes with live preview",
+      "headline": "Make yourself<br>at home.",
+      "dek": "Dark, light, or somewhere in between. Preview a theme across the whole window before you make it yours.",
+      "description": "See your workspace change as you browse themes, then keep the one you like.",
+      "chapters": [
+        [
+          1,
+          "Open the picker"
+        ],
+        [
+          2,
+          "Preview live"
+        ],
+        [
+          3,
+          "Find your theme"
+        ]
+      ],
+      "how": [
+        [
+          "Open the theme picker",
+          "Search for themes in the command palette, or open Settings, Theme."
+        ],
+        [
+          "See it before you settle",
+          "Move through the list and the whole window changes. Try a light theme, then a dark one."
+        ],
+        [
+          "Keep the one you like",
+          "Type to filter, then press Return to keep it."
+        ]
+      ],
+      "docs": [
+        "/docs/appearance/",
+        "Appearance"
+      ],
+      "keywords": "theme colors dark light mode color scheme appearance ghostty"
+    }
+  ],
+  "tour": {
+    "id": "tour",
+    "description": "The basics in under a minute: workspaces and terminals, an agent chat, reviewing its change, and the command palette.",
+    "poster": 74.0
+  }
+}

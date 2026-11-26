@@ -88,7 +88,7 @@ ANTHROPIC_BASE_URL = "https://llm.example.com"
 
 The rows and buttons show once the app has found `sheprd-acp`, first beside its own executable and then on the login shell's `PATH`.
 
-In a Herdr 2 tab, starting a chat splits the pane in use and runs the chat beside it, so a tab can hold several chats along with plain terminals. The chat view comes back after a restart and shows in every window that shows the pane. A chat in a terminal on another machine keeps its terminal view, as does a `sheprd-acp` started by hand in a Herdr 2 pane.
+In a Herdr 2 tab, the agent button next to the new tab button opens the chat in a tab of its own, in the same workspace and folder, as it does with Herdr 1. Starting one from the command palette or `sheprd chat new` splits the pane in use instead and runs the chat beside it, so a tab can hold several chats along with plain terminals. The chat view comes back after a restart and shows in every window that shows the pane. A chat in a terminal on another machine keeps its terminal view, as does a `sheprd-acp` started by hand in a Herdr 2 pane.
 
 ## Moving a terminal agent into a chat
 

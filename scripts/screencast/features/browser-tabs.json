@@ -1,0 +1,41 @@
+{
+  "id": "browser-tabs",
+  "feature": "Browser annotations",
+  "windows": ["moonframe"],
+  "click_offset": -0.23,
+  "setup": [
+    ["exec", "sed -i '' 's/background: #2f9e5b/background: #8a8f98/' ~/code/forecast/index.html && cd ~/code/forecast && ~/Apps/Sheprd.app/Contents/MacOS/sheprd chat new gemini"],
+    ["wait", 4]
+  ],
+  "segments": [
+    {"actions": [
+      ["type", "Show me the page preview"],
+      ["key", "return"],
+      ["wait", 3]
+    ]},
+    {"actions": [
+      ["click", 2400, 102],
+      ["wait", 0.9],
+      ["click", 1766, 927]
+    ]},
+    {"actions": [
+      ["type", "Make this button green"],
+      ["wait", 0.8],
+      ["click", 2040, 550]
+    ]},
+    {"actions": [
+      ["wait", 0.5],
+      ["click", 2064, 1356],
+      ["wait", 2]
+    ]},
+    {"actions": [
+      ["click", 2400, 102],
+      ["wait", 3.5],
+      ["click", 1758, 33]
+    ]}
+  ],
+  "teardown": [
+    ["click", 760, 34],
+    ["exec", "sed -i '' 's/background: #2f9e5b/background: #8a8f98/' ~/code/forecast/index.html"]
+  ]
+}

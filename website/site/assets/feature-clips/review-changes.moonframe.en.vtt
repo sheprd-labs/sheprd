@@ -1,0 +1,21 @@
+WEBVTT
+
+1
+00:00:01.000 --> 00:00:05.100
+Before you ship what an agent wrote, review it in Sheprd.
+
+2
+00:00:05.101 --> 00:00:09.921
+Open Review Changes from the palette: every file the work touched.
+
+3
+00:00:09.922 --> 00:00:13.382
+Each change sits beside the code it replaces.
+
+4
+00:00:13.627 --> 00:00:16.767
+Click a line number to leave a note for the agent.
+
+5
+00:00:17.332 --> 00:00:21.192
+Then mark the file viewed, and move on to the next.

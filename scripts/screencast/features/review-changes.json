@@ -1,0 +1,219 @@
+{
+  "id": "review-changes",
+  "feature": "Review Changes",
+  "setup": [
+    [
+      "exec",
+      "cd ~/code/forecast && git reset -q --hard && git clean -qfd; sed -i '' 's/^theme = .*/theme = \"Default\"/' ~/.config/herdr/config-gpui.local.toml; sleep 1"
+    ],
+    [
+      "exec",
+      "printf '%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"session/prompt\",\"params\":{\"sessionId\":\"s1\"}}' | ~/.local/bin/gemini >/dev/null"
+    ],
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "click",
+      1600,
+      1000
+    ],
+    [
+      "key",
+      "cmd+shift+n"
+    ],
+    [
+      "wait",
+      1.5
+    ],
+    [
+      "type",
+      "cd ~/code/forecast && clear"
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      1.2
+    ]
+  ],
+  "segments": [
+    {
+      "actions": []
+    },
+    {
+      "actions": [
+        [
+          "wait",
+          0.4
+        ],
+        [
+          "key",
+          "cmd+shift+p"
+        ],
+        [
+          "wait",
+          0.8
+        ],
+        [
+          "slowtype",
+          "review",
+          0.03
+        ],
+        [
+          "wait",
+          0.6
+        ],
+        [
+          "key",
+          "return"
+        ]
+      ]
+    },
+    {
+      "actions": []
+    },
+    {
+      "actions": [
+        [
+          "wait",
+          0.3
+        ],
+        [
+          "click",
+          {
+            "classic": [
+              1219,
+              545
+            ],
+            "moonframe": [
+              1229,
+              538
+            ]
+          }
+        ],
+        [
+          "wait",
+          0.8
+        ],
+        [
+          "type",
+          "Print an error for unknown cities"
+        ],
+        [
+          "wait",
+          0.4
+        ],
+        [
+          "click",
+          {
+            "classic": [
+              2043,
+              358
+            ],
+            "moonframe": [
+              2035,
+              337
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          "wait",
+          0.4
+        ],
+        [
+          "click",
+          {
+            "classic": [
+              1815,
+              225
+            ],
+            "moonframe": [
+              1820,
+              218
+            ]
+          }
+        ]
+      ]
+    }
+  ],
+  "teardown": [
+    [
+      "wait",
+      0.5
+    ],
+    [
+      "click",
+      {
+        "classic": [
+          1815,
+          225
+        ],
+        "moonframe": [
+          1820,
+          218
+        ]
+      }
+    ],
+    [
+      "wait",
+      0.5
+    ],
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "key",
+      "escape"
+    ],
+    [
+      "click",
+      1600,
+      1000
+    ],
+    [
+      "key",
+      "cmd+shift+p"
+    ],
+    [
+      "wait",
+      0.8
+    ],
+    [
+      "type",
+      "close workspace"
+    ],
+    [
+      "wait",
+      0.8
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      1.2
+    ],
+    [
+      "type",
+      "close"
+    ],
+    [
+      "key",
+      "return"
+    ],
+    [
+      "wait",
+      1.5
+    ]
+  ]
+}

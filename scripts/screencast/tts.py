@@ -45,6 +45,9 @@ ELEVENLABS_VOICES = {
     "river": "SAz9YHcvj6GT2YYXdXww",
 }
 ELEVENLABS_DEFAULT_VOICE = ELEVENLABS_VOICES["river"]
+# A little slower than the voices' natural pace (0.7-1.2): the videos explain
+# things a viewer sees for the first time.
+ELEVENLABS_SPEED = 0.9
 # A native voice for a language beats the voice named on the command line: the
 # English voices speak French with a Canadian accent.
 ELEVENLABS_NATIVE = {
@@ -96,6 +99,7 @@ def _elevenlabs(text, lang, voice):
         "text": text,
         "model_id": ELEVENLABS_MODEL,
         "language_code": ELEVENLABS_LANGUAGE.get(lang, lang),
+        "voice_settings": {"speed": ELEVENLABS_SPEED},
     }
     headers = {"xi-api-key": key, "Content-Type": "application/json",
                "Accept": "audio/mpeg"}
@@ -122,7 +126,8 @@ def synthesize(provider, text, lang, path, cache):
     else:
         voice = _elevenlabs_voice(provider, lang)
         model = ELEVENLABS_MODEL
-    key = f"{model}\0{voice}\0{lang}\0{text}"
+    speed = ELEVENLABS_SPEED if provider.startswith("elevenlabs") else 1.0
+    key = f"{model}\0{voice}\0{lang}\0{text}" + (f"\0{speed}" if speed != 1.0 else "")
     cached = Path(cache) / f"{hashlib.sha256(key.encode()).hexdigest()[:32]}.mp3"
     if not cached.exists():
         cached.parent.mkdir(parents=True, exist_ok=True)

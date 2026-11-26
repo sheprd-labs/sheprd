@@ -33,7 +33,7 @@ pub(super) fn many_files() -> Loaded {
 #[gpui::test]
 fn clicking_a_file_brings_it_to_the_top_in_either_layout(cx: &mut gpui::TestAppContext) {
     let (view, cx) = window(cx, None);
-    cx.simulate_resize(gpui::size(px(1600.), px(900.)));
+    cx.simulate_resize(gpui::size(px(2200.), px(900.)));
     cx.update(|window, cx| view.update(cx, |view, cx| view.seed_review(many_files(), window, cx)));
     draw(cx);
     draw(cx);
@@ -75,7 +75,7 @@ fn clicking_a_file_brings_it_to_the_top_in_either_layout(cx: &mut gpui::TestAppC
 #[gpui::test]
 fn folders_close_filters_narrow_and_viewed_files_fold(cx: &mut gpui::TestAppContext) {
     let (view, cx) = window(cx, None);
-    cx.simulate_resize(gpui::size(px(1600.), px(900.)));
+    cx.simulate_resize(gpui::size(px(2200.), px(900.)));
     cx.update(|window, cx| view.update(cx, |view, cx| view.seed_review(many_files(), window, cx)));
     draw(cx);
     // `src/` holds two files; closed, they leave the list.
@@ -130,7 +130,7 @@ fn folders_close_filters_narrow_and_viewed_files_fold(cx: &mut gpui::TestAppCont
 #[gpui::test]
 fn the_arrows_pick_a_file_and_enter_shows_it(cx: &mut gpui::TestAppContext) {
     let (view, cx) = window(cx, None);
-    cx.simulate_resize(gpui::size(px(1600.), px(900.)));
+    cx.simulate_resize(gpui::size(px(2200.), px(900.)));
     cx.update(|window, cx| view.update(cx, |view, cx| view.seed_review(many_files(), window, cx)));
     draw(cx);
     let first = cx.debug_bounds("review-file-0").unwrap();

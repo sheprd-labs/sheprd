@@ -85,7 +85,7 @@ fn a_clicked_line_opens_while_it_is_in_view(cx: &mut gpui::TestAppContext) {
 #[gpui::test]
 fn e_on_a_clicked_file_in_the_list_opens_that_file(cx: &mut gpui::TestAppContext) {
     let (view, cx) = window(cx, None);
-    cx.simulate_resize(gpui::size(gpui::px(1600.), gpui::px(900.)));
+    cx.simulate_resize(gpui::size(gpui::px(2200.), gpui::px(900.)));
     let files = super::files::many_files();
     cx.update(|window, cx| view.update(cx, |view, cx| view.seed_review(files, window, cx)));
     draw(cx);
@@ -110,7 +110,7 @@ fn e_on_a_clicked_file_in_the_list_opens_that_file(cx: &mut gpui::TestAppContext
 #[gpui::test]
 fn the_header_button_opens_its_file_but_a_deleted_file_has_none(cx: &mut gpui::TestAppContext) {
     let (view, cx) = window(cx, None);
-    cx.simulate_resize(gpui::size(gpui::px(1600.), gpui::px(900.)));
+    cx.simulate_resize(gpui::size(gpui::px(2200.), gpui::px(900.)));
     let diff = Diff::parse(
         "diff --git a/kept.rs b/kept.rs\n--- a/kept.rs\n+++ b/kept.rs\n@@ -1,1 +1,1 @@\n-a\n+b\n\
          diff --git a/gone.rs b/gone.rs\ndeleted file mode 100644\n--- a/gone.rs\n+++ /dev/null\n\
