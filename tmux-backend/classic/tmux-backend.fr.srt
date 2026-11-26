@@ -1,0 +1,19 @@
+1
+00:00:01,000 --> 00:00:05,920
+Sheprd peut maintenant garder vos terminaux dans tmux, sans démon Herdr.
+
+2
+00:00:06,241 --> 00:00:11,961
+Dans les Réglages, sous Onglets, choisissez tmux comme moteur de terminal.
+
+3
+00:00:11,964 --> 00:00:16,244
+Les nouveaux onglets s'ouvrent alors dans leur propre session tmux.
+
+4
+00:00:16,758 --> 00:00:20,558
+Quittez Sheprd : le shell continue de tourner.
+
+5
+00:00:20,559 --> 00:00:24,919
+Rouvrez-le, et l'onglet reprend exactement là où il en est.

@@ -1,0 +1,19 @@
+1
+00:00:01,000 --> 00:00:06,240
+Sheprd can now keep your terminals in tmux, with no Herdr daemon.
+
+2
+00:00:06,241 --> 00:00:11,881
+In Settings, under Tabs, pick tmux as the terminal backend.
+
+3
+00:00:11,964 --> 00:00:15,924
+New tabs then open in their own tmux session.
+
+4
+00:00:16,758 --> 00:00:20,558
+Quit Sheprd: the shell keeps running.
+
+5
+00:00:20,559 --> 00:00:24,839
+Open it again, and the tab picks up right where it is.
