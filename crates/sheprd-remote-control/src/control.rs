@@ -25,6 +25,7 @@ pub mod pull_requests;
 pub mod push;
 pub mod read;
 pub mod relays;
+pub mod sharing;
 pub mod shortcuts;
 pub mod tags;
 pub mod voice;
@@ -361,6 +362,39 @@ pub enum Request {
     /// them, or a drive, answered once the phone says what it did or
     /// [`ASK_WAIT`] passes. An older daemon closes without answering.
     Phone(phone::Ask),
+    /// Active read-only session shares on this host, without any secrets.
+    ShareList,
+    /// Runs the exact host-side allowlist projection for `pane` under the
+    /// chosen history/tool policy, without creating a share or grant.
+    SharePreview {
+        pane: String,
+        #[serde(default)]
+        history: sharing::ShareHistory,
+        #[serde(default)]
+        include_tools: bool,
+    },
+    /// Owner-confirmed creation of a read-only share for `pane` and its first
+    /// single-relay HTTPS invitation link.
+    ShareCreate {
+        pane: String,
+        #[serde(default)]
+        history: sharing::ShareHistory,
+        #[serde(default)]
+        include_tools: bool,
+        lifetime_secs: u64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        relay: Option<String>,
+    },
+    /// Revokes one grant on `share`, or stops the whole share when `grant` is
+    /// omitted.
+    ShareRevoke {
+        share: uuid::Uuid,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        grant: Option<uuid::Uuid>,
+    },
+    /// Owner kill switch: stops every active share and closes guest streams
+    /// without touching agents or paired phones.
+    ShareStopAll,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -445,6 +479,11 @@ pub enum Response {
     PushStatus(push::PushStatus),
     TestPushed(push::TestPushes),
     Phone(phone::Answer),
+    Shares {
+        shares: Vec<sharing::ShareSummary>,
+    },
+    SharePreview(sharing::SharePreview),
+    ShareCreated(sharing::ShareCreated),
 }
 
 /// The daemon's answer to a nearby phone's first step, the same JSON over
@@ -490,6 +529,10 @@ pub enum ErrorCode {
     /// The daemon could not write its state; nothing changed, and the
     /// same request may succeed later.
     Unsaved,
+    /// No such chat pane is attached on this daemon.
+    UnknownChat,
+    /// No such active share or grant.
+    UnknownShare,
     #[serde(other)]
     Other,
 }

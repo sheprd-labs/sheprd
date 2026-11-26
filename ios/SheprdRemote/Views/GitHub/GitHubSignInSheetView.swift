@@ -29,6 +29,8 @@ struct GitHubSignInSheetView: View {
                 .navigationTitle(signedIn ? "Signed In" : "Sign In to GitHub")
                 .navigationBarTitleDisplayMode(.inline)
         }
+        // A sheet: links open from here, not from under it.
+        .browsesLinks(othersToSystem: true)
         .presentationDetents([.large])
         .task { await run() }
         .task(id: sheet.step.code?.userCode) { await countDown() }

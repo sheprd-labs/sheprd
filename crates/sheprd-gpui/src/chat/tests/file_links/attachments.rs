@@ -184,3 +184,32 @@ fn file_card_open_action_uses_the_system_viewer_even_with_editor_preference(
         std::fs::canonicalize(path).unwrap()
     );
 }
+
+/// GPUI's test platform leaves `reveal_path` unimplemented, so its panic is
+/// the proof that the click reached the file manager.
+#[gpui::test]
+#[should_panic(expected = "not implemented")]
+fn file_card_reveal_action_sits_beside_open_and_reveals_the_file(cx: &mut TestAppContext) {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("clip.mp4");
+    std::fs::write(&path, b"synthetic attachment").unwrap();
+    let source = document_link("Clip", &path);
+    let (view, _peer, cx) = overlay::open(cx, ConnectTarget::Local);
+    let program = Program::new();
+    let _stream = overlay::attach_with(
+        &view,
+        &program,
+        snapshot(cursor(1, 0), vec![agent(1, &source)]),
+        cx,
+    );
+    cx.run_until_parked();
+    let open = cx.debug_bounds("chat-file-open").unwrap();
+    let reveal = cx.debug_bounds("chat-file-reveal").unwrap();
+    assert!(reveal.left() >= open.right(), "{open:?} {reveal:?}");
+    cx.simulate_click(reveal.center(), Modifiers::default());
+    wait_until(|| {
+        cx.run_until_parked();
+        assert!(cx.opened_url().is_none(), "revealing never opens the file");
+        false
+    });
+}

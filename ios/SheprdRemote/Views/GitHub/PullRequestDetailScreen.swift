@@ -61,7 +61,7 @@ struct PullRequestDetailScreen: View {
         .toolbar {
             if let page {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Open on GitHub", systemImage: "safari") { UIApplication.shared.open(page) }
+                    Link(destination: page) { Label("Open on GitHub", systemImage: "safari") }
                 }
             }
         }
@@ -163,7 +163,7 @@ struct PullRequestDetailScreen: View {
                     : "Sign in to GitHub on this phone, or share a computer's GitHub sign-in with it, to read the conversation here.")
             } actions: {
                 if let page {
-                    Button("Open on GitHub", systemImage: "safari") { UIApplication.shared.open(page) }
+                    Link(destination: page) { Label("Open on GitHub", systemImage: "safari") }
                         .buttonStyle(.glassProminent)
                 }
             }

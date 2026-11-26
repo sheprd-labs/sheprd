@@ -296,3 +296,26 @@ fn a_list_that_fits_hides_nothing() {
         .collect();
     assert_eq!(Steps::of(&working(entries), 0).hidden, 0);
 }
+
+#[core::prelude::v1::test]
+fn quiet_turn_after_assistant_reply_shows_waiting_instead_of_writing() {
+    let transcript = working(vec![
+        prompt(),
+        EntryKind::Agent {
+            text: "Done.".into(),
+        },
+        EntryKind::Notice {
+            answers: Vec::new(),
+            details: None,
+            level: sheprd_chat_protocol::NoticeLevel::Info,
+            text: "Still waiting.".into(),
+        },
+    ]);
+    let fresh = Working::of_at(&transcript, 10_000 + QUIET_WRITING_MS - 1, Some(10_000)).unwrap();
+    assert_eq!(fresh.phase, Phase::Writing);
+    assert_eq!(fresh.doing, "Writing");
+
+    let quiet = Working::of_at(&transcript, 10_000 + QUIET_WRITING_MS, Some(10_000)).unwrap();
+    assert_eq!(quiet.phase, Phase::Working);
+    assert_eq!(quiet.doing, "Waiting for background work");
+}

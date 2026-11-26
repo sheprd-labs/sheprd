@@ -99,3 +99,32 @@ fn a_machine_a_restored_layout_shows_gets_its_display_on_the_next_tick(
     tick(&view, cx);
     assert!(made(&view, cx, id));
 }
+
+/// A virtual Mac runs on this computer: a machine's tab saved in another
+/// host's workspace gets no display, and its tab says why.
+#[cfg(target_os = "macos")]
+#[gpui::test]
+fn a_machine_tab_of_another_hosts_workspace_never_shows_the_machine(cx: &mut gpui::TestAppContext) {
+    let (view, cx) = window(cx);
+    let name = crate::machine::Name::try_from("remote-scope-test".to_owned()).unwrap();
+    let id = cx.update(|_, cx| {
+        let location = Some(Location::Machine { name });
+        Store::update(cx, |store| {
+            store.open(
+                crate::browser::Scope::endpoint("ssh-host"),
+                "w0",
+                location,
+                None,
+            )
+        })
+        .unwrap()
+    });
+    cx.update(|window, cx| {
+        view.update(cx, |view, cx| {
+            let tab = cx.global::<Store>().get(id).unwrap().clone();
+            view.browser.pages.ensure(&tab, window, cx).unwrap();
+            assert!(!view.browser.pages.contains(id));
+            assert!(view.machine_is_dark(id, cx));
+        })
+    });
+}

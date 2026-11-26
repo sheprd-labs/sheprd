@@ -50,7 +50,7 @@ final class AppModel {
     /// and those typed in Settings. Kept on this phone across launches.
     private(set) var savedRelays = AppModel.loadRelays() {
         didSet {
-            fleet.savedRelays = savedRelays.forEveryComputer
+            fleet.savedRelays = savedRelays.dialing
             if let data = try? JSONEncoder().encode(savedRelays) {
                 UserDefaults.standard.set(data, forKey: Self.relaysKey)
             }
@@ -291,11 +291,14 @@ final class AppModel {
         let named = computers.compactMap(\.relay).flatMap(\.relays)
         // Which old relays were typed is decided only against the paired
         // computers: read wrong, every relay would look typed.
-        if loaded { relays.settle(named: Set(named)) }
+        if loaded {
+            relays.settle(named: Set(named))
+            relays.keepRemoved(named: Set(named))
+        }
         relays.learn(named)
         keep(relays)
         // Unchanged, the property's observer did not run.
-        fleet.savedRelays = savedRelays.forEveryComputer
+        fleet.savedRelays = savedRelays.dialing
         presence.onAddresses = { [weak self] fingerprint, origins in self?.update(fingerprint, origins: origins) }
         fleet.onRelay = { [weak self] device, record in self?.setRelay(device, record) }
         // Back in range after iOS relaunched the app: tokens may be stale.
@@ -464,14 +467,15 @@ final class AppModel {
         return added
     }
 
-    /// Forgets a relay no paired computer names any more. One a computer
-    /// names stays for it, and is only no longer tried for the others.
+    /// Forgets a relay. One a paired computer names is remembered as
+    /// removed, so it is neither learned again nor dialed for that
+    /// computer until the user types it back.
     func removeRelay(_ relay: RelayEndpoint) {
         var relays = savedRelays
         if computers(naming: relay).isEmpty {
             relays.remove(relay)
         } else {
-            relays.unshare(relay)
+            relays.drop(relay)
         }
         keep(relays)
     }

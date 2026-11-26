@@ -85,6 +85,10 @@ pub(crate) struct Sealed {
     /// in place of the first, silently. Older daemons leave it out.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) event: Option<String>,
+    /// Where the chat is, `workspace · title`, which the phone shows
+    /// under the title. Older daemons put it in `body` instead.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub(crate) subtitle: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -122,6 +126,7 @@ impl Sealed {
             wizz: notification.wizz,
             test: None,
             event: Some(notification.event.as_str().to_owned()),
+            subtitle: notification.subtitle.clone(),
         }
     }
 
@@ -142,6 +147,7 @@ impl Sealed {
             wizz: false,
             test: Some(id),
             event: Some(EventId::new().as_str().to_owned()),
+            subtitle: String::new(),
         }
     }
 }

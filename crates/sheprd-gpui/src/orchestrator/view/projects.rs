@@ -93,7 +93,7 @@ impl OrchestratorView {
     }
 
     /// The pick that lists only checkout `key`: its Azure DevOps project
-    /// when it is one's, else itself.
+    /// when it is one's, else the checkout standing for its repository.
     pub(super) fn pick_of(&self, key: &str) -> Option<String> {
         let repo = self.repos.iter().find(|repo| repo.key == key)?;
         let remote = repo
@@ -104,7 +104,7 @@ impl OrchestratorView {
         Some(
             remote
                 .and_then(|remote| azure_project(&remote.source))
-                .unwrap_or_else(|| key.to_owned()),
+                .unwrap_or_else(|| self.project_of(repo).key.clone()),
         )
     }
 

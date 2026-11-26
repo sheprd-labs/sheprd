@@ -4,6 +4,7 @@
 use super::Localize;
 use crate::i18n::fl;
 use sheprd_client::{SshFailure, ssh::Error};
+use sheprd_relay::ban::{Ban, BanReason};
 
 impl Localize for Error {
     fn localize(&self) -> String {
@@ -36,7 +37,44 @@ impl Localize for SshFailure {
             Self::LocalNetworkDenied => fl!("error-client-ssh-failure-local-network-denied"),
             Self::NoRoute => fl!("error-client-ssh-failure-no-route"),
             Self::Other => fl!("error-client-ssh-failure-other"),
+            Self::RelayBanned(ban) => ban.localize(),
             Self::Unreachable => fl!("error-client-ssh-failure-unreachable"),
+            // keep-sorted end
+        }
+    }
+}
+
+impl Localize for Ban {
+    fn localize(&self) -> String {
+        let ban = match self.reason {
+            Some(reason) => fl!(
+                "error-client-ssh-failure-relay-banned-for",
+                reason = reason.localize()
+            ),
+            None => fl!("error-client-ssh-failure-relay-banned"),
+        };
+        match self.minutes_left() {
+            Some(minutes) => fl!(
+                "error-client-ssh-failure-relay-banned-lifts",
+                ban = ban,
+                minutes = minutes
+            ),
+            None => ban,
+        }
+    }
+}
+
+impl Localize for BanReason {
+    fn localize(&self) -> String {
+        match self {
+            // keep-sorted start
+            Self::BadProof => fl!("error-client-ssh-ban-reason-bad-proof"),
+            Self::Bandwidth => fl!("error-client-ssh-ban-reason-bandwidth"),
+            Self::ConnectionCap => fl!("error-client-ssh-ban-reason-connection-cap"),
+            Self::Limited => fl!("error-client-ssh-ban-reason-limited"),
+            Self::Malformed => fl!("error-client-ssh-ban-reason-malformed"),
+            Self::Manual => fl!("error-client-ssh-ban-reason-manual"),
+            Self::Probe => fl!("error-client-ssh-ban-reason-probe"),
             // keep-sorted end
         }
     }

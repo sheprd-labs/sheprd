@@ -3,7 +3,9 @@
 //! It runs on a thread of its own, as one request reads for many minutes.
 
 use super::Error;
+use sha2::{Digest as _, Sha256};
 use std::{
+    fmt::Write as _,
     fs::{self, File, OpenOptions},
     io::{ErrorKind, Read as _, Write as _},
     path::{Path, PathBuf},
@@ -21,6 +23,10 @@ pub(super) const STALL: Duration = Duration::from_secs(20);
 /// Room kept free beyond the download for what the install then writes:
 /// macOS takes about this much on the new machine's disk.
 pub(super) const INSTALL_ROOM: u64 = 30_000_000_000;
+
+/// Room kept free beyond a Linux cloud image download for the sparse raw disk
+/// conversion, EFI variable store, and NoCloud seed ISO.
+pub(super) const LINUX_INSTALL_ROOM: u64 = 4_000_000_000;
 
 /// What a download reports while it runs, read by the UI thread.
 #[derive(Debug, Default)]
@@ -178,6 +184,39 @@ pub(super) fn file_error(path: &Path, source: std::io::Error) -> Error {
         path: path.to_owned(),
         source,
     }
+}
+
+/// Verifies `path` against lowercase hex SHA-256 `expected`. On mismatch,
+/// deletes `path` so a retry fetches a clean copy.
+pub(super) fn verify_sha256(path: &Path, expected: &str, cancel: &AtomicBool) -> Result<(), Error> {
+    let mut file = File::open(path).map_err(|source| file_error(path, source))?;
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0u8; CHUNK];
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            return Err(Error::Cancelled);
+        }
+        let read = file
+            .read(&mut buffer)
+            .map_err(|source| file_error(path, source))?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    let digest = hasher.finalize();
+    let mut actual = String::with_capacity(64);
+    for byte in digest {
+        let _ = write!(&mut actual, "{byte:02x}");
+    }
+    if !actual.eq_ignore_ascii_case(expected) {
+        let _ = fs::remove_file(path);
+        return Err(Error::ChecksumMismatch {
+            expected: expected.to_ascii_lowercase(),
+            actual,
+        });
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -189,3 +189,5 @@ fn an_image_without_the_note_makes_a_quiet_guide() {
     assert_eq!(fs::read(made.join(GUIDE)).unwrap(), FROM_IMAGE);
     assert!(!made.join(READY).exists());
 }
+
+mod linux_efi;

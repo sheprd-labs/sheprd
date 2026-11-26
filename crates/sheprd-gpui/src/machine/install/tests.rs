@@ -39,12 +39,17 @@ fn starting_a_download_forgets_other_builds() {
     let part = download::partial(&image);
     let old = folder.path().join("25A100.ipsw");
     let old_part = download::partial(&old);
-    for path in [&part, &old, &old_part] {
+    let linux_img = folder.path().join("ubuntu-wayland-24.04.5.img");
+    for path in [&part, &old, &old_part, &linux_img] {
         fs::write(path, b"x").unwrap();
     }
     forget_other_downloads(&image);
     assert!(part.exists());
     assert!(!old.exists() && !old_part.exists());
+    assert!(
+        linux_img.exists(),
+        "macOS download cleanup must not delete Linux images"
+    );
 }
 
 /// Only an install's own staging folder goes, and only once nothing has

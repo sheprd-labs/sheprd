@@ -13,6 +13,7 @@ fn notification(pane: &str, body: &str) -> Notification {
         kind: Kind::Question,
         pane: pane.to_owned(),
         permission: None,
+        subtitle: String::new(),
         tag: format!("chat-{pane}"),
         title: "t".to_owned(),
         urgency: Urgency::High,

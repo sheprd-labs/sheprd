@@ -12,17 +12,26 @@ use sheprd_session::spaces::{Edit, Tab, TabEdit};
 pub(crate) fn edits(base: &View, local: &View) -> Vec<Edit> {
     let mut edits = Vec::new();
     for workspace in &local.workspaces {
-        match base.workspace(&workspace.id) {
-            None => edits.push(Edit::KeepWorkspace(workspace.clone())),
-            // Only the user renames: a folder-named workspace keeps the
-            // name every client gave it.
-            Some(was) if workspace.custom && (workspace.label != was.label || !was.custom) => {
-                edits.push(Edit::RenameWorkspace {
-                    id: workspace.id.clone(),
-                    label: workspace.label.clone(),
-                });
-            }
-            Some(_) => {}
+        let Some(was) = base.workspace(&workspace.id) else {
+            edits.push(Edit::KeepWorkspace(workspace.clone()));
+            continue;
+        };
+        if workspace.custom && (workspace.label != was.label || !was.custom) {
+            edits.push(Edit::RenameWorkspace {
+                id: workspace.id.clone(),
+                label: workspace.label.clone(),
+            });
+        }
+        // Other clients read a workspace's checkout, branch, and pull
+        // request from its folder, and show the name the document holds:
+        // both follow the workspace here, a name only while no one gave one.
+        let renamed = !workspace.custom && !was.custom && workspace.label != was.label;
+        if !workspace.cwd.is_empty() && (workspace.cwd != was.cwd || renamed) {
+            edits.push(Edit::FollowWorkspace {
+                id: workspace.id.clone(),
+                cwd: workspace.cwd.clone(),
+                label: workspace.label.clone(),
+            });
         }
     }
     // The order the document would hold after these edits; the store's

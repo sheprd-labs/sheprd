@@ -375,8 +375,9 @@ impl SettingsWindow {
         let suspend = button(
             "suspend",
             fl!("settings-machines-suspend"),
-            |_, name, cx| {
-                machine::suspend(name, cx);
+            |this, name, cx| {
+                this.machines.failure = machine::suspend(name, cx).err().map(|e| e.localize());
+                cx.notify();
             },
         );
         let shut_down = button(
@@ -403,11 +404,20 @@ impl SettingsWindow {
             fl!("settings-machines-save-image"),
             Self::save_machine_image,
         );
+        let capabilities = listing.capabilities();
+        let has_guide = listing.guest.os == machine::metadata::GuestOs::Macos;
         let row = div().flex().flex_row().gap(px(6.));
         match (status, listing.saved) {
-            (Status::Running, _) => row.child(open).child(guide).child(suspend).child(shut_down),
+            (Status::Running, _) => row
+                .child(open)
+                .when(has_guide, |row| row.child(guide))
+                .when(capabilities.save_restore, |row| row.child(suspend))
+                .child(shut_down),
             (Status::Stopped, true) => row.child(open).child(forget),
-            (Status::Stopped, false) => row.child(open).child(guide).child(save_image),
+            (Status::Stopped, false) => row
+                .child(open)
+                .when(has_guide, |row| row.child(guide))
+                .child(save_image),
             (Status::Failed(_), _) => row.child(open),
             (Status::Starting | Status::Saving, _) => row,
         }

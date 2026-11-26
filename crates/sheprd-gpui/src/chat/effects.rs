@@ -15,7 +15,7 @@ use gpui::{Bounds, Pixels};
 use sheprd_chat_protocol::EntryId;
 use std::{
     cell::Cell,
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     rc::Rc,
     time::{Duration, Instant},
 };
@@ -186,6 +186,7 @@ impl Playing {
 /// play now.
 #[derive(Debug, Default)]
 pub(crate) struct Effects {
+    disabled: bool,
     /// The revision of each entry last looked at, so a live update looks
     /// only at the entries it changed, wherever they are.
     revisions: HashMap<EntryId, u64>,
@@ -202,6 +203,20 @@ pub(crate) struct Effects {
 }
 
 impl Effects {
+    /// Stop active effects immediately. Keep the seen ledger so enabling effects
+    /// again only plays directives that arrive from then on.
+    pub(crate) fn set_enabled(&mut self, enabled: bool) -> bool {
+        let disabled = !enabled;
+        if self.disabled == disabled {
+            return false;
+        }
+        self.disabled = disabled;
+        self.started.clear();
+        self.playing = None;
+        self.target.set(None);
+        true
+    }
+
     /// Meets the effects of the transcript's messages. `history` is a whole
     /// transcript loaded at once, whose effects are only noted; otherwise
     /// the effects new in the entries it changed play. With reduce motion on, the view
@@ -220,6 +235,7 @@ impl Effects {
             self.started.clear();
             self.playing = None;
         }
+        let play = !history && !self.disabled;
         for (entry, revision) in keys {
             if self.revisions.insert(*entry, *revision) == Some(*revision) {
                 continue;
@@ -237,7 +253,7 @@ impl Effects {
             let met = self.bubbles.get(entry).copied().unwrap_or(0);
             if bubbles > met {
                 self.bubbles.insert(*entry, bubbles);
-                if !history {
+                if play {
                     for order in met..bubbles {
                         self.started.insert((*entry, order), now);
                     }
@@ -248,7 +264,7 @@ impl Effects {
             {
                 self.screens.insert(*entry, effect);
                 // One at a time: another arriving while one plays is dropped.
-                if !history && !self.is_playing(now) {
+                if play && !self.is_playing(now) {
                     self.target.set(None);
                     self.playing = Some(Playing {
                         entry: *entry,
@@ -261,16 +277,47 @@ impl Effects {
         }
         self.started
             .retain(|_, since| now.saturating_duration_since(*since) < LONGEST);
+        // Every key was noted above, so more noted than shown means the
+        // program dropped some: forget them, or a long chat grows forever.
+        if self.revisions.len() > keys.len() {
+            let live: HashSet<EntryId> = keys.iter().map(|(id, _)| *id).collect();
+            self.revisions.retain(|id, _| live.contains(id));
+            self.bubbles.retain(|id, _| live.contains(id));
+            self.screens.retain(|id, _| live.contains(id));
+            self.started.retain(|(id, _), _| live.contains(id));
+            if self
+                .playing
+                .as_ref()
+                .is_some_and(|playing| !live.contains(&playing.entry))
+            {
+                self.playing = None;
+                self.target.set(None);
+            }
+        }
+    }
+
+    /// How many messages anything is remembered of.
+    #[cfg(test)]
+    pub(crate) fn remembered(&self) -> usize {
+        let mut ids: HashSet<EntryId> = self.revisions.keys().copied().collect();
+        ids.extend(self.bubbles.keys());
+        ids.extend(self.screens.keys());
+        ids.extend(self.started.keys().map(|(id, _)| *id));
+        ids.len()
     }
 
     /// Plays a message's bubble again, as its replay link asks.
     pub(crate) fn replay_bubble(&mut self, entry: EntryId, order: usize, now: Instant) {
-        self.started.insert((entry, order), now);
+        if !self.disabled {
+            self.started.insert((entry, order), now);
+        }
     }
 
     /// Plays a message's pane effect again, in place of one playing.
     pub(crate) fn replay_screen(&mut self, entry: EntryId, body: &Body, now: Instant) {
-        if let (_, Some(effect)) = found(body) {
+        if !self.disabled
+            && let (_, Some(effect)) = found(body)
+        {
             self.target.set(None);
             self.playing = Some(Playing {
                 entry,

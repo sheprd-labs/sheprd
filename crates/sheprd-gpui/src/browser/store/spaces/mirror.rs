@@ -23,6 +23,9 @@ const MAX_DROPPED: usize = 1024;
 pub(crate) struct Pending {
     /// Tabs closed here.
     pub(crate) closed: HashSet<String>,
+    /// Workspaces moved to a folder here: the folder stays this app's,
+    /// and the name and whether the user gave it are the document's.
+    pub(crate) followed: HashSet<String>,
     /// Workspaces forgotten here.
     pub(crate) forgotten: HashSet<String>,
     /// Whether workspaces moved here.
@@ -153,6 +156,9 @@ impl Pending {
                 Edit::ForgetWorkspace { id } => {
                     pending.forgotten.insert(id.clone());
                 }
+                Edit::FollowWorkspace { id, .. } => {
+                    pending.followed.insert(id.clone());
+                }
                 Edit::KeepWorkspace(workspace) => {
                     pending.workspaces.insert(workspace.id.clone());
                 }
@@ -264,6 +270,12 @@ impl Store {
             let record = match held(&workspace.id) {
                 // Kept or renamed here, not written yet: the app's stands.
                 Some(here) if pending.workspaces.contains(&workspace.id) => here.clone(),
+                // Moved here, not written yet: only the folder stands, so a
+                // rename from elsewhere is not undone.
+                Some(here) if pending.followed.contains(&workspace.id) => SavedWorkspace {
+                    cwd: here.cwd.clone(),
+                    ..theirs()
+                },
                 Some(_) => theirs(),
                 None if room == 0 => continue,
                 None => {

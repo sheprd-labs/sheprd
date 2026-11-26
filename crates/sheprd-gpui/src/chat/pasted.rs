@@ -1,6 +1,6 @@
-//! A picture pasted into the composer. The program attaches files, so the
-//! image is saved to a private file of its own, named by what it holds, and
-//! attached as a dropped file would be.
+//! A picture, or a long text, pasted into the composer. The program attaches
+//! files, so what was pasted is saved to a private file of its own, named by
+//! what it holds, and attached as a dropped file would be.
 
 mod error;
 
@@ -17,15 +17,54 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// Pasted text this long, in characters, attaches as a file.
+pub(crate) const LONG_TEXT_CHARS: usize = 800;
+/// Pasted text with more lines than this attaches as a file.
+pub(crate) const LONG_TEXT_LINES: usize = 10;
+
+/// Whether pasted `text` is long enough to attach as a `.txt` file rather
+/// than fill the composer.
+pub(crate) fn is_long_text(text: &str) -> bool {
+    text.lines().nth(LONG_TEXT_LINES).is_some() || text.chars().nth(LONG_TEXT_CHARS - 1).is_some()
+}
+
+/// What was pasted, to be saved as a file.
+enum Paste {
+    Image(Image),
+    Text(String),
+}
+
 impl SheprdWindow {
     /// Saves `image` off the UI thread, then adds the file to the next
-    /// prompt of the chat over `pane_id`. Until it is saved the picture is
-    /// pending, so a prompt sent meanwhile waits for it, and it joins only
-    /// the conversation it was pasted into.
+    /// prompt of the chat over `pane_id`.
     pub(super) fn attach_chat_image(
         &mut self,
         pane_id: &str,
         image: Image,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.attach_pasted(pane_id, Paste::Image(image), window, cx);
+    }
+
+    /// Saves `text` to a `.txt` file off the UI thread, then adds the file
+    /// to the next prompt of the chat over `pane_id`.
+    pub(super) fn attach_chat_text(
+        &mut self,
+        pane_id: &str,
+        text: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.attach_pasted(pane_id, Paste::Text(text), window, cx);
+    }
+
+    /// Until it is saved the paste is pending, so a prompt sent meanwhile
+    /// waits for it, and it joins only the conversation it was pasted into.
+    fn attach_pasted(
+        &mut self,
+        pane_id: &str,
+        paste: Paste,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -35,7 +74,8 @@ impl SheprdWindow {
         pane.uploading += 1;
         let target = pane.target.clone();
         let cursor = pane.session.since();
-        let save = cx.background_spawn(async move { save(Source::Clipboard(image)) });
+        let is_image = matches!(paste, Paste::Image(_));
+        let save = cx.background_spawn(async move { save(paste) });
         let pane_id = pane_id.to_owned();
         cx.spawn_in(window, async move |this, cx| {
             let saved = save.await;
@@ -49,7 +89,7 @@ impl SheprdWindow {
                 };
                 pane.uploading = pane.uploading.saturating_sub(1);
                 if !pane.is_current(&target, cursor) {
-                    // Another conversation took the pane; the picture was
+                    // Another conversation took the pane; the paste was
                     // for the one that left.
                     this.redraw_terminal(cx);
                     return;
@@ -57,7 +97,12 @@ impl SheprdWindow {
                 match saved {
                     Ok(path) => this.attach_chat_files(&pane_id, vec![path], window, cx),
                     Err(error) => {
-                        pane.error = Some(fl!("chat-image-not-attached", error = error.localize()));
+                        let error = error.localize();
+                        pane.error = Some(if is_image {
+                            fl!("chat-image-not-attached", error = error)
+                        } else {
+                            fl!("chat-text-not-attached", error = error)
+                        });
                         this.redraw_terminal(cx);
                         cx.notify();
                     }
@@ -68,21 +113,29 @@ impl SheprdWindow {
     }
 }
 
-/// Blocking: decodes, may transcode, and writes the file.
-fn save(source: Source) -> crate::Result<PathBuf> {
-    let image = source.prepare()?;
-    let root = super::page::private_folder("images")
+/// Blocking: for a picture decodes and may transcode; writes the file.
+fn save(paste: Paste) -> crate::Result<PathBuf> {
+    let (kind, prefix, extension, bytes) = match paste {
+        Paste::Image(image) => {
+            let PreparedImage {
+                bytes, extension, ..
+            } = Source::Clipboard(image).prepare()?;
+            ("images", "", extension, bytes)
+        }
+        Paste::Text(text) => ("pastes", "pasted-", "txt", text.into_bytes()),
+    };
+    let root = super::page::private_folder(kind)
         .ok_or(Error::Folder)
         .map_err(super::Error::from)?;
-    Ok(write(&root, &image).map_err(super::Error::from)?)
+    Ok(write(&root, prefix, extension, &bytes).map_err(super::Error::from)?)
 }
 
-fn write(root: &Path, image: &PreparedImage) -> Result<PathBuf, Error> {
+fn write(root: &Path, prefix: &str, extension: &str, bytes: &[u8]) -> Result<PathBuf, Error> {
     super::page::private_dir(root).map_err(Error::Write)?;
     let mut hasher = DefaultHasher::new();
-    image.bytes.hash(&mut hasher);
-    let file = root.join(format!("{:016x}.{}", hasher.finish(), image.extension));
-    std::fs::write(&file, &image.bytes).map_err(Error::Write)?;
+    bytes.hash(&mut hasher);
+    let file = root.join(format!("{prefix}{:016x}.{extension}", hasher.finish()));
+    std::fs::write(&file, bytes).map_err(Error::Write)?;
     Ok(file)
 }
 

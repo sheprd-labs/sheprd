@@ -186,6 +186,53 @@ fn renaming_names_the_workspace_as_the_user_did() {
 }
 
 #[test]
+fn following_moves_the_folder_and_renames_only_an_unnamed_workspace() {
+    let mut spaces = with([
+        Edit::KeepWorkspace(workspace("space-a", "/code/a")),
+        Edit::KeepWorkspace(workspace("space-b", "/code/b")),
+    ]);
+    spaces
+        .apply(Edit::RenameWorkspace {
+            id: "space-b".to_owned(),
+            label: "Mine".to_owned(),
+        })
+        .unwrap();
+    let follow = |id: &str, cwd: &str, label: &str| Edit::FollowWorkspace {
+        id: id.to_owned(),
+        cwd: cwd.to_owned(),
+        label: label.to_owned(),
+    };
+    spaces.apply(follow("space-a", "/code/c", " c\n")).unwrap();
+    spaces.apply(follow("space-b", "/code/c", "c")).unwrap();
+    let unnamed = spaces.workspace("space-a").unwrap();
+    assert_eq!(
+        (unnamed.cwd.as_str(), unnamed.label.as_str()),
+        ("/code/c", "c")
+    );
+    assert!(!unnamed.custom);
+    let named = spaces.workspace("space-b").unwrap();
+    assert_eq!(
+        (named.cwd.as_str(), named.label.as_str()),
+        ("/code/c", "Mine")
+    );
+    assert!(named.custom);
+
+    assert!(matches!(
+        spaces.apply(follow("space-a", "/x", "  ")),
+        Err(Error::Invalid)
+    ));
+    assert!(matches!(
+        spaces.apply(follow("space-a", "/x\0y", "x")),
+        Err(Error::Invalid)
+    ));
+    // Another client may have closed it meanwhile: following never fails
+    // the edits beside it.
+    spaces.apply(follow("gone", "/x", "x")).unwrap();
+    assert!(spaces.workspace("gone").is_none());
+    assert_eq!(spaces.workspace("space-a").unwrap().cwd, "/code/c");
+}
+
+#[test]
 fn a_tab_needs_its_workspace_and_a_zoomed_pane_of_its_own() {
     let mut spaces = with([Edit::KeepWorkspace(workspace("space-a", ""))]);
     assert!(matches!(

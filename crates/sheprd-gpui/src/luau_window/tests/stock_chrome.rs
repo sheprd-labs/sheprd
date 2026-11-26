@@ -54,3 +54,30 @@ fn the_stock_mods_mount_classic_controls_and_only_opt_in_to_the_editor() {
         }
     }
 }
+
+/// Sheprd leaves the toolkit's `background` transparent on macOS so native
+/// pages show through the main window. The "Make it yours" window is a mod
+/// window of its own, where that showed black: the stylesheet gives it the
+/// theme's dialog surface instead.
+#[test]
+fn the_make_it_yours_window_stands_on_the_theme_surface() {
+    use moonframe::moonframe_core::{Look, Paint, Part, Rules, Token};
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("moonframe/app");
+    let workspace = Workspace::open(Roots::new([root]), true);
+    assert!(
+        workspace.style_error().is_none(),
+        "{:?}",
+        workspace.style_error()
+    );
+    let look = Look {
+        class: vec!["feedback-window".into()],
+        ..Look::default()
+    };
+    let background = workspace
+        .stylesheet()
+        .resolve(Part::Column, &look, false, &Rules::default())
+        .base
+        .background
+        .map(|color| color.paint);
+    assert_eq!(background, Some(Paint::Token(Token::Card)));
+}

@@ -501,6 +501,12 @@ pub(super) const CATALOG: &[Entry] = &[
     ),
     entry(
         Section::Chat,
+        "chat-message-effects",
+        "settings-chat-message-effects",
+        "settings-chat-message-effects-description",
+    ),
+    entry(
+        Section::Chat,
         "chat-wrap-code",
         "settings-chat-wrap-code",
         "settings-chat-wrap-code-description",

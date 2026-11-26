@@ -230,3 +230,63 @@ fn the_words_an_effect_draws_follow_its_message_as_it_streams() {
     let playing = effects.playing(now).unwrap();
     assert_eq!((playing.text.as_str(), playing.since), ("Merged!", now));
 }
+
+#[test]
+fn disabling_effects_stops_playback_and_skips_effects_received_while_off() {
+    let now = Instant::now();
+    let mut effects = Effects::default();
+    let reply = ":::slam\none\n:::\n::wizz";
+    sync(&mut effects, &[reply], false, now);
+    assert!(effects.playing(now).is_some());
+    assert!(effects.set_enabled(false));
+    assert!(effects.playing(now).is_none());
+    assert!(effects.bubble_since(EntryId(1), 0).is_none());
+
+    sync(&mut effects, &[reply, reply], false, now);
+    effects.set_enabled(true);
+    sync(&mut effects, &[reply, reply], false, now);
+    assert!(effects.playing(now).is_none());
+    assert!(effects.bubble_since(EntryId(2), 0).is_none());
+    sync(&mut effects, &[reply, reply, reply], false, now);
+    assert_eq!(effects.playing(now).unwrap().entry, EntryId(3));
+}
+
+#[gpui::test]
+fn the_message_effects_switch_reveals_ink_and_hides_replay(cx: &mut gpui::TestAppContext) {
+    use super::overlay::{attach_with, open, poll};
+    let (view, _peer, cx) = open(cx, sheprd_client::ConnectTarget::Local);
+    let program = Program::new();
+    let _stream = attach_with(
+        &view,
+        &program,
+        snapshot(
+            cursor(1, 0),
+            vec![agent(1, ":::ink\nReadable\n:::\n::wizz")],
+        ),
+        cx,
+    );
+    for enabled in [true, false, true] {
+        view.update(cx, |view, _| view.config.chat.message_effects = enabled);
+        poll(&view, &program, cx);
+        assert_eq!(cx.debug_bounds("chat-ink").is_some(), enabled);
+        assert_eq!(cx.debug_bounds("chat-effect-replay").is_some(), enabled);
+        assert!(cx.debug_bounds("chat-prose").is_some());
+    }
+}
+
+#[test]
+fn messages_the_program_dropped_are_forgotten() {
+    let now = Instant::now();
+    let mut effects = Effects::default();
+    let texts = [":::slam\nold\n:::", "::confetti\nold", "kept"];
+    sync(&mut effects, &texts[..1], true, now);
+    sync(&mut effects, &texts, false, now);
+    assert_eq!(effects.remembered(), 3);
+    // The program truncated its transcript down to the last message.
+    let (prepared, keys) = prepared(&texts);
+    let kept = &keys[2..];
+    effects.sync(|entry| prepared.body(entry), kept, false, now);
+    assert_eq!(effects.remembered(), 1);
+    assert!(effects.bubble_since(EntryId(1), 0).is_none());
+    assert!(effects.playing(now).is_none());
+}

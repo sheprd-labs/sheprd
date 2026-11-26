@@ -11,6 +11,7 @@
 
 #[cfg(target_os = "macos")]
 pub(crate) mod agent;
+mod backend;
 pub(crate) mod borrow;
 #[cfg(target_os = "macos")]
 mod configuration;
@@ -25,8 +26,11 @@ pub(crate) mod install;
 pub(crate) mod known;
 #[cfg(target_os = "macos")]
 pub(crate) mod lend;
+pub(crate) mod metadata;
 #[cfg(target_os = "macos")]
 mod quit;
+#[cfg(target_os = "macos")]
+pub(crate) mod readiness;
 pub(crate) mod remote;
 #[cfg(target_os = "macos")]
 mod settings;

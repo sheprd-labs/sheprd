@@ -17,6 +17,7 @@ use std::{
 };
 use tokio::{runtime::Handle, sync::watch};
 
+pub(super) mod sharing;
 pub(super) mod test_push;
 
 /// How long a client may take to send its request.
@@ -76,6 +77,9 @@ pub(super) fn serve(
                                 (Request::TestPush, Some(runtime)) => {
                                     Response::TestPushed(test_push::answer(&state, runtime))
                                 }
+                                (request, Some(runtime)) if sharing::handles(&request) => {
+                                    sharing::answer(&state, runtime, request)
+                                }
                                 (request, _) => answer(&state, &stop, request),
                             };
                             let mut writer = BufWriter::new(writer);
@@ -109,11 +113,16 @@ pub(crate) fn answer(state: &State, stop: &watch::Sender<bool>, request: Request
             return Response::Done;
         }
         Request::PushStatus => return Response::PushStatus(state.pushes.status(&state.apns)),
-        // `serve` answers it on the daemon's runtime; here there is none.
-        Request::TestPush => {
+        // `serve` answers these on the daemon's runtime; here there is none.
+        Request::TestPush
+        | Request::ShareList
+        | Request::SharePreview { .. }
+        | Request::ShareCreate { .. }
+        | Request::ShareRevoke { .. }
+        | Request::ShareStopAll => {
             return Response::Error {
                 code: ErrorCode::Unsupported,
-                message: "test pushes need the daemon's runtime".into(),
+                message: "this request needs the daemon's runtime".into(),
             };
         }
         Request::Phone(ask) => return Response::Phone(crate::native::drive::answer(state, ask)),

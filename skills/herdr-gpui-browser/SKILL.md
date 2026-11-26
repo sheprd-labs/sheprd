@@ -527,6 +527,7 @@ what Sheprd shows or keeps.
 | Bring the user to a screen in the Sheprd phone app (your chat, a terminal, a workspace or its changes, a tab), read which screen it shows, or put a note in front of them there; only while the app is open and they allowed agents on this computer | `sheprd phone open`, `sheprd phone open changes`, `sheprd phone state --json`, `sheprd phone show TEXT` |
 | Add another computer running Sheprd on any network from its pairing link (piped on stdin, never an argument); the user clicks Pair | `sheprd remote add-link < FILE` |
 | Keep this computer's listen token for a private relay (piped on stdin, never an argument), or forget it | `sheprd remote relays token ENDPOINT < FILE`, `sheprd remote relays token ENDPOINT --clear` |
+| List active read-only shared sessions, or open the Share this session dialog for the user to preview and confirm | `sheprd remote shares --json`, `sheprd remote share [--pane ID]` |
 | Open speaking voice settings to connect or preview a provider | `sheprd ui settings voice`, `sheprd phone open settings voice --device ID` |
 | Point out a Settings control with a persistent explanation on desktop or phone | `sheprd ui settings --json`, `sheprd ui guide TEXT --highlight ROW_ID`, `sheprd phone targets --json`, `sheprd phone guide TEXT --highlight TARGET --device ID` |
 | Keep the machine awake during a long job | `sheprd caffeine on --for 2h` |

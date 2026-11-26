@@ -62,6 +62,7 @@ menu-page-rename-device = Rename device
 menu-page-rename-pane = Rename pane
 menu-page-rename-tab = Rename tab
 menu-page-revoke-device = Revoke device
+menu-page-share-session = Share session
 menu-page-tab = Tab
 menu-page-teleport = Teleport
 menu-page-themes = Themes

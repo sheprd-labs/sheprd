@@ -88,6 +88,20 @@ impl SettingsWindow {
                         cx,
                     )),
             )
+            .child(
+                ui::row(
+                    theme,
+                    "chat-message-effects",
+                    fl!("settings-chat-message-effects"),
+                )
+                .description(fl!("settings-chat-message-effects-description"))
+                .switch(self.preference_toggle(
+                    "chat-message-effects-toggle",
+                    chat.message_effects,
+                    Preference::ChatMessageEffects(!chat.message_effects),
+                    cx,
+                )),
+            )
             .child(ui::section(theme, &fl!("settings-chat-section-code"), None))
             .child(
                 ui::row(theme, "chat-wrap-code", fl!("settings-chat-wrap-code"))

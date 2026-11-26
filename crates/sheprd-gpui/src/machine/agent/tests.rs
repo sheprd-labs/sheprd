@@ -162,4 +162,5 @@ fn bytes_that_are_not_a_png_have_no_size() {
     assert_eq!(png_size(&wrong_chunk), None);
 }
 
+mod capabilities;
 mod waits;

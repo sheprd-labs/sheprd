@@ -153,6 +153,10 @@ fn remote_rich_document_link_never_opens_an_identically_named_local_file(cx: &mu
         cx.opened_url().is_none(),
         "remote cards cannot open local files"
     );
+    assert!(
+        cx.debug_bounds("chat-file-reveal").is_none(),
+        "remote cards cannot reveal local files"
+    );
 }
 
 mod attachments;

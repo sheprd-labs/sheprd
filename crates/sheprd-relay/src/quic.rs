@@ -105,7 +105,7 @@ pub async fn run(endpoint: Endpoint, hub: Arc<Hub>) {
                 return;
             };
             if hub.is_banned(connection.remote_address().ip()) {
-                connection.close(VarInt::from_u32(wire::code::BANNED), b"");
+                close_banned(&connection, &hub);
                 return;
             }
             // A ban that evicts ends the whole connection, not only its
@@ -126,13 +126,21 @@ pub async fn run(endpoint: Endpoint, hub: Arc<Hub>) {
             let window = Window::new(connection.clone());
             tokio::select! {
                 () = serve(connection.clone(), window, Arc::clone(&hub)) => {}
-                () = banned => {
-                    connection.close(VarInt::from_u32(wire::code::BANNED), b"");
-                }
+                () = banned => close_banned(&connection, &hub),
             }
             drop((permit, base));
         });
     }
+}
+
+/// Closes a banned peer's connection, saying why and for how long
+/// ([`crate::ban`]).
+fn close_banned(connection: &Connection, hub: &Hub) {
+    let reason = hub
+        .ban(connection.remote_address().ip())
+        .map(|ban| ban.encode())
+        .unwrap_or_default();
+    connection.close(VarInt::from_u32(wire::code::BANNED), reason.as_bytes());
 }
 
 /// Serves each stream the peer opens until the connection ends.

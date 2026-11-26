@@ -71,6 +71,51 @@ struct SavedRelaysTests {
         #expect(record.candidates(saved: []) == [own])
     }
 
+    @Test func aRemovedNamedRelayStaysGoneUntilTypedBack() throws {
+        let named = endpoint("https://named.example.org")
+        var saved = SavedRelays()
+        saved.learn([named])
+        saved.drop(named)
+        #expect(saved.relays.isEmpty)
+        let relearned = saved.learn([named])
+        #expect(!relearned)
+        #expect(saved.dialing.removed == [named])
+        let read = try JSONDecoder().decode(SavedRelays.self, from: JSONEncoder().encode(saved))
+        #expect(read == saved)
+        let added = saved.add("https://named.example.org")
+        #expect(added == .added(named))
+        #expect(saved.removed.isEmpty)
+    }
+
+    @Test func aRefusedAddLeavesARelayRemoved() {
+        let named = endpoint("https://named.example.org")
+        var saved = SavedRelays()
+        saved.learn([named])
+        saved.drop(named)
+        for index in 0..<SavedRelays.limit { _ = saved.add("https://r\(index).example.org") }
+        let added = saved.add("https://named.example.org")
+        #expect(added == .full)
+        #expect(saved.removed == [named])
+    }
+
+    @Test func removalsOfRelaysNoComputerNamesAreForgotten() {
+        var saved = SavedRelays()
+        saved.learn([endpoint("https://a.example.org"), endpoint("https://b.example.org")])
+        saved.drop(endpoint("https://a.example.org"))
+        saved.drop(endpoint("https://b.example.org"))
+        saved.keepRemoved(named: [endpoint("https://b.example.org")])
+        #expect(saved.removed == [endpoint("https://b.example.org")])
+    }
+
+    @Test func aRemovedRelayIsNeverDialed() {
+        let own = endpoint("https://own.example.org")
+        let other = endpoint("https://other.example.org")
+        let typed = endpoint("https://typed.example.org")
+        let record = RelayRecord(relays: [own, other], route: Data(count: 32), identity: Data(), dialKey: Data(), tunnelKey: Data())
+        let dialing = RelayDialing(typed: [typed], removed: [own])
+        #expect(record.candidates(dialing) == [other, typed])
+    }
+
     @Test func onlyTypedRelaysAreForEveryComputer() {
         var saved = SavedRelays()
         saved.learn([endpoint("https://named.example.org")])

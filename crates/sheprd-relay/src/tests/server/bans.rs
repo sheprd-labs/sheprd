@@ -53,7 +53,10 @@ async fn a_manually_banned_address_is_refused_everywhere_but_healthz() {
         let endpoint = format!("http://{}", relay.http).parse().unwrap();
         assert!(matches!(
             crate::client::reach(&endpoint).await,
-            Err(crate::client::Error::Banned)
+            Err(crate::client::Error::Banned(crate::ban::Ban {
+                reason: Some(crate::ban::BanReason::Manual),
+                remaining: None,
+            }))
         ));
     }
     // QUIC refuses it before the handshake.
@@ -188,7 +191,10 @@ async fn a_ban_closes_open_quic_connections() {
     #[cfg(feature = "client")]
     assert!(matches!(
         crate::client::Error::from(closed.clone()),
-        crate::client::Error::Banned
+        crate::client::Error::Banned(crate::ban::Ban {
+            reason: Some(crate::ban::BanReason::Manual),
+            remaining: None,
+        })
     ));
     assert!(
         matches!(&closed, quinn::ConnectionError::ApplicationClosed(close) if close.error_code.into_inner() == u64::from(crate::wire::code::BANNED)),
@@ -251,7 +257,7 @@ async fn a_ban_during_a_pending_listener_request_reports_banned() {
     .await
     .expect("set_dial_keys timed out");
     assert!(
-        matches!(result, Err(crate::client::Error::Banned)),
+        matches!(result, Err(crate::client::Error::Banned(_))),
         "{result:?}"
     );
     server.await.unwrap();
@@ -275,13 +281,13 @@ fn stream_read_and_write_errors_unwrap_bans() {
         crate::client::Error::from(quinn::ReadExactError::ReadError(
             quinn::ReadError::ConnectionLost(banned_close.clone())
         )),
-        crate::client::Error::Banned
+        crate::client::Error::Banned(_)
     ));
     assert!(matches!(
         crate::client::Error::from(quinn::ReadExactError::ReadError(quinn::ReadError::Reset(
             banned_code
         ))),
-        crate::client::Error::Banned
+        crate::client::Error::Banned(_)
     ));
     assert!(matches!(
         crate::client::Error::from(quinn::ReadExactError::ReadError(
@@ -291,11 +297,11 @@ fn stream_read_and_write_errors_unwrap_bans() {
     ));
     assert!(matches!(
         crate::client::Error::from(quinn::WriteError::ConnectionLost(banned_close)),
-        crate::client::Error::Banned
+        crate::client::Error::Banned(_)
     ));
     assert!(matches!(
         crate::client::Error::from(quinn::WriteError::Stopped(banned_code)),
-        crate::client::Error::Banned
+        crate::client::Error::Banned(_)
     ));
     assert!(matches!(
         crate::client::Error::from(quinn::WriteError::ConnectionLost(other_close)),

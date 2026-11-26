@@ -112,6 +112,12 @@ fn a_turn_ending_in_a_wizz_is_urgent_whatever_the_privacy() {
 fn a_finished_turns_excerpt_leaves_out_its_directives() {
     let wizz = ended(":::slam\nCome look\n:::\n::wizz", Privacy::Excerpt);
     assert!(wizz.body.starts_with("Come look\n"), "{}", wizz.body);
+    let sized = ended(":big[All clean.] On `main`\n::confetti", Privacy::Excerpt);
+    assert!(
+        sized.body.starts_with("All clean. On main\n"),
+        "{}",
+        sized.body
+    );
 }
 
 #[test]

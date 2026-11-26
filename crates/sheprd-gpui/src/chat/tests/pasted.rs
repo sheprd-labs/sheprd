@@ -83,3 +83,33 @@ fn a_picture_never_joins_a_conversation_that_replaced_its_own(cx: &mut TestAppCo
     let (_, attached) = pane_state(&view, cx);
     assert!(attached.is_empty(), "{attached:?}");
 }
+
+#[gpui::test]
+fn long_pasted_text_attaches_as_a_txt_file(cx: &mut TestAppContext) {
+    let (view, _peer, cx) = open(cx, ConnectTarget::Local);
+    let program = Program::new();
+    let _stream = attach_with(&view, &program, idle(), cx);
+    let pane = view.read_with(cx, |view, _| {
+        view.chats.panes().next().unwrap().target.pane_id.clone()
+    });
+    let text = format!(
+        "{:?}\n{}",
+        std::time::SystemTime::now(),
+        "log line\n".repeat(40)
+    );
+    cx.update(|window, cx| {
+        view.update(cx, |view, cx| {
+            view.attach_chat_text(&pane, text.clone(), window, cx)
+        });
+    });
+    cx.run_until_parked();
+    poll(&view, &program, cx);
+    let (pending, attached) = pane_state(&view, cx);
+    assert_eq!(pending, 0);
+    let [file] = attached.as_slice() else {
+        panic!("one attachment, got {attached:?}");
+    };
+    assert_eq!(file.extension().unwrap(), "txt");
+    assert_eq!(std::fs::read_to_string(file).unwrap(), text);
+    std::fs::remove_file(file).unwrap();
+}

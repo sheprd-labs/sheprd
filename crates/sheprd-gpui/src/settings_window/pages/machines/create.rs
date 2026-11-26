@@ -84,6 +84,13 @@ impl SettingsWindow {
                 ),
                 Some(fraction(*done, *total)),
             ),
+            Progress::Verifying { version } => (
+                fl!(
+                    "settings-machines-create-verifying",
+                    version = version.as_str()
+                ),
+                None,
+            ),
             Progress::Preparing { version } => (
                 fl!(
                     "settings-machines-create-preparing",

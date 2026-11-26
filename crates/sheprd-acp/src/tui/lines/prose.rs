@@ -1,5 +1,6 @@
 //! One line of agent prose as styled spans. Markdown's inline marks
-//! (`code`, **strong**, [links](url)) are drawn rather than shown, and a
+//! (`code`, **strong**, [links](url)) and Sheprd's sizes (`:big[text]`)
+//! are drawn rather than shown, and a
 //! line's block mark (heading, bullet, number, quote) becomes its lead. A
 //! mark left unclosed stays as written, so plain text is never eaten.
 
@@ -8,6 +9,10 @@ use ratatui::{
     text::{Line, Span},
 };
 use unicode_width::UnicodeWidthChar;
+
+/// Marks open inside one another before deeper ones stay text, as in
+/// Sheprd's chat, so an agent's nesting cannot run the stack out.
+const MAX_NESTING: usize = 8;
 
 /// Columns every prose line is indented by, under the entry's lead column.
 const INDENT: &str = "  ";
@@ -19,7 +24,7 @@ pub(super) fn prose(lines: &mut Vec<Line<'static>>, raw: &str, width: usize) {
     let lead_width = text_width(&block.lead);
     let room = width.saturating_sub(INDENT.len() + lead_width).max(1);
     let mut styled = Vec::new();
-    inline(block.body, block.style, &mut styled);
+    inline(block.body, block.style, 0, &mut styled);
     for (index, row) in wrap(&styled, room).into_iter().enumerate() {
         let mut spans = vec![Span::raw(INDENT)];
         if index == 0 {
@@ -114,7 +119,7 @@ fn numbered(line: &str) -> Option<(&str, &str)> {
 
 /// Appends `text`'s characters to `out`, each with the style its inline
 /// marks give it over `base`.
-fn inline(text: &str, base: Style, out: &mut Vec<(char, Style)>) {
+fn inline(text: &str, base: Style, depth: usize, out: &mut Vec<(char, Style)>) {
     let code = base.fg(Color::Cyan);
     let mut rest = text;
     while let Some(ch) = rest.chars().next() {
@@ -128,14 +133,33 @@ fn inline(text: &str, base: Style, out: &mut Vec<(char, Style)>) {
         if let Some(inner) = rest.strip_prefix("**")
             && let Some(end) = inner.find("**").filter(|end| *end > 0)
         {
-            inline(&inner[..end], base.add_modifier(Modifier::BOLD), out);
+            inline(
+                &inner[..end],
+                base.add_modifier(Modifier::BOLD),
+                depth + 1,
+                out,
+            );
             rest = &inner[end + 2..];
+            continue;
+        }
+        if ch == ':'
+            && depth < MAX_NESTING
+            && starts_directive(out.last().map(|(ch, _)| *ch))
+            && let Some((style, inner, tail)) = sized(&rest[1..], base)
+        {
+            inline(inner, style, depth + 1, out);
+            rest = tail;
             continue;
         }
         if ch == '['
             && let Some((label, target, tail)) = link(rest)
         {
-            inline(label, base.add_modifier(Modifier::UNDERLINED), out);
+            inline(
+                label,
+                base.add_modifier(Modifier::UNDERLINED),
+                depth + 1,
+                out,
+            );
             // The terminal cannot open it, so the address stays readable.
             if !target.is_empty() && target != label {
                 let quiet = base.fg(Color::DarkGray);
@@ -147,6 +171,48 @@ fn inline(text: &str, base: Style, out: &mut Vec<(char, Style)>) {
         out.push((ch, base));
         rest = &rest[ch.len_utf8()..];
     }
+}
+
+/// A `big[text]` after a `:`, as Sheprd's chat sets text larger or
+/// smaller: the style a terminal gives that size over `base`, the text, and
+/// what follows. A name that is not a size stays text.
+fn sized(text: &str, base: Style) -> Option<(Style, &str, &str)> {
+    let (style, rest) = [
+        ("small", base.fg(Color::DarkGray)),
+        ("big", base.add_modifier(Modifier::BOLD)),
+        ("huge", base.fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+        ("giant", base.fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+    ]
+    .into_iter()
+    .find_map(|(name, style)| Some((style, text.strip_prefix(name)?.strip_prefix('[')?)))?;
+    let end = closing(rest).filter(|end| *end > 0)?;
+    Some((style, &rest[..end], &rest[end + 1..]))
+}
+
+/// Whether a size may begin after `before`, as in Sheprd's chat: at the
+/// start, or after a character that is not part of a word, so a colon in
+/// `word:big[x]` or `http://x:big[` stays text.
+fn starts_directive(before: Option<char>) -> bool {
+    before.is_none_or(|ch| !ch.is_alphanumeric() && ch != '/')
+}
+
+/// Where the `]` that closes a span opened just before `text` is, counting
+/// the brackets inside it, such as a link's, in pairs.
+fn closing(text: &str) -> Option<usize> {
+    let mut depth = 1usize;
+    for (at, ch) in text.char_indices() {
+        match ch {
+            '[' => depth += 1,
+            ']' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(at);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 /// A `[label](target)` at the start of `text`: its label, its target, and

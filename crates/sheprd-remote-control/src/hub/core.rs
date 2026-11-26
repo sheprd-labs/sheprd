@@ -166,6 +166,14 @@ impl Source {
         self.connected.load(Ordering::Acquire)
     }
 
+    /// Maps a desktop herdr-core terminal address (e.g. `t4t` from `core:t4t`)
+    /// to the boot-scoped pane key (`control::favorites::core_pane`) that the
+    /// hub's chat table uses.
+    pub(super) fn pane_id_for_address(&self, address: &str) -> Option<String> {
+        let core = lock(&self.state).core.clone()?;
+        Some(pane_id(&core.hello().core.id, address))
+    }
+
     /// The connection, made again when it was lost.
     fn connection(&self) -> Result<Arc<Core>> {
         {

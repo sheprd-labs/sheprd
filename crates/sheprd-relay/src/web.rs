@@ -159,32 +159,52 @@ pub async fn refuse_banned(State(shared): State<Shared>, request: Request, next:
         .map(|info| info.0);
     let request = Request::from_parts(parts, body);
     let accepting = request.uri().path().starts_with("/v1/accept/");
-    let banned = peer.is_some_and(|peer| {
-        let address = shared.address(peer, request.headers());
-        if accepting {
-            shared.hub.is_evicted(address)
-        } else {
-            shared.hub.is_banned(address)
-        }
-    });
-    if request.uri().path() != "/healthz" && banned {
+    let banned = peer
+        .map(|peer| shared.address(peer, request.headers()))
+        .filter(|address| {
+            if accepting {
+                shared.hub.is_evicted(*address)
+            } else {
+                shared.hub.is_banned(*address)
+            }
+        });
+    if let Some(address) = banned
+        && request.uri().path() != "/healthz"
+    {
         shared.hub.metrics.refuse(Refused::Banned);
-        return refused(Refused::Banned);
+        return refused(&shared.hub, address, Refused::Banned);
     }
     next.run(request).await
 }
 
-fn refused(reason: Refused) -> Response {
+/// The answer for `address` refused for `reason`. A ban also says why and
+/// for how long ([`crate::ban`]), so the client can tell its user.
+fn refused(hub: &Hub, address: IpAddr, reason: Refused) -> Response {
     match reason {
-        Refused::Banned => (
-            StatusCode::FORBIDDEN,
-            [
-                (crate::endpoint::BAN_HEADER, "1"),
-                (crate::endpoint::NEUTRAL_BAN_HEADER, "1"),
-                ("cache-control", "no-store"),
-            ],
-        )
-            .into_response(),
+        Refused::Banned => {
+            let mut response = (
+                StatusCode::FORBIDDEN,
+                [
+                    (crate::endpoint::BAN_HEADER, "1"),
+                    (crate::endpoint::NEUTRAL_BAN_HEADER, "1"),
+                    ("cache-control", "no-store"),
+                ],
+            )
+                .into_response();
+            if let Some(ban) = hub.ban(address) {
+                let headers = response.headers_mut();
+                if let Some(reason) = ban.reason {
+                    headers.insert(
+                        crate::ban::REASON_HEADER,
+                        axum::http::HeaderValue::from_static(reason.label()),
+                    );
+                }
+                if let Some(remaining) = ban.remaining {
+                    headers.insert(crate::ban::SECONDS_HEADER, remaining.as_secs().into());
+                }
+            }
+            response
+        }
         Refused::PerAddress => StatusCode::TOO_MANY_REQUESTS.into_response(),
         Refused::Total => StatusCode::SERVICE_UNAVAILABLE.into_response(),
     }
@@ -247,7 +267,7 @@ async fn listen(
     let address = shared.address(peer, &headers);
     let permit = match shared.hub.admit(address, Kind::Listen) {
         Ok(permit) => permit,
-        Err(reason) => return refused(reason),
+        Err(reason) => return refused(&shared.hub, address, reason),
     };
     let hub = Arc::clone(&shared.hub);
     upgrade
@@ -358,7 +378,7 @@ async fn dial(
     };
     let permit = match hub.admit(address, Kind::Dial) {
         Ok(permit) => permit,
-        Err(reason) => return refused(reason),
+        Err(reason) => return refused(&shared.hub, address, reason),
     };
     let hub = Arc::clone(hub);
     // The hello is a few hundred bytes, under the smallest frame allowed.
@@ -428,7 +448,7 @@ async fn accept(
     let address = shared.address(peer, &headers);
     let permit = match hub.admit(address, Kind::Accept) {
         Ok(permit) => permit,
-        Err(reason) => return refused(reason),
+        Err(reason) => return refused(hub, address, reason),
     };
     let Some(session) = SessionId::parse(&session) else {
         // Not even an id: probing. A real listener's late accept, after

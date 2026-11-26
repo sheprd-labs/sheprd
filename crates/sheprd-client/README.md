@@ -498,7 +498,9 @@ on its own thread for the child's life, keeping only a 4 KB tail. When the bridg
 closes before it is ready without naming an incompatible candidate (that is
 `Error::BridgeIncompatible`), the tail and the exit code (255 from `ssh`, 127
 when no Herdr was found) are reduced to an `SshFailure`: `HostKey`, `Auth`,
-`Unreachable`, `HerdrMissing`, or `Other`. The text itself is never retained,
+`Unreachable`, `HerdrMissing`, `RelayBanned` (the `sheprd-relay-ban:` line
+`relay-connect` writes, read into `sheprd_relay::ban::Ban`'s closed set of
+reasons), or `Other`. The text itself is never retained,
 logged, or exposed, as it may name users, keys, and paths. The class is the
 source of `ssh::Error::Refused` and travels on `ClientEvent::Disconnected { ssh }`;
 `SshFailure::needs_user` marks the ones retrying cannot fix. Disconnect reasons

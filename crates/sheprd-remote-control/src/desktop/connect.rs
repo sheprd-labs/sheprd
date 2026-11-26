@@ -5,7 +5,7 @@
 //! between its stdio and the tunnel; SSH's own encryption and host key
 //! check run inside, unchanged.
 
-use super::{Error, Keys, Result, record::Record};
+use crate::desktop::{Error, Keys, Result, record::Record};
 use sheprd_relay::{Endpoint, RouteId, client};
 use std::{path::Path, time::Duration};
 use tokio::io::join;
@@ -31,8 +31,16 @@ const LINGER: Duration = Duration::from_secs(3);
 pub(crate) async fn connect(state_dir: &Path, host: &str) -> Result<()> {
     let (connection, tunnel) = open(state_dir, host).await?;
     let spliced = splice(tokio::io::stdin(), tokio::io::stdout(), tunnel.io, LINGER).await;
-    drop(connection);
-    spliced.map_err(Error::Splice)
+    relay_result(connection.close_reason(), spliced.map_err(Error::Splice))
+}
+
+/// The tunnel pump exposes a closed relay stream as plain EOF. Recover a
+/// confirmed ban while the underlying QUIC connection is still available.
+fn relay_result<T>(closed: Option<quinn::ConnectionError>, result: Result<T>) -> Result<T> {
+    match closed.map(client::Error::from) {
+        Some(client::Error::Banned(ban)) => Err(Error::RelayBanned(ban)),
+        _ => result,
+    }
 }
 
 /// Copies `input` to `tunnel` and `tunnel` to `output` until the tunnel
@@ -99,7 +107,8 @@ pub(crate) async fn open(
         })
         .await
         .map_err(|_| Error::Cancelled)??;
-        tunnel.io.write_all(&opening).await.map_err(Error::Splice)?;
+        let written = tunnel.io.write_all(&opening).await;
+        relay_result(connection.close_reason(), written.map_err(Error::Splice))?;
     }
     Ok((connection, tunnel))
 }
@@ -136,7 +145,14 @@ pub(crate) async fn open_record(
             sheprd_tunnel::stream::connect(join(recv, send), initiator, &first, identity.x25519()),
         )
         .await
-        .map_err(|_| Error::Tunnel(sheprd_tunnel::Error::Closed))??;
+        .unwrap_or(Err(sheprd_tunnel::Error::Closed));
+        let tunnel = match relay_result(connection.close_reason(), tunnel.map_err(Error::Tunnel)) {
+            Err(Error::RelayBanned(ban)) => {
+                failure.record_relay(&endpoint, client::Error::Banned(ban));
+                continue;
+            }
+            result => result?,
+        };
         return Ok((connection, tunnel));
     }
     Err(failure)
@@ -184,11 +200,34 @@ fn retryable(error: &client::Error) -> bool {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::{ATTEMPT, dial, dial_with, retryable, splice};
+    use crate::desktop::connect::{ATTEMPT, dial, dial_with, relay_result, retryable, splice};
     use p256::ecdsa::SigningKey;
     use sheprd_relay::{Limits, Options as RelayOptions, RouteId, client, wire::Status};
     use std::time::Duration;
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+
+    #[test]
+    fn relay_ban_survives_tunnel_failure_and_clean_eof() {
+        use crate::desktop::Error;
+        use sheprd_relay::{ban::Ban, wire::code};
+
+        let closed = quinn::ConnectionError::ApplicationClosed(quinn::ApplicationClose {
+            error_code: code::BANNED.into(),
+            reason: b"manual 60".as_slice().into(),
+        });
+        for result in [Err(Error::Tunnel(sheprd_tunnel::Error::Closed)), Ok(())] {
+            let error = relay_result(Some(closed.clone()), result).unwrap_err();
+            assert_eq!(error.ban(), Some(Ban::parse("manual 60")));
+        }
+        assert!(relay_result(None, Ok(())).is_ok());
+        assert!(matches!(
+            relay_result(
+                Some(quinn::ConnectionError::TimedOut),
+                Err::<(), _>(Error::Tunnel(sheprd_tunnel::Error::Closed))
+            ),
+            Err(Error::Tunnel(sheprd_tunnel::Error::Closed))
+        ));
+    }
 
     #[tokio::test(start_paused = true)]
     async fn ssh_leaving_ends_the_splice_though_the_machine_stays_open() {

@@ -13,6 +13,11 @@ return style {
 		[".activity-tile:hover"] = { background = "secondary" },
 		-- The sparkles' button (the feedback mod's) as an activity tile.
 		[".feedback-button"] = { width = 32, height = 32, padding = 0, radius = 8, size = "title" },
+		-- The window the sparkles open ("Make it yours"). Its mod paints it
+		-- `background`, which Sheprd leaves transparent on macOS for native
+		-- pages; in a window of its own that shows black. Sheprd's dialog
+		-- surface (`card`) keeps it on the theme in light and dark.
+		[".feedback-window"] = { background = "card" },
 		[".status-item:hover"] = { opacity = 0.75 },
 		[".sheprd-link:hover"] = { opacity = 0.75 },
 		-- The device footer and its sheet, as Sheprd's own answer the pointer.

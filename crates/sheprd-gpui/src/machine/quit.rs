@@ -1,9 +1,10 @@
-//! Saving machines as the app quits.
+//! Saving or gracefully shutting down machines as the app quits.
 //!
-//! GPUI gives its quit handlers 200 ms, and writing a machine's memory takes
-//! seconds. Every way out passes through AppKit's
-//! `applicationShouldTerminate:`, which GPUI's delegate does not answer and
-//! offers no hook for, so this adds the method to the delegate's class.
+//! GPUI gives its quit handlers 200 ms, and writing a machine's memory or
+//! waiting for ACPI shutdown takes longer. Every way out passes through
+//! AppKit's `applicationShouldTerminate:`, which GPUI's delegate does not
+//! answer and offers no hook for, so this adds the method to the delegate's
+//! class.
 //!
 //! How to wait depends on who asked, because of where the question runs:
 //!
@@ -12,7 +13,7 @@
 //!   "Terminate later" would spin an event loop inside that block, and the
 //!   serial queue would never reach the machine's completion handlers, so the
 //!   app would hang. So the quit is cancelled, and tried again once the
-//!   machines are saved.
+//!   machines are saved or stopped.
 //! - Anyone else (the Dock, logging out, shutting down) asks through an Apple
 //!   Event, outside any block. Cancelling would abort a logout, so these
 //!   "terminate later", and the event loop delivers the handlers.
@@ -22,7 +23,10 @@
 //! not define.
 #![allow(unsafe_code)]
 
-use super::vm::{self, Status};
+use super::{
+    metadata::MachineCapabilities,
+    vm::{self, Status},
+};
 use gpui::AsyncApp;
 use objc2::{
     MainThreadMarker, ffi,
@@ -33,22 +37,26 @@ use objc2_app_kit::{NSApplication, NSApplicationTerminateReply};
 use objc2_foundation::NSAppleEventManager;
 use std::{
     cell::Cell,
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     time::{Duration, Instant},
 };
 
-/// How often the quit looks at the saves, and how long it waits for them. A
-/// save stuck past this loses that machine's state, not the user's quit.
+/// How often the quit looks at the saves/shutdowns, and how long it waits for
+/// them. A save stuck past this loses that machine's state, not the user's quit.
 pub(super) const POLL: Duration = Duration::from_millis(100);
 const LIMIT: Duration = Duration::from_secs(120);
+/// Maximum time a guest without save/restore gets to complete graceful ACPI
+/// shutdown before it is force-stopped so app quit never hangs indefinitely.
+const SHUTDOWN_GRACE: Duration = Duration::from_secs(15);
 
 thread_local! {
     static INSTALLED: Cell<bool> = const { Cell::new(false) };
-    /// Set while saves hold the quit back, so a second quit does not start
-    /// a second wait.
+    /// Set while saves/shutdowns hold the quit back, so a second quit does not
+    /// start a second wait.
     static WAITING: Cell<bool> = const { Cell::new(false) };
-    /// Set once the saves are over, so the quit goes through whatever became
-    /// of them: a machine whose save failed must not hold the app forever.
+    /// Set once the quit wait is over, so the quit goes through whatever became
+    /// of them: a machine whose save or shutdown failed must not hold the app
+    /// forever.
     static LEAVING: Cell<bool> = const { Cell::new(false) };
 }
 
@@ -111,7 +119,7 @@ extern "C-unwind" fn should_terminate(
     }
 }
 
-/// How a quit held back for saves goes on.
+/// How a quit held back for saves or shutdowns goes on.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Way {
     /// AppKit is waiting for the answer.
@@ -120,41 +128,97 @@ enum Way {
     Again,
 }
 
-/// What the quit does about a machine it holds for, given whether it asked
-/// it to save already.
+/// What the quit does about a machine it holds for, given its capabilities,
+/// whether it was already asked to save/stop, and how long a graceful shutdown
+/// has been running.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Step {
     Done,
     Suspend,
+    ShutDown,
+    ForceStop,
     Wait,
 }
 
-fn step(status: &Status, asked: bool) -> Step {
+fn step(
+    status: &Status,
+    capabilities: MachineCapabilities,
+    asked: bool,
+    shutdown_elapsed: Option<Duration>,
+    forced: bool,
+) -> Step {
     match status {
         // A machine on its way up cannot save yet, and one resuming has
         // already given up its old state, so it is waited for.
         Status::Starting | Status::Saving => Step::Wait,
-        Status::Running if !asked => Step::Suspend,
-        Status::Running | Status::Stopped | Status::Failed(_) => Step::Done,
+        Status::Running if capabilities.save_restore => {
+            if !asked {
+                Step::Suspend
+            } else {
+                Step::Done
+            }
+        }
+        Status::Running if capabilities.graceful_shutdown => match shutdown_elapsed {
+            None => Step::ShutDown,
+            Some(elapsed) if elapsed < SHUTDOWN_GRACE => Step::Wait,
+            Some(_) if !forced => Step::ForceStop,
+            Some(_) => Step::Done,
+        },
+        Status::Running => {
+            if !forced {
+                Step::ForceStop
+            } else {
+                Step::Done
+            }
+        }
+        Status::Stopped | Status::Failed(_) => Step::Done,
     }
 }
 
-/// Saves each machine of `names`, which [`vm::close`] keeps from growing, and
-/// lets the app go once none is left to save. One whose save failed or
-/// outlasted [`LIMIT`] loses its state rather than the user's quit.
+/// Saves or gracefully shuts down each machine of `names`, which [`vm::close`]
+/// keeps from growing, and lets the app go once none is left. One whose save
+/// or shutdown failed or outlasted its budget never holds the user's quit.
 fn wait(app: AsyncApp, names: Vec<super::Name>, way: Way) {
     let waiter = app.clone();
     app.spawn(async move |_: &mut AsyncApp| {
         let start = Instant::now();
         let mut asked = HashSet::new();
+        let mut shutting_down: HashMap<super::Name, Instant> = HashMap::new();
+        let mut forced = HashSet::new();
         while start.elapsed() < LIMIT {
             let mut held = false;
             for name in &names {
-                match step(&vm::status(name), asked.contains(name)) {
+                let capabilities = vm::live_capabilities(name).unwrap_or_default();
+                let shutdown_elapsed = shutting_down.get(name).map(Instant::elapsed);
+                match step(
+                    &vm::status(name),
+                    capabilities,
+                    asked.contains(name),
+                    shutdown_elapsed,
+                    forced.contains(name),
+                ) {
                     Step::Done => {}
                     Step::Suspend => {
                         asked.insert(name.clone());
-                        waiter.update(|cx| vm::suspend(name, cx));
+                        waiter.update(|cx| {
+                            if let Err(error) = vm::suspend(name, cx) {
+                                tracing::warn!(%name, %error, "Cannot suspend machine on quit");
+                            }
+                        });
+                        held = true;
+                    }
+                    Step::ShutDown => {
+                        shutting_down.insert(name.clone(), Instant::now());
+                        if let Err(error) = vm::shut_down(name) {
+                            tracing::warn!(%name, %error, "Graceful shutdown failed on quit; force stopping");
+                            forced.insert(name.clone());
+                            waiter.update(|cx| vm::force_stop_running(name, cx));
+                        }
+                        held = true;
+                    }
+                    Step::ForceStop => {
+                        forced.insert(name.clone());
+                        waiter.update(|cx| vm::force_stop_running(name, cx));
                         held = true;
                     }
                     Step::Wait => held = true,

@@ -49,6 +49,9 @@ struct BriefCard: View {
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.separator))
         .sheet(item: $opened) { opened in
             BriefSheet(outline: outline, brief: brief, line: opened.line)
+                // A sheet: links in the agent's text open from here, not
+                // from the chat under it.
+                .browsesLinks(schemes: MarkdownView.webSchemes)
                 .presentationDetents([.medium, .large])
         }
     }

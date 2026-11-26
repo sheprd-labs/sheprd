@@ -35,6 +35,8 @@ pub enum Error {
     ImageNotFound(Name),
     #[error("A display is `fit` or a size such as 1920x1200")]
     InvalidDisplay,
+    #[error("{}: {reason}", path.display())]
+    InvalidMetadata { path: PathBuf, reason: String },
     #[error(
         "A machine name takes letters, digits, '-', and '_', and starts with a letter or digit"
     )]
@@ -58,6 +60,11 @@ pub enum Error {
     Suspended(Name),
     #[error("This Mac cannot run virtual Macs")]
     Unsupported,
+    #[error("{name} does not support {capability}")]
+    UnsupportedCapability {
+        name: Name,
+        capability: &'static str,
+    },
     #[error("{}: {source}", path.display())]
     Write {
         path: PathBuf,

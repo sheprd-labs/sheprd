@@ -11,7 +11,10 @@
 #![allow(unsafe_code)]
 
 use super::Error;
-use crate::machine::{self, configuration::file_url, vm::description};
+use crate::machine::{
+    self,
+    backend::apple::{description, file_url},
+};
 use block2::RcBlock;
 use objc2::{AnyThread as _, MainThreadMarker, rc::Retained};
 use objc2_foundation::{NSData, NSError};

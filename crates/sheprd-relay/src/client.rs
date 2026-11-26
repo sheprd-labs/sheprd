@@ -20,8 +20,9 @@ pub use reach::{first_reachable, reach};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     // keep-sorted start
-    #[error("This relay has banned your network address")]
-    Banned,
+    /// The relay banned this address; why and for how long when it said.
+    #[error("This relay has banned your network address{0}")]
+    Banned(crate::ban::Ban),
     #[error("could not open a UDP socket for QUIC")]
     Bind(#[source] std::io::Error),
     #[error("could not start a QUIC connection")]
@@ -59,19 +60,29 @@ fn is_banned_code(code: quinn::VarInt) -> bool {
     code == quinn::VarInt::from_u32(wire::code::BANNED)
 }
 
-fn is_banned(error: &quinn::ConnectionError) -> bool {
-    matches!(
-        error,
-        quinn::ConnectionError::ApplicationClosed(close) if is_banned_code(close.error_code)
-    )
+/// The ban a closed connection reports, from its close's reason text.
+fn ban(error: &quinn::ConnectionError) -> Option<crate::ban::Ban> {
+    match error {
+        quinn::ConnectionError::ApplicationClosed(close) if is_banned_code(close.error_code) => {
+            Some(crate::ban::Ban::parse(&String::from_utf8_lossy(
+                &close.reason,
+            )))
+        }
+        _ => None,
+    }
 }
+
+/// A stream reset carries only a code, so its ban's details are unknown.
+const UNEXPLAINED: crate::ban::Ban = crate::ban::Ban {
+    reason: None,
+    remaining: None,
+};
 
 impl From<quinn::ConnectionError> for Error {
     fn from(error: quinn::ConnectionError) -> Self {
-        if is_banned(&error) {
-            Self::Banned
-        } else {
-            Self::Connection(error)
+        match ban(&error) {
+            Some(ban) => Self::Banned(ban),
+            None => Self::Connection(error),
         }
     }
 }
@@ -79,15 +90,16 @@ impl From<quinn::ConnectionError> for Error {
 impl From<quinn::ReadExactError> for Error {
     fn from(error: quinn::ReadExactError) -> Self {
         match &error {
-            quinn::ReadExactError::ReadError(quinn::ReadError::ConnectionLost(connection))
-                if is_banned(connection) =>
-            {
-                Self::Banned
+            quinn::ReadExactError::ReadError(quinn::ReadError::ConnectionLost(connection)) => {
+                match ban(connection) {
+                    Some(ban) => Self::Banned(ban),
+                    None => Self::Read(error),
+                }
             }
             quinn::ReadExactError::ReadError(quinn::ReadError::Reset(code))
                 if is_banned_code(*code) =>
             {
-                Self::Banned
+                Self::Banned(UNEXPLAINED)
             }
             _ => Self::Read(error),
         }
@@ -97,8 +109,11 @@ impl From<quinn::ReadExactError> for Error {
 impl From<quinn::WriteError> for Error {
     fn from(error: quinn::WriteError) -> Self {
         match &error {
-            quinn::WriteError::ConnectionLost(connection) if is_banned(connection) => Self::Banned,
-            quinn::WriteError::Stopped(code) if is_banned_code(*code) => Self::Banned,
+            quinn::WriteError::ConnectionLost(connection) => match ban(connection) {
+                Some(ban) => Self::Banned(ban),
+                None => Self::Write(error),
+            },
+            quinn::WriteError::Stopped(code) if is_banned_code(*code) => Self::Banned(UNEXPLAINED),
             _ => Self::Write(error),
         }
     }
@@ -288,7 +303,7 @@ impl Listener {
                 Ok(Some(code)) if code == quinn::VarInt::from_u32(wire::code::REPLACED) => {
                     Error::Replaced
                 }
-                Ok(Some(code)) if is_banned_code(code) => Error::Banned,
+                Ok(Some(code)) if is_banned_code(code) => Error::Banned(UNEXPLAINED),
                 Err(quinn::ResetError::ConnectionLost(error)) => error.into(),
                 Ok(_) | Err(_) => Error::ListenEnded,
             },

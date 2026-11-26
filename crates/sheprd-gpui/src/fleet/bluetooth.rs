@@ -1,17 +1,18 @@
 //! The fleet around a Bluetooth pairing (`docs/relay-plan.md`, Adding a
 //! nearby Sheprd from another network): what Add Device > Nearby Sheprd
-//! does once the other computer is paired and saved, when that computer's
-//! Allow brought a fleet along. The page itself only pairs; joining a
-//! fleet is Settings > Fleet's. The `desktop-pair` child checked
-//! everything the other computer answered.
+//! asks this computer's daemon before the claim, so pairing brings the
+//! two into one fleet whenever one of them is in one, and what it does
+//! once the other computer is paired and saved. The `desktop-pair` child
+//! checked everything the other computer answered; the other computer's
+//! Allow is the person's approval.
 
 use super::{Error, Fleet, flows, remote};
 use crate::remote::Supervisor;
 use gpui::App;
 use sheprd_client::ConnectTarget;
 use sheprd_remote_control::control::fleet::{
-    Method,
-    bluetooth::ApprovedFleet,
+    HostKind, Kind, Method, View,
+    bluetooth::{ApprovedFleet, Hint, Joining},
     sync::{Answer, Apply, Ask},
 };
 use std::{sync::atomic::AtomicBool, time::Duration};
@@ -19,13 +20,83 @@ use std::{sync::atomic::AtomicBool, time::Duration};
 /// The session saved devices use.
 const SESSION: &str = "default";
 
+/// `view`'s fleet as a claim names it.
+pub(crate) fn hint(view: &View) -> Hint {
+    let computers = view
+        .members
+        .iter()
+        .filter(|member| member.kind == Kind::Computer)
+        .count();
+    let hosts = view
+        .hosts
+        .iter()
+        .filter(|host| host.kind != HostKind::Member)
+        .count();
+    Hint {
+        fleet: view.fleet.clone(),
+        computers: u16::try_from(computers).unwrap_or(u16::MAX),
+        hosts: u16::try_from(hosts).unwrap_or(u16::MAX),
+    }
+}
+
+/// This computer's bundle for `fleet`, signed by its daemon and bound to
+/// the pairing whose token hashes to `pairing`, for a claim that joins the
+/// other computer's fleet. `done` always runs later, never inside the
+/// caller's update.
+pub(crate) fn joining(
+    cx: &mut App,
+    fleet: String,
+    pairing: String,
+    done: impl FnOnce(Result<Joining, Error>, &mut App) + 'static,
+) {
+    let client = Supervisor::client(cx);
+    cx.spawn(async move |cx| {
+        let joining = match client {
+            None => Err(Error::NoDaemon),
+            Some(client) => match flows::daemon(&client, Ask::Joining { fleet, pairing }).await {
+                Ok(Answer::Joining(joining)) => Ok(joining),
+                Ok(_) => Err(Error::Unexpected),
+                Err(error) => Err(error),
+            },
+        };
+        cx.update(|cx| done(joining, cx));
+    })
+    .detach();
+}
+
+/// Founds a fleet with this computer as its only member, for a pairing
+/// where neither computer is in one, and answers it as a claim's
+/// invitation names it. `done` always runs later, never inside the
+/// caller's update.
+pub(crate) fn found(cx: &mut App, done: impl FnOnce(Result<Hint, Error>, &mut App) + 'static) {
+    let client = Supervisor::client(cx);
+    cx.spawn(async move |cx| {
+        let founded = async {
+            let client = client.ok_or(Error::NoDaemon)?;
+            flows::daemon(&client, Ask::Found).await?;
+            match flows::daemon(&client, Ask::Status).await? {
+                Answer::Status { view: Some(view) } => Ok(hint(&view)),
+                _ => Err(Error::Unexpected),
+            }
+        }
+        .await;
+        cx.update(|cx| {
+            Fleet::refresh(cx);
+            done(founded, cx);
+        });
+    })
+    .detach();
+}
+
 /// Finishes what the pairing left for the fleet, over the SSH it opened to
 /// `target`: admits the other computer's bundle and hands it the log, or
 /// takes the log from the other computer that admitted this one. A
-/// failure shows in Settings > Fleet; the two stay paired either way.
-pub(crate) fn paired(cx: &mut App, target: String, fleet: ApprovedFleet) {
+/// failure shows in Settings > Fleet; the two stay paired either way. Ends
+/// the fleet hold of the pairing `attempt` when done.
+pub(crate) fn paired(cx: &mut App, target: String, fleet: ApprovedFleet, attempt: u64) {
     let Some(client) = Supervisor::client(cx) else {
         Fleet::pairing_done(cx, Some(Error::NoDaemon.to_string()));
+        Fleet::release_pairing(cx, attempt);
         return;
     };
     let ours = Fleet::member_of(cx);
@@ -49,6 +120,7 @@ pub(crate) fn paired(cx: &mut App, target: String, fleet: ApprovedFleet) {
         }
         cx.update(|cx| {
             Fleet::pairing_done(cx, outcome.err().map(|error| error.to_string()));
+            Fleet::release_pairing(cx, attempt);
             Fleet::refresh(cx);
         });
     })

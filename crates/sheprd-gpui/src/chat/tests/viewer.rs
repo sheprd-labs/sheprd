@@ -65,6 +65,7 @@ fn a_clicked_picture_opens_large_and_closes(cx: &mut TestAppContext) {
     poll(&view, &program, cx);
     let chat = cx.debug_bounds("chat-view").unwrap();
     assert_eq!(cx.debug_bounds("chat-viewer").unwrap(), chat);
+    assert!(cx.debug_bounds("chat-viewer-next").is_none());
     // A small picture grows, up to twice its size, to fill the chat.
     let large = cx.debug_bounds("chat-viewer-picture").unwrap();
     assert!(
@@ -149,4 +150,72 @@ fn a_picture_in_another_pane_makes_its_pane_active(cx: &mut TestAppContext) {
         .find(|request| request["method"] == sheprd_client::Method::PaneFocus.as_str())
         .expect("a pane focus request");
     assert_eq!(focus["params"]["pane_id"], chat_pane.as_str());
+}
+
+#[gpui::test]
+fn browse_message_and_tool_pictures(cx: &mut TestAppContext) {
+    use sheprd_chat_protocol::{Tool, ToolContent, ToolKind, ToolStatus};
+
+    let (view, _peer, cx) = open(cx, ConnectTarget::Local);
+    let program = Program::new();
+    let first = png(30, 20);
+    let second = png(50, 20);
+    let ids = [VisualId::of(&first.data), VisualId::of(&second.data)];
+    let mut message = with_picture(&first);
+    let ServerMessage::Snapshot { transcript, .. } = &mut message else {
+        unreachable!()
+    };
+    transcript.entries.push(Entry {
+        id: EntryId(3),
+        kind: EntryKind::Tool(Tool {
+            call_id: "read".into(),
+            content: vec![
+                ToolContent::Image { image: second },
+                ToolContent::Image { image: first },
+            ],
+            kind: ToolKind::Read,
+            locations: vec![],
+            parent: None,
+            started_ms: None,
+            status: ToolStatus::Completed,
+            title: "Read pictures".into(),
+        }),
+    });
+    let _stream = attach_with(&view, &program, message, cx);
+    wait_until(|| {
+        poll(&view, &program, cx);
+        cx.run_until_parked();
+        view.read_with(cx, |view, _| {
+            let pane = view.chats.panes().next().unwrap();
+            ids.iter()
+                .all(|id| matches!(pane.prepared.visuals.shown(*id), Shown::Ready(_)))
+        })
+    });
+    poll(&view, &program, cx);
+    let small = cx.debug_bounds("chat-visual").unwrap();
+    cx.simulate_click(small.center(), Modifiers::default());
+    poll(&view, &program, cx);
+    cx.simulate_keystrokes("left left left");
+    poll(&view, &program, cx);
+    for (button, width) in [
+        ("chat-viewer-previous", 60.),
+        ("chat-viewer-next", 100.),
+        ("chat-viewer-next", 60.),
+        ("chat-viewer-next", 60.),
+        ("chat-viewer-previous", 100.),
+    ] {
+        let control = cx.debug_bounds(button).unwrap();
+        cx.simulate_click(control.center(), Modifiers::default());
+        poll(&view, &program, cx);
+        assert_eq!(
+            cx.debug_bounds("chat-viewer-picture").unwrap().size.width,
+            px(width)
+        );
+    }
+    cx.simulate_keystrokes("right");
+    poll(&view, &program, cx);
+    assert_eq!(
+        cx.debug_bounds("chat-viewer-picture").unwrap().size.width,
+        px(60.)
+    );
 }

@@ -22,3 +22,11 @@ fn a_terminal_event_passes_through() {
         Ok(Event::FocusGained)
     ));
 }
+
+#[test]
+fn frame_interval_slows_down_while_a_native_client_is_attached() {
+    assert_eq!(frame_interval("idle", 0), None);
+    assert_eq!(frame_interval("idle", 1), None);
+    assert_eq!(frame_interval("working", 0), Some(FRAME));
+    assert_eq!(frame_interval("working", 1), Some(ATTACHED_FRAME));
+}

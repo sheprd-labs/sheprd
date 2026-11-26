@@ -39,6 +39,9 @@ public struct SealedAlert: Codable, Hashable, Sendable {
     public var computer: String
     public var pane: String
     public var title: String
+    /// Where the chat is, `workspace · title`, shown under the title.
+    /// Older computers leave it out and put the place in `body`.
+    public var subtitle: String
     public var body: String
     public var badge: Int?
     public var permission: Permission?
@@ -50,7 +53,7 @@ public struct SealedAlert: Codable, Hashable, Sendable {
     /// every copy (`SeenAlerts`); older computers leave it out.
     public var event: String?
 
-    enum CodingKeys: String, CodingKey { case kind, clear, computer, pane, title, body, badge, permission, wizz, test, event }
+    enum CodingKeys: String, CodingKey { case kind, clear, computer, pane, title, subtitle, body, badge, permission, wizz, test, event }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -59,6 +62,7 @@ public struct SealedAlert: Codable, Hashable, Sendable {
         computer = try c.decode(String.self, forKey: .computer)
         pane = try c.decode(String.self, forKey: .pane)
         title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
+        subtitle = try c.decodeIfPresent(String.self, forKey: .subtitle) ?? ""
         body = try c.decodeIfPresent(String.self, forKey: .body) ?? ""
         badge = try c.decodeIfPresent(Int.self, forKey: .badge)
         permission = try c.decodeIfPresent(Permission.self, forKey: .permission)

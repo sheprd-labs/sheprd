@@ -22,7 +22,7 @@ fn the_terminal_names_a_picture_instead_of_drawing_it() {
             image: png(),
         },
     };
-    assert_eq!(plain(&entry(&item, 40))[0], "› [image]");
+    assert_eq!(plain(&entry(&item, 40))[0], "[image]");
     let item = Entry {
         id: EntryId(3),
         kind: EntryKind::Tool(Tool {
@@ -36,5 +36,5 @@ fn the_terminal_names_a_picture_instead_of_drawing_it() {
             title: "Read shot.png".to_owned(),
         }),
     };
-    assert_eq!(plain(&entry(&item, 40))[1], "  │ [image]");
+    assert_eq!(plain(&entry(&item, 40))[1], "  ┊ [image]");
 }

@@ -21,6 +21,7 @@ pub(in crate::menu) fn leaves(page: Page) -> bool {
             | Page::PrMerge
             | Page::PrQueue
             | Page::RemoteControl
+            | Page::ShareSession
     )
 }
 
@@ -38,6 +39,7 @@ pub(in crate::menu) struct Kept {
         super::super::git_restack::Restack,
     )>,
     remote_pairing: Option<crate::remote::PairingDialog>,
+    remote_share: Option<crate::remote::ShareDialog>,
     /// The device All Devices showed unfolded, so it leaves as it was.
     unfolded_device: Option<String>,
 }
@@ -49,6 +51,9 @@ impl Kept {
         kept.swap(menu);
         if let Some(pairing) = &mut kept.remote_pairing {
             pairing.close();
+        }
+        if let Some(share) = &mut kept.remote_share {
+            share.close();
         }
         kept
     }
@@ -64,6 +69,7 @@ impl Kept {
         std::mem::swap(&mut self.queue_change, &mut menu.queue_change);
         std::mem::swap(&mut self.restack, &mut menu.restack);
         std::mem::swap(&mut self.remote_pairing, &mut menu.remote_pairing);
+        std::mem::swap(&mut self.remote_share, &mut menu.remote_share);
         std::mem::swap(&mut self.unfolded_device, &mut menu.unfolded_device);
     }
 }

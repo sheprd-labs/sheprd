@@ -1,7 +1,10 @@
 //! Why `ssh` closed the bridge before its ready banner. The child's exit code
 //! and a bounded stderr tail are read only to pick a class here; the text is
 //! never retained, logged, or shown, since it can name users, keys, and paths.
+//! A relay ban's line is read into its closed set of reasons
+//! ([`sheprd_relay::ban`]), never kept as text.
 use crate::Result;
+use sheprd_relay::ban::Ban;
 use std::{
     io::{ErrorKind, Read},
     net::{IpAddr, ToSocketAddrs},
@@ -42,6 +45,10 @@ pub enum SshFailure {
     /// installed but cannot serve this client is `crate::Error::BridgeIncompatible`.
     #[error("no Herdr is installed on the host")]
     HerdrMissing,
+    /// The relay that carries this host (`crate::relay_host`) banned this
+    /// computer's network address; why and for how long when it said.
+    #[error("the relay banned this computer's network address{0}")]
+    RelayBanned(Ban),
     /// None of the above could be told from what `ssh` reported.
     #[error("check host trust, authentication, and remote Herdr installation")]
     Other,
@@ -49,14 +56,18 @@ pub enum SshFailure {
 
 impl SshFailure {
     /// Whether retrying soon is pointless: the user has to fix something
-    /// outside the app first, such as a key, the known hosts, or an install.
+    /// outside the app first, such as a key, the known hosts, or an install,
+    /// or wait out a relay's ban.
     pub fn needs_user(self) -> bool {
-        matches!(self, Self::HostKey | Self::Auth | Self::HerdrMissing)
+        matches!(
+            self,
+            Self::HostKey | Self::Auth | Self::HerdrMissing | Self::RelayBanned(_)
+        )
     }
 
     /// `ssh` exits 255 for its own failures; the bridge script exits 127 when
     /// it found no candidate binary at all. Any other status is the remote's.
-    pub(super) fn classify(code: Option<i32>, stderr: &[u8]) -> Self {
+    pub(crate) fn classify(code: Option<i32>, stderr: &[u8]) -> Self {
         Self::classify_with(code, stderr, resolve, crate::local_network_access)
     }
 
@@ -74,7 +85,11 @@ impl SshFailure {
             Some(255) => {
                 let text = String::from_utf8_lossy(stderr);
                 let has = |markers: &[&str]| markers.iter().any(|m| text.contains(m));
-                if has(&[
+                // `relay-connect` names the ban first; what `ssh` adds after
+                // it, a closed connection, is only the consequence.
+                if let Some(ban) = Ban::from_stderr(&text) {
+                    Self::RelayBanned(ban)
+                } else if has(&[
                     "Host key verification failed",
                     "REMOTE HOST IDENTIFICATION HAS CHANGED",
                 ]) {

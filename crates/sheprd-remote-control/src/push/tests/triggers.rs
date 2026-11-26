@@ -1,5 +1,5 @@
 use super::*;
-use crate::push::triggers::{EXCERPT_CHARS, excerpt, tag};
+use crate::push::triggers::{EXCERPT_CHARS, excerpt, sentences, tag};
 use sheprd_chat_protocol::{
     Change, Cost, Entry, EntryId, EntryKind, NoticeLevel, Permission, PermissionId, Status,
     Transcript, TurnEnd, TurnSummary, Usage,
@@ -77,14 +77,12 @@ fn a_permission_is_an_urgent_question() {
     assert_eq!(generic.urgency, Urgency::High);
     assert!(!generic.clear);
     assert_eq!(generic.title, "Claude needs an answer");
-    assert_eq!(generic.body, "herdr-gpui \u{b7} remote plan");
+    assert_eq!(generic.body, "");
+    assert_eq!(generic.subtitle, "herdr-gpui \u{b7} remote plan");
     assert_eq!(generic.tag, "chat-w1-p3");
 
     let excerpt = decide(&CHAT, &before, &change, Privacy::Excerpt).unwrap();
-    assert_eq!(
-        excerpt.body,
-        "Run rm -rf target\nherdr-gpui \u{b7} remote plan"
-    );
+    assert_eq!(excerpt.body, "Run rm -rf target");
 }
 
 #[test]
@@ -122,14 +120,12 @@ fn a_finished_turn_reports_its_summary() {
     assert_eq!(generic.kind, Kind::TurnEnded);
     assert_eq!(generic.urgency, Urgency::Normal);
     assert_eq!(generic.title, "Claude finished");
-    assert_eq!(generic.body, "herdr-gpui \u{b7} remote plan\nWorked 12s");
+    assert_eq!(generic.body, "Worked 12s");
+    assert_eq!(generic.subtitle, "herdr-gpui \u{b7} remote plan");
     assert!(!generic.body.contains("tests"));
 
     let excerpt = decide(&CHAT, &before, &turn(TurnEnd::Done), Privacy::Excerpt).unwrap();
-    assert_eq!(
-        excerpt.body,
-        "All tests pass.\nherdr-gpui \u{b7} remote plan\nWorked 12s"
-    );
+    assert_eq!(excerpt.body, "All tests pass.\nWorked 12s");
 }
 
 #[test]
@@ -156,7 +152,7 @@ fn an_error_notice_is_an_error() {
     assert_eq!(generic.title, "Claude hit an error");
     assert!(!generic.body.contains("Rate"));
     let excerpt = decide(&CHAT, &before, &change, Privacy::Excerpt).unwrap();
-    assert!(excerpt.body.starts_with("Rate limited by the API\n"));
+    assert_eq!(excerpt.body, "Rate limited by the API");
 
     let warning = push(EntryKind::Notice {
         answers: Vec::new(),
@@ -232,6 +228,18 @@ fn excerpts_are_one_short_line() {
     assert_eq!(excerpt(&exact), exact);
 }
 
+/// The phone matches a Live Activity's answer to the question by this cut
+/// (`ActivityAnswer.excerpt`), which `SealedAlertTests.swift` pins to the
+/// same literal.
+#[test]
+fn a_question_is_cut_where_the_phone_cuts_it() {
+    let long = ["Run cargo test --workspace"; 10].join(" ");
+    assert_eq!(
+        excerpt(&long),
+        "Run cargo test --workspace Run cargo test --workspace Run cargo test --workspace Run cargo test --workspace Run cargo t\u{2026}"
+    );
+}
+
 #[test]
 fn messages_link_to_the_chat() {
     let before = Transcript::new("Claude");
@@ -254,4 +262,42 @@ fn messages_link_to_the_chat() {
     for key in ["title", "body"] {
         assert!(json[key].is_string(), "{key}");
     }
+}
+
+#[test]
+fn the_web_message_shows_the_place_above_the_body() {
+    let before = transcript_with_answer("Done.");
+    let ended = decide(&CHAT, &before, &turn(TurnEnd::Done), Privacy::Excerpt).unwrap();
+    assert_eq!(
+        ended.message(0).body,
+        "herdr-gpui \u{b7} remote plan\nDone.\nWorked 12s"
+    );
+}
+
+#[test]
+fn a_reply_leads_with_the_sentence_set_larger() {
+    let before = transcript_with_answer(
+        "I checked the branch. :big[All 214 tests pass] on main. Next: docs.",
+    );
+    let ended = decide(&CHAT, &before, &turn(TurnEnd::Done), Privacy::Excerpt).unwrap();
+    assert!(
+        ended
+            .body
+            .starts_with("All 214 tests pass on main. I checked the branch. Next: docs.\n"),
+        "{}",
+        ended.body
+    );
+}
+
+#[test]
+fn agent_text_is_cut_at_a_sentence_end() {
+    let first = "The worktree is clean and every commit is already on main now.";
+    let text = format!(
+        "{first} Nothing else needs to be done, so I stopped here without making any change."
+    );
+    assert_eq!(sentences(&text), first);
+    // Too little fits before the first sentence ends: cut at a word.
+    let long = format!("{} end. more", "word ".repeat(30));
+    let cut = sentences(&long);
+    assert!(cut.ends_with("word\u{2026}"), "{cut}");
 }

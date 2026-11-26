@@ -291,8 +291,7 @@ impl CoreTerminals {
     }
 
     /// Whether a started terminal waits to be placed.
-    // Only the lifecycle tests, which need Unix sockets, use it.
-    #[cfg(all(test, unix))]
+    #[cfg(test)]
     pub(crate) fn is_starting(&self) -> bool {
         self.starting.is_some()
     }

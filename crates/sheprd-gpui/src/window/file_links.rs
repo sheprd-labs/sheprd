@@ -355,6 +355,48 @@ impl SheprdWindow {
         })
         .detach();
     }
+
+    /// Selects the file `link` names in the system file manager, once a
+    /// background check finds it there. A missing file is answered with a
+    /// flash, as an explicit open is.
+    pub(crate) fn reveal_file_link(&mut self, link: FileLink, cx: &mut Context<Self>) {
+        let selection_epoch = self.selection_epoch;
+        let found = cx.background_executor().spawn(async move {
+            let home = crate::config::home().ok();
+            revealed(&link.resolve(home.as_deref())?)
+        });
+        cx.spawn(async move |this, cx| {
+            let Some(found) = found.await else {
+                tracing::debug!("Revealed file path not found");
+                return;
+            };
+            let _ = this.update(cx, |this, cx| {
+                if this.selection_epoch != selection_epoch {
+                    return;
+                }
+                match found {
+                    Ok(real) => cx.reveal_path(&real),
+                    Err(path) => this.show_flash(
+                        super::flash::Flash::warning(
+                            crate::Error::LinkedFileMissing { path }.to_string(),
+                        ),
+                        cx,
+                    ),
+                }
+            });
+        })
+        .detach();
+    }
+}
+
+/// The real path to select for `path`, or `Err(path)` when nothing is there.
+/// `None` when it cannot be read, which is not worth a flash.
+fn revealed(path: &Path) -> Option<Result<PathBuf, PathBuf>> {
+    match real_path(path) {
+        Ok(real) => Some(Ok(real)),
+        Err(Unresolved::Missing) => Some(Err(path.to_owned())),
+        Err(_) => None,
+    }
 }
 
 #[cfg(test)]

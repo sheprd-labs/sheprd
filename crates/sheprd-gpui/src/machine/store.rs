@@ -1,7 +1,10 @@
 //! A machine's folder on disk. Everything here reaches the disk, so it runs
 //! off the main thread.
 
-use super::{Error, Name, Patch, Result, Settings};
+use super::{
+    Error, Name, Patch, Result, Settings,
+    metadata::{self, GuestMetadata, MachineCapabilities},
+};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
     collections::HashMap,
@@ -14,6 +17,8 @@ use std::{
 
 pub(super) const AUXILIARY: &str = "auxiliary.bin";
 pub(super) const DISK: &str = "disk.img";
+/// EFI variable store for Linux EFI guests.
+pub(super) const EFI_VARS: &str = "efi-vars.bin";
 /// Present from a machine's making until its setup guide is closed: the
 /// guide shows beside its tab from its first start ([`super::guide`]). It
 /// holds [`FROM_IMAGE`] for a machine made from an image without [`READY`].
@@ -21,12 +26,19 @@ pub(super) const GUIDE: &str = "setup-guide";
 /// What [`GUIDE`] holds when the machine came from an image that may be set
 /// up already: its guide waits for the agent before it shows.
 pub(super) const FROM_IMAGE: &[u8] = b"from-image";
+/// Guest OS, image provenance, and versioned boot metadata (`guest.json`).
+pub(super) const GUEST_METADATA: &str = metadata::FILE;
 pub(super) const HARDWARE: &str = "hardware.bin";
 pub(super) const IDENTITY: &str = "identity.bin";
 /// Present once the machine's Sheprd Agent answered with both permissions:
 /// an image saved from it keeps it, and a machine made from that image starts
 /// without its setup guide.
 pub(super) const READY: &str = "agent-ready";
+/// Read-only NoCloud `cidata` ISO for Linux first-boot provisioning and clone
+/// identity regeneration.
+pub(super) const SEED_ISO: &str = "seed.iso";
+/// Optional virtio serial console output log for Linux guests.
+pub(super) const SERIAL_LOG: &str = "serial.log";
 /// What the user chose, for the next boot.
 pub(super) const SETTINGS: &str = "machine.json";
 /// What the machine last booted with, which a saved state needs again.
@@ -46,11 +58,21 @@ const BLOCK_BYTES: u64 = 512;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Listing {
     pub(crate) name: Name,
+    pub(crate) guest: GuestMetadata,
     pub(crate) settings: Settings,
-    /// Whether it is suspended, and resumes where it was.
+    /// Whether it is suspended, and resumes where it was. Always `false` for
+    /// guests whose backend/config does not support save/restore.
     pub(crate) saved: bool,
+    /// Whether the machine's agent/desktop has reported ready at least once.
+    pub(crate) ready: bool,
     /// What it really takes on disk: the disk image is sparse.
     pub(crate) disk_bytes: u64,
+}
+
+impl Listing {
+    pub(crate) fn capabilities(&self) -> MachineCapabilities {
+        self.guest.capabilities()
+    }
 }
 
 /// The folder that holds every machine.
@@ -129,20 +151,39 @@ fn list_in(root: &Path) -> Result<Vec<Listing>> {
         .filter_map(|entry| {
             let name = Name::try_from(entry.file_name().into_string().ok()?).ok()?;
             let folder = entry.path();
-            folder.join(DISK).is_file().then(|| listing(name, &folder))
+            folder
+                .join(DISK)
+                .is_file()
+                .then(|| listing(name, &folder))?
         })
         .collect();
     machines.sort_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
     Ok(machines)
 }
 
-fn listing(name: Name, folder: &Path) -> Listing {
-    Listing {
+#[cfg(test)]
+pub(super) fn list_in_path(root: &Path) -> Result<Vec<Listing>> {
+    list_in(root)
+}
+
+fn listing(name: Name, folder: &Path) -> Option<Listing> {
+    let guest = match metadata::read_in(folder) {
+        Ok(guest) => guest,
+        Err(error) => {
+            tracing::warn!(%name, %error, "Skipping machine folder with unreadable metadata");
+            return None;
+        }
+    };
+    let saved = guest.capabilities().save_restore && folder.join(STATE).is_file();
+    let ready = folder.join(READY).is_file();
+    Some(Listing {
         name,
+        guest,
         settings: read_json(&folder.join(SETTINGS)).unwrap_or_default(),
-        saved: folder.join(STATE).is_file(),
+        saved,
+        ready,
         disk_bytes: disk_bytes(folder),
-    }
+    })
 }
 
 /// The bytes the folder's files take. Each is listed by `read_dir`, which
@@ -262,9 +303,10 @@ fn update_in(folder: &Path, change: impl FnOnce(Settings) -> Result<Settings>) -
 /// What machine `name` must boot with now: a saved state resumes only as it
 /// was saved, so it keeps the settings it booted with until it next shuts
 /// down. Otherwise the user's choice, recorded for a later save.
-pub(super) fn boot_settings(folder: &Path) -> Result<Settings> {
+pub(super) fn boot_settings(folder: &Path, supports_save_restore: bool) -> Result<Settings> {
     let booted = folder.join(BOOTED);
-    if folder.join(STATE).is_file()
+    if supports_save_restore
+        && folder.join(STATE).is_file()
         && let Some(settings) = read_json(&booted)
     {
         return Ok(settings);

@@ -53,6 +53,7 @@ mod terminal;
 mod text;
 pub(crate) mod turns;
 mod upload;
+mod user_text_file;
 mod view;
 pub(crate) mod visual;
 pub(crate) mod widgets;
@@ -157,9 +158,11 @@ impl Error {
     }
 
     /// Whether the client's copy no longer fits the program's stream, so the
-    /// next connection asks for a whole snapshot.
+    /// next connection asks for a whole snapshot. A view that fell behind,
+    /// as one left in the background does, also starts over from one: a
+    /// replay of every chunk it missed would scroll through them all.
     fn desynced(&self) -> bool {
-        matches!(self, Self::Stream { .. } | Self::Apply(_))
+        matches!(self, Self::Stream { .. } | Self::Apply(_) | Self::Overflow)
     }
 }
 

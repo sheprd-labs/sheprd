@@ -13,11 +13,13 @@ extension RelayRecord {
     }
 
     /// The relays to try now, and measures this phone's legs for next time.
-    private func order(session: URLSession) async -> [RelayEndpoint] {
+    /// Those in `removed` are neither measured nor returned.
+    private func order(session: URLSession, removed: Set<RelayEndpoint> = []) async -> [RelayEndpoint] {
         let probes = RelayProbes.shared
-        let phone = await probes.rtt(relays)
-        await probes.refresh(relays, session: session)
-        return ranked(phone: phone)
+        let allowed = relays.filter { !removed.contains($0) }
+        let phone = await probes.rtt(allowed)
+        await probes.refresh(allowed, session: session)
+        return ranked(phone: phone).filter { !removed.contains($0) }
     }
 
     /// Opens the pairing session a nearby offer allowed, through the first
@@ -49,16 +51,24 @@ extension RelayRecord {
         relays + saved.filter { !relays.contains($0) }
     }
 
+    /// The relays to dial the computer on, leaving out those the user
+    /// removed.
+    public func candidates(_ dialing: RelayDialing) -> [RelayEndpoint] {
+        candidates(saved: dialing.typed).filter { !dialing.removed.contains($0) }
+    }
+
     /// Opens a session to the computer through the first relay that
-    /// answers: its own best path first, then those of `saved`. A relay
+    /// answers: its own best path first, then the typed ones of `dialing`,
+    /// leaving out the relays the user removed. A relay
     /// that says nothing holds the next one back for `RelayRace.stagger`
     /// only, so a computer that moved off a dead relay is still reached
     /// through a saved one.
-    public func open(saved: [RelayEndpoint] = [], session: URLSession = .shared) async throws -> RelaySession {
+    public func open(_ dialing: RelayDialing = RelayDialing(), session: URLSession = .shared) async throws -> RelaySession {
         let dial = try P256.Signing.PrivateKey(rawRepresentation: dialKey)
         let tunnel = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: tunnelKey)
         let listener = try Tunnel.Identity(bytes: identity)
-        let ordered = await order(session: session)
+        let ordered = await order(session: session, removed: dialing.removed)
+        let saved = dialing.typed.filter { !dialing.removed.contains($0) }
         let route = route
         return try await RelayRace.first(
             of: ordered + saved.filter { !ordered.contains($0) },

@@ -193,6 +193,13 @@ impl SheprdWindow {
         if !self.chat_reader_focused(pane_id, window) {
             return false;
         }
+        if Self::message_tab(event)
+            && self.step_message_file(pane_id, None, event.keystroke.modifiers.shift, window, cx)
+        {
+            cx.stop_propagation();
+            window.prevent_default();
+            return true;
+        }
         let key = &event.keystroke;
         let edit = crate::actions::edit_modifiers(key.modifiers)
             || ((key.modifiers.platform != key.modifiers.control)

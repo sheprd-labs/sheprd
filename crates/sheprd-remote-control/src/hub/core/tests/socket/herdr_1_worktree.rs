@@ -1,5 +1,6 @@
 //! A phone's new worktree of a repository Herdr 1 shows is Herdr 1's, so it
-//! joins that repository's group, while its chat starts on the core.
+//! joins that repository's group, and its chat starts in the shell Herdr 1
+//! opens there rather than in a second tab on the core.
 
 use super::*;
 use crate::hub::{NewWorkspace, Workspace};
@@ -8,19 +9,25 @@ use sheprd_client::protocol::ClientShellWorktree;
 use std::path::{Path, PathBuf};
 
 /// Herdr 1's API socket beside `dir/h-client.sock`, answering one request
-/// with `answer`'s result and handing the request back.
-fn herdr_1(dir: &Path, answer: Value) -> thread::JoinHandle<Value> {
+/// per connection with `answers`' results in turn and handing the requests
+/// back.
+fn herdr_1(dir: &Path, answers: Vec<Value>) -> thread::JoinHandle<Vec<Value>> {
     let listener = UnixListener::bind(dir.join("h.sock")).unwrap();
     thread::spawn(move || {
-        let (stream, _) = listener.accept().unwrap();
-        let mut line = String::new();
-        BufReader::new(&stream).read_line(&mut line).unwrap();
-        let request: Value = serde_json::from_str(&line).unwrap();
-        let reply = json!({"id": request["id"], "result": answer});
-        (&stream)
-            .write_all(format!("{reply}\n").as_bytes())
-            .unwrap();
-        request
+        answers
+            .into_iter()
+            .map(|answer| {
+                let (stream, _) = listener.accept().unwrap();
+                let mut line = String::new();
+                BufReader::new(&stream).read_line(&mut line).unwrap();
+                let request: Value = serde_json::from_str(&line).unwrap();
+                let reply = json!({"id": request["id"], "result": answer});
+                (&stream)
+                    .write_all(format!("{reply}\n").as_bytes())
+                    .unwrap();
+                request
+            })
+            .collect()
     })
 }
 
@@ -54,7 +61,7 @@ fn run_request(fake: &Fake) -> Value {
 }
 
 #[tokio::test]
-async fn a_worktree_of_a_herdr_1_repository_is_made_there_with_its_chat_on_the_core() {
+async fn a_worktree_of_a_herdr_1_repository_is_made_there_with_its_chat_in_its_root_pane() {
     let dir = tempfile::Builder::new()
         .prefix("hw")
         .tempdir_in("/tmp")
@@ -62,12 +69,15 @@ async fn a_worktree_of_a_herdr_1_repository_is_made_there_with_its_chat_on_the_c
     let checkout = "/code/worktrees/app/topic";
     let herdr = herdr_1(
         dir.path(),
-        json!({
-            "type": "worktree_created",
-            "workspace": {"workspace_id": "w9"},
-            "root_pane": {"pane_id": "w9:p1"},
-            "worktree": {"path": checkout, "branch": "topic"},
-        }),
+        vec![
+            json!({
+                "type": "worktree_created",
+                "workspace": {"workspace_id": "w9"},
+                "root_pane": {"pane_id": "w9:p1"},
+                "worktree": {"path": checkout, "branch": "topic"},
+            }),
+            json!({"type": "ok"}),
+        ],
     );
     // A repository on disk, as Git says which one a folder is.
     let app = dir.path().join("app");
@@ -104,20 +114,25 @@ async fn a_worktree_of_a_herdr_1_repository_is_made_there_with_its_chat_on_the_c
         .await
         .unwrap();
     assert_eq!(created.workspace, "w9");
-    assert_eq!(created.pane, id("t9"));
+    // The shell Herdr 1 opened in the worktree runs the chat: no second tab.
+    assert_eq!(created.pane, "w9:p1");
     let asked = herdr.join().unwrap();
-    assert_eq!(asked["method"], "worktree.create");
-    assert_eq!(asked["params"]["workspace_id"], "w1");
-    assert_eq!(asked["params"]["branch"], "topic");
-    assert_eq!(asked["params"]["label"], "Review");
-    assert_eq!(asked["params"]["focus"], false);
-    let run = run_request(&fake);
-    assert_eq!(run["method"], "terminal.run");
-    let params = &run["params"];
-    assert_eq!(params["cwd"], checkout);
-    // In a tab of the new Herdr 1 workspace, not a workspace Sheprd keeps.
-    assert_eq!(params["labels"][sheprd_session::WORKSPACE_LABEL], "w9");
-    assert!(params["labels"][sheprd_session::NEW_WORKSPACE_LABEL].is_null());
+    assert_eq!(asked[0]["method"], "worktree.create");
+    let params = &asked[0]["params"];
+    assert_eq!(params["workspace_id"], "w1");
+    assert_eq!(params["branch"], "topic");
+    assert_eq!(params["label"], "Review");
+    assert_eq!(params["focus"], false);
+    assert_eq!(asked[1]["method"], "pane.send_input");
+    assert_eq!(asked[1]["params"]["pane_id"], "w9:p1");
+    let line = asked[1]["params"]["text"].as_str().unwrap();
+    assert!(line.contains("/bin/sheprd-acp"), "{line}");
+    // Nothing started on the core.
+    assert!(
+        fake.inputs
+            .recv_timeout(Duration::from_millis(200))
+            .is_err()
+    );
     drop((hub, source));
     fake.server.join().unwrap();
 }

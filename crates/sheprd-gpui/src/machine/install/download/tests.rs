@@ -263,3 +263,37 @@ fn stop_ends_a_stalled_download_and_keeps_its_part() {
     assert!(!target(&folder).exists());
     assert!(partial(&target(&folder)).exists());
 }
+
+#[test]
+fn verify_sha256_accepts_matching_digest_and_deletes_corrupt_file_on_mismatch() {
+    let folder = tempfile::tempdir().unwrap();
+    let path = folder.path().join("ubuntu.img");
+    fs::write(&path, BODY).unwrap();
+    let expected = {
+        let digest = Sha256::digest(BODY);
+        digest
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>()
+    };
+    verify_sha256(&path, &expected, &AtomicBool::new(false)).unwrap();
+    assert!(path.exists());
+
+    let wrong = "0".repeat(64);
+    let err = verify_sha256(&path, &wrong, &AtomicBool::new(false)).unwrap_err();
+    assert!(matches!(err, Error::ChecksumMismatch { .. }));
+    assert!(
+        !path.exists(),
+        "corrupt download must be deleted on mismatch"
+    );
+}
+
+#[test]
+fn verify_sha256_honors_cancellation_without_deleting_file() {
+    let folder = tempfile::tempdir().unwrap();
+    let path = folder.path().join("ubuntu.img");
+    fs::write(&path, BODY).unwrap();
+    let err = verify_sha256(&path, &"0".repeat(64), &AtomicBool::new(true)).unwrap_err();
+    assert!(matches!(err, Error::Cancelled));
+    assert!(path.exists());
+}

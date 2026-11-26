@@ -80,6 +80,11 @@ pub fn run_connect(state_dir: Option<&Path>, host: &str) -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
+            // `ssh` passes this on: the app reads the ban line to say why
+            // the host could not be reached (`sheprd_client::SshFailure`).
+            if let Some(ban) = error.ban() {
+                eprintln!("{} {}", sheprd_relay::ban::LINE_PREFIX, ban.encode());
+            }
             eprintln!("relay-connect: {}", chain(&error));
             ExitCode::FAILURE
         }

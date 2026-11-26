@@ -3,6 +3,7 @@ use sheprd_client::{
     Error, SshFailure, clipboard, protocol::endpoint::ENDPOINT_PROTOCOL_GENERATION,
     scrollback::EndpointErrorCode, sessions, ssh, wsl,
 };
+use sheprd_relay::ban::{Ban, BanReason};
 use std::{io, path::PathBuf, process::ExitStatus};
 
 fn io() -> io::Error {
@@ -215,6 +216,11 @@ fn every_ssh_variant_has_a_message() {
         SshFailure::LocalNetworkDenied,
         SshFailure::NoRoute,
         SshFailure::Other,
+        SshFailure::RelayBanned(Ban::default()),
+        SshFailure::RelayBanned(Ban {
+            reason: Some(BanReason::Probe),
+            remaining: Some(std::time::Duration::from_secs(540)),
+        }),
         SshFailure::Unreachable,
     ];
     assert_localized(&failures);
@@ -229,6 +235,23 @@ fn every_ssh_variant_has_a_message() {
     ];
     errors.extend(failures.into_iter().map(ssh::Error::Refused));
     assert_localized(&errors);
+}
+
+#[test]
+fn every_relay_ban_reason_has_a_message() {
+    assert_localized(&BanReason::ALL);
+}
+
+#[test]
+fn a_relay_ban_says_why_and_when_it_lifts() {
+    let ban = Ban {
+        reason: Some(BanReason::Probe),
+        remaining: Some(std::time::Duration::from_secs(540)),
+    };
+    let text = ssh::Error::Refused(SshFailure::RelayBanned(ban)).localize();
+    assert!(text.contains("banned"), "{text}");
+    assert!(text.contains("without a request"), "{text}");
+    assert!(text.contains('9'), "{text}");
 }
 
 #[test]

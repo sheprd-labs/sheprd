@@ -73,11 +73,14 @@ fn invalid_labels_and_other_machines_terminals_are_left_out() {
 }
 
 #[test]
-fn a_terminal_shown_twice_is_one_chat_and_the_count_is_bounded() {
-    let mut terminals = vec![info("t0", Some(A)), info("t0", Some(A))];
-    terminals.extend((1..=MAX_CHATS + 4).map(|n| info(&format!("t{n}"), Some(B))));
+fn a_terminal_shown_twice_is_one_chat() {
+    let terminals = [
+        info("t0", Some(A)),
+        info("t0", Some(A)),
+        info("t1", Some(B)),
+    ];
     let targets = targets(&terminals);
-    assert_eq!(targets.len(), MAX_CHATS);
+    assert_eq!(targets.len(), 2);
     assert_eq!(targets[0].pane_id, "core:t0");
     assert_eq!(targets[1].pane_id, "core:t1");
 }
@@ -101,11 +104,20 @@ fn herdr_chats_come_first_and_keep_a_clashing_key() {
 }
 
 #[test]
-fn herdr_chats_fill_the_bound_before_core_ones() {
+fn herdr_chats_elsewhere_leave_room_for_the_core_chat_on_screen() {
+    use crate::chat::{MAX_CHATS, discovery::bounded};
+    // Herdr 1 chats in other workspaces once filled the bound, so the core
+    // chat on screen showed its terminal instead.
     let herdr_chats: Vec<Target> = (0..MAX_CHATS).map(|n| herdr(&format!("w1:p{n}"))).collect();
-    let merged = with_core(herdr_chats, targets(&[info("t1", Some(B))]));
-    assert_eq!(merged.len(), MAX_CHATS);
-    assert!(merged.iter().all(|target| target.surface == Surface::Herdr));
+    let core = targets(&[info("t1", Some(B)), info("t2", Some(B))]);
+    let merged = with_core(herdr_chats, core);
+    assert_eq!(merged.len(), MAX_CHATS + 2);
+    let kept = bounded(merged.clone(), |pane| u8::from(pane != "core:t2"));
+    assert_eq!(kept.len(), MAX_CHATS);
+    assert!(kept.iter().any(|target| target.pane_id == "core:t2"));
+    assert!(!kept.iter().any(|target| target.pane_id == "core:t1"));
+    let unseen = bounded(merged, |_| 0);
+    assert!(unseen.iter().all(|target| target.surface == Surface::Herdr));
 }
 
 #[test]

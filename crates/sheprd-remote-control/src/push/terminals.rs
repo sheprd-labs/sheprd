@@ -155,10 +155,10 @@ pub(crate) fn decide(agent: &Seen<'_>, moved: &Moved, privacy: Privacy) -> Optio
             format!("{} needs an answer", agent.chat.agent),
         ),
         AgentStatus::Done if is_running(moved.from) => {
-            (Kind::TerminalDone, format!("{} finished", agent.chat.agent))
+            return Some(super::finish::finished(agent, privacy));
         }
         _ => return None,
     };
-    let body = triggers::body(&agent.chat, excerpt, None);
+    let body = triggers::body(excerpt, None);
     Some(Notification::new(&agent.chat, kind, title, body))
 }

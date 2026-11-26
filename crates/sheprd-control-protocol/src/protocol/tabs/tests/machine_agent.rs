@@ -100,6 +100,7 @@ fn agent_replies_round_trip() {
             scale: 2,
             accessibility: true,
             screen_recording: false,
+            capabilities: None,
         }),
         Reply::MachineScreenshot {
             path: "/tmp/a.png".into(),

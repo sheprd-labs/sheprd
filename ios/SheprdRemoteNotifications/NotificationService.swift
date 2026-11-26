@@ -76,6 +76,7 @@ final class NotificationService: UNNotificationServiceExtension {
         }
         let alert = opened.alert
         content.title = alert.title
+        content.subtitle = alert.subtitle
         content.body = alert.body
         content.threadIdentifier = AlertKeys.thread(computer: opened.computer.hex, pane: alert.pane)
         // The count is this computer's; the badge is every computer's.

@@ -286,3 +286,30 @@ fn a_full_table_still_bans_new_offenders() {
     offend_until_banned(&guard, late, Offense::Malformed, now);
     assert!(guard.banned(late, now));
 }
+
+#[test]
+fn a_ban_tells_its_reason_and_time_left() {
+    use crate::ban::{Ban, BanReason};
+    let guard = guard();
+    let now = Instant::now();
+    let address = ip(PUBLIC);
+    assert_eq!(guard.ban(address, now), None);
+    offend_until_banned(&guard, address, Offense::Probe, now);
+    let later = now + Duration::from_secs(60);
+    assert_eq!(
+        guard.ban(address, later),
+        Some(Ban {
+            reason: Some(BanReason::Probe),
+            remaining: Some(BANS[0] - Duration::from_secs(60)),
+        })
+    );
+    assert_eq!(guard.ban(address, now + BANS[0]), None);
+    guard.set_manual(parse_list("198.51.100.0/24").0);
+    assert_eq!(
+        guard.ban(ip("198.51.100.7"), now),
+        Some(Ban {
+            reason: Some(BanReason::Manual),
+            remaining: None,
+        })
+    );
+}

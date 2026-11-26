@@ -7,6 +7,7 @@
 //! so these reads never take a screen a phone opens a terminal with.
 
 mod screen;
+pub(crate) use screen::preview;
 
 use crate::web::Shared;
 use sheprd_client::protocol::AgentStatus;
@@ -143,7 +144,7 @@ pub(crate) async fn follow(state: Shared) {
                 // after `RETRY`.
                 let read = state.hub.screen_text(&agent.pane).await;
                 let failed = read.is_err();
-                match read.map(|text| screen::preview(&text)) {
+                match read.map(|text| preview(&text)) {
                     Ok(Some(preview)) => {
                         found.insert(agent.pane.clone(), preview);
                     }

@@ -29,6 +29,8 @@ pub(super) fn remote(command: RemoteCommand, context: &Context) -> crate::Result
             relay: relay.to_string(),
             token: if clear { None } else { Some(piped_token()?) },
         },
+        RemoteCommand::Shares => RemoteOp::Shares,
+        RemoteCommand::Share { pane } => RemoteOp::Share { pane },
     };
     match context.call(Request::Remote, op)? {
         Response::Done { message } => Ok(Output::message(message)),
@@ -140,6 +142,33 @@ pub(super) fn output(reply: &Reply) -> crate::Result<Output> {
                 format!("Forgot this computer's listen token for {relay}")
             };
             Output::data(text, &json)
+        }
+        Reply::Shares { shares } => {
+            let json = serde_json::json!({ "shares": shares });
+            if shares.is_empty() {
+                return Ok(Output::data("No active shared sessions", &json)?.nothing());
+            }
+            let lines: Vec<String> = shares
+                .iter()
+                .map(|share| {
+                    let history = match share.history {
+                        sheprd_remote_control::control::sharing::ShareHistory::FromNow => {
+                            "from now"
+                        }
+                        sheprd_remote_control::control::sharing::ShareHistory::All => "all",
+                    };
+                    let tools = if share.include_tools {
+                        "tools on"
+                    } else {
+                        "tools off"
+                    };
+                    format!(
+                        "{}  pane={}  {} · {} · {} grant(s) · {}",
+                        share.share, share.pane, history, tools, share.grants, share.relay
+                    )
+                })
+                .collect();
+            Output::data(lines.join("\n"), &json)
         }
     }
 }

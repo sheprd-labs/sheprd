@@ -652,3 +652,16 @@ Node is needed only for these optional checks, not for building the daemon.
 ## Errors
 
 The crate exports `Error` and `Result<T>`.
+
+## Shared sessions (in development)
+
+The `sharing` module, behind `server`, implements persistent read-only grants,
+expiry/revocation, an allowlist transcript projection, a bounded blocking worker,
+and a dedicated encrypted relay gateway with a native reference peer. Draft
+HTTPS invitations carry anonymous view credentials in the URL fragment and
+require an independently trusted relay endpoint to decode. Daemon startup,
+owner controls and the browser viewer are still pending. Its owner methods must only run
+on the daemon worker after local confirmation; guests get the separate bounded
+read schema in `sheprd-chat-protocol::sharing`. See
+[implementation progress](../../docs/session-sharing/implementation.md) for the
+security boundary, conservative restart behavior, limits and remaining gates.

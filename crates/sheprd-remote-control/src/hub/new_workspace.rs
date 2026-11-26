@@ -3,14 +3,15 @@
 //!
 //! A worktree of a repository Herdr 1 already shows is made by Herdr 1 from
 //! that repository's workspace, as Sheprd's own new worktree is, so it
-//! joins the repository's group in every client. Its chat still starts on
-//! the core while one answers, in that workspace. Any other new workspace
-//! goes to the core, which Sheprd keeps a workspace for, or to Herdr 1 when
-//! no core answers.
+//! joins the repository's group in every client. Its chat starts in the
+//! shell Herdr 1 opens there, as the desktop's does, so the workspace holds
+//! the chat alone and no idle shell beside it. Any other new workspace goes
+//! to the core, which Sheprd keeps a workspace for, or to Herdr 1 when no
+//! core answers.
 
 use super::{
     ApiMethod, CreatedWorkspace, Error, Hub, Launcher, Layout, Result, command_line, core,
-    created_tab, direct_command_line, on_core, place, sessions, tab_params,
+    created_tab, direct_command_line, on_core, sessions, tab_params,
 };
 use crate::native::changes::local::git;
 use serde_json::{Value, json};
@@ -66,9 +67,7 @@ impl Hub {
                     repository: &source.workspace,
                     title: new.title,
                 };
-                return self
-                    .herdr_1_worktree(core, worktree, new.agent, &launcher)
-                    .await;
+                return self.herdr_1_worktree(worktree, new.agent, &launcher).await;
             }
         }
         if let Some(core) = core {
@@ -132,11 +131,13 @@ impl Hub {
     }
 
     /// A worktree Herdr 1 makes from `worktree.repository`'s workspace, in a
-    /// workspace of its own there, with the chat on `core` while one
-    /// answers, else typed into the worktree's first pane.
+    /// workspace of its own there, with the chat typed into its first pane.
+    ///
+    /// Not on a core even while one answers: Herdr 1 always opens that
+    /// shell, and a workspace's last tab cannot close without the workspace,
+    /// so a chat in another tab would leave the shell idle beside it.
     async fn herdr_1_worktree(
         &self,
-        core: Option<std::sync::Arc<core::Source>>,
         worktree: Worktree<'_>,
         agent: Agent,
         launcher: &Launcher,
@@ -145,29 +146,14 @@ impl Hub {
             .call(ApiMethod::WorktreeCreate, worktree.params())
             .await?;
         let workspace = answered(&created["workspace"]["workspace_id"])?;
-        let Some(core) = core else {
-            let pane = answered(&created["root_pane"]["pane_id"])?;
-            // The worktree's first pane is a shell in its folder; the program
-            // path rides in this line because the pane was not made with it.
-            self.run_line(&pane, &direct_command_line(launcher, agent))
-                .await?;
-            return Ok(CreatedWorkspace { workspace, pane });
-        };
-        let checkout = answered(&created["worktree"]["path"])?;
-        let (labelled, launcher) = (workspace.clone(), launcher.clone());
-        // Labelled for the new workspace, so Sheprd puts it in a tab there.
-        let started = on_core(move || {
-            core.open_chat(
-                agent,
-                &launcher,
-                &checkout,
-                Some(place(&labelled, &checkout)),
-            )
-        })
-        .await;
-        let pane = started.inspect_err(|error| {
-            tracing::warn!(%error, %workspace, "A new worktree's chat did not start; the worktree stays");
-        })?;
+        let pane = answered(&created["root_pane"]["pane_id"])?;
+        // The worktree's first pane is a shell in its folder; the program
+        // path rides in this line because the pane was not made with it.
+        self.run_line(&pane, &direct_command_line(launcher, agent))
+            .await
+            .inspect_err(|error| {
+                tracing::warn!(%error, %workspace, "A new worktree's chat did not start; the worktree stays");
+            })?;
         Ok(CreatedWorkspace { workspace, pane })
     }
 
@@ -204,8 +190,7 @@ impl Hub {
             repository: &workspace,
             title: new.title,
         };
-        self.herdr_1_worktree(None, worktree, new.agent, launcher)
-            .await
+        self.herdr_1_worktree(worktree, new.agent, launcher).await
     }
 }
 

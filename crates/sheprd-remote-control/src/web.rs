@@ -135,6 +135,9 @@ pub(crate) struct State {
     pub(crate) reports: Mutex<auth::RateLimiter<std::net::IpAddr>>,
     /// Origins served before, which an installed app may still send.
     pub(crate) seen: Mutex<Origins>,
+    /// Host-side read-only session sharing coordinator; starts no routes until
+    /// the owner confirms creating a share.
+    pub(crate) sharing: Option<Arc<crate::sharing::service::Service>>,
     /// This computer's text shortcuts, which its phones and desktops share.
     pub(crate) shortcuts: Shortcuts,
     /// This computer's tags, which its phones and desktops share.

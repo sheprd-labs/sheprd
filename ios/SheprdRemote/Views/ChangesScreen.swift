@@ -122,6 +122,9 @@ struct ChangesScreen: View {
         .navigationTitle("Changes")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
+        // Check links open over this screen, which the iPad may show in a
+        // sheet that the app's own link browsing cannot open over.
+        .browsesLinks(othersToSystem: true)
         .refreshable { await reload() }
         .task(id: Reading(scope: scope, status: machine?.status)) { await loadFiles() }
         .task(id: ChecksReading(status: machine?.status, number: workspace?.pullRequest?.number,

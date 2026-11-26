@@ -35,9 +35,9 @@ fn rich_notice_metadata_never_becomes_a_push_excerpt_or_live_question() {
                 assert_eq!(
                     notification.body,
                     if privacy == Privacy::Excerpt {
-                        "Summary\nexample · review"
+                        "Summary"
                     } else {
-                        "example · review"
+                        ""
                     }
                 );
             } else {

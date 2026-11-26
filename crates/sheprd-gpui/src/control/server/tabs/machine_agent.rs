@@ -138,6 +138,7 @@ impl Work {
                 let task = agent::hello(&name, cx);
                 cx.background_executor().spawn(async move {
                     let hello = task.await?;
+                    let capabilities = Some(hello.effective_capabilities());
                     Ok(tab(Reply::MachineAgent(MachineAgentInfo {
                         version: hello.version,
                         width: hello.width,
@@ -145,6 +146,7 @@ impl Work {
                         scale: scale(hello.scale),
                         accessibility: hello.accessibility,
                         screen_recording: hello.screen_recording,
+                        capabilities,
                     })))
                 })
             }
@@ -218,7 +220,15 @@ fn scale(scale: f64) -> u8 {
 #[cfg(target_os = "macos")]
 fn refused(error: &agent::Error) -> Response {
     let code = match error {
-        agent::Error::NotRunning(_) => ErrorCode::Busy,
+        agent::Error::NotRunning(_)
+        | agent::Error::Refused {
+            refusal: agent::Refusal::NotReady,
+            ..
+        } => ErrorCode::Busy,
+        agent::Error::Refused {
+            refusal: agent::Refusal::Unsupported,
+            ..
+        } => ErrorCode::Unsupported,
         agent::Error::Refused {
             refusal: agent::Refusal::Invalid,
             ..

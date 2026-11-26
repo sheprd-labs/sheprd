@@ -53,8 +53,8 @@ pub(crate) fn endpoint(tokens: &[(String, String)]) -> Option<EndpointId> {
 }
 
 /// The chat panes of a reachable daemon's snapshot, in its order, one per
-/// pane and at most [`MAX_CHATS`], each reached by `route`. A daemon with
-/// no route has none.
+/// pane, each reached by `route`. A daemon with no route has none. The
+/// window bounds them with every other source in [`bounded`].
 pub(crate) fn targets(snapshot: &ClientShellSnapshot, route: Option<&Route>) -> Vec<Target> {
     let Some(route) = route else {
         return Vec::new();
@@ -73,8 +73,39 @@ pub(crate) fn targets(snapshot: &ClientShellSnapshot, route: Option<&Route>) -> 
             })
         })
         .filter(|target| seen.insert(target.pane_id.clone()))
-        .take(MAX_CHATS)
         .collect()
+}
+
+/// At most [`MAX_CHATS`] of `targets`, in their order, those `rank`
+/// puts lower first. The window ranks the panes on screen before those
+/// holding files for an unsent prompt, and both before the rest, so a chat
+/// the user is looking at attaches however many chats run elsewhere.
+pub(crate) fn bounded(targets: Vec<Target>, rank: impl Fn(&str) -> u8) -> Vec<Target> {
+    bound_by(targets, MAX_CHATS, |target| rank(&target.pane_id))
+}
+
+/// At most `limit` of `items`, in their order, those `rank` puts lower
+/// first and, within a rank, earlier ones.
+pub(crate) fn bound_by<T>(mut items: Vec<T>, limit: usize, rank: impl Fn(&T) -> u8) -> Vec<T> {
+    if items.len() <= limit {
+        return items;
+    }
+    let mut order: Vec<(u8, usize)> = items
+        .iter()
+        .enumerate()
+        .map(|(index, item)| (rank(item), index))
+        .collect();
+    order.sort_unstable();
+    let mut keep = vec![false; items.len()];
+    for (_, index) in order.into_iter().take(limit) {
+        keep[index] = true;
+    }
+    let mut index = 0;
+    items.retain(|_| {
+        index += 1;
+        keep[index - 1]
+    });
+    items
 }
 
 /// Verified CLI bindings add rich views to existing terminals. Real ACP
@@ -143,18 +174,14 @@ pub(crate) fn with_mirrors(
     targets
 }
 
-/// Adds the target `target` makes of each of the first [`MAX_CHATS`]
-/// candidates, until there are [`MAX_CHATS`] targets. A pane keeps the
+/// Adds the target `target` makes of each candidate. A pane keeps the
 /// target it already has, so earlier sources win.
 fn extend<T>(
     targets: &mut Vec<Target>,
     candidates: &[T],
     mut target: impl FnMut(&T) -> Option<Target>,
 ) {
-    for candidate in candidates.iter().take(MAX_CHATS) {
-        if targets.len() >= MAX_CHATS {
-            break;
-        }
+    for candidate in candidates {
         if let Some(target) = target(candidate)
             && !targets.iter().any(|known| known.pane_id == target.pane_id)
         {

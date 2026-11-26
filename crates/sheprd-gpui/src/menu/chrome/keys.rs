@@ -121,6 +121,10 @@ impl SheprdWindow {
             self.remote_pairing_key(event, window, cx);
             return;
         }
+        if self.menu.page == Some(Page::ShareSession) {
+            self.share_session_key(event, window, cx);
+            return;
+        }
         if self.menu.page == Some(Page::DeviceTheme) {
             self.device_theme_key(event, window, cx);
             return;

@@ -14,8 +14,13 @@
 
 use super::{
     Error, Name, Result,
-    configuration::new_identity,
-    store::{self, AUXILIARY, DISK, FROM_IMAGE, GUIDE, HARDWARE, IDENTITY, READY, SETTINGS, STATE},
+    configuration::new_identity_for,
+    install::seed,
+    metadata::{self, BootMetadata, GuestMetadata, GuestOs},
+    store::{
+        self, AUXILIARY, DISK, EFI_VARS, FROM_IMAGE, GUEST_METADATA, GUIDE, HARDWARE, IDENTITY,
+        READY, SEED_ISO, SETTINGS, STATE,
+    },
 };
 use std::{
     fs,
@@ -31,6 +36,7 @@ const SUFFIX_BYTES: usize = 4;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Image {
     pub(crate) name: Name,
+    pub(crate) guest: GuestMetadata,
     /// What its files add up to. They are shared with what was cloned from
     /// it, so deleting it may give back less.
     pub(crate) disk_bytes: u64,
@@ -58,8 +64,19 @@ fn list_in(root: &Path) -> Result<Vec<Image>> {
         .filter_map(|entry| {
             let name = Name::try_from(entry.file_name().into_string().ok()?).ok()?;
             let folder = entry.path();
-            folder.join(DISK).is_file().then(|| Image {
+            if !folder.join(DISK).is_file() {
+                return None;
+            }
+            let guest = match metadata::read_in(&folder) {
+                Ok(guest) => guest,
+                Err(error) => {
+                    tracing::warn!(%name, %error, "Skipping image folder with unreadable metadata");
+                    return None;
+                }
+            };
+            Some(Image {
                 name,
+                guest,
                 disk_bytes: store::disk_bytes(&folder),
             })
         })
@@ -78,11 +95,12 @@ fn save_in(source: &Path, machine: &Name, root: &Path, image: &Name) -> Result<(
     if !source.join(DISK).is_file() {
         return Err(Error::NotInstalled(source.to_owned()));
     }
+    let guest = metadata::read_in(source)?;
     // Its disk only makes sense with the memory saved beside it.
-    if source.join(STATE).is_file() {
+    if guest.capabilities().save_restore && source.join(STATE).is_file() {
         return Err(Error::Suspended(machine.clone()));
     }
-    clone_as(source, root, image, |_| Ok(()))
+    clone_as(source, &guest, root, image, |_| Ok(()))
 }
 
 /// Makes machine `name` from image `image`, with an identity of its own. An
@@ -90,24 +108,30 @@ fn save_in(source: &Path, machine: &Name, root: &Path, image: &Name) -> Result<(
 /// one saved before Sheprd kept that note opens its guide once the agent
 /// says it is needed ([`super::guide::Opening::Quiet`]).
 pub(crate) fn create(name: &Name, image: &Name) -> Result<()> {
-    create_in(
-        &root()?.join(image.as_str()),
-        image,
-        &store::root()?,
-        name,
-        &new_identity(),
-    )
+    let source = root()?.join(image.as_str());
+    if !source.join(DISK).is_file() {
+        return Err(Error::ImageNotFound(image.clone()));
+    }
+    let guest = metadata::read_in(&source)?;
+    let identity = new_identity_for(&guest.boot);
+    create_in(&source, image, &store::root()?, name, &identity)
 }
 
 fn create_in(source: &Path, image: &Name, root: &Path, name: &Name, identity: &[u8]) -> Result<()> {
     if !source.join(DISK).is_file() {
         return Err(Error::ImageNotFound(image.clone()));
     }
+    let guest = metadata::read_in(source)?;
     let ready = source.join(READY).is_file();
-    clone_as(source, root, name, |staging| {
+    clone_as(source, &guest, root, name, |staging| {
         let path = staging.join(IDENTITY);
         fs::write(&path, identity).map_err(|source| store::write_error(&path, source))?;
-        if ready {
+        if matches!(guest.boot, BootMetadata::AppleLinuxEfi { .. }) {
+            let seed_path = staging.join(SEED_ISO);
+            seed::write_clone_iso(&seed_path, name, identity)
+                .map_err(|source| store::write_error(&seed_path, source))?;
+        }
+        if ready || guest.os != GuestOs::Macos {
             return Ok(());
         }
         let guide = staging.join(GUIDE);
@@ -124,6 +148,7 @@ pub(crate) fn delete(image: &Name) -> Result<()> {
 /// whole or not at all: it is built under a name no listing reads.
 fn clone_as(
     source: &Path,
+    guest: &GuestMetadata,
     root: &Path,
     name: &Name,
     finish: impl FnOnce(&Path) -> Result<()>,
@@ -137,10 +162,14 @@ fn clone_as(
         .prefix(".new-")
         .tempdir_in(root)
         .map_err(|source| store::write_error(root, source))?;
-    for file in [AUXILIARY, DISK, HARDWARE] {
+    let required: &[&str] = match guest.boot {
+        BootMetadata::AppleMacos => &[AUXILIARY, DISK, HARDWARE],
+        BootMetadata::AppleLinuxEfi { .. } => &[DISK, EFI_VARS],
+    };
+    for file in required {
         clone_file(&source.join(file), &staging.path().join(file))?;
     }
-    for file in [READY, SETTINGS] {
+    for file in [GUEST_METADATA, READY, SETTINGS] {
         match clone_file(&source.join(file), &staging.path().join(file)) {
             Err(Error::Read { source, .. }) if source.kind() == ErrorKind::NotFound => {}
             cloned => cloned?,

@@ -5,6 +5,7 @@
 mod dropped;
 mod lines;
 mod render;
+mod timeline;
 mod view;
 
 use std::{
@@ -30,6 +31,20 @@ use view::{Out, Received, View};
 const LOCAL: ConnId = ConnId(0);
 const QUEUE: usize = 4096;
 const FRAME: Duration = Duration::from_millis(100);
+/// Slower animation cadence when a native client such as Sheprd is attached,
+/// so a long turn does not redraw a hidden terminal ten times a second.
+const ATTACHED_FRAME: Duration = Duration::from_secs(2);
+
+fn frame_interval(status: &str, remote_clients: u32) -> Option<Duration> {
+    if status != "working" {
+        return None;
+    }
+    Some(if remote_clients > 0 {
+        ATTACHED_FRAME
+    } else {
+        FRAME
+    })
+}
 
 pub(crate) fn run(inputs: &Sender<Input>) -> anyhow::Result<()> {
     let mut terminal = ratatui::try_init()?;
@@ -117,11 +132,9 @@ fn event_loop(
             let _ = out.flush();
         }
         terminal.draw(|frame| render::draw(frame, &mut view, tick))?;
-        let animate = status == "working";
-        let timer = if animate {
-            crossbeam_channel::after(FRAME)
-        } else {
-            never()
+        let timer = match frame_interval(status, view.transcript.clients) {
+            Some(interval) => crossbeam_channel::after(interval),
+            None => never(),
         };
         select! {
             recv(session) -> message => {

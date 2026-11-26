@@ -95,6 +95,7 @@ fn named(name: String, incoming: socket::Incoming) -> Option<(Name, socket::Inco
 
 #[cfg(target_os = "macos")]
 fn info(listing: Listing, cx: &mut App) -> MachineInfo {
+    let capabilities = listing.capabilities();
     let state = match (machine::status(&listing.name), listing.saved) {
         (Status::Running, _) => MachineState::Running,
         (Status::Starting, _) => MachineState::Starting,
@@ -107,6 +108,10 @@ fn info(listing: Listing, cx: &mut App) -> MachineInfo {
         reservation: machine_claims::describe(listing.name.as_str(), cx),
         name: listing.name.to_string(),
         state,
+        os: listing.guest.os,
+        arch: listing.guest.arch,
+        image: listing.guest.image_label(),
+        capabilities,
         cpus: listing.settings.cpus,
         memory_gib: listing.settings.memory_gib,
         display: listing.settings.display.to_string(),
@@ -242,8 +247,13 @@ pub(super) fn suspend(name: String, incoming: socket::Incoming, cx: &mut App) {
             format!("{name} is not running"), // i18n: data
         ));
     }
-    machine::suspend(&name, cx);
-    incoming.respond(Response::done(format!("Saving {name}")));
+    match machine::suspend(&name, cx) {
+        Ok(()) => incoming.respond(Response::done(format!("Saving {name}"))),
+        Err(error @ machine::Error::UnsupportedCapability { .. }) => {
+            incoming.respond(Response::error(ErrorCode::Unsupported, error.localize()));
+        }
+        Err(error) => incoming.respond(failed(&error)),
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -374,6 +384,8 @@ pub(super) fn image_list(incoming: socket::Incoming, cx: &mut App) {
                         .into_iter()
                         .map(|image| MachineImageInfo {
                             name: image.name.to_string(),
+                            os: image.guest.os,
+                            arch: image.guest.arch,
                             disk_bytes: image.disk_bytes,
                         })
                         .collect(),

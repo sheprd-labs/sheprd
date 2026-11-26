@@ -129,6 +129,9 @@ struct WorkspaceScreen: View {
         // Tabs the computer opens or closes slide in and out, and the
         // count rolls, rather than the rows jumping into place.
         .animation(reduceMotion ? nil : .snappy, value: chats.map(\.id) + terminals.map(\.id))
+        // The iPad shows this screen in a sheet, which the app's own link
+        // browsing cannot open over.
+        .browsesLinks(othersToSystem: true)
         .navigationTitle(workspace.label)
         .navigationBarTitleDisplayMode(.inline)
         // The iPad's sidebar keeps its tabs below a workspace.
@@ -700,7 +703,7 @@ private struct ComputerRow: View {
 }
 
 /// The workspace's pull request: its number, its state as an icon, and
-/// a link out to it.
+/// a link to it, opened where Settings › Open Links In says.
 private struct PullRequestRow: View {
     var pullRequest: Home.PullRequest
 

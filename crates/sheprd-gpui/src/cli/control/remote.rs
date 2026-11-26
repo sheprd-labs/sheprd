@@ -32,6 +32,12 @@ pub enum RemoteCommand {
         relay: sheprd_relay::Endpoint,
         clear: bool,
     },
+    /// List active read-only session shares on this host (no secrets).
+    Shares,
+    /// Open the Share this session dialog for a chat pane; the user confirms there.
+    Share {
+        pane: Option<String>,
+    },
 }
 
 pub(super) fn remote(args: &mut Args) -> Result<RemoteCommand, CliError> {
@@ -63,6 +69,10 @@ pub(super) fn remote(args: &mut Args) -> Result<RemoteCommand, CliError> {
             })?,
         },
         Some("relays") => relays(args)?,
+        Some("shares") => RemoteCommand::Shares,
+        Some("share") => RemoteCommand::Share {
+            pane: args.text_option("--pane")?,
+        },
         _ => return Err(unknown("remote", verb)),
     })
 }

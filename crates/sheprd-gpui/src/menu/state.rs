@@ -115,6 +115,8 @@ pub(crate) struct MenuState {
     pub(crate) remote_revoke: Option<crate::remote::Revoke>,
     /// A phone's request for another machine, waiting for the user.
     pub(crate) remote_host_ask: Option<crate::remote::links::ask::HostAsk>,
+    /// The open read-only session sharing dialog.
+    pub(crate) remote_share: Option<crate::remote::ShareDialog>,
     /// Whether to borrow another computer's virtual Mac. Dropping it
     /// unanswered declines.
     pub(crate) machine_borrow: Option<crate::machine::borrow::Ask>,
@@ -421,6 +423,7 @@ impl MenuState {
             remote_pairing: None,
             remote_revoke: None,
             remote_host_ask: None,
+            remote_share: None,
             machine_borrow: None,
             #[cfg(target_os = "macos")]
             machine_settings_request: None,
@@ -527,6 +530,7 @@ impl MenuState {
         self.remote_pairing = None;
         self.remote_revoke = None;
         self.remote_host_ask = None;
+        self.remote_share = None;
         // Closing the borrow dialog declines it. Other menus leave the pending notice alone.
         if self.page == Some(Page::BorrowMachine) {
             self.machine_borrow = None;

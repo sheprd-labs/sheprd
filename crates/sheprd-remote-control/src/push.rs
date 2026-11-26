@@ -12,6 +12,8 @@
 mod directives;
 mod encrypt;
 mod event;
+mod finish;
+mod plain;
 mod presence;
 mod send;
 mod subscription;
@@ -25,6 +27,7 @@ use std::{io, path::PathBuf};
 
 pub(crate) use encrypt::{MAX_PAYLOAD, encrypt};
 pub(crate) use event::EventId;
+pub(crate) use finish::recapped;
 pub(crate) use presence::{Hold, Near};
 #[cfg(test)]
 pub(crate) use presence::{MAX_HELD, NEAR_TTL_MS};

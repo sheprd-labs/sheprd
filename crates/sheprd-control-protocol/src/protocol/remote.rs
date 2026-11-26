@@ -12,6 +12,7 @@ use sheprd_remote_control::{
         Device, Status,
         push::{Mode, PushStatus, TestPush},
         relays::ListenToken,
+        sharing::ShareSummary,
     },
 };
 
@@ -60,6 +61,14 @@ pub enum RemoteOp {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         token: Option<ListenToken>,
     },
+    /// Active read-only session shares on this host, without any secrets.
+    Shares,
+    /// Opens the Share this session dialog for `pane` (or the caller's chat
+    /// pane); the owner confirms creating or stopping a share there.
+    Share {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pane: Option<String>,
+    },
 }
 
 impl RemoteOp {
@@ -70,8 +79,9 @@ impl RemoteOp {
             | Self::Devices
             | Self::Revoke { .. }
             | Self::RelayToken { .. }
+            | Self::Shares
             | Self::TestPush => DAEMON_WAIT_SECONDS,
-            Self::AddLink { .. } | Self::Pair { .. } | Self::Restart => 0,
+            Self::AddLink { .. } | Self::Pair { .. } | Self::Restart | Self::Share { .. } => 0,
         }
     }
 }
@@ -124,6 +134,11 @@ pub enum Reply {
     RelayToken {
         relay: String,
         token: bool,
+    },
+    /// Active read-only session shares on this host, without secrets.
+    Shares {
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        shares: Vec<ShareSummary>,
     },
 }
 

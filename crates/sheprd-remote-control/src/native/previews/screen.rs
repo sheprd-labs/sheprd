@@ -40,7 +40,7 @@ const TRAILING_HINTS: &[&str] = &["(disable recaps in /config)"];
 /// with SGR colors, as `pane.read` gives it), one item to a line, or the
 /// question of a menu it waits on; `None` when the screen shows nothing
 /// else.
-pub(super) fn preview(screen: &str) -> Option<String> {
+pub(crate) fn preview(screen: &str) -> Option<String> {
     let screen = ansi::parse(ansi::tail(screen));
     let skip = screen.lines.len().saturating_sub(MAX_LINES);
     let lines: Vec<String> = screen.lines[skip..]

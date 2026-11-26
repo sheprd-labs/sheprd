@@ -125,6 +125,8 @@ pub(crate) enum Page {
     RenameTab,
     /// Confirming a paired remote control device should be revoked.
     RevokeDevice,
+    /// Read-only session sharing dialog for a local chat pane.
+    ShareSession,
     Tab,
     /// Moving a linked worktree to another host.
     Teleport,

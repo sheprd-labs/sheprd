@@ -8,6 +8,7 @@ fn info(accessibility: bool, screen_recording: bool) -> MachineAgentInfo {
         scale: 2,
         accessibility,
         screen_recording,
+        capabilities: None,
     }
 }
 

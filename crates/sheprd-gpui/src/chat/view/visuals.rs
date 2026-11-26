@@ -3,9 +3,9 @@
 
 use super::{
     super::{
-        prepared::Part,
+        prepared::{Part, Picture},
         selection::Region,
-        visual::{Shown, VisualId, Visuals},
+        visual::{Shown, Visuals},
     },
     layout::Voice,
 };
@@ -61,7 +61,7 @@ impl SheprdWindow {
                     target.set(bounds.into_iter().reduce(|all, part| all.union(&part)));
                 })
             })
-            .children(parts.iter().enumerate().map(|(index, part)| {
+            .children(parts.iter().enumerate().filter_map(|(index, part)| {
                 // Each part scopes its own links' element ids.
                 let part = match part {
                     Part::Text(lines) => self
@@ -72,6 +72,7 @@ impl SheprdWindow {
                             cx,
                         )
                         .into_any_element(),
+                    Part::Screen(_) if !self.config.chat.message_effects => return None,
                     Part::Rich(blocks) => {
                         match self.chat_text_scope(pane_id, entry, Region::Body(index)) {
                             Some(scope) => self
@@ -108,9 +109,13 @@ impl SheprdWindow {
                     Part::Widget(document) => self
                         .render_chat_widget(pane_id, entry, index, document, cx)
                         .into_any_element(),
-                    Part::Diagram(id, code) => {
-                        self.render_chat_diagram(pane_id, *id, code, visuals, cx)
-                    }
+                    Part::Diagram(id, code) => self.render_chat_diagram(
+                        pane_id,
+                        Picture::new(entry, index, *id),
+                        code,
+                        visuals,
+                        cx,
+                    ),
                     Part::Html { code } => {
                         self.render_chat_html(pane_id, entry, index, code, visuals, cx)
                     }
@@ -140,7 +145,7 @@ impl SheprdWindow {
                         pane_id, entry, index, *id, url, alt, visuals, cx,
                     ),
                 };
-                div().id(("chat-part", index)).min_w_0().child(part)
+                Some(div().id(("chat-part", index)).min_w_0().child(part))
             }))
     }
 
@@ -149,7 +154,7 @@ impl SheprdWindow {
         &self,
         pane_id: &str,
         author: Author,
-        id: VisualId,
+        picture: Picture,
         visuals: &Visuals,
         cx: &mut Context<Self>,
     ) -> Div {
@@ -158,18 +163,18 @@ impl SheprdWindow {
             Author::User => row.justify_end(),
             Author::Agent => row,
         };
-        row.child(self.render_chat_visual(pane_id, id, visuals, Frame::Image, cx))
+        row.child(self.render_chat_visual(pane_id, picture, visuals, Frame::Image, cx))
     }
 
     fn render_chat_diagram(
         &self,
         pane_id: &str,
-        id: VisualId,
+        picture: Picture,
         code: &[release_notes::Line],
         visuals: &Visuals,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        if let Shown::Failed(error) = visuals.shown(id) {
+        if let Shown::Failed(error) = visuals.shown(picture.id) {
             // The source stays readable when it cannot be drawn.
             return div()
                 .flex()
@@ -189,7 +194,7 @@ impl SheprdWindow {
                 )
                 .into_any_element();
         }
-        self.render_chat_visual(pane_id, id, visuals, Frame::Diagram, cx)
+        self.render_chat_visual(pane_id, picture, visuals, Frame::Diagram, cx)
             .into_any_element()
     }
 
@@ -198,7 +203,7 @@ impl SheprdWindow {
     pub(super) fn render_chat_visual(
         &self,
         pane_id: &str,
-        id: VisualId,
+        picture: Picture,
         visuals: &Visuals,
         frame: Frame,
         cx: &mut Context<Self>,
@@ -216,7 +221,7 @@ impl SheprdWindow {
             .rounded(px(corners::CONTROL))
             .border_1()
             .border_color(rgb(theme.active));
-        match visuals.shown(id) {
+        match visuals.shown(picture.id) {
             Shown::Ready(drawn) => {
                 let widest = match frame {
                     // A diagram is drawn at its natural size up to the row.
@@ -225,7 +230,7 @@ impl SheprdWindow {
                 };
                 let scale = (widest / drawn.width).min(1.);
                 let (width, height) = (drawn.width * scale, drawn.height * scale);
-                let picture = img(drawn.texture.clone())
+                let image = img(drawn.texture.clone())
                     .w(px(width))
                     .h(px(height))
                     .max_w_full()
@@ -238,12 +243,12 @@ impl SheprdWindow {
                         MouseButton::Left,
                         cx.listener(move |this, _: &MouseUpEvent, window, cx| {
                             cx.stop_propagation();
-                            this.open_chat_viewer(&pane_id, id, window, cx);
+                            this.open_chat_viewer(&pane_id, picture, window, cx);
                         }),
                     );
                 match frame {
-                    Frame::Diagram => boxed.p(px(8.)).bg(rgb(theme.background)).child(picture),
-                    Frame::Image | Frame::ToolImage => boxed.child(picture),
+                    Frame::Diagram => boxed.p(px(8.)).bg(rgb(theme.background)).child(image),
+                    Frame::Image | Frame::ToolImage => boxed.child(image),
                 }
             }
             Shown::Pending => boxed

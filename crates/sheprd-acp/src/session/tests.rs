@@ -40,6 +40,7 @@ mod sent_notes;
 mod settings;
 mod streaming;
 mod threads;
+mod watchdog;
 
 type Reports = Rc<RefCell<Vec<Activity>>>;
 type Prompts = Rc<RefCell<Vec<String>>>;

@@ -19,6 +19,11 @@ use std::time::Duration;
 /// One beat of the dot's pulse.
 const PULSE: Duration = Duration::from_millis(1200);
 
+/// Silence after the last assistant chunk before "Writing…" switches to
+/// "Waiting for background work…" so a turn held open by a background task
+/// does not appear to be actively streaming text for hours.
+pub(super) const QUIET_WRITING_MS: u64 = 30_000;
+
 /// Steps the open list keeps; it says how many more run.
 const MAX_STEPS: usize = 16;
 
@@ -129,16 +134,38 @@ fn since(started_ms: u64, now_ms: u64) -> Option<String> {
 impl Working {
     /// What `transcript` shows the agent doing, or `None` while it is not
     /// on a turn.
+    #[cfg(test)]
     pub(super) fn of(transcript: &Transcript, now_ms: u64) -> Option<Self> {
+        Self::of_at(transcript, now_ms, None)
+    }
+
+    /// What `transcript` shows the agent doing as of `now_ms`, given when the
+    /// turn last received a live update (`last_activity_ms`).
+    pub(super) fn of_at(
+        transcript: &Transcript,
+        now_ms: u64,
+        last_activity_ms: Option<u64>,
+    ) -> Option<Self> {
         if transcript.status != Status::Working {
             return None;
         }
         let running = running_steps(transcript);
-        let (phase, doing) = match (running.first(), transcript.entries.last()) {
+        let last_non_notice = transcript
+            .entries
+            .iter()
+            .rev()
+            .take_while(|entry| !matches!(entry.kind, EntryKind::User { .. } | EntryKind::Turn(_)))
+            .find(|entry| !matches!(entry.kind, EntryKind::Notice { .. }));
+        let quiet =
+            last_activity_ms.is_some_and(|at| now_ms.saturating_sub(at) >= QUIET_WRITING_MS);
+        let (phase, doing) = match (running.first(), last_non_notice) {
             (Some(tool), _) if tool.kind == ToolKind::Think => (Phase::Thinking, step_doing(tool)),
             (Some(tool), _) => (Phase::Running, step_doing(tool)),
             // A log saves whole records, so its last says nothing of now.
             _ if transcript.read_only => (Phase::Working, fl!("chat-working")),
+            (None, Some(entry)) if matches!(entry.kind, EntryKind::Agent { .. }) && quiet => {
+                (Phase::Working, fl!("chat-working-waiting"))
+            }
             (None, Some(entry)) if matches!(entry.kind, EntryKind::Agent { .. }) => {
                 (Phase::Writing, fl!("chat-working-writing"))
             }
@@ -390,7 +417,7 @@ impl SheprdWindow {
         }
         let transcript = chat.session.transcript();
         let now_ms = crate::chat::now_ms();
-        let working = Working::of(transcript, now_ms)?;
+        let working = Working::of_at(transcript, now_ms, chat.session.last_activity_ms())?;
         let look = self.chat_look();
         let theme = look.theme;
         let size = (look.text - 1.).max(10.);

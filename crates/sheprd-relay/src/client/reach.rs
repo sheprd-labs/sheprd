@@ -85,7 +85,16 @@ fn info(url: &str) -> Result<Info> {
     if status.as_u16() == 403
         && crate::endpoint::is_ban(|name| headers.get(name).and_then(|value| value.to_str().ok()))
     {
-        return Err(Error::Banned);
+        let header = |name| {
+            headers
+                .get(name)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or_default()
+        };
+        return Err(Error::Banned(crate::ban::Ban::from_parts(
+            header(crate::ban::REASON_HEADER),
+            header(crate::ban::SECONDS_HEADER),
+        )));
     }
     if !status.is_success() {
         return Err(Error::Info(Box::new(ureq::Error::StatusCode(

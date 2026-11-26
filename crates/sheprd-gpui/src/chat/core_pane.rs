@@ -10,7 +10,7 @@
 //! owning host, through that saved host's authenticated transport.
 
 use super::view::Place;
-use super::{MAX_CHATS, Route, Surface, Target};
+use super::{Route, Surface, Target};
 use crate::{
     SheprdWindow,
     browser::TabId,
@@ -50,8 +50,7 @@ pub(crate) fn terminal_of(key: &str) -> Option<TerminalId> {
     TerminalId::new(key.strip_prefix("core:")?).ok()
 }
 
-/// The chats among `terminals`, in their order, one per terminal and at
-/// most [`MAX_CHATS`]. A terminal on another machine this core added
+/// The chats among `terminals`, in their order, one per terminal. A terminal on another machine this core added
 /// (`box/t7`) runs its program there, out of reach.
 #[cfg(test)]
 pub(super) fn targets<'a>(terminals: impl IntoIterator<Item = &'a TerminalInfo>) -> Vec<Target> {
@@ -80,7 +79,6 @@ fn bounded_targets(targets: impl IntoIterator<Item = Target>) -> Vec<Target> {
     targets
         .into_iter()
         .filter(|target| seen.insert(target.pane_id.clone()))
-        .take(MAX_CHATS)
         .collect()
 }
 
@@ -107,13 +105,10 @@ fn target_on(
     })
 }
 
-/// `herdr` followed by as many of `core` as fit under [`MAX_CHATS`], each
-/// whose key no Herdr chat already holds.
+/// `herdr` followed by each of `core` whose key no Herdr chat already
+/// holds. [`super::discovery::bounded`] then picks the ones that attach.
 pub(super) fn with_core(mut herdr: Vec<Target>, core: Vec<Target>) -> Vec<Target> {
     for target in core {
-        if herdr.len() >= MAX_CHATS {
-            break;
-        }
         if !herdr.iter().any(|known| known.pane_id == target.pane_id) {
             herdr.push(target);
         }
@@ -503,8 +498,8 @@ impl SheprdWindow {
         if let Some(focus) = pane.viewer.as_ref().and_then(|viewer| viewer.open_focus()) {
             return Some(focus.clone());
         }
-        if pane.reading(window) {
-            return pane.text_focus.clone();
+        if let Some(focus) = pane.reader_focus(window, cx) {
+            return Some(focus);
         }
         pane.input_focus(cx)
     }
@@ -552,8 +547,8 @@ impl SheprdWindow {
                 }
                 Surface::Herdr => return None,
             };
-            pane.focus_handles(cx)
-                .any(|focus| focus.is_focused(window))
+            pane.focused_handle(window, cx)
+                .is_some()
                 .then(|| (tab, terminal.clone()))
         })
     }

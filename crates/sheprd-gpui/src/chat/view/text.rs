@@ -26,7 +26,7 @@ impl SheprdWindow {
 
     /// One selectable run of an entry's plain text, at `cell` of `region`.
     /// It is drawn plain when the selection document holds other text there.
-    pub(super) fn render_chat_text(
+    pub(in crate::chat) fn render_chat_text(
         &self,
         pane_id: &str,
         entry: EntryId,

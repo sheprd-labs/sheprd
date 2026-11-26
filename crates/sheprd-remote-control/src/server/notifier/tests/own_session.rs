@@ -65,7 +65,7 @@ fn alerts() -> Vec<Notification> {
 fn another_machines_space_never_alerts() {
     let alerts = alerts();
     assert_eq!(alerts.len(), 1, "only this session's agent: {alerts:?}");
-    assert!(alerts[0].body.starts_with("desk"));
+    assert!(alerts[0].subtitle.starts_with("desk"));
     let layout = layout("blocked");
     let names = agent_names(&layout);
     let panes: Vec<&str> = terminal_agents(&layout, &names)

@@ -192,6 +192,10 @@ pub(crate) struct Fleet {
     links: HashMap<String, Link>,
     /// Machines an invitation or share runs for.
     acting: BTreeSet<String>,
+    /// The Nearby pairing whose claim carries the fleet, by attempt, and
+    /// since when: busy like `acting` until its fleet step ends, or
+    /// [`join::PAIRING_HOLD`] after it began, should its page close first.
+    pairing: Option<(u64, Instant)>,
     /// Phones approved at pairing with Also add to your fleet, by when.
     expected: joins::Expected,
     /// Joins waiting for a person.

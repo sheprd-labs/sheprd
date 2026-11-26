@@ -196,12 +196,17 @@ fn two_projects(
         host: "local".into(),
         request,
     }));
-    for (repo, items) in view.repos.iter_mut().zip([first, second]) {
+    for ((repo, items), root) in view
+        .repos
+        .iter_mut()
+        .zip([first, second])
+        .zip(["/r", "/other"])
+    {
         repo.snapshot.items = Arc::new(items);
         repo.snapshot.access = Some(Access::ReadWrite);
         repo.snapshot.repo = Some(crate::orchestrator::repo::RepoInfo {
-            repository: crate::orchestrator::Repository::Local("/r/.git".into()),
-            main_root: "/r".into(),
+            repository: crate::orchestrator::Repository::Local(format!("{root}/.git").into()),
+            main_root: root.into(),
             beads: true,
             beads_root: None,
             remote: None,

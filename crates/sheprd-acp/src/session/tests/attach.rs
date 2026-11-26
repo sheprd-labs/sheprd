@@ -94,6 +94,33 @@ fn a_reconnecting_client_catches_up_from_its_cursor() {
 }
 
 #[test]
+fn a_client_far_behind_gets_a_snapshot_instead_of_every_chunk() {
+    let mut harness = ready();
+    let client = harness.subscribe(1, false, None);
+    let mut mirror = Transcript::default();
+    let cursor = replay(drain(&client), &mut mirror).unwrap();
+    harness.input(Input::Detach(ConnId(1)));
+    prompt(&mut harness, 0, "while away");
+    for _ in 0..=CATCH_UP {
+        harness.agent_says("x");
+    }
+    assert!(harness.session.seq - cursor.seq > CATCH_UP);
+    let client = harness.subscribe(2, false, Some(cursor));
+    let messages = drain(&client);
+    assert!(matches!(&messages[1], ServerMessage::Snapshot { .. }));
+    // After it, only the attach itself: the client count.
+    assert!(messages[2..].iter().all(|message| matches!(
+        message,
+        ServerMessage::Change {
+            change: Change::Clients { .. },
+            ..
+        }
+    )));
+    replay(messages, &mut mirror);
+    assert_eq!(&mirror, harness.transcript());
+}
+
+#[test]
 fn a_cursor_from_another_run_or_too_old_gets_a_snapshot() {
     let mut harness = ready();
     let stale = Cursor {

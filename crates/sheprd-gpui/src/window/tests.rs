@@ -21,6 +21,7 @@ mod padding;
 mod report_issue;
 mod rtl;
 mod sound_volume;
+mod tick_loop;
 
 fn main_windows(cx: &mut gpui::App) -> Vec<gpui::WindowHandle<SheprdWindow>> {
     cx.windows()

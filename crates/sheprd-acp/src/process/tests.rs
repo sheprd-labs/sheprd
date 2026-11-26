@@ -66,3 +66,24 @@ fn the_agent_gets_the_environment_it_was_started_with() {
     spawned.output.read_to_string(&mut seen).unwrap();
     assert_eq!(seen, "1");
 }
+
+#[cfg(unix)]
+#[test]
+fn the_agent_never_gets_the_terminals_resume_token() {
+    use std::io::Read as _;
+
+    let dir = tempfile::tempdir().unwrap();
+    let mut spawned = spawn(
+        &OsString::from("/bin/sh"),
+        &[
+            OsString::from("-c"),
+            OsString::from("printf %s \"${OSC7577_TOKEN-unset}\""),
+        ],
+        &[(crate::resume::TOKEN_ENV, "abcdefghijklmnopqrstuvwxyz")],
+        dir.path(),
+    )
+    .unwrap();
+    let mut seen = String::new();
+    spawned.output.read_to_string(&mut seen).unwrap();
+    assert_eq!(seen, "unset");
+}

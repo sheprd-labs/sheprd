@@ -43,7 +43,9 @@ impl Error {
             Self::Cancelled => io::ErrorKind::Interrupted,
             Self::Closed => io::ErrorKind::UnexpectedEof,
             Self::Refused(failure) => match failure {
-                SshFailure::HostKey | SshFailure::Auth => io::ErrorKind::PermissionDenied,
+                SshFailure::HostKey | SshFailure::Auth | SshFailure::RelayBanned(_) => {
+                    io::ErrorKind::PermissionDenied
+                }
                 SshFailure::Unreachable | SshFailure::NoRoute | SshFailure::LocalNetworkDenied => {
                     io::ErrorKind::NotConnected
                 }

@@ -1,16 +1,18 @@
-//! The contract with Sheprd Agent, as `macos/sheprd-machine-agent/main.swift`
-//! spells it: one request and its reply per connection, each a 4-byte
-//! big-endian length and then JSON. Kept in step with that file.
+//! The contract with Sheprd Agent, spoken by both `macos/sheprd-machine-agent/`
+//! and `linux/sheprd-machine-agent/`: one request and its reply per connection,
+//! each a 4-byte big-endian length and then JSON.
 
 use super::{Error, Result};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use sheprd_control_protocol::protocol::tabs::{MachineButton, MachineModifier};
+use sheprd_control_protocol::protocol::tabs::{AgentCapabilities, MachineButton, MachineModifier};
 use std::io::{Read, Write};
 
 /// The vsock port the agent listens on.
 pub(crate) const PORT: u32 = 7470;
 /// The largest reply read: a screenshot of a large display, in base64.
 pub(super) const MAX_REPLY: usize = 64 << 20;
+/// Maximum accepted screenshot width or height in pixels.
+const MAX_PNG_DIMENSION: u32 = 16_384;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
@@ -46,6 +48,10 @@ pub enum Refusal {
     Accessibility,
     /// macOS does not let it see the screen yet.
     ScreenRecording,
+    /// The guest's graphical desktop session is not ready yet.
+    NotReady,
+    /// The guest does not support the requested operation or permission.
+    Unsupported,
     Invalid,
     Failed,
 }
@@ -65,8 +71,22 @@ pub(crate) struct Hello {
     pub(crate) width: u32,
     pub(crate) height: u32,
     pub(crate) scale: f64,
+    #[serde(default)]
     pub(crate) accessibility: bool,
+    #[serde(default)]
     pub(crate) screen_recording: bool,
+    #[serde(default)]
+    pub(crate) capabilities: Option<AgentCapabilities>,
+}
+
+impl Hello {
+    /// Common capabilities reported by the agent, falling back to legacy macOS
+    /// permission booleans when talking to an older macOS guest agent.
+    pub(crate) fn effective_capabilities(&self) -> AgentCapabilities {
+        self.capabilities.unwrap_or_else(|| {
+            AgentCapabilities::from_macos_permissions(self.accessibility, self.screen_recording)
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
@@ -134,7 +154,11 @@ pub(super) fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
         return None;
     }
     let number = |at: usize| Some(u32::from_be_bytes(header.get(at..at + 4)?.try_into().ok()?));
-    Some((number(16)?, number(20)?))
+    let (width, height) = (number(16)?, number(20)?);
+    if width == 0 || height == 0 || width > MAX_PNG_DIMENSION || height > MAX_PNG_DIMENSION {
+        return None;
+    }
+    Some((width, height))
 }
 
 /// The last `limit` bytes of `text`, cut at a character, and whether any

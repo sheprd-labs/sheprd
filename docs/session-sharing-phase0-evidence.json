@@ -1,0 +1,45 @@
+{
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+  "secureContext": true,
+  "tests": [
+    {
+      "name": "Browser secure context and cryptographic entropy",
+      "passed": true
+    },
+    {
+      "name": "Fresh random hybrid handshake and UTF-8 round trip",
+      "passed": true
+    },
+    {
+      "name": "16384-byte record and bidirectional timed rekey",
+      "passed": true
+    },
+    {
+      "name": "Replayed encrypted record is rejected",
+      "passed": true
+    },
+    {
+      "name": "Tampered encrypted record is rejected",
+      "passed": true
+    },
+    {
+      "name": "Wrong relay route cannot complete handshake",
+      "passed": true
+    },
+    {
+      "name": "Wrong host identity cannot complete handshake",
+      "passed": true
+    }
+  ],
+  "source_revision": "4ab49ed3ee744dc48bae6a18a565d220c4526b48",
+  "transport": "Loopback WS fixture, not production relay; no TLS deployment tested",
+  "experimental_changes": [
+    "Enable browser entropy backends for getrandom 0.3 and 0.4",
+    "Disable Snow std feature for WASM (avoids incidental ring dependency)",
+    "Replace record Instant input with elapsed Duration in disposable copy"
+  ],
+  "existing_relay_tests": {
+    "cross_site": 4,
+    "revok": 7
+  }
+}

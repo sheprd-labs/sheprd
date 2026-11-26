@@ -84,6 +84,8 @@ import Testing
         let plaintext = try #require(raw["plaintext"] as? [String: Any])
         #expect(alert.pane == plaintext["pane"] as? String)
         #expect(alert.title == plaintext["title"] as? String)
+        #expect(alert.subtitle == plaintext["subtitle"] as? String ?? "")
+        #expect(alert.body == plaintext["body"] as? String)
         #expect(alert.computer == plaintext["computer"] as? String)
         if let permission = plaintext["permission"] as? [String: Any] {
             #expect(alert.permission?.id.value == (permission["id"] as? NSNumber)?.uint64Value)
@@ -126,6 +128,10 @@ import Testing
         #expect(ActivityAnswer.excerpt("  a\n\nb\tc  ") == "a b c")
         let exact = String(repeating: "x", count: ActivityAnswer.excerptLength)
         #expect(ActivityAnswer.excerpt(exact) == exact)
+        // Cut mid-word, never at a word's end: the same literal as Rust's
+        // `a_question_is_cut_where_the_phone_cuts_it`.
+        let long = Array(repeating: "Run cargo test --workspace", count: 10).joined(separator: " ")
+        #expect(ActivityAnswer.excerpt(long) == "Run cargo test --workspace Run cargo test --workspace Run cargo test --workspace Run cargo test --workspace Run cargo t\u{2026}")
     }
 
     @Test func anotherQuestionIdOrAnswerDoesNot() throws {

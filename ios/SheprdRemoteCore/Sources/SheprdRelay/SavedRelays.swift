@@ -20,6 +20,10 @@ public struct SavedRelays: Codable, Equatable, Sendable {
     public private(set) var relays: [RelayEndpoint]
     /// Those of `relays` the user typed, tried for every computer.
     public private(set) var typed: Set<RelayEndpoint> = []
+    /// Relays a computer named that the user removed: not learned again,
+    /// and never dialed, not even for the computers that name them, until
+    /// the user types one back.
+    public private(set) var removed: Set<RelayEndpoint> = []
     /// Read from a version that did not say which were typed, until
     /// `settle` decides. Kept when saved, so a launch that could not read
     /// the paired computers leaves the decision to a later one; until
@@ -38,6 +42,11 @@ public struct SavedRelays: Codable, Equatable, Sendable {
     /// dialed on beyond its own.
     public var forEveryComputer: [RelayEndpoint] {
         relays.filter(typed.contains)
+    }
+
+    /// What dialing a computer needs from this list.
+    public var dialing: RelayDialing {
+        RelayDialing(typed: forEveryComputer, removed: removed)
     }
 
     /// What became of an address typed in Settings.
@@ -65,6 +74,9 @@ public struct SavedRelays: Codable, Equatable, Sendable {
         guard relays.count < Self.limit else { return .full }
         relays.append(endpoint)
         typed.insert(endpoint)
+        // Typing a removed relay back is the user taking it again; an add
+        // refused leaves it removed.
+        removed.remove(endpoint)
         decide(endpoint)
         return .added(endpoint)
     }
@@ -74,7 +86,7 @@ public struct SavedRelays: Codable, Equatable, Sendable {
     @discardableResult
     public mutating func learn(_ endpoints: [RelayEndpoint]) -> Bool {
         var changed = false
-        for endpoint in endpoints where !relays.contains(endpoint) && relays.count < Self.limit {
+        for endpoint in endpoints where !relays.contains(endpoint) && !removed.contains(endpoint) && relays.count < Self.limit {
             relays.append(endpoint)
             changed = true
         }
@@ -84,6 +96,20 @@ public struct SavedRelays: Codable, Equatable, Sendable {
     public mutating func remove(_ endpoint: RelayEndpoint) {
         relays.removeAll { $0 == endpoint }
         typed.remove(endpoint)
+    }
+
+    /// Removes a relay a computer named, for good: it is not learned
+    /// again, nor dialed for that computer, until the user types it back.
+    public mutating func drop(_ endpoint: RelayEndpoint) {
+        remove(endpoint)
+        removed.insert(endpoint)
+        decide(endpoint)
+    }
+
+    /// Forgets the removals of relays no paired computer (`named`) names
+    /// any more, so the list of them stays as short as the computers'.
+    public mutating func keepRemoved(named: Set<RelayEndpoint>) {
+        removed.formIntersection(named)
     }
 
     /// Stops trying `endpoint` for every computer, keeping it for the
@@ -112,7 +138,7 @@ public struct SavedRelays: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case decided, relays, typed, unsettled
+        case decided, relays, removed, typed, unsettled
     }
 
     public init(from decoder: Decoder) throws {
@@ -128,6 +154,7 @@ public struct SavedRelays: Codable, Equatable, Sendable {
         self.init(read(try container.decode([String].self, forKey: .relays)))
         let typed = read(try container.decodeIfPresent([String].self, forKey: .typed) ?? [])
         self.typed = Set(typed.filter(relays.contains))
+        removed = Set(read(try container.decodeIfPresent([String].self, forKey: .removed) ?? []))
         unsettled = try container.decodeIfPresent(Bool.self, forKey: .unsettled) ?? false
         if unsettled {
             let decided = read(try container.decodeIfPresent([String].self, forKey: .decided) ?? [])
@@ -139,10 +166,26 @@ public struct SavedRelays: Codable, Equatable, Sendable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(relays.map(\.description), forKey: .relays)
         try container.encode(forEveryComputer.map(\.description), forKey: .typed)
+        if !removed.isEmpty {
+            try container.encode(removed.map(\.description).sorted(), forKey: .removed)
+        }
         if unsettled {
             try container.encode(true, forKey: .unsettled)
             try container.encode(relays.filter(decided.contains).map(\.description), forKey: .decided)
         }
+    }
+}
+
+/// The user's choices a computer's relays are dialed with: the typed
+/// relays, tried for every computer after its own, and the removed ones,
+/// never tried.
+public struct RelayDialing: Equatable, Sendable {
+    public var typed: [RelayEndpoint]
+    public var removed: Set<RelayEndpoint>
+
+    public init(typed: [RelayEndpoint] = [], removed: Set<RelayEndpoint> = []) {
+        self.typed = typed
+        self.removed = removed
     }
 }
 

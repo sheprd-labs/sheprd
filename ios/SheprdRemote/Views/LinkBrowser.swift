@@ -3,23 +3,34 @@ import SwiftUI
 import WebKit
 
 extension View {
-    /// Opens tapped links whose scheme is in `schemes` in the in-app
-    /// browser, in a sheet over this view; others are dropped.
-    func browsesLinks(schemes: Set<String> = BrowserNavigation.webSchemes) -> some View {
-        modifier(LinkBrowsing(schemes: schemes))
+    /// Opens tapped links whose scheme is in `schemes` where Settings says:
+    /// the in-app browser, in a sheet over this view, or Safari. Others go
+    /// to the system when `othersToSystem`, else are dropped (for links in
+    /// untrusted text). A view shown in a sheet needs its own, as a sheet
+    /// cannot open over another from further up.
+    func browsesLinks(schemes: Set<String> = BrowserNavigation.webSchemes, othersToSystem: Bool = false) -> some View {
+        modifier(LinkBrowsing(schemes: schemes, othersToSystem: othersToSystem))
     }
 }
 
 private struct LinkBrowsing: ViewModifier {
     var schemes: Set<String>
+    var othersToSystem: Bool
+    @AppStorage(LinkOpening.key) private var opening = LinkOpening.sheprd
     @State private var link: BrowsedLink?
 
     func body(content: Content) -> some View {
         content
             .environment(\.openURL, OpenURLAction { url in
-                guard schemes.contains(url.scheme?.lowercased() ?? "") else { return .discarded }
-                link = BrowsedLink(url: url)
-                return .handled
+                switch opening.choice(for: url, schemes: schemes, othersToSystem: othersToSystem) {
+                case .browse:
+                    link = BrowsedLink(url: url)
+                    return .handled
+                case .system:
+                    return .systemAction
+                case .drop:
+                    return .discarded
+                }
             })
             .sheet(item: $link) { link in
                 LinkBrowser(url: link.url).presentationSizing(.page)

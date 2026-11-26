@@ -95,6 +95,14 @@ pub struct Tab {
 pub enum Edit {
     /// Closes a tab; one already gone is no change.
     CloseTab { id: String },
+    /// Moves a workspace to the folder its terminals are in. A workspace the
+    /// user has not named also takes `label`, the name that folder gives it;
+    /// one the user named keeps its name. One already gone is no change.
+    FollowWorkspace {
+        id: String,
+        cwd: String,
+        label: String,
+    },
     /// Forgets a workspace and every tab in it; one already gone is no
     /// change.
     ForgetWorkspace { id: String },
@@ -211,6 +219,29 @@ impl Spaces {
         }
         match edit {
             Edit::CloseTab { id } => self.tabs.retain(|tab| tab.id != id),
+            Edit::FollowWorkspace { id, cwd, label } => {
+                let label = clean_label(&label);
+                let Some(workspace) = self
+                    .workspaces
+                    .iter_mut()
+                    .find(|workspace| workspace.id == id)
+                else {
+                    return Ok(());
+                };
+                let followed = Workspace {
+                    cwd,
+                    label: if workspace.custom {
+                        workspace.label.clone()
+                    } else {
+                        label
+                    },
+                    ..workspace.clone()
+                };
+                if !followed.valid() {
+                    return Err(Error::Invalid);
+                }
+                *workspace = followed;
+            }
             Edit::ForgetWorkspace { id } => {
                 self.workspaces.retain(|workspace| workspace.id != id);
                 self.tabs.retain(|tab| tab.workspace_id != id);

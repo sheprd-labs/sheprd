@@ -7,8 +7,10 @@ use gpui::{TestAppContext, VisualTestContext};
 fn listing(name: &str, saved: bool) -> Listing {
     Listing {
         name: Name::try_from(name.to_owned()).unwrap(),
+        guest: crate::machine::metadata::GuestMetadata::macos_default(),
         settings: Settings::default(),
         saved,
+        ready: false,
         disk_bytes: 25_300_000_000,
     }
 }
@@ -96,6 +98,7 @@ fn with_image(cx: &mut TestAppContext, confirming: Option<Deletion>) -> &mut Vis
     view.update(cx, |view, _| {
         view.machines.images = Some(vec![Image {
             name: Name::try_from("base".to_owned()).unwrap(),
+            guest: crate::machine::metadata::GuestMetadata::macos_default(),
             disk_bytes: 25_300_000_000,
         }]);
         view.machines.confirming = confirming;

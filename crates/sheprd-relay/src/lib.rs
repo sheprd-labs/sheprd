@@ -20,6 +20,8 @@
 //!
 //! Always built, for any client:
 //!
+//! - [`ban`]: why and how long a relay banned an address, as it tells
+//!   the client.
 //! - [`endpoint`]: a relay's address and the URLs built from it.
 //! - [`route`]: route and session ids, proofs, and pairing dial keys.
 //! - [`socket`]: the WebSocket protocol's messages and close codes.
@@ -44,6 +46,7 @@
 //! - `server` (default): all of the above as deployed, with [`options`]
 //!   (flags and `RELAY_*` variables) and the `sheprd-relay` binary.
 
+pub mod ban;
 #[cfg(feature = "websocket-server")]
 mod broker;
 #[cfg(feature = "websocket-server")]

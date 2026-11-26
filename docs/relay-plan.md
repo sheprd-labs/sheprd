@@ -122,7 +122,15 @@ Statuses: `0` ok, `1` offline, `2` busy, `3` timeout, `4` limited,
 When a relay bans the caller’s network address, its HTTP 403 carries
 `Relay-Banned: 1`, the deprecated `Sheprd-Relay-Banned: 1` beside it, and
 `Cache-Control: no-store`; clients accept either header. Clients use this
-response on `/v1/info` to identify a ban before opening a connection.
+response on `/v1/info` to identify a ban before opening a connection. It
+also says why, `Sheprd-Relay-Ban-Reason` (`bad_proof`, `bandwidth`,
+`connection_cap`, `limited`, `malformed`, `manual`, or `probe`), and, for a
+ban that lifts on its own, `Sheprd-Relay-Ban-Seconds` until it does. A QUIC
+connection closed with code 8 carries the same as its reason text,
+`REASON [SECONDS]` (`sheprd_relay::ban`). `relay-connect` passes a ban to the
+app on a `sheprd-relay-ban: REASON [SECONDS]` stderr line, so an SSH host
+behind a banned relay shows the ban, its reason, and when it lifts instead
+of an unreachable host. Unknown words are ignored, never shown.
 
 | Route | What it does |
 | --- | --- |
@@ -1102,29 +1110,32 @@ through. B's daemon admits that tunnel key, sees that the device has an
 SSH key, splices the session to its SSH server instead of serving the
 API, and marks the device seen.
 
-**Joining the fleet in the same step** (the protocol is built; Sheprd's
-page no longer uses it). Add Device > Nearby Sheprd only pairs: it claims
-as soon as both screens show the code, with no fleet, so the other
-computer shows Allow at once. Pairing is pairing; joining a fleet is
-Settings > Fleet's, later (Invite on a machine this computer reaches).
-The daemons still carry and check a claim's fleet, as below, for peers
-that send one:
+**Joining the fleet in the same step.** Pairing brings the two
+computers into one fleet whenever one of them is in one, without a
+question on A: Add Device > Nearby Sheprd claims as soon as both screens
+show the code, with the fleet below, so the other computer shows Allow
+at once, and its Allow carries the line that says what it does. When
+neither is in a fleet, A founds one and invites B into it.
 
 - B names its fleet in the sealed offer while it is a live computer
   member (`fleet::bluetooth::hint`: the id, and its computer and host
-  counts for the words, never trusted).
+  counts for the words, never trusted). A pairing link names it too.
 - Once both screens show the code, the child waits for the page's claim
-  (`PairInput::Claim`). Sheprd's page sends it at once with no fleet; a
-  claim with one carries:
+  (`PairInput::Claim`), which the page sends at once
+  (`menu::devices::nearby::fleet`), carrying:
 
-  | A | B | A's page offers | The claim carries |
-  | --- | --- | --- | --- |
-  | In fleet F | In none | Add to fleet, or Pair only | `Invite(F)` |
-  | In none | In fleet G | Join fleet, or Pair only | `Join`: A's bundle for G |
-  | In none | In none | Create a fleet, or Pair only | `Invite` of the fleet A just founded |
-  | In F | In F | Says so | Nothing |
-  | In F | In G | Says B is in another fleet | `Invite(F)`, which B shows and cannot take |
+  | A | B | The claim carries |
+  | --- | --- | --- |
+  | In fleet F | In none | `Invite(F)` |
+  | In none | In fleet G | `Join`: A's bundle for G |
+  | In none | In none | `Invite` of the fleet A just founded |
+  | In F | In F | Nothing |
+  | In F | In G | `Invite(F)`, which B shows and cannot take |
 
+  A `Join` waits for A's daemon to sign the bundle, and a new fleet for
+  it to found one. A daemon that cannot, such as one that listens on no
+  relay, leaves the claim without it: the two pair only, and Settings >
+  Fleet says why.
 - A `Join` is A's bundle with its join signature, as an `Admit` carries
   it, and a second signature by the same fleet key over the fleet, the
   pairing's token hashed (`bluetooth::pairing_digest`), and the bundle

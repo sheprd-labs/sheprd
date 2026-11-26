@@ -7,11 +7,13 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
-use sheprd_chat_protocol::{OptionCategory, PermissionKind, Status, display};
+use sheprd_chat_protocol::{PermissionKind, Status};
 
 use super::{lines, view::View};
 
-const SPINNER: [&str; 8] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"];
+mod status;
+mod welcome;
+
 const COMPOSER_ROWS: usize = 8;
 
 pub(crate) fn draw(frame: &mut Frame<'_>, view: &mut View, tick: usize) {
@@ -33,7 +35,6 @@ pub(crate) fn draw(frame: &mut Frame<'_>, view: &mut View, tick: usize) {
         0
     };
     let [
-        header,
         body,
         plan_area,
         queue_area,
@@ -41,7 +42,6 @@ pub(crate) fn draw(frame: &mut Frame<'_>, view: &mut View, tick: usize) {
         bottom_area,
         footer,
     ] = Layout::vertical([
-        Constraint::Length(1),
         Constraint::Min(1),
         Constraint::Length(height(plan_height)),
         Constraint::Length(height(queued)),
@@ -50,8 +50,7 @@ pub(crate) fn draw(frame: &mut Frame<'_>, view: &mut View, tick: usize) {
         Constraint::Length(1),
     ])
     .areas(area);
-    frame.render_widget(Paragraph::new(header_line(view, tick)), header);
-    draw_body(frame, view, body);
+    draw_body(frame, view, body, tick);
     frame.render_widget(
         Paragraph::new(plan.into_iter().take(plan_height).collect::<Vec<_>>()),
         plan_area,
@@ -76,30 +75,8 @@ pub(crate) fn draw(frame: &mut Frame<'_>, view: &mut View, tick: usize) {
         Bottom::Permission => draw_permission(frame, view, bottom_area),
         Bottom::Settings => draw_settings(frame, view, bottom_area),
     }
-    let footer_line = match &view.flash {
-        Some(flash) => Line::styled(flash.clone(), Style::default().fg(Color::Yellow)),
-        None => {
-            let hints: &[&str] = if bottom == Bottom::Settings {
-                &[
-                    "↑/↓ setting · ←/→ change · Esc close",
-                    "←/→ change · Esc close",
-                ]
-            } else {
-                &[
-                    "Enter send · Alt+Enter newline · Esc cancel · Shift+Tab mode · Ctrl+O settings · Ctrl+D quit",
-                    "Enter send · Esc cancel · Ctrl+O settings · Ctrl+D quit",
-                    "Enter send · Ctrl+D quit",
-                ]
-            };
-            let hint = hints
-                .iter()
-                .copied()
-                .find(|hint| hint.chars().count() <= width)
-                .unwrap_or_default();
-            Line::styled(hint, Style::default().fg(Color::DarkGray))
-        }
-    };
-    frame.render_widget(Paragraph::new(footer_line), footer);
+    let bar = status::line(view, tick, width, bottom == Bottom::Settings);
+    frame.render_widget(Paragraph::new(bar), footer);
 }
 
 fn height(rows: usize) -> u16 {
@@ -178,99 +155,11 @@ fn draw_settings(frame: &mut Frame<'_>, view: &View, area: Rect) {
     frame.render_widget(Paragraph::new(rows), inner);
 }
 
-fn header_line(view: &View, tick: usize) -> Line<'static> {
-    let transcript = &view.transcript;
-    let (status, color) = match &transcript.status {
-        _ if transcript.is_blocked() => ("waiting for you".to_owned(), Color::Magenta),
-        Status::Starting => (
-            format!("{} starting", SPINNER[tick % SPINNER.len()]),
-            Color::Yellow,
-        ),
-        Status::Idle => ("ready".to_owned(), Color::Green),
-        Status::Working => {
-            let elapsed = transcript.turn.map(|turn| {
-                display::duration(crate::session::now_ms().saturating_sub(turn.started_ms))
-            });
-            let elapsed = elapsed
-                .filter(|elapsed| !elapsed.ends_with("ms"))
-                .map_or_else(String::new, |elapsed| format!(" {elapsed}"));
-            (
-                format!("{} working{elapsed}", SPINNER[tick % SPINNER.len()]),
-                Color::Yellow,
-            )
-        }
-        Status::Failed { .. } => ("failed".to_owned(), Color::Red),
-        Status::Exited { .. } => ("exited".to_owned(), Color::Red),
-    };
-    let dim = Style::default().fg(Color::DarkGray);
-    let mut spans = vec![
-        Span::styled(
-            format!(" {} ", transcript.agent),
-            Style::default().add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(status, Style::default().fg(color)),
-    ];
-    // The settings the agent offers come first; its older modes only when it
-    // offers no mode setting.
-    for category in [
-        OptionCategory::Model,
-        OptionCategory::ThoughtLevel,
-        OptionCategory::Mode,
-    ] {
-        if let Some(option) = transcript.option(category) {
-            spans.push(Span::styled(" · ", dim));
-            spans.push(Span::raw(option.current_name()));
-        }
+fn draw_body(frame: &mut Frame<'_>, view: &mut View, area: Rect, tick: usize) {
+    if view.transcript.entries.is_empty() && !view.transcript.truncated {
+        welcome::draw(frame, view, area, tick);
+        return;
     }
-    if transcript.option(OptionCategory::Mode).is_none()
-        && let Some(mode) = transcript.modes.as_ref().and_then(|modes| modes.current())
-    {
-        spans.push(Span::styled(" · ", dim));
-        spans.push(Span::raw(mode.name.clone()));
-    }
-    if transcript.auto_accept {
-        spans.push(Span::styled(" · ", dim));
-        spans.push(Span::styled(
-            "auto-accepting",
-            Style::default().fg(Color::Yellow),
-        ));
-    }
-    if let Some(title) = transcript.session.as_ref().and_then(|s| s.title.clone()) {
-        spans.push(Span::styled(" · ", dim));
-        spans.push(Span::styled(title, dim));
-    }
-    if let Some(usage) = transcript.usage.as_ref().filter(|usage| usage.size > 0) {
-        let percent = usage.percent();
-        let color = match percent {
-            90.. => Color::Red,
-            75..90 => Color::Yellow,
-            _ => Color::DarkGray,
-        };
-        spans.push(Span::styled(" · ", dim));
-        spans.push(Span::styled(
-            format!(
-                "{}/{} context ({percent}%)",
-                display::tokens(usage.used),
-                display::tokens(usage.size)
-            ),
-            Style::default().fg(color),
-        ));
-        if let Some(cost) = usage.cost.as_ref().filter(|cost| cost.micros > 0) {
-            spans.push(Span::styled(format!(" · {}", display::cost(cost)), dim));
-        }
-    }
-    if transcript.clients > 0 {
-        let attached = match transcript.clients {
-            1 => "1 client attached".to_owned(),
-            count => format!("{count} clients attached"),
-        };
-        spans.push(Span::styled(" · ", dim));
-        spans.push(Span::styled(attached, Style::default().fg(Color::Cyan)));
-    }
-    Line::from(spans)
-}
-
-fn draw_body(frame: &mut Frame<'_>, view: &mut View, area: Rect) {
     let lines = view.lines(usize::from(area.width));
     let rows = usize::from(area.height);
     let most = lines.len().saturating_sub(rows);
@@ -281,24 +170,45 @@ fn draw_body(frame: &mut Frame<'_>, view: &mut View, area: Rect) {
 }
 
 fn composer_height(view: &View, width: usize) -> (usize, Bottom) {
-    let (rows, _) = view.composer.layout(width.saturating_sub(2));
-    (rows.len().clamp(1, COMPOSER_ROWS) + 2, Bottom::Composer)
+    let (rows, _) = view.composer.layout(width.saturating_sub(PROMPT_MARK));
+    // A rule above the prompt's rows sets it apart from the transcript.
+    (rows.len().clamp(1, COMPOSER_ROWS) + 1, Bottom::Composer)
 }
 
+/// Columns of the `❯ ` mark before the prompt's text.
+const PROMPT_MARK: usize = 2;
+
 fn draw_composer(frame: &mut Frame<'_>, view: &View, area: Rect) {
-    let mut block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::DarkGray));
-    // Files the prompt carries name themselves on the composer's border.
-    if !view.attachments.is_empty() {
+    let [rule, rows] = Layout::vertical([Constraint::Length(1), Constraint::Min(1)]).areas(area);
+    let dim = Style::default().fg(Color::DarkGray);
+    let fill = "─".repeat(usize::from(rule.width));
+    // Files the prompt carries name themselves on the rule.
+    let rule_line = if view.attachments.is_empty() {
+        Line::styled(fill, dim)
+    } else {
         let names: Vec<&str> = view.attachments.iter().map(|file| file.name()).collect();
-        block = block.title(Line::styled(
-            format!(" \u{1f4ce} {} ", names.join(" \u{b7} ")),
-            Style::default().fg(Color::Cyan),
-        ));
-    }
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
+        Line::from(vec![
+            Span::styled("─ ", dim),
+            Span::styled(
+                format!("\u{1f4ce} {} ", names.join(" \u{b7} ")),
+                Style::default().fg(Color::Cyan),
+            ),
+            Span::styled(fill, dim),
+        ])
+    };
+    frame.render_widget(Paragraph::new(rule_line), rule);
+    let [mark, inner] =
+        Layout::horizontal([Constraint::Length(height(PROMPT_MARK)), Constraint::Min(1)])
+            .areas(rows);
+    frame.render_widget(
+        Paragraph::new(Line::styled(
+            "❯ ",
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
+        )),
+        mark,
+    );
     if view.composer.text.is_empty() {
         let hint = match view.transcript.status {
             Status::Working => "Type to queue a prompt…".to_owned(),

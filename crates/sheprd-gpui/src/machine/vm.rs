@@ -1,90 +1,43 @@
-//! The virtual Macs this app runs, on macOS.
+//! Live virtual machine lifecycle state on the main thread.
 //!
 //! A machine belongs to the app, not to a window or a tab: its tab can close
-//! or move to another window while it runs. Apple's view must share a process
-//! with the machine, and both live on the main queue, so the state here is
-//! the main thread's own. [`super::quit`] reaches it from AppKit, where no
-//! `App` is at hand.
-//!
-//! `objc2-virtualization` marks every call `unsafe`, as it does not check
-//! the framework's threading rules. Each call here runs on the main thread,
-//! the machine's queue: the view's `MainThreadMarker` proves it, and the
-//! machines are reached only through `MACHINES`, which is that thread's.
-#![allow(unsafe_code)]
+//! or move to another window while it runs. All Apple Virtualization.framework
+//! types and unsafe calls stay behind [`super::backend::apple`]; this module
+//! owns lifecycle transitions, view attachment policy, capacity admission, and
+//! capability checks.
 
 use super::{
-    Display, Error, Name, Result,
-    configuration::{Bundle, file_url},
+    Display, Error, Name, Result, agent,
+    backend::{
+        StopReason,
+        apple::{self, AppleVm, View},
+    },
+    configuration::Bundle,
+    metadata::MachineCapabilities,
     quit, store,
 };
-use block2::RcBlock;
-use gpui::{App, AsyncApp};
-use objc2::{
-    AnyThread as _, DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send,
-    rc::Retained,
-    runtime::{NSObject, NSObjectProtocol, ProtocolObject},
-};
-use objc2_foundation::NSError;
-use objc2_virtualization::{VZVirtualMachine, VZVirtualMachineDelegate, VZVirtualMachineView};
+use gpui::{App, AsyncApp, Task};
 use std::{
     cell::{Cell, OnceCell, RefCell},
     collections::HashMap,
+    os::fd::OwnedFd,
     path::PathBuf,
-    ptr::NonNull,
     rc::Rc,
 };
 
-type View = Retained<VZVirtualMachineView>;
-
-define_class!(
-    /// Hears a machine stop without being asked: the guest shut itself down,
-    /// or the machine failed.
-    // SAFETY: NSObject may be subclassed on the main thread, which
-    // `MainThreadOnly` holds every use to, and `Watcher` has no `Drop`.
-    #[unsafe(super(NSObject))]
-    #[thread_kind = MainThreadOnly]
-    #[name = "SheprdMachineWatcher"]
-    #[ivars = Name]
-    struct Watcher;
-
-    unsafe impl NSObjectProtocol for Watcher {}
-
-    unsafe impl VZVirtualMachineDelegate for Watcher {
-        #[unsafe(method(guestDidStopVirtualMachine:))]
-        fn guest_did_stop(&self, _: &VZVirtualMachine) {
-            self.stopped(Phase::Stopped);
-        }
-
-        #[unsafe(method(virtualMachine:didStopWithError:))]
-        fn did_stop(&self, _: &VZVirtualMachine, error: &NSError) {
-            self.stopped(Phase::Failed(description(error)));
-        }
-    }
-);
-
-impl Watcher {
-    fn new(name: Name, mtm: MainThreadMarker) -> Retained<Self> {
-        let this = Self::alloc(mtm).set_ivars(name);
-        // SAFETY: NSObject's initializer, on an instance with its ivars set.
-        unsafe { msg_send![super(this), init] }
-    }
-
-    fn stopped(&self, phase: Phase) {
-        let name = self.ivars().clone();
-        if let Some(app) = app() {
-            app.update(|cx| set_phase(&name, phase, cx));
-        }
-    }
-}
-
-/// A machine that exists, and what must stay alive with it: the framework
-/// holds its delegate weakly.
+/// A machine that exists, its backend handle, and its active capabilities.
 #[derive(Clone)]
 struct Live {
-    machine: Retained<VZVirtualMachine>,
-    _watcher: Retained<Watcher>,
-    /// Whether its display follows the tab.
+    vm: AppleVm,
+    capabilities: MachineCapabilities,
+    /// Whether the user asked for the display to follow the tab.
     fit: bool,
+}
+
+impl Live {
+    fn auto_resize(&self) -> bool {
+        self.fit && self.capabilities.dynamic_display
+    }
 }
 
 enum Phase {
@@ -136,10 +89,21 @@ impl Default for Entry {
 
 thread_local! {
     static MACHINES: RefCell<HashMap<Name, Entry>> = RefCell::default();
-    /// For the framework's callbacks, which arrive with no `App` at hand.
+    /// For the backend's callbacks, which arrive with no `App` at hand.
     static APP: OnceCell<AsyncApp> = const { OnceCell::new() };
     /// Set as the app quits, so no machine starts that the quit does not know.
     static CLOSED: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Called by the host backend when a live VM stops on its own or fails.
+pub(super) fn on_backend_stopped(name: Name, reason: StopReason) {
+    let phase = match reason {
+        StopReason::GuestStopped => Phase::Stopped,
+        StopReason::Failed(message) => Phase::Failed(message),
+    };
+    if let Some(app) = app() {
+        app.update(|cx| set_phase(&name, phase, cx));
+    }
 }
 
 /// Starts no machine from now on: the app is quitting.
@@ -173,17 +137,32 @@ pub(crate) fn status(name: &Name) -> Status {
     )
 }
 
-/// Machine `name` itself, while it runs.
-pub(super) fn running_machine(name: &Name) -> Option<Retained<VZVirtualMachine>> {
-    MACHINES.with(
-        |machines| match machines.borrow().get(name).map(|m| &m.phase) {
-            Some(Phase::Running(live)) => Some(live.machine.clone()),
-            _ => None,
-        },
-    )
+/// Capabilities reported by a currently live machine, or `None` when stopped.
+pub(super) fn live_capabilities(name: &Name) -> Option<MachineCapabilities> {
+    MACHINES.with(|machines| {
+        machines
+            .borrow()
+            .get(name)
+            .and_then(|entry| entry.phase.live())
+            .map(|live| live.capabilities)
+    })
 }
 
-/// The machines taking this Mac's memory and CPU, whether a tab shows them
+/// Opens a host-to-guest agent transport connection to running machine `name`.
+pub(super) fn connect_agent(name: &Name, port: u32, cx: &mut App) -> Task<agent::Result<OwnedFd>> {
+    let vm = MACHINES.with(
+        |machines| match machines.borrow().get(name).map(|m| &m.phase) {
+            Some(Phase::Running(live)) => Some(live.vm.clone()),
+            _ => None,
+        },
+    );
+    match vm {
+        Some(vm) => vm.connect_vsock(name, port, cx),
+        None => Task::ready(Err(agent::Error::NotRunning(name.clone()))),
+    }
+}
+
+/// The machines taking this host's memory and CPU, whether a tab shows them
 /// or not, by name.
 pub(crate) fn running() -> Vec<Name> {
     let mut names: Vec<Name> = MACHINES.with(|machines| {
@@ -241,17 +220,10 @@ fn check_capacity_for(
 
 /// A new view on machine `name`, started if it is not running.
 pub(crate) fn view(name: &Name, cx: &mut App) -> Result<View> {
-    let mtm = MainThreadMarker::new().ok_or(Error::Unsupported)?;
-    // SAFETY: an unattached view, made and set up on the main thread. The
-    // host's own Cmd-Tab and Spotlight stay the host's.
-    let view = unsafe {
-        let view = VZVirtualMachineView::new(mtm);
-        view.setCapturesSystemKeys(false);
-        view
-    };
+    let view = apple::create_view()?;
     with(name, |machine| {
         if let Some(live) = machine.phase.live() {
-            attach(&view, live);
+            apple::attach_view(&view, &live.vm, live.auto_resize());
         }
         machine.views.push(view.clone());
     });
@@ -260,22 +232,13 @@ pub(crate) fn view(name: &Name, cx: &mut App) -> Result<View> {
 }
 
 /// Forgets `view`, whose tab closed. The machine goes on running.
-pub(crate) fn release(view: &VZVirtualMachineView) {
+pub(crate) fn release(view: &View) {
     MACHINES.with(|machines| {
         for machine in machines.borrow_mut().values_mut() {
-            machine.views.retain(|held| !std::ptr::eq(&**held, view));
+            machine.views.retain(|held| !std::ptr::eq(&**held, &**view));
         }
     });
-    // SAFETY: on the main thread, where the view lives.
-    unsafe { view.setVirtualMachine(None) };
-}
-
-fn attach(view: &VZVirtualMachineView, live: &Live) {
-    // SAFETY: the view and the machine are both on the main thread.
-    unsafe {
-        view.setAutomaticallyReconfiguresDisplay(live.fit);
-        view.setVirtualMachine(Some(&live.machine));
-    }
+    apple::detach_view(view);
 }
 
 /// Records what machine `name` does now, and redraws what shows it. A machine
@@ -284,8 +247,7 @@ fn set_phase(name: &Name, phase: Phase, cx: &mut App) {
     with(name, |machine| {
         if machine.phase.live().is_some() && phase.live().is_none() {
             for view in &machine.views {
-                // SAFETY: on the main thread, where the view lives.
-                unsafe { view.setVirtualMachine(None) };
+                apple::detach_view(view);
             }
         }
         machine.phase = phase;
@@ -297,22 +259,6 @@ fn fail(name: &Name, error: &Error, cx: &mut App) {
     tracing::warn!(%name, %error, "Machine failed");
     let message = crate::i18n::Localize::localize(error);
     set_phase(name, Phase::Failed(message), cx);
-}
-
-/// A completion handler that calls `done` once, with what went wrong.
-fn once(
-    app: AsyncApp,
-    done: impl FnOnce(Option<String>, &mut App) + 'static,
-) -> RcBlock<dyn Fn(*mut NSError)> {
-    let done = Cell::new(Some(done));
-    RcBlock::new(move |error: *mut NSError| {
-        // SAFETY: Virtualization passes null or an error that outlives this
-        // call.
-        let message = NonNull::new(error).map(|error| description(unsafe { error.as_ref() }));
-        if let Some(done) = done.take() {
-            app.update(|cx| done(message, cx));
-        }
-    })
 }
 
 /// Starts machine `name` unless it is already on its way, resuming it if it
@@ -348,8 +294,13 @@ pub(crate) fn start(name: &Name, cx: &mut App) {
             if let Some(opening) = bundle.as_ref().ok().and_then(|bundle| bundle.guide) {
                 super::guide::begin(&name, opening, cx);
             }
+            let watch_linux = bundle
+                .as_ref()
+                .is_ok_and(|bundle| bundle.guest.os == super::metadata::GuestOs::Linux);
             if let Err(error) = bundle.and_then(|bundle| build(&name, &bundle, cx)) {
                 fail(&name, &error, cx);
+            } else if watch_linux {
+                super::readiness::begin(&name, cx);
             }
         });
     })
@@ -359,43 +310,28 @@ pub(crate) fn start(name: &Name, cx: &mut App) {
 /// Builds machine `name` from `bundle`, shows it in the views waiting for it,
 /// and boots or resumes it.
 fn build(name: &Name, bundle: &Bundle, cx: &mut App) -> Result<()> {
-    let mtm = MainThreadMarker::new().ok_or(Error::Unsupported)?;
-    // SAFETY: a class property.
-    if !unsafe { VZVirtualMachine::isSupported() } {
-        return Err(Error::Unsupported);
-    }
-    let configuration = bundle.configuration()?;
-    // SAFETY: on the main thread, so the machine's queue is the main queue,
-    // which Apple's view requires. The configuration was validated.
-    let machine = unsafe {
-        VZVirtualMachine::initWithConfiguration(VZVirtualMachine::alloc(), &configuration)
-    };
-    let watcher = Watcher::new(name.clone(), mtm);
-    // SAFETY: `Live` keeps the delegate, which the machine holds weakly.
-    unsafe { machine.setDelegate(Some(ProtocolObject::from_ref(&*watcher))) };
+    let vm = AppleVm::create(name.clone(), bundle)?;
     let live = Live {
-        machine,
-        _watcher: watcher,
+        vm,
+        capabilities: bundle.capabilities(),
         fit: bundle.settings.display == Display::Fit,
     };
     with(name, |machine| {
         for view in &machine.views {
-            attach(view, &live);
+            apple::attach_view(view, &live.vm, live.auto_resize());
         }
     });
     set_phase(name, Phase::Starting(Some(live.clone())), cx);
     match &bundle.saved {
-        Some(state) => restore(name, live, state.clone(), cx),
-        None => boot(name, live, cx),
+        Some(state) if live.capabilities.save_restore => restore(name, live, state.clone(), cx),
+        _ => boot(name, live, cx),
     }
     Ok(())
 }
 
 fn boot(name: &Name, live: Live, cx: &mut App) {
-    let machine = live.machine.clone();
-    let done = once(cx.to_async(), started(name.clone(), live));
-    // SAFETY: on the machine's queue; the framework copies the block.
-    unsafe { machine.startWithCompletionHandler(&done) };
+    let vm = live.vm.clone();
+    vm.start(cx.to_async(), started(name.clone(), live));
 }
 
 /// What ends a start or a resume.
@@ -435,10 +371,9 @@ fn abandon(name: Name, live: &Live, error: Error, cx: &mut App) {
 /// it would no longer match the disk. One that cannot be read boots afresh,
 /// as after a power cut.
 fn restore(name: &Name, live: Live, state: PathBuf, cx: &mut App) {
-    let machine = live.machine.clone();
-    let url = file_url(&state);
+    let vm = live.vm.clone();
     let name = name.clone();
-    let done = once(cx.to_async(), move |error, cx| {
+    vm.restore(&state, cx.to_async(), move |error, cx| {
         // A quit or a delete came during the restore. The guest has not run,
         // so the state still matches the disk: it stays for the next launch.
         if !startable(&name) {
@@ -450,11 +385,8 @@ fn restore(name: &Name, live: Live, state: PathBuf, cx: &mut App) {
             }
             match error {
                 None => {
-                    let machine = live.machine.clone();
-                    let done = once(cx.to_async(), started(name, live));
-                    // SAFETY: on the machine's queue; the framework copies
-                    // the block.
-                    unsafe { machine.resumeWithCompletionHandler(&done) };
+                    let vm = live.vm.clone();
+                    vm.resume(cx.to_async(), started(name, live));
                 }
                 Some(message) => {
                     tracing::warn!(%name, %message, "Cannot resume a machine; booting it");
@@ -463,36 +395,40 @@ fn restore(name: &Name, live: Live, state: PathBuf, cx: &mut App) {
             }
         });
     });
-    // SAFETY: on the machine's queue; the framework copies the block.
-    unsafe { machine.restoreMachineStateFromURL_completionHandler(&url, &done) };
 }
 
 /// Saves machine `name` and stops it, so it next resumes where it was. One
-/// that is not running has nothing to save. A failure leaves it running.
-pub(crate) fn suspend(name: &Name, cx: &mut App) {
+/// that is not running has nothing to save. Returns an unsupported-capability
+/// error if the guest/backend does not support save/restore.
+pub(crate) fn suspend(name: &Name, cx: &mut App) -> Result<()> {
     let live = with(name, |machine| match &machine.phase {
         Phase::Running(live) => Some(live.clone()),
         _ => None,
     });
-    let (Some(live), Ok(state)) = (live, store::state_file(name)) else {
-        return;
+    let Some(live) = live else {
+        return Ok(());
     };
+    if !live.capabilities.save_restore {
+        return Err(Error::UnsupportedCapability {
+            name: name.clone(),
+            capability: "save/restore",
+        });
+    }
+    let state = store::state_file(name)?;
     set_phase(name, Phase::Saving(live.clone()), cx);
     let name = name.clone();
-    let machine = live.machine.clone();
-    let done = once(cx.to_async(), move |error, cx| match error {
+    let vm = live.vm.clone();
+    vm.pause(cx.to_async(), move |error, cx| match error {
         Some(message) => refused(&name, &live, &message, cx),
         None => save(name, live, &state, cx),
     });
-    // SAFETY: on the machine's queue; the framework copies the block.
-    unsafe { machine.pauseWithCompletionHandler(&done) };
+    Ok(())
 }
 
 /// Writes the paused machine to `state`, then stops it.
 fn save(name: Name, live: Live, state: &std::path::Path, cx: &mut App) {
-    let machine = live.machine.clone();
-    let url = file_url(state);
-    let done = once(cx.to_async(), move |error, cx| {
+    let vm = live.vm.clone();
+    vm.save_state(state, cx.to_async(), move |error, cx| {
         let Some(message) = error else {
             return force_stop(&name, &live, cx);
         };
@@ -501,16 +437,12 @@ fn save(name: Name, live: Live, state: &std::path::Path, cx: &mut App) {
             if let Err(removal) = removed {
                 return abandon(name, &live, removal, cx);
             }
-            let machine = live.machine.clone();
-            let done = once(cx.to_async(), move |_, cx| {
+            let vm = live.vm.clone();
+            vm.resume(cx.to_async(), move |_, cx| {
                 refused(&name, &live, &message, cx);
             });
-            // SAFETY: on the machine's queue; the framework copies the block.
-            unsafe { machine.resumeWithCompletionHandler(&done) };
         });
     });
-    // SAFETY: on the machine's queue; the framework copies the block.
-    unsafe { machine.saveMachineStateToURL_completionHandler(&url, &done) };
 }
 
 fn refused(name: &Name, live: &Live, message: &str, cx: &mut App) {
@@ -520,12 +452,10 @@ fn refused(name: &Name, live: &Live, message: &str, cx: &mut App) {
 
 /// Stops the machine at once, as a power cut would. `then` hears any refusal.
 fn halt(live: &Live, cx: &mut App, then: impl FnOnce(Option<String>, &mut App) + 'static) {
-    let done = once(cx.to_async(), then);
-    // SAFETY: on the machine's queue; the framework copies the block.
-    unsafe { live.machine.stopWithCompletionHandler(&done) };
+    live.vm.stop(cx.to_async(), then);
 }
 
-/// Stops a machine whose state is saved.
+/// Stops a machine whose state is saved, or whose graceful shutdown timed out.
 fn force_stop(name: &Name, live: &Live, cx: &mut App) {
     let name = name.clone();
     halt(live, cx, move |error, cx| {
@@ -536,16 +466,27 @@ fn force_stop(name: &Name, live: &Live, cx: &mut App) {
     });
 }
 
+/// Force-stops a running machine on app quit when save/restore is unavailable
+/// and graceful shutdown did not complete in time.
+pub(super) fn force_stop_running(name: &Name, cx: &mut App) {
+    let live = with(name, |machine| match &machine.phase {
+        Phase::Running(live) => Some(live.clone()),
+        _ => None,
+    });
+    if let Some(live) = live {
+        set_phase(name, Phase::Saving(live.clone()), cx);
+        force_stop(name, &live, cx);
+    }
+}
+
 /// Asks the guest to shut down, as its power button would. It may ask its
-/// user first; the machine stops when it has, which [`Watcher`] hears.
+/// user first; the machine stops when it has, which the backend delegate hears.
 pub(crate) fn shut_down(name: &Name) -> Result<()> {
     let live = with(name, |machine| machine.phase.live().cloned());
     let Some(live) = live else {
         return Ok(());
     };
-    // SAFETY: on the machine's queue.
-    unsafe { live.machine.requestStopWithError() }
-        .map_err(|error| Error::Framework(description(&error)))
+    live.vm.request_stop()
 }
 
 /// Stops machine `name` if it runs, then deletes everything it holds. Nothing
@@ -579,6 +520,7 @@ pub(crate) fn delete(name: &Name, cx: &mut App, done: impl FnOnce(Result<()>, &m
                 });
                 // A machine made later under this name starts its setup over.
                 super::guide::forget(&name);
+                super::readiness::forget(&name);
             } else {
                 with(&name, |machine| machine.held = false);
             }
@@ -650,10 +592,6 @@ async fn stop_for_delete(name: &Name, cx: &mut AsyncApp) -> Result<()> {
             Some(None) => cx.background_executor().timer(quit::POLL).await,
         }
     }
-}
-
-pub(super) fn description(error: &NSError) -> String {
-    error.localizedDescription().to_string()
 }
 
 #[cfg(test)]

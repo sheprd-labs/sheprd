@@ -67,9 +67,9 @@ error-chat-convert-unknown = { $name } is not an agent Sheprd can chat with
 error-chat-convert-unsupported = { $agent } cannot move into a chat yet
 error-chat-convert-worker = could not start the worker
 
-# A picture pasted into a chat's composer, saved to a file to attach.
-error-chat-pasted-folder = no private folder holds pasted images
-error-chat-pasted-write = could not save the pasted image
+# A picture or long text pasted into a chat's composer, saved to a file to attach.
+error-chat-pasted-folder = no private folder holds pasted files
+error-chat-pasted-write = could not save the pasted file
 
 # A web page an agent wrote, copied to a private file to show in its chat.
 error-chat-page-folder = no folder for pages

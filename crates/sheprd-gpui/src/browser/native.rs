@@ -311,10 +311,12 @@ impl Pages {
         window: &mut Window,
         cx: &mut Context<SheprdWindow>,
     ) -> crate::Result<()> {
-        // A machine's display takes a page's place, without a web view.
+        // A machine's display takes a page's place, without a web view. The
+        // machine runs on this computer, so a tab of another host's
+        // workspace never gets it.
         #[cfg(target_os = "macos")]
         if let Some(Location::Machine { name }) = &tab.location {
-            if self.pages.contains_key(&tab.id) {
+            if !tab.scope.is_local() || self.pages.contains_key(&tab.id) {
                 return Ok(());
             }
             let view = crate::machine::view(name, cx)?;

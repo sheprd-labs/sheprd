@@ -37,6 +37,8 @@ chat-needs-input = Needs input
 # $count is how many windows show this chat.
 chat-watching = { $count } watching
 chat-reconnecting = Reconnecting…
+chat-share = Share
+chat-sharing = Sharing
 chat-show-chat = Chat
 chat-jump-to-end = Scroll to the latest message
 chat-jump-waiting = New output below
@@ -61,6 +63,7 @@ chat-files-attach = Attach
 # $error says why, in the system's or the app's words.
 chat-files-not-attached = Files not attached: { $error }
 chat-image-not-attached = Image not attached: { $error }
+chat-text-not-attached = Pasted text not attached: { $error }
 chat-files-too-many = A prompt takes at most { $count } files
 chat-files-copying = Files are still being copied; send once they are attached
 chat-prompt-too-long = The prompt is longer than the agent accepts
@@ -86,6 +89,7 @@ chat-queued = Queued
 chat-working = Working
 chat-working-writing = Writing
 chat-working-thinking = Thinking
+chat-working-waiting = Waiting for background work
 # What the agent is doing now: one of the words above, or the step it runs.
 chat-working-doing = { $doing }…
 # What a running step works on, when it names a file.
@@ -269,4 +273,13 @@ chat-form-not-ready = The agent is not ready to receive this form
 chat-form-busy = Finish your current message before sending this form
 
 chat-file-open = Open
+# Selects the attachment in Finder (macOS) or its folder elsewhere.
+chat-file-reveal = Show in Finder
+chat-file-reveal-folder = Show in Folder
 chat-file-on-host = File on the agent’s computer
+
+chat-viewer-previous = Previous
+chat-viewer-next = Next
+
+chat-open-message-text = Open full message as a text file
+chat-message-file-error = Could not save the message as a text file: { $error }

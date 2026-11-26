@@ -29,6 +29,11 @@ impl Localize for Error {
                 fl!("error-machine-image-not-found", name = name.as_str())
             }
             Self::InvalidDisplay => fl!("error-machine-invalid-display"),
+            Self::InvalidMetadata { path, reason } => fl!(
+                "error-machine-invalid-metadata",
+                path = path.display().to_string(),
+                reason = reason.as_str()
+            ),
             Self::InvalidName => fl!("error-machine-invalid-name"),
             Self::Memory { min, max } => fl!("error-machine-memory", min = *min, max = *max),
             Self::NameMismatch {
@@ -52,6 +57,11 @@ impl Localize for Error {
             Self::Remote(error) => error.localize(),
             Self::Suspended(name) => fl!("error-machine-suspended", name = name.as_str()),
             Self::Unsupported => fl!("error-machine-unsupported"),
+            Self::UnsupportedCapability { name, capability } => fl!(
+                "error-machine-unsupported-capability",
+                name = name.as_str(),
+                capability = *capability
+            ),
             Self::Write { path, source } => fl!(
                 "error-machine-write",
                 path = path.display().to_string(),
@@ -74,6 +84,13 @@ impl Localize for crate::machine::agent::Error {
             Error::Refused { refusal, message } => match refusal {
                 Refusal::Accessibility => fl!("error-machine-agent-accessibility"),
                 Refusal::ScreenRecording => fl!("error-machine-agent-screen-recording"),
+                Refusal::NotReady => {
+                    fl!("error-machine-agent-not-ready", message = message.as_str())
+                }
+                Refusal::Unsupported => fl!(
+                    "error-machine-agent-unsupported",
+                    message = message.as_str()
+                ),
                 Refusal::Invalid | Refusal::Failed => {
                     fl!("error-machine-agent-refused", message = message.as_str())
                 }
@@ -100,6 +117,11 @@ impl Localize for crate::machine::install::Error {
         use crate::machine::install::Error;
         match self {
             Error::Cancelled => fl!("error-machine-install-cancelled"),
+            Error::ChecksumMismatch { expected, actual } => fl!(
+                "error-machine-install-checksum-mismatch",
+                expected = expected.as_str(),
+                actual = actual.as_str()
+            ),
             Error::Download(source) => {
                 fl!("error-machine-install-download", error = source.to_string())
             }
@@ -111,6 +133,12 @@ impl Localize for crate::machine::install::Error {
                 path = path.display().to_string(),
                 error = source.to_string()
             ),
+            Error::ImageFormat(message) => {
+                fl!(
+                    "error-machine-install-image-format",
+                    message = message.as_str()
+                )
+            }
             Error::Incomplete { got, expected } => fl!(
                 "error-machine-install-incomplete",
                 got = format!("{:.1}", *got as f64 / 1e9), // i18n: data
@@ -126,6 +154,12 @@ impl Localize for crate::machine::install::Error {
             ),
             Error::NotSupported => fl!("error-machine-install-not-supported"),
             Error::Status(status) => fl!("error-machine-install-status", status = *status),
+            Error::UnknownImage(image) => {
+                fl!(
+                    "error-machine-install-unknown-image",
+                    image = image.as_str()
+                )
+            }
         }
     }
 }

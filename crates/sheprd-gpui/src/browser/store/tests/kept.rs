@@ -143,3 +143,27 @@ fn the_last_folder_and_user_name_survive_serialization() {
     assert_eq!(saved.label, "My project");
     assert!(saved.custom);
 }
+
+#[test]
+fn an_automatic_name_follows_its_folder_and_a_user_name_stays() {
+    let scope = Scope::endpoint("here");
+    let mut store = Store::default();
+    let auto = store
+        .keep_workspace(&scope, "old", "/work/old", false)
+        .unwrap();
+    let named = store
+        .keep_workspace(&scope, "Mine", "/work/old", true)
+        .unwrap();
+    assert!(!store.follow_kept_label(&Scope::endpoint("other"), &auto, "new"));
+    assert!(!store.follow_kept_label(&scope, &auto, " \n"));
+    assert!(store.follow_kept_label(&scope, &auto, " new\n"));
+    assert!(
+        !store.follow_kept_label(&scope, &auto, "new"),
+        "already its name"
+    );
+    let followed = store.kept_workspace(&scope, &auto).unwrap();
+    assert_eq!(followed.label, "new");
+    assert!(!followed.custom);
+    assert!(!store.follow_kept_label(&scope, &named, "new"));
+    assert_eq!(store.kept_workspace(&scope, &named).unwrap().label, "Mine");
+}

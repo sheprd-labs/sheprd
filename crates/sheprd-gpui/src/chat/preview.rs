@@ -267,16 +267,13 @@ async fn run(
     if options.view {
         handle.update(cx, |view, window, cx| {
             let picture = view.chats.pane(PANE).and_then(|pane| {
-                pane.session
-                    .transcript()
-                    .entries
+                pane.prepared
+                    .pictures
                     .iter()
                     .rev()
-                    .find_map(|entry| match &entry.kind {
-                        EntryKind::Image { image, .. } => {
-                            Some(super::visual::VisualId::of(&image.data))
-                        }
-                        _ => None,
+                    .copied()
+                    .find(|picture| {
+                        matches!(pane.prepared.visuals.shown(picture.id), Shown::Ready(_))
                     })
             });
             if let Some(picture) = picture {

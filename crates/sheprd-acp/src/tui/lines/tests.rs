@@ -107,3 +107,30 @@ fn no_line_is_wider_than_asked() {
         assert!(line.chars().count() <= 12, "{line}");
     }
 }
+
+#[test]
+fn effect_lines_are_left_out_but_their_text_stays() {
+    let entry = Entry {
+        id: EntryId(1),
+        kind: EntryKind::Agent {
+            text: ":::slam\nTests pass\n:::\n::confetti\n::not-an-effect\n```\n::confetti\n```"
+                .to_owned(),
+        },
+    };
+    let shown = plain(&super::entry(&entry, 40));
+    let shown: Vec<&str> = shown.iter().map(|line| line.trim()).collect();
+    assert!(shown.contains(&"Tests pass"), "{shown:?}");
+    assert!(shown.contains(&"::not-an-effect"), "{shown:?}");
+    assert!(
+        !shown.iter().any(|line| line.starts_with(":::")),
+        "{shown:?}"
+    );
+    // Code is shown as written, after its bar.
+    assert_eq!(
+        shown
+            .iter()
+            .filter(|line| line.ends_with("::confetti"))
+            .count(),
+        1
+    );
+}

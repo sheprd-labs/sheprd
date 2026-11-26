@@ -89,7 +89,7 @@ impl SheprdWindow {
                     this.browse_chat_files(&pane_id, window, cx);
                 }))
         };
-        // On this machine only a pasted picture is ever pending.
+        // On this machine only a pasted picture or text is ever pending.
         let host = match &chat.target.route {
             super::super::Route::Ssh(host) => Some(safe_text(host, 80)),
             super::super::Route::Local => None,
@@ -98,7 +98,7 @@ impl SheprdWindow {
             }
         };
         // Dropped files show as chips of their own; what is left is a
-        // picture still being saved.
+        // picture or text still being saved.
         let uploads = self.render_chat_uploads(chat, small, cx);
         let pending = chat.uploading.saturating_sub(uploads.len());
         let copying = (pending > 0).then(|| {

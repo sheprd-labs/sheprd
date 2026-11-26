@@ -103,6 +103,9 @@
               # The herdr-core release a remote install pins is compiled in.
               ./scripts/release/herdr-core.json
               ./scripts/release/herdr-core-licenses.txt
+              # The Linux guest agent a virtual machine seed installs is compiled in.
+              ./linux/sheprd-machine-agent/agent.py
+              ./linux/sheprd-machine-agent/wayland.py
             ];
           };
           cargoLock = {

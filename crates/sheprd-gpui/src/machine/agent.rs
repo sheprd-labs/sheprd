@@ -1,16 +1,11 @@
-//! Sheprd Agent: how agents work inside a virtual Mac. A small app in the
-//! guest (`macos/sheprd-machine-agent`) runs commands, takes screenshots,
-//! and posts clicks and keys in the logged-in session, and answers here
-//! over the machine's vsock device: no network, and nothing outside the
-//! machine can reach it. The user installs it once from the disk every
-//! machine boots with ([`super::configuration`]), then keeps it in an image.
+//! Sheprd Agent: how agents work inside a virtual machine. A guest agent runs
+//! in the logged-in graphical session to run commands, capture screenshots,
+//! and post input, answering the host over the machine's vsock transport: no
+//! network, and nothing outside the virtual machine can reach it.
 //!
-//! The connection is made on the main thread, the machine's queue; the
-//! request and its reply cross it on a background thread.
-//!
-//! `objc2-virtualization` marks every call `unsafe`, as it does not check
-//! the framework's threading rules. Each call here runs on the main thread.
-#![allow(unsafe_code)]
+//! Transport opening stays behind [`super::vm::connect_agent`] (implemented by
+//! the host backend); framing and request/reply validation run on background
+//! threads in pure safe Rust.
 
 mod error;
 mod wire;
@@ -20,24 +15,14 @@ pub(crate) use wire::{Exec, Hello, Refusal, Request};
 
 use super::{Name, vm};
 use base64::Engine as _;
-use block2::RcBlock;
 use gpui::{App, AsyncApp, Task};
-use objc2_foundation::NSError;
-use objc2_virtualization::{VZVirtioSocketConnection, VZVirtioSocketDevice};
 use sheprd_control_protocol::protocol::tabs::{MACHINE_TYPE_GAP_MS, MACHINE_TYPE_SECONDS};
-use std::{
-    cell::Cell,
-    os::{fd::OwnedFd, unix::net::UnixStream},
-    path::PathBuf,
-    rc::Rc,
-    time::{Duration, Instant},
-};
+use std::{os::unix::net::UnixStream, path::PathBuf, time::Duration};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-/// How long the guest may take to accept a connection.
-const CONNECT: Duration = Duration::from_secs(5);
-const POLL: Duration = Duration::from_millis(20);
+/// How long the guest may take to accept a transport connection.
+pub(crate) const CONNECT: Duration = Duration::from_secs(5);
 /// How long a reply may take, beyond what the request waits for itself.
 const SLACK: Duration = Duration::from_secs(20);
 /// The most `exec` hands back of each stream, as `cloud exec` does.
@@ -120,7 +105,7 @@ fn posting(request: &Request) -> Duration {
 /// Sends `request` to the agent in machine `name`, and hands back the reply
 /// it read, given `wait` beyond the usual time.
 fn call(name: &Name, request: Request, wait: Duration, cx: &mut App) -> Task<Result<Vec<u8>>> {
-    let connecting = connect(name, cx);
+    let connecting = vm::connect_agent(name, wire::PORT, cx);
     let background = cx.background_executor().clone();
     cx.spawn(async move |_: &mut AsyncApp| {
         let stream = UnixStream::from(connecting.await?);
@@ -134,76 +119,6 @@ fn call(name: &Name, request: Request, wait: Duration, cx: &mut App) -> Task<Res
             })
             .await
     })
-}
-
-/// Opens a connection to the agent in machine `name`, which must be running.
-fn connect(name: &Name, cx: &mut App) -> Task<Result<OwnedFd>> {
-    let device = vm::running_machine(name).and_then(|machine| {
-        // SAFETY: on the main thread, the machine's queue.
-        let devices = unsafe { machine.socketDevices() };
-        devices
-            .firstObject()
-            .and_then(|device| device.downcast::<VZVirtioSocketDevice>().ok())
-    });
-    let Some(device) = device else {
-        return Task::ready(Err(Error::NotRunning(name.clone())));
-    };
-    let answer: Rc<Cell<Option<Result<OwnedFd>>>> = Rc::default();
-    let block = {
-        let answer = answer.clone();
-        let name = name.clone();
-        RcBlock::new(
-            move |connection: *mut VZVirtioSocketConnection, error: *mut NSError| {
-                answer.set(Some(opened(&name, connection, error)));
-            },
-        )
-    };
-    // SAFETY: on the machine's queue; the framework copies the block, and
-    // calls it there.
-    unsafe { device.connectToPort_completionHandler(wire::PORT, &block) };
-    let name = name.clone();
-    cx.spawn(async move |cx: &mut AsyncApp| {
-        let start = Instant::now();
-        loop {
-            if let Some(answer) = answer.take() {
-                return answer;
-            }
-            if start.elapsed() > CONNECT {
-                return Err(Error::Unreachable {
-                    name,
-                    reason: "no answer".to_owned(), // i18n: data
-                });
-            }
-            cx.background_executor().timer(POLL).await;
-        }
-    })
-}
-
-/// The connection's own descriptor, which outlives it: the connection is
-/// closed here, and the copy is the caller's.
-fn opened(
-    name: &Name,
-    connection: *mut VZVirtioSocketConnection,
-    error: *mut NSError,
-) -> Result<OwnedFd> {
-    // SAFETY: Virtualization passes null or objects that outlive this call.
-    let (connection, error) = unsafe { (connection.as_ref(), error.as_ref()) };
-    let unreachable = |reason: String| Error::Unreachable {
-        name: name.clone(),
-        reason,
-    };
-    let Some(connection) = connection else {
-        return Err(unreachable(error.map_or_else(String::new, vm::description)));
-    };
-    // SAFETY: the descriptor stays open until the connection closes below,
-    // after it was copied.
-    let copied = unsafe {
-        let fd = std::os::fd::BorrowedFd::borrow_raw(connection.fileDescriptor());
-        let copied = fd.try_clone_to_owned();
-        connection.close();
-        copied
-    };
-    copied.map_err(Error::Io)
 }
 
 #[cfg(test)]

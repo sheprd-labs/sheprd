@@ -6,9 +6,11 @@ use thiserror::Error;
 pub enum Error {
     #[error("Stopped before it finished")]
     Cancelled,
+    #[error("Downloaded image checksum mismatch (expected {expected}, got {actual})")]
+    ChecksumMismatch { expected: String, actual: String },
     #[error("Apple's server sent {got} of {expected} bytes")]
     Incomplete { got: u64, expected: u64 },
-    #[error("Cannot download macOS: {0}")]
+    #[error("Cannot download image: {0}")]
     Download(#[source] Box<ureq::Error>),
     /// What Virtualization said, as its message: an `NSError` cannot leave
     /// the thread it arrived on.
@@ -19,12 +21,16 @@ pub enum Error {
         path: PathBuf,
         source: std::io::Error,
     },
+    #[error("Invalid disk image: {0}")]
+    ImageFormat(String),
     #[error("macOS did not install: {0}")]
     Install(String),
     #[error("Needs {needed} bytes free, and {free} are")]
     NoRoom { needed: u64, free: u64 },
     #[error("This Mac cannot run the macOS Apple offers")]
     NotSupported,
-    #[error("Apple's server answered {0}")]
+    #[error("Server answered {0}")]
     Status(u16),
+    #[error("Unknown Linux image: {0}")]
+    UnknownImage(String),
 }

@@ -8,6 +8,7 @@ use sheprd_client::protocol::AgentStatus;
 
 mod author_column;
 mod azure_browse;
+mod banners;
 mod browse_pages;
 mod cli_project;
 mod clicks;
@@ -38,6 +39,7 @@ mod repo_name;
 mod review_requested;
 mod row_start;
 mod rows;
+mod same_repository;
 mod search_row;
 mod sessions;
 mod sign_in;

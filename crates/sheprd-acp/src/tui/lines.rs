@@ -105,10 +105,10 @@ pub(crate) fn entry(entry: &Entry, width: usize) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
     match &entry.kind {
         EntryKind::User { text, .. } => {
-            let style = Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD);
-            prefixed(&mut lines, "› ", "  ", text, width, style);
+            // The timeline's rail and header say who wrote it.
+            for line in wrap(text, width) {
+                lines.push(Line::raw(line));
+            }
         }
         EntryKind::Agent { text } => agent_text(&mut lines, text, width),
         EntryKind::Thought { text } => {
@@ -128,7 +128,7 @@ pub(crate) fn entry(entry: &Entry, width: usize) -> Vec<Line<'static>> {
         // The terminal names a picture; attached clients draw it.
         EntryKind::Image { author, .. } => {
             let (lead, color) = match author {
-                Author::User => ("› ", Color::Cyan),
+                Author::User => ("", Color::Cyan),
                 Author::Agent => ("  ", Color::DarkGray),
             };
             lines.push(Line::styled(
@@ -137,17 +137,16 @@ pub(crate) fn entry(entry: &Entry, width: usize) -> Vec<Line<'static>> {
             ));
         }
         EntryKind::Tool(tool) => tool_lines(&mut lines, tool, width),
+        // The end of the agent's rail in the timeline.
         EntryKind::Turn(summary) => {
-            let text = summary.describe();
-            let rule = width.saturating_sub(text.chars().count() + 4) / 2;
-            lines.push(Line::styled(
-                format!(
-                    "{} {text} {}",
-                    "─".repeat(rule.max(1)),
-                    "─".repeat(rule.max(1))
-                ),
-                Style::default().fg(Color::DarkGray),
-            ));
+            let text = wrap(&summary.describe(), width.saturating_sub(3))
+                .into_iter()
+                .next()
+                .unwrap_or_default();
+            lines.push(Line::from(vec![
+                Span::styled("╰─ ", Style::default().fg(Color::Magenta)),
+                Span::styled(text, Style::default().fg(Color::DarkGray)),
+            ]));
         }
         EntryKind::Handoff(handoff) => prefixed(
             &mut lines,
@@ -177,16 +176,46 @@ pub(crate) fn entry(entry: &Entry, width: usize) -> Vec<Line<'static>> {
     lines
 }
 
+/// The effects Sheprd's chat plays around a message (`:::slam` … `:::`)
+/// or over its pane (`::confetti`). A terminal plays none, so their lines
+/// are left out and the text they wrap reads as any other.
+const BUBBLE_EFFECTS: [&str; 4] = ["gentle", "ink", "loud", "slam"];
+const PANE_EFFECTS: [&str; 10] = [
+    "balloons",
+    "celebration",
+    "confetti",
+    "echo",
+    "fireworks",
+    "lasers",
+    "love",
+    "spotlight",
+    "wizz",
+    "zap",
+];
+
+/// Whether `line` only asks Sheprd's chat for an effect.
+fn effect_line(line: &str) -> bool {
+    let line = line.trim();
+    if line == ":::" {
+        return true;
+    }
+    if let Some(name) = line.strip_prefix(":::") {
+        return BUBBLE_EFFECTS.contains(&name);
+    }
+    line.strip_prefix("::")
+        .is_some_and(|name| PANE_EFFECTS.contains(&name))
+}
+
 /// Agent text with fenced code set apart and the rest drawn as prose.
 fn agent_text(lines: &mut Vec<Line<'static>>, text: &str, width: usize) {
     let mut code = false;
     for raw in text.trim_end().split('\n') {
+        if !code && effect_line(raw) {
+            continue;
+        }
+        // A bar down the left sets code apart; the fences themselves go.
         if raw.trim_start().starts_with("```") {
             code = !code;
-            lines.push(Line::styled(
-                format!("  {}", "─".repeat(width.saturating_sub(2).min(40))),
-                Style::default().fg(Color::DarkGray),
-            ));
             continue;
         }
         if !code {
@@ -194,8 +223,11 @@ fn agent_text(lines: &mut Vec<Line<'static>>, text: &str, width: usize) {
             continue;
         }
         let style = Style::default().fg(Color::Green);
-        for line in wrap(raw, width.saturating_sub(2)) {
-            lines.push(Line::styled(format!("  {line}"), style));
+        for line in wrap(raw, width.saturating_sub(4)) {
+            lines.push(Line::from(vec![
+                Span::styled("  ┃ ", Style::default().fg(Color::DarkGray)),
+                Span::styled(line, style),
+            ]));
         }
     }
 }
@@ -257,13 +289,13 @@ fn tool_lines(lines: &mut Vec<Line<'static>>, tool: &Tool, width: usize) {
                 let all = wrap(text.trim_end(), width.saturating_sub(4));
                 let hidden = all.len().saturating_sub(TOOL_LINES);
                 for line in all.into_iter().take(TOOL_LINES) {
-                    lines.push(Line::styled(format!("  │ {line}"), dim));
+                    lines.push(Line::styled(format!("  ┊ {line}"), dim));
                 }
                 if hidden > 0 {
-                    lines.push(Line::styled(format!("  │ … {hidden} more lines"), dim));
+                    lines.push(Line::styled(format!("  ┊ … {hidden} more lines"), dim));
                 }
             }
-            ToolContent::Image { .. } => lines.push(Line::styled("  │ [image]", dim)),
+            ToolContent::Image { .. } => lines.push(Line::styled("  ┊ [image]", dim)),
             ToolContent::Terminal { id } => {
                 lines.push(Line::styled(format!("  terminal {id}"), dim));
             }

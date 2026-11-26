@@ -1,6 +1,8 @@
 //! The chats a window attaches to: one per chat pane of its daemon, each
 //! with its connection, retries, and the view state drawn from it.
 
+mod diagnostics;
+
 use super::{
     Error, MAX_FAILURES, Result, Target,
     link::{Dial, Link},
@@ -13,7 +15,7 @@ use crate::search_input::SearchInput;
 use gpui::{App, Entity, FocusHandle, ListAlignment, ListState, Window, px};
 use sheprd_chat_protocol::{ClientMessage, Command, Cursor, EntryId};
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     time::{Duration, Instant},
 };
 
@@ -218,6 +220,12 @@ pub(crate) struct ChatPane {
 }
 
 impl ChatPane {
+    /// Whether files wait here for an unsent prompt, attached or still
+    /// being copied: letting the pane go would lose them.
+    pub(crate) fn holds_unsent_files(&self) -> bool {
+        !self.attachments.is_empty() || self.uploading > 0 || !self.uploads.is_empty()
+    }
+
     /// What the composer's round button does with `text` in the field: as in
     /// the phone app, it stops a running turn while nothing is written or
     /// attached, and sends only once something is.
@@ -263,6 +271,22 @@ impl ChatPane {
             .chain(self.read_only_focus.iter().cloned())
             .chain(self.text_focus.iter().cloned())
             .chain(self.viewer.iter().map(|viewer| viewer.focus().clone()))
+    }
+
+    /// The reader or a keyboard control in one of its rows.
+    pub(super) fn reader_focus(&self, window: &Window, cx: &App) -> Option<FocusHandle> {
+        let focused = window.focused(cx)?;
+        self.text_focus
+            .as_ref()?
+            .contains(&focused, window)
+            .then_some(focused)
+    }
+
+    pub(super) fn focused_handle(&self, window: &Window, cx: &App) -> Option<FocusHandle> {
+        self.reader_focus(window, cx).or_else(|| {
+            self.focus_handles(cx)
+                .find(|focus| focus.is_focused(window))
+        })
     }
 
     /// Whether the user is reading, with the keyboard on the chat's text.
@@ -394,7 +418,14 @@ impl ChatPane {
     }
 
     fn fail(&mut self, error: &Error, now: Instant) {
-        tracing::debug!(%error, pane = %self.target.pane_id, "Chat connection ended");
+        tracing::debug!(
+            %error,
+            pane = %self.target.pane_id,
+            transport = self.target.route.transport_label(),
+            welcomed = self.session.welcomed(),
+            had_transcript = self.session.synced(),
+            "Chat connection ended"
+        );
         self.link = None;
         self.session.lost(error);
         self.menu = None;
@@ -473,6 +504,9 @@ impl ChatPane {
                         self.glide.note_output();
                     }
                     for Splice { range, count } in splices {
+                        if range.is_empty() {
+                            self.glide.note_added_rows(count);
+                        }
                         super::glide::splice_in_place(&self.list, range, count);
                     }
                 }
@@ -480,6 +514,11 @@ impl ChatPane {
             }
         }
         self.list_keys = keys;
+        // Entries the program dropped to keep its transcript bounded do not
+        // come back, so neither does what was remembered of them.
+        let entries = &self.session.transcript().entries;
+        self.expanded
+            .retain(|id| entries.binary_search_by_key(id, |entry| entry.id).is_ok());
         self.refresh_text();
         self.widgets.retain(&self.prepared);
         let prepared = &self.prepared;
@@ -619,6 +658,8 @@ pub(crate) struct Chats {
     pub(crate) converting: Option<super::convert::Job>,
     /// The herdr-core agent moving into a chat, one at a time with the above.
     pub(crate) converting_core: Option<super::convert::CoreJob>,
+    /// Last attachment decision logged for the daemon's focused pane.
+    diagnostic: Option<diagnostics::Decision>,
     /// Exact CLI sessions already running in this connected daemon's panes.
     pub(crate) existing: super::existing::Existing,
     /// The agent a chat was last started with, which the strips' one-button
@@ -654,6 +695,9 @@ pub(crate) struct Chats {
     /// Exact pane/process/host targets the user turned back to their terminal.
     /// Two panes may legitimately observe the same session endpoint.
     raw: HashSet<Target>,
+    /// Files attached to the unsent prompt of a chat the bound let go,
+    /// given back when it attaches again.
+    parked: HashMap<Target, Vec<std::path::PathBuf>>,
     /// Textures of panes no longer attached, for the window to drop.
     released: Vec<std::sync::Arc<gpui::RenderImage>>,
     /// Chats being continued in the panes Herdr restored.
@@ -778,19 +822,38 @@ impl Chats {
 
     /// Attaches to `targets` and detaches from every other pane, then
     /// starts the connections that are due.
+    #[cfg(test)]
     pub(crate) fn reconcile(
         &mut self,
         targets: Vec<Target>,
         now: Instant,
         connect: &mut Connect<'_>,
     ) -> bool {
+        let known = targets.clone();
+        self.reconcile_within(targets, &known, now, connect)
+    }
+
+    /// [`Self::reconcile`] for `targets` chosen among `known`, the chats
+    /// still running. One let go only for room keeps what the user chose
+    /// for it, its terminal and its unsent files, until it attaches again.
+    pub(crate) fn reconcile_within(
+        &mut self,
+        targets: Vec<Target>,
+        known: &[Target],
+        now: Instant,
+        connect: &mut Connect<'_>,
+    ) -> bool {
         let before = self.panes.len();
+        let parked = &mut self.parked;
         let released = &mut self.released;
         #[cfg(any(target_os = "macos", windows))]
         let closed_pages = &mut self.closed_pages;
         self.panes.retain_mut(|pane| {
             let keep = targets.contains(&pane.target);
             if !keep {
+                if !pane.attachments.is_empty() && known.contains(&pane.target) {
+                    parked.insert(pane.target.clone(), std::mem::take(&mut pane.attachments));
+                }
                 pane.prepared.visuals.clear();
                 released.extend(pane.prepared.visuals.take_released());
                 #[cfg(any(target_os = "macos", windows))]
@@ -806,13 +869,17 @@ impl Chats {
                 Some(index) => self.panes.swap_remove(index),
                 None => {
                     changed = true;
-                    ChatPane::new(target)
+                    let mut pane = ChatPane::new(target);
+                    if let Some(files) = self.parked.remove(&pane.target) {
+                        pane.attachments = files;
+                    }
+                    pane
                 }
             });
         }
         self.panes = panes;
-        let targets: HashSet<&Target> = self.panes.iter().map(|pane| &pane.target).collect();
-        self.raw.retain(|target| targets.contains(target));
+        self.raw.retain(|target| known.contains(target));
+        self.parked.retain(|target, _| known.contains(target));
         for pane in &mut self.panes {
             if pane.target.existing.is_some() && self.existing.take_dismissed(&pane.target.pane_id)
             {

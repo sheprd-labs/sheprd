@@ -26,7 +26,11 @@ mod cidr;
 pub use cidr::{Cidr, parse_list};
 
 pub use crate::ops::limit::wide_key;
-use crate::{bucket::source_key, metrics::Offense};
+use crate::{
+    ban::{Ban, BanReason},
+    bucket::source_key,
+    metrics::Offense,
+};
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -86,6 +90,18 @@ pub const fn points(offense: Offense) -> u32 {
 #[must_use]
 pub const fn severe(offense: Offense) -> bool {
     !matches!(offense, Offense::ConnectionCap | Offense::Limited)
+}
+
+/// What a banned client is told `offense` was.
+const fn ban_reason(offense: Offense) -> BanReason {
+    match offense {
+        Offense::BadProof => BanReason::BadProof,
+        Offense::Bandwidth => BanReason::Bandwidth,
+        Offense::ConnectionCap => BanReason::ConnectionCap,
+        Offense::Limited => BanReason::Limited,
+        Offense::Malformed => BanReason::Malformed,
+        Offense::Probe => BanReason::Probe,
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -308,6 +324,29 @@ impl Guard {
         self.wide()
             .get(&wide_key(address))
             .is_some_and(|record| record.banned(now))
+    }
+
+    /// Why `address` is banned at `now`, and for how long, as the banned
+    /// client is told; `None` when it is not banned.
+    #[must_use]
+    pub fn ban(&self, address: IpAddr, now: Instant) -> Option<Ban> {
+        if self.manually_banned(address) {
+            return Some(Ban {
+                reason: Some(BanReason::Manual),
+                remaining: None,
+            });
+        }
+        let ban = |record: &Record| {
+            let until = record.banned_until.filter(|until| *until > now)?;
+            Some(Ban {
+                reason: Some(ban_reason(record.reason)),
+                remaining: Some(until - now),
+            })
+        };
+        if let Some(found) = self.records().get(&source_key(address)).and_then(ban) {
+            return Some(found);
+        }
+        self.wide().get(&wide_key(address)).and_then(ban)
     }
 
     /// Whether a ban on `address` at `now` also ends what it has open: a

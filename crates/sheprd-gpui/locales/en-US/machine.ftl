@@ -2,6 +2,7 @@
 
 machine-no-workspace = Open a workspace to show a machine.
 machine-too-many-tabs = Too many tabs are open to show a machine.
+machine-other-host = A virtual Mac runs on this computer. Open it from a workspace on this computer.
 machine-saving = Saving { $name }…
 machine-start = Start
 machine-starting = Starting { $name }…

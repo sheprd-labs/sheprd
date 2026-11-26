@@ -65,7 +65,10 @@ fn a_long_prompt_grows_the_field_and_keeps_it_in_the_pane(cx: &mut TestAppContex
     let _stream = attach_with(&view, &program, idle(), cx);
     poll(&view, &program, cx);
     let single = cx.debug_bounds("chat-composer").unwrap().size.height;
-    let lines: Vec<String> = (0..40).map(|n| format!("line {n}")).collect();
+    // At most as many lines as stay in the field rather than attach.
+    let lines: Vec<String> = (0..crate::chat::pasted::LONG_TEXT_LINES)
+        .map(|n| format!("line {n}"))
+        .collect();
     cx.write_to_clipboard(ClipboardItem::new_string(lines.join("\n")));
     cx.simulate_keystrokes(paste_key());
     poll(&view, &program, cx);
@@ -80,6 +83,36 @@ fn a_long_prompt_grows_the_field_and_keeps_it_in_the_pane(cx: &mut TestAppContex
         composer.bottom() <= chat.bottom(),
         "{composer:?} in {chat:?}"
     );
+}
+
+#[gpui::test]
+fn a_long_paste_attaches_as_a_txt_file_and_leaves_the_field(cx: &mut TestAppContext) {
+    let (view, _peer, cx) = open(cx, ConnectTarget::Local);
+    let program = Program::new();
+    let _stream = attach_with(&view, &program, idle(), cx);
+    poll(&view, &program, cx);
+    cx.simulate_input("see: ");
+    let text = format!(
+        "{:?}\n{}",
+        std::time::SystemTime::now(),
+        "log line\n".repeat(40)
+    );
+    cx.write_to_clipboard(ClipboardItem::new_string(text.clone()));
+    cx.simulate_keystrokes(paste_key());
+    cx.run_until_parked();
+    poll(&view, &program, cx);
+    let (draft, attached) = view.read_with(cx, |view, cx| {
+        let pane = view.chats.panes().next().unwrap();
+        let draft = pane.composer.as_ref().unwrap().read(cx).text().to_string();
+        (draft, pane.attachments.clone())
+    });
+    assert_eq!(draft, "see: ");
+    let [file] = attached.as_slice() else {
+        panic!("one attachment, got {attached:?}");
+    };
+    assert_eq!(file.extension().unwrap(), "txt");
+    assert_eq!(std::fs::read_to_string(file).unwrap(), text);
+    std::fs::remove_file(file).unwrap();
 }
 
 #[gpui::test]

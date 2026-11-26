@@ -216,6 +216,18 @@ pub(crate) fn upload(
     }
 }
 
+/// Whether [`upload`] can put files on `target` from this machine: copying
+/// over SSH needs a POSIX shell here, and a WSL distribution maps paths.
+pub(crate) fn can_upload(target: &ConnectTarget) -> bool {
+    match target {
+        ConnectTarget::Wsl { .. } => true,
+        ConnectTarget::Ssh { .. } => cfg!(any(target_os = "linux", target_os = "macos")),
+        #[cfg(feature = "cloud")]
+        ConnectTarget::Cloud { .. } => cfg!(any(target_os = "linux", target_os = "macos")),
+        _ => false,
+    }
+}
+
 pub(crate) fn cleanup(target: &ConnectTarget, paths: &[String]) -> Result<()> {
     match target {
         ConnectTarget::Local => {

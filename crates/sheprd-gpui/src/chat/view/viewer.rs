@@ -1,11 +1,7 @@
-//! A picture from the conversation shown large over its chat. Clicking a
-//! picture opens it; a click anywhere or Escape closes it. It fades and
-//! grows in, and fades and shrinks back out before it is let go.
+//! Show a conversation picture over its chat. The arrows browse pictures.
+//! Clicking the backdrop or picture, or pressing Escape, closes the viewer.
 
-use super::super::{
-    chats::ChatPane,
-    visual::{Shown, VisualId},
-};
+use super::super::{chats::ChatPane, prepared::Picture, visual::Shown};
 use crate::{SheprdWindow, config::corners, motion};
 use gpui::{prelude::*, *};
 
@@ -26,10 +22,22 @@ pub(crate) struct Viewer {
     /// Bumped for each picture opened, so a close timed for an earlier one
     /// never lets a later one go, and each plays its own motion.
     generation: u64,
-    id: VisualId,
+    picture: Picture,
 }
 
 impl Viewer {
+    fn neighbor(&self, chat: &ChatPane, forward: bool) -> Option<Picture> {
+        let pictures = &chat.prepared.pictures;
+        let index = pictures.iter().position(|item| *item == self.picture)?;
+        let ready =
+            |item: &&Picture| matches!(chat.prepared.visuals.shown(item.id), Shown::Ready(_));
+        if forward {
+            pictures[index + 1..].iter().find(ready).copied()
+        } else {
+            pictures[..index].iter().rev().find(ready).copied()
+        }
+    }
+
     /// The keyboard's handle while the picture is open, not once it leaves.
     pub(crate) fn open_focus(&self) -> Option<&FocusHandle> {
         (!self.closing).then_some(&self.focus)
@@ -50,14 +58,14 @@ impl SheprdWindow {
             .is_some_and(|viewer| viewer.open_focus().is_some())
     }
 
-    /// Shows the picture `id` large over the chat in `pane_id`, with the
+    /// Shows the selected picture large over the chat in `pane_id`, with the
     /// keyboard on it. The click that opened it never reached the chat, so
     /// the chat's pane is made the active one here, as a click on the chat
     /// would; otherwise the keyboard would go back to the active pane.
     pub(crate) fn open_chat_viewer(
         &mut self,
         pane_id: &str,
-        id: VisualId,
+        picture: Picture,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -77,7 +85,7 @@ impl SheprdWindow {
             closing: false,
             focus: focus.clone(),
             generation,
-            id,
+            picture,
         });
         window.focus(&focus, cx);
         self.redraw_terminal(cx);
@@ -129,6 +137,25 @@ impl SheprdWindow {
         true
     }
 
+    pub(crate) fn step_chat_viewer(
+        &mut self,
+        pane_id: &str,
+        forward: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(chat) = self.chats.pane_mut(pane_id) else {
+            return;
+        };
+        let Some(viewer) = chat.viewer.as_ref().filter(|viewer| !viewer.closing) else {
+            return;
+        };
+        let target = viewer.neighbor(chat, forward);
+        if let (Some(viewer), Some(target)) = (&mut chat.viewer, target) {
+            viewer.picture = target;
+            cx.notify();
+        }
+    }
+
     /// The picture shown large over a chat drawn in `bounds`, if one is.
     pub(super) fn render_chat_viewer(
         &self,
@@ -137,9 +164,45 @@ impl SheprdWindow {
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
         let viewer = chat.viewer.as_ref()?;
-        let Shown::Ready(drawn) = chat.prepared.visuals.shown(viewer.id) else {
+        let Shown::Ready(drawn) = chat.prepared.visuals.shown(viewer.picture.id) else {
             return None;
         };
+        let previous = viewer.neighbor(chat, false);
+        let next = viewer.neighbor(chat, true);
+        let controls = (previous.is_some() || next.is_some()).then(|| {
+            let button = |name, label, forward, enabled: bool, cx: &mut Context<Self>| {
+                let pane_id = chat.target.pane_id.clone();
+                self.rich_button(name, label)
+                    .when(!enabled, |button| button.opacity(0.45).cursor_default())
+                    .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                        cx.stop_propagation();
+                        if enabled {
+                            this.step_chat_viewer(&pane_id, forward, cx);
+                        }
+                    }))
+            };
+            div()
+                .absolute()
+                .bottom(px(6.))
+                .flex()
+                .gap(px(8.))
+                .children([
+                    button(
+                        "chat-viewer-previous",
+                        crate::i18n::fl!("chat-viewer-previous"),
+                        false,
+                        previous.is_some(),
+                        cx,
+                    ),
+                    button(
+                        "chat-viewer-next",
+                        crate::i18n::fl!("chat-viewer-next"),
+                        true,
+                        next.is_some(),
+                        cx,
+                    ),
+                ])
+        });
         let room_w = (f32::from(bounds.size.width) - 2. * MARGIN).max(1.);
         let room_h = (f32::from(bounds.size.height) - 2. * MARGIN).max(1.);
         let scale = (room_w / drawn.width)
@@ -198,6 +261,7 @@ impl SheprdWindow {
                     this.close_chat_viewer(&pane_id, window, cx);
                 }))
                 .child(picture)
+                .children(controls)
                 .with_animation(
                     SharedString::from(format!("chat-viewer-{}-{phase}", viewer.generation)),
                     animation(),

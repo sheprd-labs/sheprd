@@ -305,6 +305,7 @@ impl SheprdWindow {
                 Page::RemoteControl
                     | Page::RevokeDevice
                     | Page::RemoteHostAsk
+                    | Page::ShareSession
                     | Page::BorrowMachine
             )
         )
@@ -316,6 +317,7 @@ impl SheprdWindow {
             Some(Page::RemoteControl) => Some(self.render_pairing(cx)),
             Some(Page::RevokeDevice) => Some(self.render_revoke(cx)),
             Some(Page::RemoteHostAsk) => Some(self.render_host_ask(cx)),
+            Some(Page::ShareSession) => Some(self.render_share_session(cx)),
             // Another computer's virtual Mac, borrowed from here.
             Some(Page::BorrowMachine) => Some(self.render_borrow_machine(cx)),
             _ => None,

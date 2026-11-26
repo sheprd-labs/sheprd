@@ -178,6 +178,39 @@ impl Relays {
 
     /// The listen token to present on `endpoint`: this computer's own, else
     /// one a sharing computer sent; `None` on an open relay.
+    pub(crate) fn token_for(&self, endpoint: &Endpoint) -> Option<ListenToken> {
+        self.token(endpoint)
+    }
+
+    /// Selects a trusted HTTPS relay configured on this daemon for a shared
+    /// session. When `requested` is given, it must match a configured or shared
+    /// endpoint (never an arbitrary caller URL); otherwise prefers a listening
+    /// relay.
+    pub(crate) fn share_relay(&self, requested: Option<&str>) -> Option<Endpoint> {
+        let endpoints: Vec<Endpoint> = self
+            .endpoints()
+            .into_iter()
+            .filter(Endpoint::is_secure)
+            .collect();
+        if let Some(requested) = requested {
+            let parsed = Endpoint::parse(requested).ok()?;
+            return endpoints.into_iter().find(|endpoint| *endpoint == parsed);
+        }
+        let status = self.status.lock().unwrap_or_else(PoisonError::into_inner);
+        endpoints
+            .iter()
+            .find(|endpoint| {
+                matches!(
+                    status.get(&endpoint.to_string()),
+                    Some(Status::Listening { .. })
+                )
+            })
+            .cloned()
+            .or_else(|| endpoints.into_iter().next())
+    }
+
+    /// The listen token to present on `endpoint`: this computer's own, else
+    /// one a sharing computer sent; `None` on an open relay.
     fn token(&self, endpoint: &Endpoint) -> Option<ListenToken> {
         let own = self.tokens.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(token) = own.get(endpoint) {

@@ -1,6 +1,6 @@
 use super::*;
 use crate::chat::session::Session;
-use sheprd_chat_protocol::{ByeReason, Command, CommandId, Rejection};
+use sheprd_chat_protocol::{ByeReason, Command, CommandId, NoticeLevel, Rejection};
 
 fn live(at: Cursor, entries: Vec<Entry>) -> Session {
     let mut session = Session::default();
@@ -115,6 +115,15 @@ fn a_gap_in_the_stream_asks_for_a_snapshot_next() {
     assert_eq!(session.since(), None);
     assert!(!session.live());
     // The old transcript stays on screen until the snapshot arrives.
+    assert!(session.synced());
+}
+
+#[test]
+fn a_view_that_fell_behind_asks_for_a_snapshot_next() {
+    let mut session = live(cursor(1, 4), vec![agent(1, "a")]);
+    assert!(Error::Overflow.desynced());
+    session.lost(&Error::Overflow);
+    assert_eq!(session.since(), None);
     assert!(session.synced());
 }
 
@@ -275,4 +284,58 @@ fn goodbye_ends_the_connection() {
         }),
         Err(Error::Bye(ByeReason::Exiting))
     ));
+}
+
+#[test]
+fn last_activity_tracks_live_working_updates_and_ignores_notices_and_clients() {
+    let mut session = live(cursor(1, 0), vec![agent(1, "Hel")]);
+    assert_eq!(session.last_activity_ms(), None);
+
+    session
+        .receive(change(
+            Change::Status {
+                status: Status::Working,
+            },
+            cursor(1, 1),
+        ))
+        .unwrap();
+    let started = session.last_activity_ms().expect("working sets activity");
+
+    session
+        .receive(change(Change::Clients { count: 2 }, cursor(1, 2)))
+        .unwrap();
+    assert_eq!(session.last_activity_ms(), Some(started));
+
+    session
+        .receive(change(
+            Change::Push {
+                entry: Entry {
+                    id: EntryId(2),
+                    kind: EntryKind::Notice {
+                        answers: Vec::new(),
+                        details: None,
+                        level: NoticeLevel::Info,
+                        text: "still quiet".into(),
+                    },
+                },
+            },
+            cursor(1, 3),
+        ))
+        .unwrap();
+    assert_eq!(session.last_activity_ms(), Some(started));
+
+    session
+        .receive(change(append(1, "lo"), cursor(1, 4)))
+        .unwrap();
+    assert!(session.last_activity_ms().unwrap() >= started);
+
+    session
+        .receive(change(
+            Change::Status {
+                status: Status::Idle,
+            },
+            cursor(1, 5),
+        ))
+        .unwrap();
+    assert_eq!(session.last_activity_ms(), None);
 }

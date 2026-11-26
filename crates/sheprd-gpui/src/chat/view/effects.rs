@@ -57,6 +57,16 @@ impl SheprdWindow {
         voice: Voice,
         cx: &mut Context<Self>,
     ) -> Div {
+        if !self.config.chat.message_effects {
+            return self.render_chat_rich(
+                (pane_id, crate::chat::view::rich::links::Mode::Configured),
+                blocks,
+                visuals,
+                scope,
+                voice,
+                cx,
+            );
+        }
         let since = self
             .chats
             .pane(pane_id)

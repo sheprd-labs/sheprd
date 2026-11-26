@@ -31,6 +31,8 @@ pub mod relay_label;
 #[cfg(feature = "server")]
 pub mod server;
 #[cfg(feature = "server")]
+pub mod sharing;
+#[cfg(feature = "server")]
 mod ssh_access;
 #[cfg(feature = "server")]
 mod tls;

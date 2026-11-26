@@ -237,3 +237,50 @@ impl SheprdWindow {
         self.core_terminals.shown.is_some()
     }
 }
+
+impl SheprdWindow {
+    /// Saves the name each workspace the user has not named shows in
+    /// `sessions`, which its folder gives it, so the shared document carries
+    /// it to other clients. Only once Git answered for that folder: a linked
+    /// worktree keeps its saved name, which a name read before would replace
+    /// for good. The store changes only when a name did.
+    pub(super) fn keep_core_workspace_names(
+        &self,
+        sessions: &[(Scope, std::sync::Arc<sheprd_session::Session>)],
+        cx: &mut App,
+    ) {
+        let changes: Vec<(&Scope, &str, &str)> = cx
+            .try_global::<crate::browser::Store>()
+            .into_iter()
+            .flat_map(|store| {
+                sessions.iter().flat_map(move |(scope, session)| {
+                    let checkouts = match super::Host::of(scope) {
+                        super::Host::Local => Some(&self.core_terminals.checkouts),
+                        super::Host::Remote(scope) => self
+                            .core_terminals
+                            .remote
+                            .get(&scope)
+                            .map(|remote| &remote.checkouts),
+                    };
+                    session.workspaces.iter().filter_map(move |workspace| {
+                        let kept = store.kept_workspace(scope, &workspace.id)?;
+                        let answered =
+                            checkouts.is_some_and(|known| known.answered(&workspace.cwd));
+                        (answered
+                            && !workspace.custom_label
+                            && !kept.custom
+                            && kept.label != workspace.label)
+                            .then_some((scope, workspace.id.as_str(), workspace.label.as_str()))
+                    })
+                })
+            })
+            .collect();
+        if !changes.is_empty() {
+            crate::browser::Store::update(cx, |store| {
+                for (scope, id, label) in changes {
+                    store.follow_kept_label(scope, id, label);
+                }
+            });
+        }
+    }
+}

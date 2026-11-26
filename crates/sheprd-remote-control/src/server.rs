@@ -157,6 +157,13 @@ pub async fn run(options: Options) -> Result<()> {
     // A second daemon on this state directory stops here, before it
     // changes anything the running one keeps.
     let keys = auth.ssh_access().ok().map(|access| &access.keys);
+    let sharing = match crate::sharing::service::Service::open(&options.state_dir.join("sharing")) {
+        Ok(service) => Some(Arc::new(service)),
+        Err(error) => {
+            tracing::warn!(%error, "Could not open the session sharing store");
+            None
+        }
+    };
     let fleet =
         crate::fleet::Fleet::for_daemon(&options.state_dir, web::now_ms(), keys)?.map(Arc::new);
     let state = Arc::new(State {
@@ -194,6 +201,7 @@ pub async fn run(options: Options) -> Result<()> {
         relay,
         reports: Mutex::new(web::report_limit()),
         seen: Mutex::new(seen),
+        sharing,
         shortcuts: web::Shortcuts::load(crate::app::shortcuts::file(&options.state_dir)),
         tags: web::Tags::load(crate::app::tags::file(&options.state_dir)),
         typed: web::Typed::default(),
@@ -271,6 +279,9 @@ pub async fn run(options: Options) -> Result<()> {
         })
         .into_future();
     until_stopped(serve, stopped, SHUTDOWN_GRACE).await?;
+    if let Some(sharing) = &state.sharing {
+        sharing.shutdown_routes();
+    }
     crate::control::release(&options.state_dir);
     Ok(())
 }

@@ -23,6 +23,12 @@ impl SheprdWindow {
             self.show_flash(Flash::warning(fl!("machine-no-workspace")), cx);
             return;
         };
+        // A virtual Mac runs on this computer: a workspace on another host
+        // does not show it.
+        if !scope.is_local() {
+            self.show_flash(Flash::warning(fl!("machine-other-host")), cx);
+            return;
+        }
         let opened = Store::update(cx, |store| {
             store.open_location(scope, &workspace, Location::Machine { name: name.clone() })
         });
@@ -90,6 +96,7 @@ impl SheprdWindow {
         };
         #[cfg(target_os = "macos")]
         if let Some(Location::Machine { name }) = &tab.location
+            && tab.scope.is_local()
             && let Some(guide) = self.render_machine_guide(name, cx)
         {
             // The display shrinks to make room, and Apple's view follows it.
@@ -126,6 +133,11 @@ impl SheprdWindow {
         let Some(Location::Machine { name }) = &tab.location else {
             return Err(div().into_any_element());
         };
+        if !tab.scope.is_local() {
+            return Err(self
+                .machine_notice(fl!("machine-other-host"))
+                .into_any_element());
+        }
         let (message, startable) = match status(name) {
             Status::Running => {
                 return Ok(match self.browser.pages.element(tab.id) {
@@ -179,7 +191,8 @@ impl SheprdWindow {
             .and_then(|store| store.get(id))
             .is_some_and(|tab| {
                 matches!(&tab.location, Some(Location::Machine { name })
-                    if crate::machine::status(name) != crate::machine::Status::Running)
+                    if !tab.scope.is_local()
+                        || crate::machine::status(name) != crate::machine::Status::Running)
             })
     }
 

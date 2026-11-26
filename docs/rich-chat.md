@@ -506,6 +506,14 @@ this, and how, is in the [`sheprd-acp` README](../crates/sheprd-acp/README.md#be
 
 ## Messages and controls
 
+In the desktop conversation, a user message with at least 12 lines or 2,048
+characters shows a first-line preview and a **Message.txt** button. Click the
+button to open the full text in your default text editor. Tab or Shift-Tab
+reaches the file buttons. Enter or Space opens a file, and Escape returns to
+the chat input. This applies to
+existing conversations too. In the desktop composer, a new paste of at least
+800 characters or more than 10 lines becomes a separate text attachment.
+
 Write normal Markdown and TeX in user and agent messages. Rich chat supports
 headings, lists, links, aligned tables with horizontal scrolling, Mermaid,
 attached images, and explicitly loaded remote pictures. Conversation prose uses
@@ -640,7 +648,8 @@ All 214 tests pass.
   did: the chat shakes for a second and, on a phone, buzzes. A turn whose
   last reply holds it sends a time-sensitive push that plays the same buzz,
   whatever the push privacy, so a locked phone buzzes too. The excerpt a
-  push shows leaves every directive line out.
+  push shows leaves every directive line out and reads as plain text,
+  without size marks or Markdown.
 
 Only an agent's replies play effects; a user's message shows its effect
 directives as text, though its size spans still apply. Each effect plays once,
@@ -650,6 +659,10 @@ the system's reduce motion setting on, nothing moves, and invisible ink still
 hides until hovered. The agent learns the syntax from the note Sheprd sends
 with the first prompt on a desktop (`desktop.md` and `remote.md` in
 `crates/sheprd-acp/prompts`) and in the iPhone and iPad app (`phone-app.md`).
+
+On desktop, turn off **Settings > Chat > Message effects** to stop bubble and
+screen effects, including wizz. Invisible ink becomes readable and replay links
+disappear, including in existing messages.
 
 The iPhone and iPad app draws the same sizes and effects
 (`ios/SheprdRemoteCore/Sources/SheprdRemoteCore/Chat/TextSize.swift` and

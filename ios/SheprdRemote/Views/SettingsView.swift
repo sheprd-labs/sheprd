@@ -9,6 +9,7 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @AppStorage(PushRelaySetting.key, store: PushRelaySetting.store) private var pushRelay = true
     @AppStorage(AppAppearance.key) private var appearance = AppAppearance.system
+    @AppStorage(LinkOpening.key) private var linkOpening = LinkOpening.sheprd
     #if DEBUG
     @State private var showingComputers = false
     @State private var showingRelays = false
@@ -55,6 +56,12 @@ struct SettingsView: View {
                     ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
                 } label: {
                     Label { Text("Appearance") } icon: { SettingsIcon(symbol: "circle.lefthalf.filled", color: .blue) }
+                }
+                .pickerStyle(.menu)
+                Picker(selection: $linkOpening) {
+                    ForEach(LinkOpening.allCases) { Text($0.title).tag($0) }
+                } label: {
+                    Label { Text("Open Links In") } icon: { SettingsIcon(symbol: "safari.fill", color: .blue) }
                 }
                 .pickerStyle(.menu)
                 SettingsLink("Privacy & Storage", symbol: "hand.raised.fill", color: .blue, page: .privacy)

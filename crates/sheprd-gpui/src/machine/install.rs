@@ -11,12 +11,16 @@
 mod apple;
 mod download;
 mod error;
+pub(crate) mod linux;
+mod qcow2;
+pub(crate) mod seed;
 
 pub use error::Error;
 
 use super::{
-    Limits, Name, Result, Settings,
-    configuration::{Bundle, new_identity},
+    Limits, Name, Result, Settings, backend,
+    configuration::{Bundle, new_identity, new_identity_for},
+    metadata::BootMetadata,
     store::{self, AUXILIARY, DISK, GUIDE, HARDWARE, IDENTITY},
 };
 use crate::window::SheprdWindow;
@@ -40,7 +44,7 @@ const DISK_BYTES: u64 = 64 << 30;
 /// A staging folder this old was left by an install that never finished,
 /// as when the app quit during one.
 const ABANDONED: Duration = Duration::from_secs(60 * 60);
-const STAGING: &str = ".install-";
+pub(super) const STAGING: &str = ".install-";
 
 /// Where an install has got to.
 #[derive(Clone, Debug, PartialEq)]
@@ -50,8 +54,12 @@ pub(crate) enum Progress {
     Downloading {
         version: String,
         done: u64,
-        /// Zero until Apple's server says.
+        /// Zero until the server says.
         total: u64,
+    },
+    /// Checking the downloaded image's SHA-256 digest.
+    Verifying {
+        version: String,
     },
     /// Laying out the machine's files.
     Preparing {
@@ -103,10 +111,38 @@ pub(crate) fn making(name: &Name) -> bool {
     })
 }
 
+enum Target {
+    Macos,
+    #[allow(dead_code)] // Constructed by `begin_linux` (wired in Phase 5).
+    Linux(String),
+}
+
 /// Starts making machine `name` from Apple's newest macOS for this Mac, and
 /// opens it in window `source` once made. Returns `false` while another
 /// install runs.
 pub(crate) fn begin(name: Name, source: WeakEntity<SheprdWindow>, cx: &mut App) -> bool {
+    begin_target(name, Target::Macos, source, cx)
+}
+
+/// Starts making a Linux Wayland desktop machine `name` from pinned catalog
+/// image `image_id`, and opens it in window `source` once staged and published.
+/// Returns `false` while another install runs.
+#[allow(dead_code)] // Wired into CLI and Settings UI in Phase 5.
+pub(crate) fn begin_linux(
+    name: Name,
+    image_id: String,
+    source: WeakEntity<SheprdWindow>,
+    cx: &mut App,
+) -> bool {
+    begin_target(name, Target::Linux(image_id), source, cx)
+}
+
+fn begin_target(
+    name: Name,
+    target: Target,
+    source: WeakEntity<SheprdWindow>,
+    cx: &mut App,
+) -> bool {
     let busy = CURRENT.with_borrow(|current| {
         current
             .as_ref()
@@ -124,7 +160,10 @@ pub(crate) fn begin(name: Name, source: WeakEntity<SheprdWindow>, cx: &mut App) 
     }));
     cx.refresh_windows();
     cx.spawn(async move |cx: &mut AsyncApp| {
-        let made = run(&name, &counter, cx).await;
+        let made = match target {
+            Target::Macos => run(&name, &counter, cx).await,
+            Target::Linux(image_id) => run_linux(&name, &image_id, &counter, cx).await,
+        };
         cx.update(|cx| {
             match made {
                 Ok(()) => {
@@ -287,7 +326,8 @@ async fn run(name: &Name, counter: &Arc<Counter>, cx: &mut AsyncApp) -> Result<(
     let done = cx.update(|cx| -> Result<_> {
         cancelled(counter)?;
         crate::machine::check_capacity(name)?;
-        let installing = Installing::start(&*bundle.configuration()?, &image)?;
+        let installing =
+            Installing::start(&*backend::apple::build_configuration(&bundle)?, &image)?;
         let done = installing.done.clone();
         set(|current| current.installing = Some(installing));
         cx.refresh_windows();
@@ -320,25 +360,144 @@ async fn run(name: &Name, counter: &Arc<Counter>, cx: &mut AsyncApp) -> Result<(
         .await
 }
 
+#[allow(dead_code)] // Invoked by `begin_linux` (wired in Phase 5).
+async fn run_linux(
+    name: &Name,
+    image_id: &str,
+    counter: &Arc<Counter>,
+    cx: &mut AsyncApp,
+) -> Result<()> {
+    let entry = linux::find(image_id)?;
+    cancelled(counter)?;
+    let image = downloads()?.join(linux::download_filename(entry));
+    let version = format!("{} {}", entry.name, entry.version); // i18n: data
+    let fetched: Slot<std::result::Result<(), Error>> = Arc::default();
+    {
+        let (url, path, counter, fetched) = (
+            entry.url.to_owned(),
+            image.clone(),
+            counter.clone(),
+            fetched.clone(),
+        );
+        std::thread::Builder::new()
+            .name("machine-linux-download".into())
+            .spawn(move || {
+                forget_other_downloads(&path);
+                let result = download::fetch(
+                    &download::agent(),
+                    &url,
+                    &path,
+                    download::LINUX_INSTALL_ROOM,
+                    &counter,
+                );
+                *fetched
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(result);
+            })
+            .map_err(|source| download::file_error(&image, source))?;
+    }
+    settle(&fetched, cx, |cx| {
+        set(|current| {
+            current.progress = Progress::Downloading {
+                version: version.clone(),
+                done: counter.done.load(Ordering::Relaxed),
+                total: counter.total.load(Ordering::Relaxed),
+            };
+        });
+        cx.refresh_windows();
+    })
+    .await?;
+    cancelled(counter)?;
+
+    cx.update(|cx| {
+        set(|current| {
+            current.progress = Progress::Verifying {
+                version: version.clone(),
+            };
+        });
+        cx.refresh_windows();
+    });
+    {
+        let (path, expected, counter) = (image.clone(), entry.sha256, counter.clone());
+        cx.background_executor()
+            .spawn(async move { download::verify_sha256(&path, expected, &counter.cancel) })
+            .await?;
+    }
+    cancelled(counter)?;
+
+    cx.update(|cx| {
+        set(|current| {
+            current.progress = Progress::Preparing {
+                version: version.clone(),
+            };
+        });
+        cx.refresh_windows();
+    });
+    let identity = new_identity_for(&BootMetadata::AppleLinuxEfi {
+        serial_console: false,
+    });
+    let limits = Limits::host();
+    let staging = {
+        let (name, qcow2_path, counter) = (name.clone(), image.clone(), counter.clone());
+        cx.background_executor()
+            .spawn(async move {
+                let root = store::root()?;
+                let request = linux::StageRequest {
+                    root: &root,
+                    name: &name,
+                    entry,
+                    qcow2_path: &qcow2_path,
+                    identity: &identity,
+                    limits: &limits,
+                };
+                linux::prepare_in(
+                    &request,
+                    backend::apple::create_efi_variable_store,
+                    &counter.cancel,
+                )
+            })
+            .await?
+    };
+    cancelled(counter)?;
+
+    let name = name.clone();
+    cx.background_executor()
+        .spawn(async move {
+            let root = store::root()?;
+            linux::publish_in(staging, &root, &name)?;
+            Ok(())
+        })
+        .await
+}
+
 /// The folder downloads wait in, beside the machines.
 fn downloads() -> Result<PathBuf> {
     let state = crate::preferences::state_dir().ok_or(super::Error::NoStateDir)?;
     Ok(state.join("machine-downloads"))
 }
 
-/// Deletes downloads of other macOS builds than `image`'s, which nothing will
-/// resume now that Apple offers a newer one.
+/// Deletes downloads of other builds sharing `image`'s format (`.ipsw` vs
+/// `.img`), so macOS and Linux downloads do not delete each other.
 fn forget_other_downloads(image: &Path) {
     let (Some(folder), Some(keep)) = (image.parent(), image.file_name()) else {
         return;
     };
+    let ext = image.extension().and_then(|e| e.to_str());
     let Ok(entries) = fs::read_dir(folder) else {
         return;
     };
     let partial = download::partial(image);
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.file_name() != Some(keep) && path != partial {
+        if path.file_name() == Some(keep) || path == partial {
+            continue;
+        }
+        let same_kind = ext.is_none_or(|ext| {
+            let name = entry.file_name();
+            let text = name.to_string_lossy();
+            text.ends_with(&format!(".{ext}")) || text.ends_with(&format!(".{ext}.part"))
+        });
+        if same_kind {
             let _ = fs::remove_file(path);
         }
     }
@@ -393,7 +552,7 @@ fn prepare(name: &Name, release: &Release) -> Result<tempfile::TempDir> {
 }
 
 /// Deletes staging folders an install left when the app quit during it.
-fn forget_abandoned(root: &Path) {
+pub(super) fn forget_abandoned(root: &Path) {
     let Ok(entries) = fs::read_dir(root) else {
         return;
     };

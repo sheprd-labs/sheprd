@@ -211,15 +211,81 @@ fn nested_checkout_names_and_live_folders_survive_last_close(cx: &mut TestAppCon
                 assert_eq!(restored.worktree, current.worktree);
                 let saved = cx.global::<Store>().kept_workspace(&scope, &id).unwrap();
                 assert_eq!(saved.cwd, current.cwd);
-                assert_eq!(
-                    saved.label,
-                    if custom {
-                        "My project"
-                    } else {
-                        "original-worktree"
-                    }
-                );
+                // The name shown is saved, so other clients show it too.
+                assert_eq!(saved.label, expected);
             })
         });
     }
+}
+
+/// Until Git answers for a folder, its name is read from the folder alone.
+/// Saving that name would cost a linked worktree its saved name for good:
+/// once Git answers, a linked worktree is never renamed again.
+#[gpui::test]
+fn a_saved_worktree_name_survives_a_refresh_before_git_answers(cx: &mut TestAppContext) {
+    let (view, cx) = window(cx, false);
+    cx.update(|window, cx| {
+        view.update(cx, |view, cx| {
+            let id = view
+                .open_kept_workspace(
+                    None,
+                    Path::new("/original-worktree"),
+                    core_tab("t1"),
+                    window,
+                    cx,
+                )
+                .unwrap();
+            let scope = crate::browser::scope(&view.endpoints[0]);
+            let tab = cx
+                .global::<Store>()
+                .in_workspace(&scope, &id)
+                .next()
+                .unwrap()
+                .id;
+            let terminal = TerminalId::new("t1").unwrap();
+            view.core_terminals.show_for_test(
+                tab,
+                crate::core_terminals::panes::Panes::single(terminal.clone()),
+                false,
+                vec![TerminalInfo {
+                    agent: AgentStatus::Unknown,
+                    cwd: Some("/trees/feature/src".into()),
+                    foreground: None,
+                    id: terminal,
+                    labels: Default::default(),
+                    name: None,
+                    reporter: None,
+                    state: RunState::Running,
+                    title: None,
+                }],
+            );
+            let saved = |cx: &gpui::App| {
+                cx.global::<Store>()
+                    .kept_workspace(&scope, &id)
+                    .unwrap()
+                    .label
+                    .clone()
+            };
+
+            view.refresh_core_session(cx);
+            assert_eq!(saved(cx), "original-worktree", "Git has not answered yet");
+
+            view.core_terminals.seed_checkout(
+                "/trees/feature/src",
+                Some(sheprd_vcs::git::Identity {
+                    branch: Some("feature".into()),
+                    key: "/work/repo/.git".into(),
+                    label: "repo".into(),
+                    linked: true,
+                    root: "/trees/feature".into(),
+                }),
+            );
+            view.refresh_core_session(cx);
+            assert_eq!(saved(cx), "original-worktree");
+            assert_eq!(
+                view.sessions(0).workspace(&id).unwrap().label,
+                "original-worktree"
+            );
+        })
+    });
 }

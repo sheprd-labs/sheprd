@@ -3,7 +3,7 @@
 # Keep third-party names (Claude, Codex, Herdr) out of the name, subtitle,
 # and keywords (App Review Guideline 5.2.1).
 
-name = "Sheprd"
+name = "Sheprd Assistant" # "Sheprd" is taken on the App Store
 subtitle = "Your coding agents, anywhere"
 primary_category = "Developer Tools"
 secondary_category = "Productivity"

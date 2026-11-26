@@ -13,6 +13,8 @@ pub(crate) enum Preference {
     ChatCodeStripes(bool),
     /// `[chat] glide`: whether chats scroll smoothly to new output.
     ChatGlide(bool),
+    /// Whether desktop chats show message effects.
+    ChatMessageEffects(bool),
     /// `[chat] launcher`: where tab strips offer one-click chats.
     ChatLauncher(ChatLauncher),
     /// `[chat] layout`: how chat views draw.
@@ -152,6 +154,9 @@ impl Config {
                 }
                 Preference::ChatCodeStripes(value) => {
                     (Some("chat"), "code_stripes", Some(value.into()))
+                }
+                Preference::ChatMessageEffects(value) => {
+                    (Some("chat"), "message_effects", Some(value.into()))
                 }
                 Preference::ChatGlide(value) => (Some("chat"), "glide", Some(value.into())),
                 Preference::ChatLauncher(launcher) => {

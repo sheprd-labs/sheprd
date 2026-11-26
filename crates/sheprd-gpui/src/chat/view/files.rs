@@ -11,6 +11,15 @@ use crate::window::FileLink;
 use crate::{SheprdWindow, config::corners, i18n::fl};
 use gpui::{prelude::*, *};
 
+/// Named after the file manager it opens where the platform has one name.
+fn reveal_label() -> String {
+    if cfg!(target_os = "macos") {
+        fl!("chat-file-reveal")
+    } else {
+        fl!("chat-file-reveal-folder")
+    }
+}
+
 impl SheprdWindow {
     pub(super) fn render_chat_file(
         &self,
@@ -87,54 +96,70 @@ impl SheprdWindow {
                     .flex_col()
                     .gap(px(8.))
                     .child(content)
-                    .child(
+                    .child(if local {
+                        let reveal_links = links.clone();
+                        let reveal_destination = destination.clone();
                         div()
-                            .id("chat-file-open")
-                            .debug_selector(|| "chat-file-open".into())
-                            .text_size(self.chat_small_text())
-                            .text_color(rgb(self.theme.subtext()))
-                            .self_start()
                             .flex()
+                            .flex_wrap()
                             .items_center()
-                            .gap(px(4.))
-                            .when(local, |button| {
-                                button
-                                    .px(px(8.))
-                                    .py(px(3.))
-                                    .rounded(px(corners::CONTROL))
-                                    .bg(rgb(self.theme.active))
-                                    .hover(|button| {
-                                        button.bg(rgb(crate::config::mix(
-                                            self.theme.active,
-                                            self.theme.foreground,
-                                            8,
-                                        )))
-                                    })
-                            })
-                            .child(if local {
-                                fl!("chat-file-open")
-                            } else {
-                                fl!("chat-file-on-host")
-                            })
-                            .when(local, |button| {
-                                button
+                            .gap(px(6.))
+                            .child(
+                                self.chat_file_button("chat-file-open", fl!("chat-file-open"))
                                     .child(crate::icons::icon(
                                         "icons/chevron-right.svg",
                                         12.,
                                         self.theme.subtext(),
                                     ))
-                                    .cursor_pointer()
-                                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                                        cx.stop_propagation()
-                                    })
                                     .on_click(move |_, _, cx| {
                                         cx.stop_propagation();
                                         links.open_attachment(&destination, cx);
-                                    })
-                            }),
-                    ),
+                                    }),
+                            )
+                            .child(
+                                self.chat_file_button("chat-file-reveal", reveal_label())
+                                    .on_click(move |_, _, cx| {
+                                        cx.stop_propagation();
+                                        reveal_links.reveal_attachment(&reveal_destination, cx);
+                                    }),
+                            )
+                            .into_any_element()
+                    } else {
+                        div()
+                            .debug_selector(|| "chat-file-open".into())
+                            .text_size(self.chat_small_text())
+                            .text_color(rgb(self.theme.subtext()))
+                            .child(fl!("chat-file-on-host"))
+                            .into_any_element()
+                    }),
             )
             .into_any_element()
+    }
+
+    /// A small pill on a local file card.
+    fn chat_file_button(&self, id: &'static str, label: String) -> Stateful<Div> {
+        div()
+            .id(id)
+            .debug_selector(move || id.into())
+            .text_size(self.chat_small_text())
+            .text_color(rgb(self.theme.subtext()))
+            .flex()
+            .items_center()
+            .gap(px(4.))
+            .px(px(8.))
+            .py(px(3.))
+            .rounded(px(corners::CONTROL))
+            .bg(rgb(self.theme.active))
+            .hover(|button| {
+                button.bg(rgb(crate::config::mix(
+                    self.theme.active,
+                    self.theme.foreground,
+                    8,
+                )))
+            })
+            .cursor_pointer()
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .child(label)
     }
 
     /// No I/O here. The worker resolves symlinks and checks the final file.

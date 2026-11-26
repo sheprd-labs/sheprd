@@ -72,7 +72,7 @@ pub(super) const EVENT: &str = "5d0c3e1f9a7b4c2d8e6f1a0b9c8d7e6f";
 
 pub(super) fn question() -> Notification {
     Notification {
-        body: "Run `git push origin fix/mise`?\nherdr-gpui \u{b7} Fix mise discovery".to_owned(),
+        body: "Run `git push origin fix/mise`?".to_owned(),
         clear: false,
         event: EventId::fixed(EVENT),
         kind: Kind::Question,
@@ -90,6 +90,7 @@ pub(super) fn question() -> Notification {
             question: None,
             title: "Run `git push origin fix/mise`?".to_owned(),
         }),
+        subtitle: "herdr-gpui \u{b7} Fix mise discovery".to_owned(),
         tag: "chat-w1:p2".to_owned(),
         title: "Claude needs an answer".to_owned(),
         urgency: Urgency::High,

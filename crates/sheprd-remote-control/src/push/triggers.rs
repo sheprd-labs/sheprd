@@ -4,6 +4,7 @@
 use super::{
     EventId, Message, Urgency,
     directives::{without_directives, wizzes},
+    plain::{plain, verdict_first},
 };
 use serde::{Deserialize, Serialize};
 use sheprd_chat_protocol::{
@@ -78,6 +79,9 @@ pub(crate) struct Notification {
     /// The permission request a question is, for the native app's answer
     /// buttons; the Web Push message leaves it out.
     pub permission: Option<Permission>,
+    /// Where the chat is, `workspace · title`, which the native app shows
+    /// under the title and the Web Push message above the body.
+    pub subtitle: String,
     /// One per chat, so a newer push replaces the older one.
     pub tag: String,
     pub title: String,
@@ -96,6 +100,7 @@ impl Notification {
             kind,
             pane: chat.pane.to_owned(),
             permission: None,
+            subtitle: place(chat),
             tag: tag(chat.pane),
             title,
             urgency: if kind.asks() {
@@ -120,6 +125,7 @@ impl Notification {
             kind: Kind::Question,
             pane: pane.to_owned(),
             permission: None,
+            subtitle: String::new(),
             tag: tag(pane),
             title: String::new(),
             urgency: Urgency::High,
@@ -137,7 +143,11 @@ impl Notification {
     pub(crate) fn message(&self, badge: u32) -> Message {
         Message {
             badge,
-            body: self.body.clone(),
+            body: [self.subtitle.as_str(), self.body.as_str()]
+                .into_iter()
+                .filter(|line| !line.is_empty())
+                .collect::<Vec<_>>()
+                .join("\n"),
             clear: self.clear,
             kind: self.kind,
             tag: self.tag.clone(),
@@ -181,7 +191,10 @@ pub(crate) fn decide(
     change: &Change,
     privacy: Privacy,
 ) -> Option<Notification> {
-    let excerpt = |text: &str| (privacy == Privacy::Excerpt).then(|| excerpt(text));
+    let shown = privacy == Privacy::Excerpt;
+    let excerpt = |text: &str| shown.then(|| excerpt(text));
+    // What the agent wrote, cut at a sentence's end.
+    let said = |text: &str| shown.then(|| sentences(text));
     match change {
         Change::PermissionAsked { permission } => {
             // Answered by itself at once; nobody needs to look.
@@ -195,7 +208,7 @@ pub(crate) fn decide(
                     chat,
                     Kind::Question,
                     title,
-                    body(chat, excerpt(&permission.title), None),
+                    body(excerpt(&permission.title), None),
                 )
             })
         }
@@ -215,7 +228,7 @@ pub(crate) fn decide(
                     chat,
                     Kind::Error,
                     title,
-                    body(chat, excerpt(text), None),
+                    body(said(&plain(text)), None),
                 ))
             }
             _ => None,
@@ -234,7 +247,7 @@ pub(crate) fn decide(
                 chat,
                 Kind::Error,
                 title,
-                body(chat, excerpt(message), None),
+                body(said(message), None),
             ))
         }
         _ => None,
@@ -251,20 +264,16 @@ fn turn_ended(
     if summary.end == TurnEnd::Cancelled {
         return None;
     }
-    let facts = summary.describe();
+    // Token counts mean little on a lock screen; the chat keeps them.
+    let facts = summary.took();
     let last = last_answer(before);
     // Only this turn's reply may nudge: an older one already did.
     let wizz = this_turns_answer(before).is_some_and(wizzes);
     let answer = last
         .filter(|_| privacy == Privacy::Excerpt)
-        .map(|text| excerpt(&without_directives(text)));
+        .map(|text| sentences(&verdict_first(&without_directives(text))));
     let title = format!("{} finished", chat.agent);
-    let ended = Notification::new(
-        chat,
-        Kind::TurnEnded,
-        title,
-        body(chat, answer, Some(&facts)),
-    );
+    let ended = Notification::new(chat, Kind::TurnEnded, title, body(answer, Some(&facts)));
     // Whether it asked is no part of what was said: a generic push buzzes too.
     Some(if wizz {
         Notification {
@@ -303,19 +312,25 @@ fn this_turns_answer(transcript: &Transcript) -> Option<&str> {
         })
 }
 
-/// `excerpt` (when allowed) above `workspace · title`, then any `facts`.
-pub(super) fn body(chat: &Chat<'_>, excerpt: Option<String>, facts: Option<&str>) -> String {
-    let place = if chat.title.is_empty() {
-        chat.workspace.to_owned()
-    } else {
-        format!("{} \u{b7} {}", chat.workspace, chat.title)
-    };
-    let lines = [excerpt.as_deref(), Some(place.as_str()), facts];
+/// `excerpt` (when allowed) above any `facts`.
+pub(super) fn body(excerpt: Option<String>, facts: Option<&str>) -> String {
+    let lines = [excerpt.as_deref(), facts];
     lines.into_iter().flatten().collect::<Vec<_>>().join("\n")
 }
 
+/// Where the chat is: `workspace · title`, or the workspace alone.
+fn place(chat: &Chat<'_>) -> String {
+    if chat.title.is_empty() {
+        chat.workspace.to_owned()
+    } else {
+        format!("{} \u{b7} {}", chat.workspace, chat.title)
+    }
+}
+
 /// `text` on one line, at most [`EXCERPT_CHARS`] characters, ending in `…`
-/// when cut.
+/// when cut. The phone cuts a Live Activity's question the same way
+/// (`ActivityAnswer.excerpt`) to match an answer to it, so the two must not
+/// drift apart.
 pub(crate) fn excerpt(text: &str) -> String {
     let words: Vec<&str> = text.split_whitespace().collect();
     let line = words.join(" ");
@@ -326,4 +341,42 @@ pub(crate) fn excerpt(text: &str) -> String {
     cut.truncate(cut.trim_end().len());
     cut.push('\u{2026}');
     cut
+}
+
+/// `line`, longer than [`EXCERPT_CHARS`], cut to fit at a word's end where
+/// one is near, ending in `…`.
+fn word_cut(line: &str) -> String {
+    let cut: String = line.chars().take(EXCERPT_CHARS - 1).collect();
+    // The cut lands inside a word unless a space follows it.
+    let whole = line[cut.len()..].starts_with(' ');
+    let mut cut = match cut.rfind(' ') {
+        Some(space) if !whole && space >= cut.len() / 2 => cut[..space].to_owned(),
+        _ => cut,
+    };
+    cut.truncate(cut.trim_end().len());
+    cut.push('\u{2026}');
+    cut
+}
+
+/// What an agent wrote on one line, at most [`EXCERPT_CHARS`] characters,
+/// ending with a whole sentence when the sentences that fit fill at least
+/// half the space: a lock screen then reads complete thoughts. Otherwise
+/// cut at a word's end, with `…`.
+pub(crate) fn sentences(text: &str) -> String {
+    let line = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if line.chars().count() <= EXCERPT_CHARS {
+        return line;
+    }
+    let room: String = line.chars().take(EXCERPT_CHARS).collect();
+    let end = room
+        .char_indices()
+        .filter(|(at, ch)| {
+            matches!(ch, '.' | '!' | '?') && line[at + ch.len_utf8()..].starts_with(' ')
+        })
+        .map(|(at, ch)| at + ch.len_utf8())
+        .next_back();
+    match end {
+        Some(end) if room[..end].chars().count() >= EXCERPT_CHARS / 2 => room[..end].to_owned(),
+        _ => word_cut(&line),
+    }
 }

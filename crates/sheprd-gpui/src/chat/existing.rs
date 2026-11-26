@@ -30,6 +30,10 @@ const REFRESH: Duration = Duration::from_secs(2);
 const SETTLED: Duration = Duration::from_secs(30);
 /// One unreachable probe keeps the overlays; this many in a row drop them.
 const MAX_FAILURES: u8 = 2;
+/// CLI agents one probe looks at. Well above the chats a window attaches,
+/// so moving between agents does not drop one from the probe and forget
+/// what the user chose for it; the window puts those on screen first.
+pub(crate) const MAX_OBSERVED: usize = 64;
 mod batch;
 mod error;
 pub(crate) use error::Error;
@@ -133,7 +137,7 @@ impl Existing {
         activity: u64,
         now: Instant,
     ) -> bool {
-        let candidates: Vec<_> = candidates.iter().take(super::MAX_CHATS).cloned().collect();
+        let candidates: Vec<_> = candidates.iter().take(MAX_OBSERVED).cloned().collect();
         let mut changed = false;
         if self.scope != scope || self.candidates != candidates {
             self.probe = None;
@@ -431,14 +435,14 @@ fi
 "#;
 
 /// The agents in `snapshot` that discovery may observe: Codex and Claude
-/// running in their own CLIs, not through a chat program already.
+/// running in their own CLIs, not through a chat program already. The
+/// window keeps [`MAX_OBSERVED`] of them, those on screen first.
 pub(crate) fn candidates(snapshot: &ClientShellSnapshot) -> Vec<&ClientShellAgent> {
     snapshot
         .agents
         .iter()
         .filter(|agent| agent.agent.as_deref().and_then(observable).is_some())
         .filter(|agent| super::discovery::endpoint(&agent.tokens).is_none())
-        .take(super::MAX_CHATS)
         .collect()
 }
 

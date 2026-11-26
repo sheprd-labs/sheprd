@@ -264,6 +264,30 @@ automatic-recovery work.
 It also writes OSC 7501 program status to the terminal, for terminals that read
 it; terminals that do not ignore it.
 
+In a terminal that sets `OSC7577_TOKEN`, a chat of a built-in agent also
+reports how to resume it with the
+[program resume protocol](https://www.superlogical.com/rex/docs/build/program-resume)
+(OSC 7577), so a terminal that restores its panes, as Herdr will, can restart
+the chat itself, with no Sheprd client connected. Each time the agent's session
+opens, the chat sends a report signed with the token. The report holds this
+process, the time, the folder, and the command that continues the session:
+the absolute path of `sheprd-acp`, `--resume SESSION`, `--thread ID`, and
+`--acp` when the chat uses the adapter (by `--acp` or `HERDR_ACP_ADAPTER=1`),
+`--headless` and `--no-attach` when the chat used them, then the agent. A
+switch to another agent clears the report until the new session opens.
+Leaving the chat or a successful agent exit also clears it. A killed chat, or
+one that lost its terminal, keeps its report. Reports do not depend on a Herdr
+pane or on listening for clients: any terminal that sets the token gets them,
+including for a `--no-attach` chat. No report is sent for a custom command
+(`-- COMMAND`), a chat started with extra agent arguments, a chat whose output
+is not a terminal, or one whose program path or folder is not absolute UTF-8
+text without control characters. It is also not sent when the session id
+could not be passed back safely or the report would be longer than 2048 bytes. The token is removed
+from the agent's environment. Otherwise an agent reporting its own resume, as
+Claude Code does from a session start hook, would replace the chat with the
+agent's terminal interface. The restore records above are still written, for
+terminals that do not resume programs.
+
 ## Agents
 
 | Name | Started as |

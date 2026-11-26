@@ -122,6 +122,7 @@ pub(crate) fn state_lending(
         relay: None,
         reports: Mutex::new(report_limit()),
         seen: Mutex::new(seen),
+        sharing: None,
         shortcuts: Shortcuts::load(crate::app::shortcuts::file(dir)),
         tags: Tags::load(crate::app::tags::file(dir)),
         typed: Typed::default(),

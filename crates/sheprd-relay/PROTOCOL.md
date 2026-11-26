@@ -64,6 +64,12 @@ malformed messages, probing). Every route but `/healthz` then answers HTTP
 either as a ban. A 403 without either comes from something else, such as a
 proxy. Capacity and rate limits answer 429 or 503 and never ban.
 
+A ban's 403 may also say why, `sheprd-relay-ban-reason` (`bad_proof`,
+`bandwidth`, `connection_cap`, `limited`, `malformed`, `manual`, or
+`probe`), and, for a ban that lifts on its own, `sheprd-relay-ban-seconds`
+until it does. A QUIC close with code 8 carries the same as its reason
+text, `REASON [SECONDS]`. Both are optional: ignore words you do not know.
+
 ## The proof name
 
 WebSocket proofs sign the relay's **name** as the client addressed it, so a

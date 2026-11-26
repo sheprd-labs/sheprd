@@ -109,6 +109,25 @@ impl Store {
         true
     }
 
+    /// Saves the name a workspace the user has not named shows, which its
+    /// folder gives it, so other clients can show it too; whether it changed.
+    pub(crate) fn follow_kept_label(&mut self, scope: &Scope, id: &str, label: &str) -> bool {
+        let label = clean_label(label);
+        let Some(workspace) = self
+            .workspaces
+            .iter_mut()
+            .find(|workspace| workspace.scope == scope.as_str() && workspace.id == id)
+        else {
+            return false;
+        };
+        if workspace.custom || label.is_empty() || workspace.label == label {
+            return false;
+        }
+        workspace.label = label;
+        self.save();
+        true
+    }
+
     /// Renames a kept workspace; whether its name changed.
     pub(crate) fn rename_kept(&mut self, scope: &Scope, id: &str, label: &str) -> bool {
         let label = clean_label(label);

@@ -76,6 +76,40 @@ fn ssh_failures_are_classified_from_exit_code_and_stderr() {
     }
 }
 
+/// `relay-connect` names a relay's ban before `ssh` reports the closed
+/// connection, which would otherwise read as an unreachable host.
+#[test]
+fn a_relay_ban_line_beats_the_closed_connection_after_it() {
+    use sheprd_relay::ban::{Ban, BanReason, LINE_PREFIX};
+    let stderr = format!(
+        "{LINE_PREFIX} probe 540\nrelay-connect: https://relay.example: This relay has banned your network address\nConnection closed by UNKNOWN port 65535\n"
+    );
+    let failure = SshFailure::classify_with(
+        Some(255),
+        stderr.as_bytes(),
+        |_| Vec::new(),
+        || LocalNetworkAccess::Allowed,
+    );
+    assert_eq!(
+        failure,
+        SshFailure::RelayBanned(Ban {
+            reason: Some(BanReason::Probe),
+            remaining: Some(Duration::from_secs(540)),
+        })
+    );
+    assert!(failure.needs_user());
+    // The remote's own failures are never read as a ban.
+    assert_eq!(
+        SshFailure::classify_with(
+            Some(1),
+            stderr.as_bytes(),
+            |_| Vec::new(),
+            || { LocalNetworkAccess::Allowed }
+        ),
+        SshFailure::Other
+    );
+}
+
 /// An offline device, a wrong route, or a routed private network also fail
 /// with no route to a LAN address. Unless the app's own check is refused,
 /// that is reported as what it is, not as a missing permission.

@@ -3824,6 +3824,16 @@ Each finished turn leaves a line with its duration and tokens, and an agent
 message copies with the button under it. In the prompt box `/` completes the
 agent's commands (Tab or a click takes one) and Up recalls earlier prompts.
 
+If a focused Herdr 1 pane stays in the TUI, open **Window > Logs** and search
+on the Mac displaying the TUI for `Focused pane chat attachment`. The record
+gives the pane ID, transport (`relay_ssh` for a relay-paired host), reason,
+number of selected chat targets, and limit. For example, `chat_limit_reached`
+means the window filled its attachment slots with other panes. It selects
+on-screen chats first, then chats holding unsent files, with snapshot order
+breaking ties. For an attachment failure, search the same pane ID for
+`Chat connection ended` to see the error and whether the remote chat program
+had greeted this connection (`welcomed`).
+
 **Pictures and pages.** A picture the agent links as a local file, or an
 image file a tool call wrote or read, shows in the chat; `sheprd-acp` reads it
 beside the agent, so this works for chats on SSH hosts too, and only files

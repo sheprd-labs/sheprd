@@ -134,6 +134,12 @@ fn proxy_options(proxy: &RelayProxy) -> Option<Vec<String>> {
             "StrictHostKeyChecking=yes".to_owned(),
             "CheckHostIP=no".to_owned(),
             "ProxyJump=none".to_owned(),
+            // With a `ControlPath` and `ControlPersist` from the user's
+            // config, OpenSSH sends the proxy's stderr to /dev/null, which
+            // loses the relay's ban line (`sheprd_relay::ban::LINE_PREFIX`).
+            // The app never starts a master (`ControlMaster=no`), so this
+            // changes nothing else; an existing master is still used.
+            "ControlPersist=no".to_owned(),
         ]
         .into_iter()
         .flat_map(|option| ["-o".to_owned(), option])

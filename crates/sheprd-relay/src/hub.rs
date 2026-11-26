@@ -619,6 +619,12 @@ impl Hub {
         self.guard.banned(address, Instant::now())
     }
 
+    /// Why `address` is banned now and for how long, to tell it.
+    #[must_use]
+    pub fn ban(&self, address: IpAddr) -> Option<crate::ban::Ban> {
+        self.guard.ban(address, Instant::now())
+    }
+
     /// Whether `address`'s ban also ends what it has open
     /// (`guard::severe`).
     #[must_use]

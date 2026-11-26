@@ -13,9 +13,38 @@ use std::{collections::HashSet, sync::Arc};
 
 impl OrchestratorView {
     /// The repositories the header, pills, and banners name: every one
-    /// asked for but folders outside Git.
+    /// asked for but folders outside Git, and each repository once.
     pub(super) fn projects_named(&self) -> impl Iterator<Item = &Repo> {
-        self.repos.iter().filter(|repo| !repo.outside_git())
+        self.repos
+            .iter()
+            .filter(|repo| !repo.outside_git() && std::ptr::eq(self.project_of(repo), *repo))
+    }
+
+    /// The checkout standing for `repo`'s project: the first on its host
+    /// whose worker found the same repository. A herdr-core workspace whose
+    /// Git common directory was not read in time is keyed by its folder, so
+    /// several folders of one repository can each be a checkout here.
+    pub(super) fn project_of<'a>(&'a self, repo: &'a Repo) -> &'a Repo {
+        let Some(info) = repo
+            .snapshot
+            .repo
+            .as_ref()
+            .filter(|_| repo.remote.is_none())
+        else {
+            return repo;
+        };
+        self.repos
+            .iter()
+            .find(|other| {
+                other.remote.is_none()
+                    && other.request.target == repo.request.target
+                    && other
+                        .snapshot
+                        .repo
+                        .as_ref()
+                        .is_some_and(|found| found.repository == info.repository)
+            })
+            .unwrap_or(repo)
     }
 
     /// The projects the shown list could hold: for Tasks, those with Beads.
@@ -203,6 +232,13 @@ impl OrchestratorView {
                 .iter()
                 .any(|repo| repo.key == *key && repo.outside_git())
         });
+        // A checkout picked before its worker found its repository may now
+        // stand behind another checkout of it (`project_of`).
+        let picks = std::mem::take(&mut self.projects);
+        self.projects = picks
+            .into_iter()
+            .map(|key| self.pick_of(&key).unwrap_or(key))
+            .collect();
         let open = self.detail.as_ref().map(|detail| &detail.key);
         if self.revealed.as_ref() != open || self.tab != Tab::PullRequests {
             self.revealed = None;

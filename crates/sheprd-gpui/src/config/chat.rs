@@ -67,6 +67,8 @@ pub struct ChatConfig {
     pub code_stripes: bool,
     pub env: BTreeMap<String, String>,
     pub glide: bool,
+    /// Play message effects and offer replay controls in desktop chats.
+    pub message_effects: bool,
     pub launcher: ChatLauncher,
     pub layout: ChatLayoutMode,
     /// Maximum reading-column width in logical pixels; zero uses all available space.
@@ -91,6 +93,7 @@ impl Default for ChatConfig {
             code_stripes: false,
             env: BTreeMap::new(),
             glide: false,
+            message_effects: true,
             launcher: ChatLauncher::default(),
             layout: ChatLayoutMode::default(),
             max_width: DEFAULT_MAX_WIDTH,

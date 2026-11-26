@@ -7,7 +7,7 @@ extension Fleet {
               let record = machines.first(where: { $0.id == device })?.computer.relay
         else { return nil }
         return await withTaskGroup(of: RelayEndpoint?.self) { group in
-            for relay in record.candidates(saved: savedRelays) {
+            for relay in record.candidates(savedRelays) {
                 group.addTask { await RelayReach.probe(relay) == .banned ? relay : nil }
             }
             for await relay in group {

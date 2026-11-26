@@ -1,5 +1,9 @@
 //! The app's own tabs: pages, code, reviews, the orchestrator, and the
 //! Devices overview, which Herdr does not know about.
+mod machine;
+
+pub use machine::{AgentCapabilities, GuestArch, GuestOs, MachineCapabilities};
+
 use super::cloud::ExecInfo;
 use serde::{Deserialize, Serialize};
 
@@ -457,7 +461,7 @@ pub enum Reply {
     },
 }
 
-/// What Sheprd Agent inside a virtual Mac reports.
+/// What Sheprd Agent inside a virtual machine reports.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MachineAgentInfo {
     pub version: u32,
@@ -466,9 +470,23 @@ pub struct MachineAgentInfo {
     pub height: u32,
     /// Pixels per point.
     pub scale: u8,
-    /// Whether macOS lets it post input, and take screenshots.
+    /// Whether macOS lets it post input, and take screenshots. Kept for
+    /// backwards compatibility with existing macOS agents and callers.
     pub accessibility: bool,
     pub screen_recording: bool,
+    /// OS-neutral agent capabilities; absent from older macOS agents.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub capabilities: Option<AgentCapabilities>,
+}
+
+impl MachineAgentInfo {
+    /// Common capabilities reported by the agent, falling back to the legacy
+    /// macOS permission flags when talking to an older agent.
+    pub fn effective_capabilities(&self) -> AgentCapabilities {
+        self.capabilities.unwrap_or_else(|| {
+            AgentCapabilities::from_macos_permissions(self.accessibility, self.screen_recording)
+        })
+    }
 }
 
 /// What a virtual Mac is doing.
@@ -564,7 +582,7 @@ impl Lending {
     }
 }
 
-/// A virtual Mac installed on this computer.
+/// A virtual machine installed on this computer.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MachineInfo {
     /// Active reservation, absent when available.
@@ -572,6 +590,19 @@ pub struct MachineInfo {
     pub reservation: Option<String>,
     pub name: String,
     pub state: MachineState,
+    /// Guest operating system; defaults to `macos` for older hosts.
+    #[serde(default)]
+    pub os: GuestOs,
+    /// Guest CPU architecture; defaults to `arm64` for older hosts.
+    #[serde(default)]
+    pub arch: GuestArch,
+    /// Image identity/version this machine was created from, if known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
+    /// Supported lifecycle and display capabilities; defaults to macOS
+    /// capabilities for older hosts.
+    #[serde(default)]
+    pub capabilities: MachineCapabilities,
     /// What it boots with next.
     pub cpus: u16,
     pub memory_gib: u16,
@@ -581,10 +612,16 @@ pub struct MachineInfo {
     pub disk_bytes: u64,
 }
 
-/// An image new virtual Macs start from.
+/// An image new virtual machines start from.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MachineImageInfo {
     pub name: String,
+    /// Guest operating system; defaults to `macos` for older hosts.
+    #[serde(default)]
+    pub os: GuestOs,
+    /// Guest CPU architecture; defaults to `arm64` for older hosts.
+    #[serde(default)]
+    pub arch: GuestArch,
     /// What its files add up to, shared with the machines made from it.
     pub disk_bytes: u64,
 }

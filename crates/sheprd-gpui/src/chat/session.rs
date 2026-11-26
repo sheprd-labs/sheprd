@@ -32,6 +32,9 @@ pub(crate) struct Session {
     /// The last change applied, or `None` when the next connection must
     /// start from a snapshot.
     cursor: Option<Cursor>,
+    /// Wall-clock timestamp of the most recent live turn update while the
+    /// session is working; `None` when idle or not yet synced.
+    last_activity_ms: Option<u64>,
     pending: Vec<Pending>,
     /// The last command the program refused, shown until the next one.
     rejection: Option<Rejection>,
@@ -74,6 +77,11 @@ impl Session {
         self.snapshots > 0
     }
 
+    /// Whether this connection has delivered its protocol greeting.
+    pub(super) fn welcomed(&self) -> bool {
+        self.welcomed
+    }
+
     /// Greeted, and holding the program's current transcript.
     pub(crate) fn live(&self) -> bool {
         self.welcomed && self.cursor.is_some()
@@ -81,6 +89,12 @@ impl Session {
 
     pub(crate) fn transcript(&self) -> &Transcript {
         &self.transcript
+    }
+
+    /// Wall-clock milliseconds when the running turn last received a live
+    /// update, or `None` when no turn is running.
+    pub(crate) fn last_activity_ms(&self) -> Option<u64> {
+        self.last_activity_ms
     }
 
     /// A log observer cannot infer live execution state from historical text.
@@ -202,6 +216,9 @@ impl Session {
             _ if !self.welcomed => Err(Error::Handshake),
             ServerMessage::Snapshot { cursor, transcript } => {
                 self.tail_changed |= self.transcript.entries.last() != transcript.entries.last();
+                self.last_activity_ms = (transcript.status
+                    == sheprd_chat_protocol::Status::Working)
+                    .then(super::now_ms);
                 self.transcript = *transcript;
                 self.cursor = Some(cursor);
                 self.revisions.clear();
@@ -220,6 +237,7 @@ impl Session {
                 }
                 self.transcript.apply(&change).map_err(Error::Apply)?;
                 self.cursor = Some(cursor);
+                self.record_activity(&change);
                 self.touch(&change);
                 Ok(true)
             }
@@ -234,6 +252,31 @@ impl Session {
                 Ok(shown.is_some())
             }
             ServerMessage::Bye { reason } => Err(Error::Bye(reason)),
+        }
+    }
+
+    fn record_activity(&mut self, change: &Change) {
+        if self.transcript.status != sheprd_chat_protocol::Status::Working {
+            self.last_activity_ms = None;
+            return;
+        }
+        let active = match change {
+            Change::Push { entry } | Change::Replace { entry } => {
+                !matches!(entry.kind, sheprd_chat_protocol::EntryKind::Notice { .. })
+            }
+            Change::Append { .. }
+            | Change::Plan { .. }
+            | Change::Usage { .. }
+            | Change::PermissionAsked { .. }
+            | Change::PermissionResolved { .. }
+            | Change::Turn { turn: Some(_) }
+            | Change::Status {
+                status: sheprd_chat_protocol::Status::Working,
+            } => true,
+            _ => false,
+        };
+        if active {
+            self.last_activity_ms = Some(super::now_ms());
         }
     }
 

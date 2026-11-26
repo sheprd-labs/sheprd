@@ -555,7 +555,9 @@ size = 12
 # "imessage" (blue and gray bubbles with tails, like Apple's Messages), or
 # "opencode" (tinted blocks, finished tools on one line, like OpenCode).
 # The button in a chat's header steps through them.
-# [chat]
+[chat]
+# Play bubble and screen effects in agent replies. Settings > Chat edits this.
+message_effects = true
 # layout = "timeline"
 # Maximum reading-column width in logical pixels: 320–4000, or 0 for full width.
 # Settings > General offers a width slider and Full-width chat switch.

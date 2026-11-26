@@ -69,6 +69,35 @@ pub(super) fn serve(
             }
         }));
     }
+    if let RemoteOp::Share { pane } = op {
+        return incoming.respond(in_free_window(&caller, cx, |view, window, cx| {
+            let pane_id = pane.or_else(|| caller.pane_id.clone()).or_else(|| {
+                view.chats
+                    .panes()
+                    .next()
+                    .map(|chat| chat.target.pane_id.clone())
+            });
+            let Some(pane_id) = pane_id else {
+                return Response::error(
+                    ErrorCode::NotFound,
+                    "No chat pane is open in this window to share",
+                );
+            };
+            let agent = view
+                .chats
+                .pane(&pane_id)
+                .map(|chat| chat.session.agent().to_owned())
+                .unwrap_or_default();
+            if view.open_share_session(pane_id, agent, window, cx) {
+                Response::done("Showing the Share this session dialog in Sheprd; confirm there")
+            } else {
+                Response::error(
+                    ErrorCode::WindowBusy,
+                    "A dialog is open in the window; close it first",
+                )
+            }
+        }));
+    }
     // A token may be kept before remote control is on or the relay is in
     // `[remote] relays`: the daemon reads it when it next listens there.
     if let RemoteOp::RelayToken { relay, token } = op {
@@ -183,11 +212,30 @@ pub(super) fn serve(
                 ),
             })
         }
+        RemoteOp::Shares => {
+            let request = client.request(Request::ShareList);
+            cx.spawn(async move |_| match request.await {
+                Ok(sheprd_remote_control::control::Response::Shares { shares }) => {
+                    Response::Remote {
+                        reply: Reply::Shares { shares },
+                    }
+                }
+                Ok(_) => Response::error(
+                    ErrorCode::Failed,
+                    crate::remote::Error::Unexpected.to_string(),
+                ),
+                Err(error) => Response::error(
+                    ErrorCode::Failed,
+                    format!("Could not list active shares: {error}"),
+                ),
+            })
+        }
         RemoteOp::AddLink { .. }
         | RemoteOp::Pair { .. }
         | RemoteOp::PushStatus
         | RemoteOp::Restart
-        | RemoteOp::RelayToken { .. } => return,
+        | RemoteOp::RelayToken { .. }
+        | RemoteOp::Share { .. } => return,
     };
     answer_when_done(task, wait, incoming, watches, cx);
 }

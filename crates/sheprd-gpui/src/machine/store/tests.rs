@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+mod guest_metadata;
 mod reservation_names;
 
 use super::*;
@@ -66,7 +67,7 @@ fn a_fresh_boot_records_the_chosen_settings() {
         ..Settings::default()
     };
     write_json(&folder.join(SETTINGS), &chosen).unwrap();
-    assert_eq!(boot_settings(&folder).unwrap(), chosen);
+    assert_eq!(boot_settings(&folder, true).unwrap(), chosen);
     assert_eq!(read_json::<Settings>(&folder.join(BOOTED)), Some(chosen));
 }
 
@@ -74,7 +75,7 @@ fn a_fresh_boot_records_the_chosen_settings() {
 fn a_saved_machine_keeps_the_settings_it_booted_with() {
     let root = tempfile::tempdir().unwrap();
     let folder = installed(root.path(), "work");
-    let booted = boot_settings(&folder).unwrap();
+    let booted = boot_settings(&folder, true).unwrap();
     fs::write(folder.join(STATE), b"saved").unwrap();
     let chosen = Settings {
         memory_gib: 16,
@@ -82,9 +83,9 @@ fn a_saved_machine_keeps_the_settings_it_booted_with() {
         ..booted
     };
     write_json(&folder.join(SETTINGS), &chosen).unwrap();
-    assert_eq!(boot_settings(&folder).unwrap(), booted);
+    assert_eq!(boot_settings(&folder, true).unwrap(), booted);
     fs::remove_file(folder.join(STATE)).unwrap();
-    assert_eq!(boot_settings(&folder).unwrap(), chosen);
+    assert_eq!(boot_settings(&folder, true).unwrap(), chosen);
 }
 
 #[test]
@@ -92,7 +93,7 @@ fn damaged_settings_fall_back_to_the_defaults() {
     let root = tempfile::tempdir().unwrap();
     let folder = installed(root.path(), "work");
     fs::write(folder.join(SETTINGS), b"{").unwrap();
-    assert_eq!(boot_settings(&folder).unwrap(), Settings::default());
+    assert_eq!(boot_settings(&folder, true).unwrap(), Settings::default());
 }
 
 #[test]

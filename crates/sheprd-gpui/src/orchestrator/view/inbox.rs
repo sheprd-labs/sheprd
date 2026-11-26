@@ -680,9 +680,12 @@ impl OrchestratorView {
         )
     }
 
-    fn render_banners(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
+    pub(super) fn render_banners(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let look = &self.look;
         let mut banners = Vec::new();
+        // Worktrees of one repository each read the same sources, so one
+        // failure would otherwise repeat once per checkout listed.
+        let mut seen = std::collections::HashSet::new();
         let named = self.projects_named().count() > 1;
         for repo in self.projects_named() {
             // With several projects listed, each says whose trouble it is.
@@ -710,10 +713,10 @@ impl OrchestratorView {
                 ));
             }
             if let Some(error) = &snapshot.error {
-                banners.push((
-                    banner(look, RED, "icons/error.svg", of(error.localize())),
-                    None,
-                ));
+                let text = of(error.localize());
+                if seen.insert((None, text.clone())) {
+                    banners.push((banner(look, RED, "icons/error.svg", text), None));
+                }
             }
             for status in &snapshot.sources {
                 // Azure DevOps has no sign-in of its own in the title bar
@@ -725,6 +728,9 @@ impl OrchestratorView {
                         "azure-devops-menu-connect-banner",
                         repository = status.key.repository.as_str()
                     );
+                    if !seen.insert((Some(status.key.clone()), text.clone())) {
+                        continue;
+                    }
                     banners.push((
                         banner(look, YELLOW, "icons/azure-devops.svg", of(text)),
                         Some(Provider::Azure),
@@ -740,6 +746,9 @@ impl OrchestratorView {
                     ),
                     _ => continue,
                 };
+                if !seen.insert((Some(status.key.clone()), text.clone())) {
+                    continue;
+                }
                 let hue = if matches!(status.state, SyncState::Capped { .. }) {
                     YELLOW
                 } else {

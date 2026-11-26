@@ -53,6 +53,8 @@ fn new_and_gone_records_are_kept_put_closed_and_forgotten() {
     );
 }
 
+/// Without a folder, an automatic name is not written: it follows the
+/// folder ([`a_folder_followed_here_reaches_the_document`]).
 #[test]
 fn only_a_name_the_user_gave_is_written() {
     let base = view(&["a"], Vec::new());
@@ -292,4 +294,51 @@ fn panes_opened_and_closed_are_splits_and_removals_never_a_new_set() {
         }
         assert_eq!(spaces.tab("t").unwrap().panes, local.tabs[0].panes);
     }
+}
+
+/// The document as `base` holds it, with `local`'s edits written over it.
+fn written(base: &View, local: &View) -> Spaces {
+    let mut spaces = Spaces::default();
+    for workspace in &base.workspaces {
+        spaces
+            .apply(Edit::KeepWorkspace(workspace.clone()))
+            .unwrap();
+    }
+    for edit in edits(base, local) {
+        spaces.apply(edit).unwrap();
+    }
+    spaces
+}
+
+/// Other clients, such as a phone, read a workspace's folder from the
+/// document: its checkout, branch, and pull request follow from it. A folder
+/// the workspace followed here must reach them, whoever named it.
+#[test]
+fn a_folder_followed_here_reaches_the_document() {
+    let mut base = view(&["a", "b"], Vec::new());
+    base.workspaces[0].cwd = "/old".into();
+    base.workspaces[1].cwd = "/old".into();
+    base.workspaces[1].custom = true;
+    let mut local = base.clone();
+    local.workspaces[0].cwd = "/new".into();
+    local.workspaces[1].cwd = "/new".into();
+    let spaces = written(&base, &local);
+    assert_eq!(spaces.workspace("a").unwrap().cwd, "/new");
+    assert_eq!(spaces.workspace("b").unwrap().cwd, "/new");
+}
+
+/// A workspace the user has not named is named after its folder here: other
+/// clients show the name the document holds, so it must follow too, and
+/// stay a name the user did not give.
+#[test]
+fn an_automatic_name_followed_here_reaches_the_document() {
+    let mut base = view(&["a"], Vec::new());
+    base.workspaces[0].cwd = "/work/old".into();
+    let mut local = base.clone();
+    local.workspaces[0].cwd = "/work/new".into();
+    local.workspaces[0].label = "new".into();
+    let spaces = written(&base, &local);
+    let workspace = spaces.workspace("a").unwrap();
+    assert_eq!(workspace.label, "new");
+    assert!(!workspace.custom);
 }

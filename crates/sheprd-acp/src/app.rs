@@ -441,6 +441,8 @@ pub(crate) fn run_owned(
             },
         );
     let mut keeper = keeper.map(|keeper| keeper.with_thread(thread_id));
+    let resumer = crate::resume::from_env(&options, adapter(&options), &cwd, thread_id);
+    let session_resumer = resumer.clone();
     if let Some(keeper) = &mut keeper {
         keeper.child = Some(agent_process.id());
     }
@@ -538,6 +540,9 @@ pub(crate) fn run_owned(
                     if let Some(keeper) = &mut session_keeper {
                         keeper.switched(agent);
                     }
+                    crate::resume::with(session_resumer.as_ref(), |resumer| {
+                        resumer.switched(agent);
+                    });
                     if let Some(report) = &report {
                         report.rename(agent.display_name().to_owned());
                     }
@@ -551,6 +556,7 @@ pub(crate) fn run_owned(
                     if let Some(keeper) = &session_keeper {
                         keeper.opened(&id);
                     }
+                    crate::resume::with(session_resumer.as_ref(), |resumer| resumer.opened(&id));
                 }
                 Update::Activity(activity) => {
                     if let Some(report) = &report {
@@ -591,7 +597,21 @@ pub(crate) fn run_owned(
             }
             let mut current = Some(first.process);
             let mut stopping = Vec::new();
-            for input in receiver {
+            loop {
+                let timer = match session.next_tick() {
+                    Some(deadline) => crossbeam_channel::at(deadline),
+                    None => crossbeam_channel::never(),
+                };
+                let input = crossbeam_channel::select! {
+                    recv(receiver) -> input => match input {
+                        Ok(input) => input,
+                        Err(_) => break,
+                    },
+                    recv(timer) -> _ => {
+                        session.tick(std::time::Instant::now());
+                        continue;
+                    }
+                };
                 let expected = crate::restore::expected_end(&input);
                 match session.handle(input) {
                     Flow::Continue => {}
@@ -641,6 +661,9 @@ pub(crate) fn run_owned(
     // A failed view, failed agent, or panicked session keeps its record.
     if expected && let Some(keeper) = &keeper {
         keeper.ended();
+    }
+    if expected {
+        crate::resume::with(resumer.as_ref(), crate::resume::Resumer::ended);
     }
     if let Some(current) = current {
         current.stop();

@@ -13,8 +13,6 @@ use unicode_width::UnicodeWidthChar;
 
 use sheprd_chat_protocol::assist::{self, History};
 
-use super::lines;
-
 /// Where a prompt typed in this view comes from: the terminal of the
 /// machine the agent runs on.
 const TYPED_HERE: Origin = Origin::new(Device::Terminal, Via::Local);
@@ -213,7 +211,8 @@ impl View {
             .map_or(0, |permission| permission.options.len())
     }
 
-    /// Every transcript line at `width` columns, from cached entries.
+    /// Every transcript line at `width` columns, as a timeline of cached
+    /// entries.
     pub(crate) fn lines(&mut self, width: usize) -> Vec<Line<'static>> {
         if width != self.cache_width {
             self.cache.clear();
@@ -226,13 +225,13 @@ impl View {
                 ratatui::style::Style::default().fg(ratatui::style::Color::DarkGray),
             ));
         }
-        for entry in &self.transcript.entries {
-            let lines = self
-                .cache
-                .entry(entry.id)
-                .or_insert_with(|| lines::entry(entry, width));
-            out.extend(lines.iter().cloned());
-        }
+        out.extend(super::timeline::lines(
+            &self.transcript.entries,
+            self.transcript.thread.as_ref(),
+            &self.transcript.agent,
+            width,
+            &mut self.cache,
+        ));
         out
     }
 

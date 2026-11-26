@@ -291,6 +291,12 @@ pub(super) fn machine(
         Ok(key) => key,
         Err(response) => return incoming.respond(response),
     };
+    if !key.0.is_local() {
+        return incoming.respond(Response::error(
+            ErrorCode::InvalidRequest,
+            "A virtual Mac runs on this computer; open it from a workspace on this computer",
+        ));
+    }
     let resolved = std::rc::Rc::new(std::cell::RefCell::new(None));
     #[cfg(target_os = "macos")]
     {

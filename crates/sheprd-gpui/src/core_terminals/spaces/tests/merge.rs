@@ -274,3 +274,31 @@ fn a_record_with_no_room_is_taken_once_room_is_made() {
     assert_eq!(core.version, version, "the document did not change");
     assert_eq!(desk.tabs(), [tab("api", &["t1"])]);
 }
+
+#[test]
+fn a_folder_followed_here_keeps_a_rename_made_elsewhere_meanwhile() {
+    let mut core = FakeCore::default();
+    let mut desk = Client::new();
+    let api = desk.keep("api", "/src/api");
+    assert!(desk.store.rename_kept(&scope(), &api, "mine"));
+    desk.settle(&mut core);
+    let mut laptop = Client::new();
+    laptop.settle(&mut core);
+
+    let read = desk.send().unwrap();
+    assert_eq!(read, Job::Read);
+    assert!(laptop.store.rename_kept(&scope(), &api, "backend"));
+    laptop.settle(&mut core);
+    // Moved here while the read was out: the folder is written after, and
+    // the name given elsewhere stays.
+    assert!(desk.store.follow_kept_folder(&scope(), &api, "/src/new"));
+    let answered = core.run(read);
+    desk.finish(answered);
+    assert_eq!(desk.labels(), ["backend"]);
+    desk.settle(&mut core);
+    laptop.settle(&mut core);
+    assert_eq!(laptop.labels(), ["backend"]);
+    assert_eq!(desk.labels(), ["backend"]);
+    let written = core.spaces();
+    assert_eq!(written.workspace(&api).unwrap().cwd, "/src/new");
+}

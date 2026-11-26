@@ -17,6 +17,7 @@ struct SheprdRemoteApp: App {
                 .environment(model)
                 .modifier(AppLock())
                 .modifier(Appearance())
+                .browsesLinks(othersToSystem: true)
                 .onOpenURL { model.open($0) }
                 .onChange(of: model.fleet.waiting, initial: true) { _, _ in
                     // While the app is in front, the badge follows the live
@@ -53,6 +54,7 @@ struct SheprdRemoteApp: App {
             .environment(model)
             .modifier(AppLock())
             .modifier(Appearance())
+            .browsesLinks(othersToSystem: true)
         }
     }
 }

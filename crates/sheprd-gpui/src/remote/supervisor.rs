@@ -134,6 +134,8 @@ pub(crate) struct Supervisor {
     reconciling: bool,
     restart: Restart,
     send: Send,
+    /// Local chat panes known to have an active read-only share.
+    shared_panes: std::collections::BTreeSet<String>,
     /// The settings the service was last brought in line with.
     synced: Option<RemoteConfig>,
     /// Where the app's updater stands, and a phone's update running.
@@ -174,6 +176,7 @@ impl Default for Supervisor {
             reconciling: false,
             restart: restart_host,
             send: control::request,
+            shared_panes: std::collections::BTreeSet::new(),
             synced: None,
             updates: Updates::default(),
             voice_polling: false,
@@ -532,6 +535,22 @@ impl Supervisor {
     pub(crate) fn health(cx: &App) -> Health {
         cx.try_global::<Self>()
             .map_or(Health::Off, |supervisor| supervisor.health.clone())
+    }
+
+    pub(crate) fn is_pane_shared(pane: &str, cx: &App) -> bool {
+        cx.try_global::<Self>()
+            .is_some_and(|supervisor| supervisor.shared_panes.contains(pane))
+    }
+
+    pub(crate) fn set_pane_shared(cx: &mut App, pane: &str, active: bool) {
+        if cx.has_global::<Self>() {
+            let supervisor = cx.global_mut::<Self>();
+            if active {
+                supervisor.shared_panes.insert(pane.to_owned());
+            } else {
+                supervisor.shared_panes.remove(pane);
+            }
+        }
     }
 
     pub(crate) fn devices(cx: &App) -> Option<&[Device]> {

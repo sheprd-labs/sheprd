@@ -262,3 +262,50 @@ fn a_command_sent_while_away_goes_out_on_reconnect() {
         }
     );
 }
+
+#[test]
+fn a_pane_with_files_for_an_unsent_prompt_holds_them() {
+    let mut harness = Harness::new();
+    harness.reconcile(vec![target("p1", A)]);
+    let pane = harness.chats.pane_mut("p1").unwrap();
+    assert!(!pane.holds_unsent_files());
+    pane.attachments.push("/tmp/notes.md".into());
+    assert!(pane.holds_unsent_files());
+    pane.attachments.clear();
+    pane.uploading = 1;
+    assert!(pane.holds_unsent_files());
+}
+
+#[test]
+fn a_chat_let_go_for_room_keeps_its_terminal_choice_and_files() {
+    let mut harness = Harness::new();
+    let (one, two) = (target("p1", A), target("p2", B));
+    let known = vec![one.clone(), two.clone()];
+    let within = |harness: &mut Harness, targets: Vec<Target>| {
+        let path = harness.program.path.clone();
+        harness
+            .chats
+            .reconcile_within(targets, &known, harness.now, &mut |_, since, resend| {
+                Link::start(path.clone(), since, resend)
+            });
+    };
+    within(&mut harness, vec![one.clone()]);
+    assert!(harness.chats.set_raw("p1", true));
+    harness
+        .chats
+        .pane_mut("p1")
+        .unwrap()
+        .attachments
+        .push("/tmp/a.md".into());
+    within(&mut harness, vec![two]);
+    assert!(harness.chats.pane("p1").is_none());
+    within(&mut harness, vec![one]);
+    assert!(harness.chats.raw("p1"));
+    let pane = harness.chats.pane("p1").unwrap();
+    assert_eq!(pane.attachments, [PathBuf::from("/tmp/a.md")]);
+    // A chat that ended forgets both.
+    harness.reconcile(Vec::new());
+    harness.reconcile(vec![target("p1", A)]);
+    assert!(!harness.chats.raw("p1"));
+    assert!(harness.chats.pane("p1").unwrap().attachments.is_empty());
+}

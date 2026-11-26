@@ -14,6 +14,8 @@ struct RelaysView: View {
     /// Whether each relay answered, for as long as the screen shows.
     @State private var reach: [RelayEndpoint: RelayDiagnostic] = [:]
     @FocusState private var typing: Bool
+    /// A relay computers named, waiting for the user to confirm removing it.
+    @State private var removing: RelayEndpoint?
 
     var body: some View {
         let relays = model.savedRelays.relays
@@ -29,19 +31,23 @@ struct RelaysView: View {
                     // What a computer naming it calls it, in `[remote] relays`.
                     let label = naming.lazy.compactMap { $0.relay?.label(for: relay) }.first
                     RelayRow(relay: relay, label: label, diagnostic: reach[relay], naming: naming.map(model.displayName))
-                        // A relay a computer names comes back with it, so
-                        // removing one only stops trying it for the others,
-                        // which only one you added is.
-                        .deleteDisabled(!naming.isEmpty && !model.savedRelays.typed.contains(relay))
                 }
                 .onDelete { offsets in
-                    for relay in offsets.map({ relays[$0] }) { model.removeRelay(relay) }
+                    for relay in offsets.map({ relays[$0] }) {
+                        // One a computer named is how that computer is
+                        // reached away from home: asked first.
+                        if model.computers(naming: relay).isEmpty {
+                            model.removeRelay(relay)
+                        } else {
+                            removing = relay
+                        }
+                    }
                 }
             } header: {
                 Text("Relays")
             } footer: {
                 if !relays.isEmpty {
-                    Text("Each computer is tried on the relays it named, then on the ones you added. A relay sees only encrypted traffic.")
+                    Text("Each computer is tried on the relays it named, then on the ones you added. A relay sees only encrypted traffic. A relay you remove is not tried again until you add it back.")
                 }
             }
             Section("Diagnostics") {
@@ -80,11 +86,21 @@ struct RelaysView: View {
                 Text("Type the address of a relay a paired computer listens on, to reach that computer through it. A computer not paired yet is still paired nearby or on its network first.")
             }
         }
+        // An alert, not a confirmation dialog: on iPhone that one floats over
+        // the bottom of the list, away from the row swiped.
+        .alert(
+            "Remove this relay?",
+            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+            presenting: removing
+        ) { relay in
+            Button("Remove", role: .destructive) { model.removeRelay(relay) }
+            Button("Cancel", role: .cancel) {}
+        } message: { relay in
+            let names = model.computers(naming: relay).map(model.displayName).formatted(.list(type: .and))
+            Text("\(names) will no longer be reached through it, until you add it back.")
+        }
         .navigationTitle("Relays")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if !relays.isEmpty { EditButton() }
-        }
         .refreshable { await check(relays, again: true) }
         // Again whenever the list changes: a relay just added is checked.
         .task(id: relays) { await check(relays, again: false) }

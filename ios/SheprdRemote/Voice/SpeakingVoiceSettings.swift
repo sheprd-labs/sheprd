@@ -2,7 +2,6 @@ import CryptoKit
 import SwiftUI
 
 struct SpeakingVoiceSettings: View {
-    @Environment(\.openURL) private var openURL
     @State private var saved: SpeechAccount?
     @State private var provider: SpeechProvider?
     @State private var showingProviders = false
@@ -239,7 +238,9 @@ struct SpeakingVoiceSettings: View {
         guard let url = URL(string: "https://openrouter.ai/auth?code_challenge_method=S256&key_label=Sheprd&code_challenge=\(challenge)") else { return }
         verifier = secret
         code = ""
-        openURL(url)
+        // Always the system browser: this runs in the provider sheet, which
+        // the app's own link browsing, further up, cannot open over.
+        UIApplication.shared.open(url)
     }
 
     private func finishSignIn() async throws {

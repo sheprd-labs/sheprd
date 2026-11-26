@@ -63,6 +63,7 @@ impl<R: FnMut(Update)> Session<R> {
         self.pictures = super::pictures::Pictures::default();
         self.ready = false;
         self.turn = None;
+        self.watchdog.clear();
         self.config.agent = agent.display_name().to_owned();
         self.context.switched(&self.config.agent);
         self.context.set_direct(agent == Agent::Antigravity);

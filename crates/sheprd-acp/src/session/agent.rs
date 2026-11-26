@@ -431,6 +431,7 @@ impl<R: FnMut(Update)> Session<R> {
     }
 
     fn session_update(&mut self, params: Value) {
+        self.watchdog.touch(std::time::Instant::now());
         let ours = params
             .get("sessionId")
             .and_then(Value::as_str)
@@ -482,6 +483,7 @@ impl<R: FnMut(Update)> Session<R> {
     }
 
     fn agent_request(&mut self, id: wire::RequestId, method: &str, params: Value) {
+        self.watchdog.touch(std::time::Instant::now());
         if method != "session/request_permission" {
             // The session advertises no file system, terminal, or elicitation
             // support, so the agent has nothing else to ask for.
@@ -590,6 +592,7 @@ impl<R: FnMut(Update)> Session<R> {
         let Some(asked) = self.asked.remove(&permission) else {
             return;
         };
+        self.watchdog.touch(std::time::Instant::now());
         let response = wire::RequestPermissionResponse::new(outcome);
         let result = serde_json::to_value(response).map_err(|_| wire::Error::internal_error());
         if let Err(error) = self.outbox.respond(&asked.request, result) {
@@ -611,6 +614,7 @@ impl<R: FnMut(Update)> Session<R> {
             return;
         }
         self.turn = None;
+        self.watchdog.clear();
         self.resolve_all();
         self.projector.close();
         let ended = self.projector.direct_turn_ended(&self.transcript, now_ms());
@@ -680,6 +684,7 @@ impl<R: FnMut(Update)> Session<R> {
             self.emit(Change::PermissionResolved { id });
         }
         self.turn = None;
+        self.watchdog.clear();
         self.ready = false;
         if self.transcript.turn.is_some() {
             self.emit(Change::Turn { turn: None });

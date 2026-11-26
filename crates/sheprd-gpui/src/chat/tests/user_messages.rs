@@ -195,3 +195,75 @@ fn user_newlines_stay_line_breaks_while_agent_prose_reflows() {
     assert_eq!(breaks(1), 1);
     assert_eq!(breaks(2), 0);
 }
+
+#[test]
+fn compact_message_limits_apply_to_the_prompt_and_count_unicode_characters() {
+    use crate::chat::user_text_file::UserTextFile;
+    let short = "界".repeat(2047);
+    let label = format!("{}notes.md", sheprd_chat_protocol::ATTACHED);
+    assert!(UserTextFile::from_prompt(&format!("{short}\n{label}"), 1).is_none());
+    assert!(UserTextFile::from_prompt(&format!("{short}界"), 0).is_some());
+    assert!(UserTextFile::from_prompt(&"line\r\n".repeat(11), 0).is_none());
+    let shown = format!("{}\n{label}", "line\r\n".repeat(12));
+    let file = UserTextFile::from_prompt(&shown, 1).unwrap();
+    assert_eq!(file.preview, "line");
+    assert_eq!(file.attachments, label);
+}
+
+#[gpui::test]
+fn clicking_a_long_prompt_opens_its_exact_text(cx: &mut TestAppContext) {
+    open_long_prompt(None, cx);
+}
+
+#[gpui::test]
+fn tab_then_enter_opens_the_message(cx: &mut TestAppContext) {
+    open_long_prompt(Some("enter"), cx);
+}
+
+#[gpui::test]
+fn shift_tab_then_space_opens_the_message(cx: &mut TestAppContext) {
+    open_long_prompt(Some("space"), cx);
+}
+
+fn open_long_prompt(key: Option<&str>, cx: &mut TestAppContext) {
+    let (view, _peer, cx) = overlay::open(cx, ConnectTarget::Local);
+    let program = Program::new();
+    let prompt = format!(
+        "Inspect these logs {:?}\r\n{}",
+        std::time::SystemTime::now(),
+        "  \t界  \r\n".repeat(12)
+    );
+    let mut entry = user(1, &prompt);
+    if let EntryKind::User { text, files, .. } = &mut entry.kind {
+        text.push_str(&format!("\n{}notes.md", sheprd_chat_protocol::ATTACHED));
+        *files = 1;
+    }
+    let _stream = overlay::attach_with(&view, &program, snapshot(cursor(1, 0), vec![entry]), cx);
+    assert!(cx.opened_url().is_none());
+    let button = cx.debug_bounds("chat-open-message").unwrap();
+    if let Some(key) = key {
+        cx.simulate_keystrokes(if key == "space" { "shift-tab" } else { "tab" });
+        overlay::poll(&view, &program, cx);
+        let keystroke = crate::keymap::parse_keystroke(key).unwrap();
+        cx.simulate_event(gpui::KeyDownEvent {
+            keystroke: keystroke.clone(),
+            is_held: false,
+            prefer_character_input: false,
+        });
+        cx.simulate_event(gpui::KeyUpEvent { keystroke });
+    } else {
+        cx.simulate_click(button.center(), Modifiers::default());
+    }
+    wait_until(|| {
+        cx.run_until_parked();
+        cx.opened_url().is_some()
+    });
+    let path = url::Url::parse(&cx.opened_url().unwrap())
+        .unwrap()
+        .to_file_path()
+        .unwrap();
+    assert_eq!(path.file_name().unwrap(), "Message.txt");
+    assert_eq!(std::fs::read(&path).unwrap(), prompt.as_bytes());
+    std::fs::remove_file(&path).unwrap();
+    std::fs::remove_dir(path.parent().unwrap()).unwrap();
+}

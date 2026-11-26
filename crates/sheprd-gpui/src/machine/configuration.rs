@@ -1,25 +1,18 @@
-//! What a machine boots from: its files, and the configuration they make.
+//! What a machine boots from: its files on disk, guest metadata, and
+//! deterministic device derivation.
 //!
-//! `objc2-virtualization` marks every call `unsafe`, as it does not check the
-//! framework's threading rules. These only build configuration objects.
-#![allow(unsafe_code)]
+//! Framework-specific configuration building lives in [`super::backend::apple`];
+//! this module stays pure safe Rust so bundle reading and validation can be
+//! tested without touching Virtualization.framework.
 
 use super::{
-    Display, Error, Name, Result, Settings,
+    Error, Name, Result, Settings, backend,
     guide::Opening,
-    store::{self, AUXILIARY, DISK, FROM_IMAGE, GUIDE, HARDWARE, IDENTITY},
-    vm::description,
-};
-use objc2::{AnyThread as _, rc::Retained};
-use objc2_foundation::{NSArray, NSData, NSString, NSURL};
-use objc2_virtualization::{
-    VZDiskImageStorageDeviceAttachment, VZMACAddress, VZMacAuxiliaryStorage,
-    VZMacGraphicsDeviceConfiguration, VZMacGraphicsDisplayConfiguration, VZMacHardwareModel,
-    VZMacMachineIdentifier, VZMacOSBootLoader, VZMacPlatformConfiguration,
-    VZNATNetworkDeviceAttachment, VZUSBKeyboardConfiguration, VZUSBMassStorageDeviceConfiguration,
-    VZUSBScreenCoordinatePointingDeviceConfiguration, VZVirtioBlockDeviceConfiguration,
-    VZVirtioEntropyDeviceConfiguration, VZVirtioNetworkDeviceConfiguration,
-    VZVirtioSocketDeviceConfiguration, VZVirtualMachineConfiguration,
+    metadata::{self, BootMetadata, GuestMetadata, MachineCapabilities},
+    store::{
+        self, AUXILIARY, DISK, EFI_VARS, FROM_IMAGE, GUIDE, HARDWARE, IDENTITY, SEED_ISO,
+        SERIAL_LOG,
+    },
 };
 use sha2::{Digest as _, Sha256};
 use std::{
@@ -27,17 +20,19 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// A display that follows its tab starts at this size.
-const FIT_WIDTH: u16 = 2560;
-const FIT_HEIGHT: u16 = 1600;
-/// A 2x Retina mode, so text stays sharp.
-const DISPLAY_PPI: isize = 220;
+/// A macOS display that follows its tab starts at this size.
+pub(super) const FIT_WIDTH: u16 = 2560;
+pub(super) const FIT_HEIGHT: u16 = 1600;
+/// Fixed starting size for Linux guests when display is `fit` until dynamic
+/// resize is enabled.
+pub(super) const LINUX_DEFAULT_WIDTH: u16 = 1280;
+pub(super) const LINUX_DEFAULT_HEIGHT: u16 = 800;
 
 /// The machine's network address, the same at each launch: left to itself the
 /// framework picks a new one, and a saved state then refuses to restore. It
 /// comes from the machine's identity, so it needs no file of its own. Marked
 /// locally administered and unicast, as an address no vendor owns must be.
-fn mac_address(identity: &[u8]) -> String {
+pub(super) fn mac_address(identity: &[u8]) -> String {
     let digest = Sha256::digest(identity);
     let first = (digest[0] | 0b10) & !0b1;
     format!(
@@ -85,26 +80,48 @@ fn installer(folder: &Path, bundled: Option<&Path>, resuming: bool) -> Option<Pa
     copy.is_file().then_some(copy)
 }
 
-/// A machine identifier no other machine has, as its file holds it.
+/// A macOS machine identifier no other machine has, as its file holds it.
 pub(super) fn new_identity() -> Vec<u8> {
-    // SAFETY: a plain value object, made and read on this thread.
-    unsafe { VZMacMachineIdentifier::new().dataRepresentation().to_vec() }
+    new_identity_for(&BootMetadata::AppleMacos)
+}
+
+/// A machine identifier no other machine has for guest boot type `boot`.
+pub(super) fn new_identity_for(boot: &BootMetadata) -> Vec<u8> {
+    backend::apple::new_identity(boot)
+}
+
+/// Guest-specific boot artifacts loaded from a machine's folder.
+pub(super) enum BootFiles {
+    Macos {
+        hardware: Vec<u8>,
+        identity: Vec<u8>,
+        auxiliary: PathBuf,
+        /// The installer disk of Sheprd Agent, attached read-only.
+        installer: Option<PathBuf>,
+    },
+    LinuxEfi {
+        identity: Vec<u8>,
+        efi_vars: PathBuf,
+        /// Optional NoCloud `cidata` ISO attached read-only for provisioning
+        /// and clone identity regeneration.
+        seed_iso: Option<PathBuf>,
+        /// Optional virtio serial console output log (`hvc0`).
+        serial_log: Option<PathBuf>,
+    },
 }
 
 /// A machine's files: the small ones read, the large ones found.
 pub(super) struct Bundle {
-    hardware: Vec<u8>,
-    identity: Vec<u8>,
-    auxiliary: PathBuf,
-    disk: PathBuf,
+    pub(super) guest: GuestMetadata,
+    pub(super) boot: BootFiles,
+    pub(super) disk: PathBuf,
     pub(super) settings: Settings,
-    /// The saved state to resume from, if it is suspended.
+    /// The saved state to resume from, if it is suspended and save/restore is
+    /// supported for this guest.
     pub(super) saved: Option<PathBuf>,
     /// How its setup guide opens, while it is still open as when it was
     /// just made.
     pub(super) guide: Option<Opening>,
-    /// The installer disk of Sheprd Agent, attached read-only.
-    installer: Option<PathBuf>,
 }
 
 impl Bundle {
@@ -119,133 +136,66 @@ impl Bundle {
     /// while macOS is being installed, without it.
     pub(super) fn read_in(folder: &Path, with_installer: bool) -> Result<Self> {
         let folder = folder.to_owned();
-        let auxiliary = folder.join(AUXILIARY);
         let disk = folder.join(DISK);
-        if !auxiliary.is_file() || !disk.is_file() {
+        if !disk.is_file() {
             return Err(Error::NotInstalled(folder));
         }
-        let saved = Some(folder.join(store::STATE)).filter(|state| state.is_file());
-        let installer = with_installer
-            .then(|| installer(&folder, bundled_installer().as_deref(), saved.is_some()))
-            .flatten();
+        let guest = metadata::read_in(&folder)?;
+        let capabilities = guest.capabilities();
+        let saved = capabilities
+            .save_restore
+            .then(|| folder.join(store::STATE))
+            .filter(|state| state.is_file());
+        let (boot, guide) = match &guest.boot {
+            BootMetadata::AppleMacos => {
+                let auxiliary = folder.join(AUXILIARY);
+                if !auxiliary.is_file() {
+                    return Err(Error::NotInstalled(folder));
+                }
+                let installer = with_installer
+                    .then(|| installer(&folder, bundled_installer().as_deref(), saved.is_some()))
+                    .flatten();
+                (
+                    BootFiles::Macos {
+                        hardware: read(&folder.join(HARDWARE))?,
+                        identity: read(&folder.join(IDENTITY))?,
+                        auxiliary,
+                        installer,
+                    },
+                    guide(&folder.join(GUIDE))?,
+                )
+            }
+            BootMetadata::AppleLinuxEfi { serial_console } => {
+                let efi_vars = folder.join(EFI_VARS);
+                if !efi_vars.is_file() {
+                    return Err(Error::NotInstalled(folder));
+                }
+                let seed_iso = folder.join(SEED_ISO);
+                let seed_iso = seed_iso.is_file().then_some(seed_iso);
+                let serial_log = serial_console.then(|| folder.join(SERIAL_LOG));
+                (
+                    BootFiles::LinuxEfi {
+                        identity: read(&folder.join(IDENTITY))?,
+                        efi_vars,
+                        seed_iso,
+                        serial_log,
+                    },
+                    None,
+                )
+            }
+        };
         Ok(Self {
-            hardware: read(&folder.join(HARDWARE))?,
-            identity: read(&folder.join(IDENTITY))?,
-            auxiliary,
+            guest,
+            boot,
             disk,
-            settings: store::boot_settings(&folder)?,
-            guide: guide(&folder.join(GUIDE))?,
-            installer,
+            settings: store::boot_settings(&folder, capabilities.save_restore)?,
+            guide,
             saved,
         })
     }
 
-    pub(super) fn configuration(&self) -> Result<Retained<VZVirtualMachineConfiguration>> {
-        let hardware = NSData::with_bytes(&self.hardware);
-        let identity = NSData::with_bytes(&self.identity);
-        let auxiliary = file_url(&self.auxiliary);
-        let disk = file_url(&self.disk);
-        let (width, height) = match self.settings.display {
-            Display::Fit => (FIT_WIDTH, FIT_HEIGHT),
-            Display::Fixed { width, height } => (width, height),
-        };
-        // SAFETY: plain configuration objects, built and used on this thread.
-        // Each init is given the object its class requires.
-        unsafe {
-            let hardware = VZMacHardwareModel::initWithDataRepresentation(
-                VZMacHardwareModel::alloc(),
-                &hardware,
-            )
-            .filter(|model| model.isSupported())
-            .ok_or(Error::Hardware)?;
-            let identity = VZMacMachineIdentifier::initWithDataRepresentation(
-                VZMacMachineIdentifier::alloc(),
-                &identity,
-            )
-            .ok_or(Error::Hardware)?;
-            let platform = VZMacPlatformConfiguration::new();
-            platform.setHardwareModel(&hardware);
-            platform.setMachineIdentifier(&identity);
-            let auxiliary =
-                VZMacAuxiliaryStorage::initWithURL(VZMacAuxiliaryStorage::alloc(), &auxiliary);
-            platform.setAuxiliaryStorage(Some(&auxiliary));
-            let attachment = VZDiskImageStorageDeviceAttachment::initWithURL_readOnly_error(
-                VZDiskImageStorageDeviceAttachment::alloc(),
-                &disk,
-                false,
-            )
-            .map_err(|error| Error::Framework(description(&error)))?;
-            let block = VZVirtioBlockDeviceConfiguration::initWithAttachment(
-                VZVirtioBlockDeviceConfiguration::alloc(),
-                &attachment,
-            );
-            let display = VZMacGraphicsDisplayConfiguration::initWithWidthInPixels_heightInPixels_pixelsPerInch(
-                VZMacGraphicsDisplayConfiguration::alloc(),
-                isize::try_from(width).unwrap_or(isize::MAX),
-                isize::try_from(height).unwrap_or(isize::MAX),
-                DISPLAY_PPI,
-            );
-            let graphics = VZMacGraphicsDeviceConfiguration::new();
-            graphics.setDisplays(&NSArray::from_retained_slice(&[display]));
-            let network = VZVirtioNetworkDeviceConfiguration::new();
-            let address = NSString::from_str(&mac_address(&self.identity));
-            let address = VZMACAddress::initWithString(VZMACAddress::alloc(), &address)
-                .ok_or(Error::Hardware)?;
-            network.setMACAddress(&address);
-            let nat = VZNATNetworkDeviceAttachment::new();
-            network.setAttachment(Some(&nat));
-
-            let configuration = VZVirtualMachineConfiguration::new();
-            let boot = VZMacOSBootLoader::new();
-            configuration.setBootLoader(Some(&boot));
-            configuration.setCPUCount(self.settings.cpus.into());
-            configuration.setMemorySize(u64::from(self.settings.memory_gib) << 30);
-            configuration.setPlatform(&platform);
-            let mut storage = vec![Retained::into_super(block)];
-            if let Some(installer) = &self.installer {
-                // A USB disk, so the guest shows it on the desktop as one
-                // plugged in. Read-only: nothing in the guest changes it.
-                let attachment = VZDiskImageStorageDeviceAttachment::initWithURL_readOnly_error(
-                    VZDiskImageStorageDeviceAttachment::alloc(),
-                    &file_url(installer),
-                    true,
-                )
-                .map_err(|error| Error::Framework(description(&error)))?;
-                storage.push(Retained::into_super(
-                    VZUSBMassStorageDeviceConfiguration::initWithAttachment(
-                        VZUSBMassStorageDeviceConfiguration::alloc(),
-                        &attachment,
-                    ),
-                ));
-            }
-            configuration.setStorageDevices(&NSArray::from_retained_slice(&storage));
-            configuration.setGraphicsDevices(&NSArray::from_retained_slice(&[
-                Retained::into_super(graphics),
-            ]));
-            configuration.setKeyboards(&NSArray::from_retained_slice(&[Retained::into_super(
-                VZUSBKeyboardConfiguration::new(),
-            )]));
-            configuration.setPointingDevices(&NSArray::from_retained_slice(&[
-                Retained::into_super(VZUSBScreenCoordinatePointingDeviceConfiguration::new()),
-            ]));
-            configuration.setEntropyDevices(&NSArray::from_retained_slice(&[
-                Retained::into_super(VZVirtioEntropyDeviceConfiguration::new()),
-            ]));
-            configuration.setNetworkDevices(&NSArray::from_retained_slice(&[
-                Retained::into_super(network),
-            ]));
-            // Sheprd Agent answers on this, with no network between.
-            configuration.setSocketDevices(&NSArray::from_retained_slice(&[Retained::into_super(
-                VZVirtioSocketDeviceConfiguration::new(),
-            )]));
-            configuration
-                .validateWithError()
-                .map_err(|error| Error::Framework(description(&error)))?;
-            configuration
-                .validateSaveRestoreSupportWithError()
-                .map_err(|error| Error::Framework(description(&error)))?;
-            Ok(configuration)
-        }
+    pub(super) fn capabilities(&self) -> MachineCapabilities {
+        self.guest.capabilities()
     }
 }
 
@@ -266,10 +216,6 @@ fn read(path: &Path) -> Result<Vec<u8>> {
         }
         _ => store::read_error(path, source),
     })
-}
-
-pub(super) fn file_url(path: &Path) -> Retained<NSURL> {
-    NSURL::fileURLWithPath(&NSString::from_str(&path.to_string_lossy()))
 }
 
 #[cfg(test)]

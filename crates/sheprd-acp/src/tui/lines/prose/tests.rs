@@ -122,3 +122,42 @@ fn a_link_keeps_its_address_readable() {
         Some(Color::DarkGray)
     );
 }
+
+#[test]
+fn chat_sizes_are_drawn_and_unknown_names_stay_text() {
+    let lines = render("PR :big[#1641] is :huge[open], :small[quietly]", 80);
+    assert_eq!(text(&lines[0]), "  PR #1641 is open, quietly");
+    assert!(
+        style_of(&lines[0], "#1641")
+            .add_modifier
+            .contains(Modifier::BOLD)
+    );
+    assert_eq!(style_of(&lines[0], "quietly").fg, Some(Color::DarkGray));
+    for raw in [":tiny[x] stays", ":big[] stays", ":big[open stays"] {
+        assert_eq!(text(&render(raw, 80)[0]), format!("  {raw}"));
+    }
+}
+
+#[test]
+fn a_size_holds_a_link_and_needs_a_word_break_before_it() {
+    let lines = render(":big[See [PR](https://x/1)] now", 80);
+    assert_eq!(text(&lines[0]), "  See PR (https://x/1) now");
+    assert!(
+        style_of(&lines[0], "PR")
+            .add_modifier
+            .contains(Modifier::BOLD)
+    );
+    for raw in ["word:big[x] stays", "http://x:big[y] stays"] {
+        assert_eq!(text(&render(raw, 80)[0]), format!("  {raw}"));
+    }
+    assert_eq!(text(&render("(:big[x])", 80)[0]), "  (x)");
+}
+
+#[test]
+fn deeply_nested_sizes_stay_text_past_the_limit() {
+    let deep = format!("{}x{}", ":big[".repeat(10_000), "]".repeat(10_000));
+    let lines = render(&deep, 80);
+    assert!(text(&lines[0]).contains(":big["));
+    let shallow = render(":big[:big[x]]", 80);
+    assert_eq!(text(&shallow[0]), "  x");
+}

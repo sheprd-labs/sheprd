@@ -100,3 +100,21 @@ fn a_local_file_is_quoted_without_copying_or_opening_it() {
     );
     assert!(prepared.cleanup.is_none());
 }
+
+#[test]
+fn only_hosts_files_can_reach_from_here_take_uploads() {
+    let ssh = ConnectTarget::Ssh {
+        target: "host".into(),
+        session: String::new(),
+    };
+    // Copying over SSH needs a POSIX shell on this machine.
+    assert_eq!(
+        can_upload(&ssh),
+        cfg!(any(target_os = "linux", target_os = "macos"))
+    );
+    assert!(can_upload(&ConnectTarget::Wsl {
+        distro: "Ubuntu".into(),
+        session: String::new(),
+    }));
+    assert!(!can_upload(&ConnectTarget::Local));
+}

@@ -329,6 +329,30 @@ impl Hub {
             .map(|(_, chat)| chat.clone())
     }
 
+    pub(crate) fn chat_with_endpoint(&self, pane: &str) -> Option<(EndpointId, Arc<Chat>)> {
+        let chats = self.chats.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some((endpoint, chat)) = chats.get(pane) {
+            return Some((endpoint.clone(), chat.clone()));
+        }
+        let address = pane.strip_prefix("core:")?;
+        if address.is_empty() {
+            return None;
+        }
+        let core_key = self
+            .core
+            .as_deref()
+            .and_then(|core| core.pane_id_for_address(address))
+            .or_else(|| {
+                self.layout()
+                    .boot
+                    .strip_prefix("core:")
+                    .map(|boot| crate::control::favorites::core_pane(boot, address))
+            })?;
+        chats
+            .get(&core_key)
+            .map(|(endpoint, chat)| (endpoint.clone(), chat.clone()))
+    }
+
     pub(crate) async fn command(&self, pane: &str, command: Command) -> Result<Option<Rejection>> {
         let chat = self.chat(pane).ok_or(Error::UnknownChat)?;
         chat.command(command).await

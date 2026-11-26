@@ -23,8 +23,9 @@ targets:
   SheprdMockups:
     type: application
     platform: iOS
-    # The app's own effect views, so the effects mockup draws what ships.
-    sources: [Sources, ../SheprdRemote/Views/Effects]
+    # The app's own effect views and permission sheet, so those mockups
+    # draw what ships.
+    sources: [Sources, ../SheprdRemote/Views/Effects, ../SheprdRemote/Views/PermissionRequest.swift]
     dependencies:
       - package: SheprdRemoteCore
     info:

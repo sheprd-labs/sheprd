@@ -23,7 +23,15 @@ use sheprd_remote_control::control::fleet::{
     View,
     sync::{Admission, Answer, Apply, Ask},
 };
-use std::{collections::BTreeMap, sync::atomic::AtomicBool, time::Instant};
+use std::{
+    collections::BTreeMap,
+    sync::atomic::AtomicBool,
+    time::{Duration, Instant},
+};
+
+/// How long a pairing's fleet step counts as running at most: the claim,
+/// the other computer's Allow, and every retry of [`super::bluetooth::paired`].
+pub(crate) const PAIRING_HOLD: Duration = Duration::from_secs(15 * 60);
 
 /// A fleet this computer may join, and the reached members, by id, it may
 /// join through: never empty.
@@ -111,7 +119,37 @@ impl Fleet {
     /// at once could leave a fleet listing a computer that joined another.
     pub(crate) fn busy(cx: &App) -> bool {
         cx.try_global::<Self>()
-            .is_some_and(|this| !this.acting.is_empty())
+            .is_some_and(|this| !this.acting.is_empty() || this.holding(Instant::now()))
+    }
+
+    fn holding(&self, now: Instant) -> bool {
+        self.pairing
+            .is_some_and(|(_, since)| now.duration_since(since) < PAIRING_HOLD)
+    }
+
+    /// Holds the fleet for the Nearby pairing `attempt`, whose claim
+    /// carries it, so no join, invitation, or other pairing runs beside
+    /// it. False when another fleet change runs.
+    pub(crate) fn hold_for_pairing(cx: &mut App, attempt: u64) -> bool {
+        if !cx.has_global::<Self>() || Self::busy(cx) {
+            return false;
+        }
+        cx.update_global::<Self, _>(|this, _| this.pairing = Some((attempt, Instant::now())));
+        cx.refresh_windows();
+        true
+    }
+
+    /// Ends the hold of the pairing `attempt`, if it still holds it.
+    pub(crate) fn release_pairing(cx: &mut App, attempt: u64) {
+        if !cx.has_global::<Self>() {
+            return;
+        }
+        cx.update_global::<Self, _>(|this, _| {
+            if this.pairing.is_some_and(|(held, _)| held == attempt) {
+                this.pairing = None;
+            }
+        });
+        cx.refresh_windows();
     }
 
     /// Asks every reached machine again, as Settings > Fleet opens, so a

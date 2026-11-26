@@ -52,6 +52,8 @@ pub enum Error {
         #[source]
         source: client::Error,
     },
+    #[error("This relay has banned your network address{0}")]
+    RelayBanned(sheprd_relay::ban::Ban),
     #[error("the other computer's relay details are not valid")]
     RelayInfo,
     #[error("could not start the async runtime")]
@@ -73,7 +75,7 @@ impl Error {
         if !matches!(
             self,
             Self::Relay {
-                source: client::Error::Banned,
+                source: client::Error::Banned(_),
                 ..
             }
         ) {
@@ -81,6 +83,18 @@ impl Error {
                 endpoint: endpoint.to_string(),
                 source,
             };
+        }
+    }
+
+    /// The relay ban that stopped this, if one did.
+    pub(super) fn ban(&self) -> Option<sheprd_relay::ban::Ban> {
+        match self {
+            Self::Relay {
+                source: client::Error::Banned(ban),
+                ..
+            }
+            | Self::RelayBanned(ban) => Some(*ban),
+            _ => None,
         }
     }
 }
@@ -98,7 +112,7 @@ mod tests {
         let first = Endpoint::parse("https://first.example")?;
         let second = Endpoint::parse("https://second.example")?;
         let mut failure = Error::NoRelays;
-        failure.record_relay(&first, client::Error::Banned);
+        failure.record_relay(&first, client::Error::Banned(Default::default()));
         failure.record_relay(
             &second,
             client::Error::Refused(sheprd_relay::wire::Status::Offline),

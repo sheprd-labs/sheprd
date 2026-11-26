@@ -76,6 +76,31 @@ impl Links {
             cx.open_url(url.as_str());
             return;
         }
+        self.with_file(destination, cx, |view, file, cx| {
+            view.open_file_link(
+                file,
+                !system && view.config.open_files_in == crate::config::FileTarget::Editor,
+                cx,
+            );
+        });
+    }
+
+    /// Selects an attachment's file in the system file manager, under the
+    /// same session fence as opening it.
+    pub(in crate::chat::view) fn reveal_attachment(&self, destination: &str, cx: &mut App) {
+        self.with_file(destination, cx, |view, file, cx| {
+            view.reveal_file_link(file, cx);
+        });
+    }
+
+    /// Runs `act` with the local file `destination` names, only while this
+    /// pane's conversation and the window's selection are still current.
+    fn with_file(
+        &self,
+        destination: &str,
+        cx: &mut App,
+        act: impl FnOnce(&mut SheprdWindow, crate::window::FileLink, &mut Context<SheprdWindow>),
+    ) {
         let Some(target) = self.target.as_ref().filter(|_| self.local) else {
             return;
         };
@@ -102,11 +127,7 @@ impl Links {
             }) else {
                 return;
             };
-            view.open_file_link(
-                file,
-                !system && view.config.open_files_in == crate::config::FileTarget::Editor,
-                cx,
-            );
+            act(view, file, cx);
         });
     }
 }

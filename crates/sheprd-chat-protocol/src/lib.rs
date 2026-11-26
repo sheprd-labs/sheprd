@@ -19,6 +19,7 @@ mod origin;
 mod private;
 pub mod restore;
 mod settings;
+pub mod sharing;
 pub mod thread;
 mod wire;
 

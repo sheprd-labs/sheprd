@@ -25,6 +25,12 @@ pub(super) async fn daemon(
         Ok(Response::Fleet(answer)) => Ok(*answer),
         Ok(Response::Error { message, .. }) => Err(Error::Daemon(message)),
         Ok(_) => Err(Error::Daemon(String::new())),
+        // The control client turns a refusal into an error of its own:
+        // the daemon's reason is what the person needs, not "could not
+        // reach" a daemon that answered.
+        Err(sheprd_remote_control::control::Error::Daemon { message, .. }) => {
+            Err(Error::Daemon(message))
+        }
         Err(error) => Err(Error::Request(error)),
     }
 }

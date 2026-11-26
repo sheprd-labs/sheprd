@@ -56,6 +56,14 @@ impl SheprdWindow {
     /// The chat panes on screen: the window's terminal group's, then those
     /// of the herdr-core tabs shown. A popup covers the terminal's.
     fn visible_chat_panes(&self, cx: &App) -> Vec<String> {
+        let mut visible = self.on_screen_chat_panes(cx);
+        visible.retain(|pane| self.chats.shown(pane));
+        visible
+    }
+
+    /// The keys of the panes on screen that could show a chat, attached
+    /// or not, so discovery attaches them before any other.
+    pub(in crate::chat) fn on_screen_chat_panes(&self, cx: &App) -> Vec<String> {
         let primary = self.primary_group();
         let groups = self.drawn_group_slots();
         let terminal_shown = self.live.surface_ready()
@@ -89,7 +97,6 @@ impl SheprdWindow {
                 }
             }
         }
-        visible.retain(|pane| self.chats.shown(pane));
         visible
     }
 

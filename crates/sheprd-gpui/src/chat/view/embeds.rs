@@ -12,6 +12,7 @@ use super::{
     },
     visuals::Frame,
 };
+use crate::chat::prepared::Picture;
 use crate::{SheprdWindow, browser::WebUrl, config::corners, i18n::fl, notifications::safe_text};
 use gpui::{prelude::*, *};
 use sheprd_chat_protocol::EntryId;
@@ -318,7 +319,13 @@ impl SheprdWindow {
     ) -> AnyElement {
         if visuals.wants(id) {
             return self
-                .render_chat_visual(pane_id, id, visuals, Frame::Image, cx)
+                .render_chat_visual(
+                    pane_id,
+                    Picture::new(entry, index, id),
+                    visuals,
+                    Frame::Image,
+                    cx,
+                )
                 .into_any_element();
         }
         let theme = &self.theme;

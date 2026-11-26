@@ -16,6 +16,7 @@ fn test_push() -> Sealed {
     Sealed {
         // Fixed, for the fixture; a real one is random.
         event: Some(super::alert::EVENT.to_owned()),
+        subtitle: String::new(),
         ..Sealed::test(ID.to_owned(), COMPUTER.to_owned(), "Studio", 3)
     }
 }

@@ -278,7 +278,7 @@ fn cached_lines_follow_appends() {
                 .collect()
         })
         .collect();
-    assert_eq!(text[0], "  one two");
+    assert_eq!(text[1], " │   one two", "under the agent's header");
 }
 
 #[test]

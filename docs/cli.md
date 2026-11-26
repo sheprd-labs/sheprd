@@ -498,15 +498,16 @@ sheprd machine key test-1 cmd+s
 | `remote relays token ENDPOINT [--clear]` | Keep this computer's listen token for a private relay, read from standard input (at most 1 KiB, trimmed; 16 to 255 printable characters without spaces), or with `--clear` forget it. The token is never an argument, a terminal on standard input is refused so it is not shown, and it is never printed or logged. ENDPOINT is a relay address such as `relay.example.org`. Works whether or not the relay is in `[remote] relays` and whether remote control is on; a running daemon reconnects with it, and Sheprd offers it again to your other machines. Exits 2 for a bad address or token, or empty standard input |
 | `remote restart` | Restart the daemon from the binary beside the app, as after a rebuild or update; phones reconnect on their own. Exits 6 while the service is already changing |
 | `remote revoke DEVICE` | Ask in the window to revoke a paired device, named by its ID from `remote devices` or its name (a name two devices share is refused); the user confirms there |
+| `remote shares` | Active read-only shared sessions on this computer (share ID, pane, history scope, tool flag, active grants count, and relay; never link secrets). Exits 4 when there are none |
+| `remote share [--pane ID]` | Open the **Share this session** dialog in Sheprd for `ID` (default: the caller's or open chat pane), where the owner previews guest-visible content and confirms creating or stopping a read-only link |
 
 Remote control is turned on in Settings > Remote control, or with
 `config set remote.enabled true`; the app then installs the `sheprd-remote-control`
 daemon as a user service and keeps it in line with the `[remote]` settings.
 While it is off, `remote status` says so and exits 0; `pair`, `devices`,
-`revoke`, and `restart` exit 1. A dialog already open in the window refuses `pair` and
+`shares`, `revoke`, and `restart` exit 1. A dialog already open in the window refuses `pair`, `share`, and
 `revoke` (exit 6). `--json` gives `{"enabled", "running", "status", "error"}`
-for `status`, where `status` is the daemon's own report, and
-`{"devices": [...]}` for `devices`, and `{"relay", "token"}` for
+for `status`, where `status` is the daemon's own report, `{"devices": [...]}` for `devices`, `{"shares": [...]}` for `shares`, and `{"relay", "token"}` for
 `relays token`: the relay as normalized and whether a token is now kept.
 Phones never need a listen token; only computers that listen on a private
 relay do.
@@ -875,7 +876,8 @@ is off, chat panes show their terminal and `chat new` exits 8.
 Set the reading width with `sheprd config set chat.max_width 1200`, or use
 `0` for the full available width. Bounded widths range from 320 to 4000 logical
 pixels; the default is 800. Settings > Chat offers the same width slider and
-**Full-width chat** switch.
+**Full-width chat** switch. Turn off desktop message effects with
+`sheprd config set chat.message_effects false` or **Settings > Chat > Message effects**.
 
 A chat on an SSH host shows in the native chat view like a local one. Sheprd
 runs `sheprd-acp connect ID` on the host over the same SSH connection it uses

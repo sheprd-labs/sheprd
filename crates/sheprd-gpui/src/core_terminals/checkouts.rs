@@ -47,6 +47,12 @@ impl Checkouts {
         self.known.get(cwd)?.as_ref()
     }
 
+    /// Whether Git answered for `cwd`, a checkout or none: until then a
+    /// name read from the folder alone may not be the one it ends with.
+    pub(super) fn answered(&self, cwd: &str) -> bool {
+        self.known.contains_key(cwd)
+    }
+
     pub(super) fn home(&self) -> Option<&str> {
         self.home.as_deref()
     }

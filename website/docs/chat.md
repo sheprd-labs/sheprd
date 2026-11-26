@@ -21,7 +21,7 @@ For Muse Code, run `muse acp --help` on the chat host to verify that the install
 
 When Antigravity advertises ACP authentication methods, Sheprd asks it to run its native sign-in flow, defaulting to `oauth-personal`. Set `SHEPRD_ANTIGRAVITY_AUTH_METHOD` in the chat environment to choose another advertised method, such as `oauth-business`, `gemini-api-key`, or `agent-platform`. Without an override, `GEMINI_API_KEY` selects `gemini-api-key`, and `GOOGLE_CLOUD_PROJECT` plus `GOOGLE_CLOUD_LOCATION` selects `agent-platform`. Set API keys only in a private environment, never a committed file. The agent handles authentication; Sheprd does not read or store its OAuth tokens. See Google's [authentication methods](https://antigravity.google/docs/ide/extensions/acp/#authentication).
 
-Antigravity receives your prompts directly without Sheprd's prompt templates, memory notes, or device annotations. You can switch to or from Antigravity whenever the current agent is idle, and the agent taking over gets the conversation with your next prompt.
+Antigravity receives your prompts directly without Sheprd's prompt templates, memory notes, or device annotations. You can switch to or from Antigravity whenever the current agent is idle, and the agent taking over gets the conversation with your next prompt. If an Antigravity turn goes quiet after replying because a background command kept it open, Sheprd posts a hint after 10 minutes and cancels the turn after 1 hour without dropping queued prompts; set `SHEPRD_ANTIGRAVITY_IDLE_TURN_SECS` to change that ceiling, or `0` to disable auto-cancel.
 
 ## Turning chats on and configuring them
 

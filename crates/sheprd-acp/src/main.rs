@@ -24,6 +24,7 @@ mod project;
 mod pull_requests;
 mod relay;
 mod restore;
+mod resume;
 mod rpc;
 mod session;
 mod session_helpers;

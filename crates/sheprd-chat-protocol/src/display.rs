@@ -44,8 +44,9 @@ pub fn cost(cost: &Cost) -> String {
 }
 
 impl TurnSummary {
-    /// `Worked 12s · 3.2k in · 450 out`.
-    pub fn describe(&self) -> String {
+    /// `Worked 12s`: how the turn ended and how long it took, without the
+    /// token counts, for where space is short.
+    pub fn took(&self) -> String {
         let verb = match self.end {
             TurnEnd::Done => "Worked",
             TurnEnd::Cancelled => "Cancelled after",
@@ -54,7 +55,12 @@ impl TurnSummary {
             TurnEnd::Failed => "Failed after",
             TurnEnd::Other => "Ended after",
         };
-        let mut text = format!("{verb} {}", duration(self.duration_ms));
+        format!("{verb} {}", duration(self.duration_ms))
+    }
+
+    /// `Worked 12s · 3.2k in · 450 out`.
+    pub fn describe(&self) -> String {
+        let mut text = self.took();
         if let Some(tokens) = &self.tokens {
             text.push_str(&format!(
                 " \u{b7} {} in \u{b7} {} out",
