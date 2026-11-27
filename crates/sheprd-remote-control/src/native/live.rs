@@ -667,7 +667,7 @@ async fn follow_term(
                 last = None;
             }
             Some(lines) = scrolls.recv() => {
-                if sizing.scroll(&pane, lines) {
+                if sizing.scroll(&state, &pane, lines).await {
                     // Read at once and again shortly, as after typing.
                     state.typed.typed(&pane);
                 } else if !told {

@@ -12,6 +12,7 @@ fn sample_transcript() -> Transcript {
     Transcript {
         agent: "Codex".into(),
         session: Some(SessionInfo {
+            can_steer: false,
             id: "session-phase2".into(),
             cwd: Some("/private/worktree".into()),
             title: Some("Private title".into()),

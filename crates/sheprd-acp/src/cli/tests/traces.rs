@@ -48,6 +48,19 @@ fn traces_commands_and_their_options() {
             json: false
         }))
     );
+    assert_eq!(
+        parse(args(&[
+            "traces", "overlap", "--agent", "codex", "--host", "box", "--days", "7", "--at", "42",
+            "--json"
+        ])),
+        Ok(Parsed::Traces(Command::Overlap {
+            days: 7,
+            agent: Some(AgentKind::Codex),
+            host: Some("box".into()),
+            at: Some(42),
+            json: true
+        }))
+    );
     assert_eq!(parse(args(&["traces", "--help"])), Ok(Parsed::Help));
 }
 

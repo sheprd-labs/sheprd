@@ -12,6 +12,8 @@ mod incompatible;
 mod mise;
 mod probe_failure;
 mod serve;
+#[cfg(unix)]
+mod tailscale_banner;
 mod windows_host;
 
 #[cfg(unix)]

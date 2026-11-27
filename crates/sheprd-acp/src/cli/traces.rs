@@ -9,15 +9,21 @@ pub(super) fn parse(args: impl Iterator<Item = OsString>) -> Result<Parsed, Erro
     };
     let action = utf8(args.next(), "traces command")?;
     let (mut json, mut agent, mut limit, mut days) = (false, None, DEFAULT_LIMIT, DEFAULT_DAYS);
+    let mut at = None;
+    let mut host = None;
     while let Some(arg) = args.next() {
         match (action.as_str(), arg.to_str()) {
-            ("index" | "watch" | "list" | "activity" | "peers", Some("--json")) => json = true,
-            ("list", Some("--agent")) => {
+            ("index" | "watch" | "list" | "activity" | "overlap" | "peers", Some("--json")) => {
+                json = true
+            }
+            ("list" | "overlap", Some("--agent")) => {
                 let name = utf8(args.next(), "--agent")?;
                 agent = Some(AgentKind::parse(&name).ok_or(Error::UnknownAgent(name))?);
             }
             ("list", Some("--limit")) => limit = number(args.next(), "--limit")?,
-            ("activity", Some("--days")) => days = number(args.next(), "--days")?,
+            ("overlap", Some("--host")) => host = Some(utf8(args.next(), "--host")?),
+            ("overlap", Some("--at")) => at = Some(number(args.next(), "--at")?),
+            ("activity" | "overlap", Some("--days")) => days = number(args.next(), "--days")?,
             _ => return Err(Error::UnknownOption(arg)),
         }
     }
@@ -27,6 +33,13 @@ pub(super) fn parse(args: impl Iterator<Item = OsString>) -> Result<Parsed, Erro
         "index" => Command::Index { json },
         "watch" => Command::Watch { json },
         "list" => Command::List { agent, limit, json },
+        "overlap" => Command::Overlap {
+            days,
+            agent,
+            host,
+            at,
+            json,
+        },
         "activity" => Command::Activity { days, json },
         _ => return Err(Error::UnknownOption(action.into())),
     };

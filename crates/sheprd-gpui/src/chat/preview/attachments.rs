@@ -32,6 +32,7 @@ pub(super) fn entries() -> Result<Vec<Entry>> {
                 author: Author::User,
                 image: Image::new("image/png", CHECKERBOARD.into())
                     .context("synthetic attachment image is invalid")?,
+                caption: None,
             },
         },
         Entry {

@@ -7,7 +7,9 @@ use super::{
 };
 use crate::i18n::{Localize, fl};
 use gpui::Context;
-use sheprd_client::{ClientHandle, ConnectOptions, ConnectTarget, SshFailure, VersionMismatch};
+use sheprd_client::{
+    ClientHandle, ConnectOptions, ConnectTarget, SshFailure, TailscaleCheck, VersionMismatch,
+};
 use std::{
     collections::HashSet,
     sync::{
@@ -24,10 +26,12 @@ mod history;
 mod order;
 pub(crate) mod origin;
 mod polling;
+mod tailscale;
 mod wake;
 
 pub(super) use catalog::Catalog;
 pub(crate) use history::Step;
+use tailscale::PendingCheck;
 pub(super) use wake::WakeClock;
 pub(crate) use wake::watch_network;
 
@@ -162,6 +166,10 @@ pub(super) struct Endpoint {
     /// the retries that reset the bridge, until a handshake is accepted.
     pub(crate) version_mismatch: Option<VersionMismatch>,
     retry_at: Instant,
+    /// The Tailscale check this host is waiting on. A retry replaces the failure
+    /// that carried it while the check is still pending, so the state alone
+    /// cannot be the source of what to show.
+    tailscale: PendingCheck,
     attempts: u32,
     /// A sleep or network change this endpoint has not yet recovered from;
     /// see [`Self::recover`].
@@ -260,6 +268,7 @@ impl Endpoint {
             config_diagnostic: Default::default(),
             version_mismatch: None,
             retry_at: Instant::now(),
+            tailscale: PendingCheck::default(),
             attempts: 0,
             recovery: None,
             online_since: None,
@@ -320,6 +329,9 @@ impl Endpoint {
         self.detached = false;
         self.attempts = 0;
         self.version_mismatch = None;
+        // A check belongs to the connection that printed it, and the address
+        // only authorises that one.
+        self.tailscale.clear();
         // The replacement transport has produced no state of its own yet.
         self.live = LiveState::default();
         self.sync_live();
@@ -337,6 +349,11 @@ impl Endpoint {
         self.live = self.connection.take_update().unwrap_or_default();
         self.sync_live();
         self.toasts.receive(self.live.notifications.drain(..));
+        // Remember the check for as long as it is pending. A retry empties the
+        // live error for a moment, and the typed failure never fills on the
+        // transport path at all, so what the window shows would otherwise be
+        // whatever the last attempt happened to hold.
+        self.observe_tailscale();
         self.retry_at = Instant::now() + self.retry_delay();
     }
 
@@ -374,8 +391,11 @@ impl Endpoint {
                 if let Some(error) = &state.error {
                     self.outage = Some(error.clone());
                 }
-                let needs_user =
-                    |live: &LiveState| live.ssh_failure.is_some_and(SshFailure::needs_user);
+                let needs_user = |live: &LiveState| {
+                    live.ssh_failure
+                        .as_ref()
+                        .is_some_and(SshFailure::needs_user)
+                };
                 if needs_user(&state) && !needs_user(&self.live) {
                     self.retry_at = self.retry_at.max(now + MAX_RETRY_DELAY);
                 }
@@ -386,8 +406,16 @@ impl Endpoint {
                 crate::palette::unix_now(),
             );
             self.observe_focus(&state, now);
+            if state.status.is_connected() {
+                // A host that connected is no longer waiting on anything: the
+                // address a check named has done its work.
+                self.tailscale.clear();
+            }
             self.live = state;
             self.sync_live();
+            if !self.live.status.is_connected() {
+                self.observe_tailscale();
+            }
         }
         if self
             .connection
@@ -398,7 +426,12 @@ impl Endpoint {
             self.connection.handle = None;
             // A host that refused for a reason only the user can fix is not
             // redialled every few seconds meanwhile.
-            let delay = if self.live.ssh_failure.is_some_and(SshFailure::needs_user) {
+            let delay = if self
+                .live
+                .ssh_failure
+                .as_ref()
+                .is_some_and(SshFailure::needs_user)
+            {
                 MAX_RETRY_DELAY
             } else {
                 self.retry_delay()
@@ -472,7 +505,13 @@ impl Endpoint {
         }
         match &self.connection.handle {
             Some(handle) => handle.check_liveness(trigger.suspicion()),
-            None if thorough && !self.live.ssh_failure.is_some_and(SshFailure::needs_user) => {
+            None if thorough
+                && !self
+                    .live
+                    .ssh_failure
+                    .as_ref()
+                    .is_some_and(SshFailure::needs_user) =>
+            {
                 self.retry_at = self.retry_at.min(now);
             }
             None => {}
@@ -489,6 +528,18 @@ impl Endpoint {
     /// Why the endpoint is reconnecting, while it is.
     pub(crate) fn outage(&self) -> Option<&str> {
         self.outage.as_deref()
+    }
+
+    /// The Tailscale check this host is waiting on, and the address that
+    /// answers it. Every surface that offers the address reads this, so the
+    /// status bar, the prompt, and the dialog agree on what is pending.
+    pub(crate) fn tailscale_check(&self) -> Option<&TailscaleCheck> {
+        self.tailscale.pending(&self.live)
+    }
+
+    /// Keep the remembered check up to date with what the last attempt said.
+    pub(crate) fn observe_tailscale(&mut self) {
+        self.tailscale.observe(&self.live, self.outage.as_deref());
     }
 
     fn retry_delay(&self) -> Duration {
@@ -610,6 +661,8 @@ impl SheprdWindow {
         endpoint.stop();
         endpoint.outage = None;
         endpoint.detached = true;
+        // Retries stop here, so no connection will ever finish this check.
+        endpoint.tailscale.clear();
         endpoint.live.status = ConnectionStatus::Detached;
         if let Ok(mut state) = endpoint.connection.inbox.lock() {
             *state = endpoint.live.clone();

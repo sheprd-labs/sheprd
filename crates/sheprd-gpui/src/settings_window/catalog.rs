@@ -249,6 +249,24 @@ pub(super) const CATALOG: &[Entry] = &[
     ),
     entry(
         Section::Indicators,
+        "indicators-edge-light-color",
+        "settings-indicators-edge-light-color",
+        "settings-indicators-edge-light-color-description",
+    ),
+    entry(
+        Section::Indicators,
+        "indicators-edge-light-width",
+        "settings-indicators-edge-light-width",
+        "settings-indicators-edge-light-width-description",
+    ),
+    entry(
+        Section::Indicators,
+        "indicators-edge-light-trail",
+        "settings-indicators-edge-light-trail",
+        "settings-indicators-edge-light-trail-description",
+    ),
+    entry(
+        Section::Indicators,
         "indicators-sets",
         "settings-indicators-sets",
         "settings-indicators-sets-description",

@@ -17,11 +17,15 @@ struct GalleryPicture: Identifiable, Hashable {
     var tab: String?
     /// The tab's agent, as Herdr names it, for its icon.
     var agent: String?
+    /// What the picture shows, as the agent put it: a title line, then
+    /// any detail.
+    var about: String?
 
     /// A picture of one chat, named by its entry.
     init(_ picture: TranscriptPicture) {
         id = String(picture.id.value)
         image = picture.image
+        about = picture.caption
     }
 
     /// A picture of a workspace's combined list, named by its tab too, as
@@ -29,6 +33,7 @@ struct GalleryPicture: Identifiable, Hashable {
     init(_ picture: TabPicture<String>, caption: String?, agent: String?) {
         id = "\(picture.tab)/\(picture.id.entry.value)"
         image = picture.picture.image
+        about = picture.picture.caption
         self.caption = caption
         tab = picture.tab
         self.agent = agent

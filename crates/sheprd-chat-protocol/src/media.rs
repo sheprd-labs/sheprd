@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 /// The most base64 text one image carries, about 3.75 MiB of image bytes.
 pub const MAX_IMAGE_DATA: usize = 5 * 1024 * 1024;
 
+/// The most characters a picture's caption carries.
+pub const MAX_CAPTION: usize = 300;
+
 /// Who put a picture in the conversation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

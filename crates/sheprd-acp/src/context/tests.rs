@@ -340,6 +340,7 @@ fn a_phone_is_told_to_attach_pictures_rather_than_give_paths() {
     let text = describe(PHONE);
     assert!(text.contains("cannot open files or folders"));
     assert!(text.contains("![what it shows](/absolute/path.png)"));
+    assert!(text.contains("caption, shown over it"));
     assert!(text.contains("PNG screenshot"));
     assert!(text.contains("small"));
 }

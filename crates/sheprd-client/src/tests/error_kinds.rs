@@ -49,19 +49,32 @@ fn ssh_errors_keep_kind_and_text() {
             "SSH port forwarding is not supported on this platform",
         ),
     ]);
-    for (failure, kind) in [
+    // A host in Tailscale check mode is classified from its banner, which is
+    // the only way to build that failure; it reads as the refusal it is.
+    let tailscale = SshFailure::Tailscale(
+        ssh::check::pending(
+            b"Tailscale SSH requires an additional check:\n\
+               To authenticate, visit: https://login.tailscale.com/a/c2e8ee2fe1cf\n",
+        )
+        .unwrap(),
+    );
+    let cases = [
         (SshFailure::HostKey, PermissionDenied),
         (SshFailure::Auth, PermissionDenied),
+        (tailscale, PermissionDenied),
         (SshFailure::Unreachable, NotConnected),
         (SshFailure::NoRoute, NotConnected),
         (SshFailure::LocalNetworkDenied, NotConnected),
         (SshFailure::HerdrMissing, NotFound),
         (SshFailure::Other, UnexpectedEof),
-    ] {
-        let error = Error::from(ssh::Error::Refused(failure));
-        assert_eq!(error.kind(), kind, "{error:?}");
+    ];
+    for (failure, kind) in cases.iter() {
+        let error = Error::from(ssh::Error::Refused(failure.clone()));
+        assert_eq!(error.kind(), *kind, "{error:?}");
         assert_eq!(error.to_string(), format!("SSH bridge closed: {failure}"));
     }
+    // The address the user is shown is not part of what a log sees.
+    assert!(!format!("{:?}", cases[2].0).contains("c2e8ee2fe1cf"));
 }
 
 #[test]

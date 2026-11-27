@@ -104,6 +104,9 @@ struct SessionSheet: View {
                 } else {
                     Text("No usage reported yet").font(.subheadline).foregroundStyle(.secondary)
                 }
+                if let host = model.shownComputers.displayName(forDevice: key.device) {
+                    Label(host, systemImage: "desktopcomputer").font(.subheadline).foregroundStyle(.secondary)
+                }
             }
             Spacer(minLength: 0)
         }

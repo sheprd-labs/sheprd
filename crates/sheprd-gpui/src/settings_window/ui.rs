@@ -16,7 +16,9 @@ pub(in crate::settings_window) use number::{
     Look, Number, NumberChange, NumberEdit, Unit, number, parse_number,
 };
 pub(in crate::settings_window) use popover::{Dropdown, dropdown};
-pub(in crate::settings_window) use swatches::{HostColorChange, parse_hex_input, swatch_row};
+pub(in crate::settings_window) use swatches::{
+    HostColorChange, parse_hex_input, swatch, swatch_row,
+};
 
 pub(in crate::settings_window) const ROW_HEIGHT: f32 = 38.;
 

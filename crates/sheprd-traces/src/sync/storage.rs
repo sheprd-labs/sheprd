@@ -174,12 +174,16 @@ fn append(tx: &Transaction<'_>, record: &Record) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn export(connection: &Connection, after: i64) -> Result<Batch> {
-    let end: i64 = connection.query_row(
+pub(crate) fn journal_end(connection: &Connection) -> Result<i64> {
+    Ok(connection.query_row(
         "SELECT coalesce(max(position), 0) FROM trace_journal",
         [],
         |row| row.get(0),
-    )?;
+    )?)
+}
+
+pub(crate) fn export(connection: &Connection, after: i64) -> Result<Batch> {
+    let end = journal_end(connection)?;
     if after < 0 || after > end {
         return Err(Error::Invalid("journal cursor").into());
     }

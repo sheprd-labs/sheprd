@@ -432,6 +432,7 @@ impl Projection {
             return;
         }
         self.transcript.session = Some(SessionInfo {
+            can_steer: false,
             continued: None,
             id: limited(id, MAX_ID),
             cwd: (!cwd.is_empty()).then(|| limited(cwd, MAX_CWD)),

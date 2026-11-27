@@ -41,6 +41,7 @@ fn picture(seq: u64) -> Step {
                 data: "/9j/".into(),
                 kind: ImageType::Jpeg,
             },
+            caption: None,
         },
     )
 }

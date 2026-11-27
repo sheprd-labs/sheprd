@@ -5,6 +5,7 @@
 
 use super::SheprdWindow;
 use crate::fonts::StyledFont as _;
+use crate::session_model::Sessions;
 use crate::sidebar::{ActivityPanel, BAR_WIDTH, SidebarMode};
 use gpui::{AnyElement, AnyView, Context, Div, Empty, Window, div, prelude::*, px, rgb};
 
@@ -243,6 +244,20 @@ impl SheprdWindow {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        // The same foreground workspace as the sidebar, even when a kept
+        // workspace hides the daemon's focus. Never light for a background agent.
+        let sessions = self.sessions(self.selected_endpoint);
+        let kept = self.kept_in_front();
+        if let Some(workspace) = sessions.keyed().find_map(|(keeper, session)| {
+            session.workspace(Sessions::front_of(keeper, session, kept)?)
+        }) {
+            let rounded = cfg!(target_os = "macos") && !window.is_fullscreen();
+            root.extend([super::edge_light::frame(
+                workspace.status,
+                self.config.edge_light,
+                rounded,
+            )]);
+        }
         root.extend(self.render_tab_ghost(cx));
         root.extend(self.render_core_note(cx).map(IntoElement::into_any_element));
         root.extend(self.render_toasts(window, cx));

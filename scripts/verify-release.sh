@@ -12,7 +12,7 @@ Verify the exact asset set, both checksums, Sigstore, and GitHub provenance.
 --sha additionally pins the expected release source commit (recommended).
 Optional supplemental .asc files must be in DIR/gpg/; GPG uses an isolated keyring
 and requires the full fingerprint of the actual signing key, including subkeys.
-Requires Python 3.11+, gh, and cosign 2.x; optional GPG verification requires gpg.
+Requires Python 3.11+, gh, openssl, and cosign 2.x; optional GPG verification requires gpg.
 --legacy verifies an immutable pre-rebrand release with its original asset names
 and exact penso/herdr-gpui provenance identity. There is no automatic trust fallback.
 --without-host-chats verifies a release published before the host builds'
@@ -56,7 +56,6 @@ if $legacy; then
 fi
 $host_chats || manifest_options+=(--without-host-chats)
 $host_agents || manifest_options+=(--without-host-agents)
-identity="https://github.com/$repo/.github/workflows/release.yml@refs/heads/main"
 tmp=$(mktemp -d)
 trap 'rm -rf -- "$tmp"' EXIT
 if [[ -z $directory ]]; then
@@ -78,6 +77,18 @@ python3 "$scripts/release/artifact-manifest.py" verify "$version" "$tmp/assets-t
 tag_sha=$(gh api "repos/$repo/git/ref/tags/v$version" --jq '.object | select(.type == "commit") | .sha')
 [[ $tag_sha =~ ^[0-9a-f]{40}$ && ( -z $sha || $sha == "$tag_sha" ) ]] || exit 1
 sha=$tag_sha
+# Releases run from release/<sha> since releases got their own branch; earlier
+# ones ran from main. The first certificate names which, and only those two
+# refs are accepted; cosign then checks every asset against that exact identity.
+workflow="https://github.com/$repo/.github/workflows/release.yml"
+first=$(python3 "$scripts/release/artifact-manifest.py" base-names "$version" "$directory" ${manifest_options[@]+"${manifest_options[@]}"} | head -n 1)
+san=$(openssl base64 -d -A -in "$tmp/assets-to-check/$first.crt" | openssl x509 -noout -ext subjectAltName)
+case "$san" in
+    *"URI:$workflow@refs/heads/release/$sha") source_ref=refs/heads/release/$sha ;;
+    *"URI:$workflow@refs/heads/main") source_ref=refs/heads/main ;;
+    *) echo "Unexpected release signer: $san" >&2; exit 1 ;;
+esac
+identity="$workflow@$source_ref"
 if [[ -n $gpg_key ]]; then
     mkdir -m 700 "$tmp/keyring"
     gpg --homedir "$tmp/keyring" --batch --import "$gpg_key"
@@ -88,12 +99,12 @@ while IFS= read -r name; do
         --certificate-identity "$identity" \
         --certificate-oidc-issuer https://token.actions.githubusercontent.com \
         --certificate-github-workflow-repository "$repo" \
-        --certificate-github-workflow-ref refs/heads/main \
+        --certificate-github-workflow-ref "$source_ref" \
         --certificate-github-workflow-sha "$sha" "$file"
     gh attestation verify "$file" --repo "$repo" \
         --cert-identity "$identity" \
         --cert-oidc-issuer https://token.actions.githubusercontent.com \
-        --source-ref refs/heads/main --source-digest "$sha" --signer-digest "$sha" \
+        --source-ref "$source_ref" --source-digest "$sha" --signer-digest "$sha" \
         --deny-self-hosted-runners
     if [[ -n $gpg_key ]]; then
         gpg --homedir "$tmp/keyring" --batch --status-fd 1 \

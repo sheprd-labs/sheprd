@@ -59,15 +59,23 @@ the exact release SHA, waiting for a CI run that is still going. A successful
 CI workflow alone is insufficient: every platform check (both its
 default-features and all-features legs), native Windows test job, and Linux
 optimized build must have completed successfully in the same owner-triggered
-push or manual run on `main`. Skipped or missing jobs fail the gate. CI runs
+run: the manual run `just release` starts on the commit's `release/<sha>`
+branch, or a push or manual run on `main`. Skipped or missing jobs fail the gate. CI runs
 the macOS optimized builds on pull requests only, where the final gate requires
 them: on `main` they would hold the account-wide macOS runners this workflow's
 own macOS builds wait for. `just release` dispatches without waiting, so the
 release builds overlap CI; `sign`, `windows-sign`, and everything after them
-wait behind `ci-gate`, so nothing is signed or published before CI passes. CI
-never cancels a run on `main`, so a later merge cannot strand a release commit
-without one. For documentation-only commits, start a full run with
-`gh workflow run ci.yml --repo sheprd-labs/sheprd --ref main` before releasing.
+wait behind `ci-gate`, so nothing is signed or published before CI passes.
+
+A release runs from its own branch. `dispatch.sh` creates `release/<sha>` on
+GitHub at the main commit it releases, starts a full manual CI run there, and
+dispatches `release.yml` on it. CI cancels runs per branch, so a merge to
+`main` cannot cancel the CI a release waits for. The release's `validate` job
+requires its ref to be exactly `refs/heads/release/<expected_sha>` and the
+commit to be on `main`; every other release job requires a `release/` ref.
+The signatures therefore name `release.yml@refs/heads/release/<sha>`, which
+`verify-release.sh` reads from the first certificate and accepts only for the
+tag's own commit, besides `refs/heads/main` for releases made before.
 
 ```sh
 cargo install cargo-about --version 0.9.2 --locked --features cli
@@ -335,7 +343,7 @@ copies and upgrades by them. `winget.py` holds both, and its tests tie them to
 The maintainer has to:
 
 1. Create the protected **`winget`** environment, with required reviewers and
-   deployments limited to `main`, like `homebrew`.
+   deployments limited to `main` and `release/*`, like `homebrew`.
 2. Fork `microsoft/winget-pkgs` to the account that will submit, and store a
    classic personal access token for that account with only the `public_repo`
    scope as the `winget` environment secret `WINGET_TOKEN`. Komac cannot open
@@ -625,7 +633,8 @@ write access also gives them that authority.
 The CI workflow accepts `pull_request` runs without requiring the PR author,
 original actor, or source repository to be the owner. An owner rerun only changes
 `github.triggering_actor`; approval does not change the other identities.
-Pushes and manual dispatches remain restricted to owner-triggered `main` runs.
+Pushes and manual dispatches remain restricted to owner-triggered runs on `main`
+or a `release/` branch.
 The final **Format, lint, and test** gate requires successful platform checks for
 code changes, the Windows GUI tests and the macOS optimized builds when their
 inputs change (the GUI tests always on main; the macOS builds on pull requests
@@ -643,7 +652,8 @@ must not persist credentials. Do not switch to `pull_request_target` to run PR
 code or add a privileged `workflow_run` consumer of PR artifacts. CI caches are
 public data: never place credentials in them. Release builds use their own
 workflow and must not consume fork-produced artifacts or caches; signing and
-publication retain their owner/main restrictions and protected environments.
+publication retain their owner and `release/` branch restrictions and
+protected environments.
 
 After changing this policy, validate with a real external fork: confirm its run
 waits for approval, approve it and confirm the platform jobs execute, then push

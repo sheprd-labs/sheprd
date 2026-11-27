@@ -31,6 +31,7 @@ fn with_picture(image: &Image) -> ServerMessage {
             kind: EntryKind::Image {
                 author: Author::Agent,
                 image: image.clone(),
+                caption: None,
             },
         },
     ];

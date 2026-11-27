@@ -36,7 +36,11 @@ class ReleaseTargets(unittest.TestCase):
             self.assertNotIn(flag, command)
         for flag in ("--source-digest", "--signer-digest"):
             self.assertIn(f'{flag} "$sha"', command)
-        self.assertIn('--source-ref refs/heads/main', command)
+        self.assertIn('--source-ref "$source_ref"', command)
+        # Only main (earlier releases) or the tag commit's own release branch.
+        self.assertIn('source_ref=refs/heads/release/$sha ;;', verifier)
+        self.assertIn('source_ref=refs/heads/main ;;', verifier)
+        self.assertIn('*) echo "Unexpected release signer: $san" >&2; exit 1 ;;', verifier)
         self.assertIn('--deny-self-hosted-runners', command)
 
     def test_ci_platform_checks_keep_required_gate(self):
@@ -91,7 +95,8 @@ class ReleaseTargets(unittest.TestCase):
         self.assertIn("    name: Format, lint, and test\n", jobs["checks-passed"])
         self.assertIn("always()", jobs["checks-passed"])
         self.assertIn('test "$RESULT" = success', jobs["checks-passed"])
-        self.assertIn("github.ref == 'refs/heads/main'", jobs["build"])
+        self.assertIn("(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))",
+                      jobs["build"])
         self.assertNotIn("github.event_name == 'pull_request'", jobs["build"])
         self.assertNotIn("apple-darwin", jobs["build"])
         # The macOS release builds hold no runner on main, where the release
@@ -315,9 +320,14 @@ class ReleaseTargets(unittest.TestCase):
             if "    uses: ./" not in job:
                 self.assertIn("persist-credentials: false", job)
         for name in ("audit", "validate", "ci-gate", "nix", "sign", "windows-sign", "attest", "publish", "homebrew", "winget"):
-            for condition in ("github.repository == 'sheprd-labs/sheprd'", "github.ref == 'refs/heads/main'",
+            for condition in ("github.repository == 'sheprd-labs/sheprd'",
+                              "startsWith(github.ref, 'refs/heads/release/')",
                               "github.actor == 'penso'", "github.triggering_actor == 'penso'"):
                 self.assertIn(condition, jobs[name])
+            self.assertNotIn("refs/heads/main", jobs[name])
+        validate = jobs["validate"]
+        self.assertIn('[[ "$GITHUB_REF" == "refs/heads/release/$EXPECTED_SHA" ]]', validate)
+        self.assertIn('compare/$EXPECTED_SHA...main" --jq .status)" =~ ^(identical|ahead)$ ]]', validate)
         for name in ("sign", "windows-sign", "attest", "publish"):
             self.assertIn("    environment: release\n", jobs[name])
         self.assertIn("    environment: homebrew\n", jobs["homebrew"])
@@ -388,11 +398,16 @@ class ReleaseTargets(unittest.TestCase):
         self.assertIn("needs.validate.outputs.channel == 'stable'", jobs["winget"])
         self.assertEqual(promotion["winget"].replace("    needs: [validate, promote]\n", ""),
                          jobs["winget"].replace(" &&\n      needs.validate.outputs.channel == 'stable'", "")
-                         .replace("    needs: [validate, publish]\n", ""))
+                         .replace("    needs: [validate, publish]\n", "")
+                         # Promotion runs on main; a release on its release/<sha> branch.
+                         .replace("startsWith(github.ref, 'refs/heads/release/')",
+                                  "github.ref == 'refs/heads/main'"))
         # One tap update policy: the promoted job is the release job minus its channel gate.
         self.assertEqual(promotion["homebrew"].replace("    needs: [validate, promote]\n", ""),
                          jobs["homebrew"].replace(" &&\n      needs.validate.outputs.channel == 'stable'", "")
-                         .replace("    needs: [validate, publish]\n", ""))
+                         .replace("    needs: [validate, publish]\n", "")
+                         .replace("startsWith(github.ref, 'refs/heads/release/')",
+                                  "github.ref == 'refs/heads/main'"))
 
     def test_updater_signing_boundary(self):
         workflow = (ROOT / ".github/workflows/release.yml").read_text()
@@ -766,10 +781,10 @@ if [[ $1 == api ]]; then
     printf '%040d\\n' 1
 elif [[ $1 == attestation && $2 == verify ]]; then
     printf '%s\\n' "${3##*/}" >> "$ATTEST_LOG"
-    [[ "$*" == *"--source-ref refs/heads/main"* ]]
+    [[ "$*" == *"--source-ref $TEST_REF"* ]]
     [[ "$*" == *"--source-digest 0000000000000000000000000000000000000001"* ]]
     [[ "$*" == *"--signer-digest 0000000000000000000000000000000000000001"* ]]
-    [[ "$*" == *"--cert-identity https://github.com/sheprd-labs/sheprd/.github/workflows/release.yml@refs/heads/main"* ]]
+    [[ "$*" == *"--cert-identity https://github.com/sheprd-labs/sheprd/.github/workflows/release.yml@$TEST_REF"* ]]
     if [[ ${FAIL_ARM_ATTEST:-0} == 1 && $3 == *aarch64-unknown-linux-gnu.tar.gz ]]; then exit 1; fi
     exit "${FAIL_ATTEST:-0}"
 else
@@ -780,11 +795,26 @@ fi
 set -eu
 [[ $1 == verify-blob ]]
 printf '%s\\n' "${!#}" >> "$COSIGN_LOG"
-[[ "$*" == *"--certificate-identity https://github.com/sheprd-labs/sheprd/.github/workflows/release.yml@refs/heads/main"* ]]
+[[ "$*" == *"--certificate-identity https://github.com/sheprd-labs/sheprd/.github/workflows/release.yml@$TEST_REF"* ]]
+[[ "$*" == *"--certificate-github-workflow-ref $TEST_REF"* ]]
 [[ "$*" == *"--certificate-oidc-issuer https://token.actions.githubusercontent.com"* ]]
 [[ "$*" == *"--certificate-github-workflow-sha 0000000000000000000000000000000000000001"* ]]
 if [[ ${FAIL_ARM_COSIGN:-0} == 1 && ${!#} == *aarch64-unknown-linux-gnu.tar.gz ]]; then exit 1; fi
 exit "${FAIL_COSIGN:-0}"
+''')
+            # The first certificate's subject names the release's ref.
+            (tools / "openssl").write_text('''#!/usr/bin/env bash
+set -eu
+if [[ $1 == base64 ]]; then
+    printf 'certificate'
+elif [[ $1 == x509 ]]; then
+    # Read the certificate as openssl does, or the writer piping it in may
+    # meet a closed pipe and fail the verifier's pipefail at random.
+    cat >/dev/null
+    printf 'X509v3 Subject Alternative Name: critical\\n    URI:https://github.com/sheprd-labs/sheprd/.github/workflows/release.yml@%s\\n' "$TEST_SAN_REF"
+else
+    exit 99
+fi
 ''')
             (tools / "gpg").write_text('''#!/usr/bin/env bash
 set -eu
@@ -799,7 +829,9 @@ fi
                 tool.chmod(0o755)
             env = dict(os.environ, PATH=f"{tools}:{os.environ['PATH']}",
                        ATTEST_LOG=str(tools / "attest.log"), COSIGN_LOG=str(tools / "cosign.log"),
-                       GPG_LOG=str(tools / "gpg.log"))
+                       GPG_LOG=str(tools / "gpg.log"), TEST_REF="refs/heads/main",
+                       TEST_SAN_REF="refs/heads/main")
+            release_ref = "refs/heads/release/" + "0" * 39 + "1"
             command = ["bash", str(ROOT / "scripts/verify-release.sh"),
                        "--version", "v20260920.1", "--directory", str(self.path)]
             for extra, updates, success in (
@@ -809,7 +841,12 @@ fi
                 ([], {"FAIL_ATTEST": "1"}, False),
                 ([], {"FAIL_ARM_COSIGN": "1"}, False),
                 ([], {"FAIL_ARM_ATTEST": "1"}, False),
+                ([], {"TEST_REF": release_ref, "TEST_SAN_REF": release_ref}, True),
+                ([], {"TEST_SAN_REF": "refs/heads/release/" + "2" * 40}, False),
+                ([], {"TEST_SAN_REF": "refs/heads/topic"}, False),
             ):
+                for log in ("cosign.log", "attest.log"):
+                    (tools / log).unlink(missing_ok=True)
                 result = subprocess.run(command + extra, env=dict(env, **updates), capture_output=True)
                 self.assertEqual(result.returncode == 0, success, result.stderr.decode())
                 if success:

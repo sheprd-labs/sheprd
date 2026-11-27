@@ -43,9 +43,12 @@ impl Error {
             Self::Cancelled => io::ErrorKind::Interrupted,
             Self::Closed => io::ErrorKind::UnexpectedEof,
             Self::Refused(failure) => match failure {
-                SshFailure::HostKey | SshFailure::Auth | SshFailure::RelayBanned(_) => {
-                    io::ErrorKind::PermissionDenied
-                }
+                // A check is the host refusing this identity until the user
+                // proves it, so it reads as the permission failure it is.
+                SshFailure::HostKey
+                | SshFailure::Auth
+                | SshFailure::RelayBanned(_)
+                | SshFailure::Tailscale(_) => io::ErrorKind::PermissionDenied,
                 SshFailure::Unreachable | SshFailure::NoRoute | SshFailure::LocalNetworkDenied => {
                     io::ErrorKind::NotConnected
                 }

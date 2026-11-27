@@ -21,12 +21,16 @@ use std::{
     time::{Duration, Instant},
 };
 
+// Crate-visible so a failure built from a banner can be named outside `ssh`;
+// `ssh` itself is private to the crate.
+pub(crate) mod check;
 mod error;
 mod failure;
 mod git_config;
 mod host_key;
 pub(crate) mod mux;
 mod unverified;
+pub use check::TailscaleCheck;
 pub use error::Error;
 pub use failure::SshFailure;
 pub use host_key::{
@@ -40,6 +44,8 @@ mod serve;
 use git_config::config_command;
 pub use git_config::{remote_config_value, remote_origin_url};
 pub use serve::{remote_socket, serve_command};
+mod banner;
+use banner::run as run_reading_banner;
 
 pub(crate) const READY: &[u8] = b"herdr-remote-output-ready:1\n";
 
@@ -112,7 +118,7 @@ exit 127"#,
 
 /// What a remote host offers for a saved SSH device, learned without
 /// installing, upgrading, or starting anything.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HostProbe {
     /// SSH could not run a command without prompting: unknown host key,
     /// password or passphrase authentication, or an unreachable host.
@@ -244,7 +250,8 @@ pub fn probe_host(target: &str, session: &str) -> Result<HostProbe> {
 }
 
 /// [`probe_host`] checking host keys as `keys` says, for a host whose choice
-/// is not saved yet.
+/// is not saved yet. A host that stops for a Tailscale check is reported as
+/// [`SshFailure::Tailscale`] within one poll, with the address that answers it.
 pub fn probe_host_with(target: &str, session: &str, keys: HostKeys) -> Result<HostProbe> {
     probe_terminals(target, session, keys, false)
 }
@@ -263,8 +270,17 @@ pub fn probe_terminals(
     command.stderr(Stdio::piped());
     tracing::info!(category = "probe", "probing host");
     let started = Instant::now();
-    let (status, output, stderr) = match run_with_stderr(&mut command, PROBE_TIMEOUT, || false) {
+    let (status, output, stderr) = match run_reading_banner(&mut command, PROBE_TIMEOUT, || false) {
         Ok(result) => result,
+        Err(crate::Error::Ssh(Error::Refused(SshFailure::Tailscale(check)))) => {
+            tracing::warn!(
+                category = "probe",
+                ?check,
+                elapsed_ms = started.elapsed().as_millis() as u64,
+                "host waits for a Tailscale check"
+            );
+            return Ok(HostProbe::SshFailed(SshFailure::Tailscale(check)));
+        }
         Err(error) => {
             tracing::warn!(category = "probe", kind = ?error.kind(), elapsed_ms = started.elapsed().as_millis() as u64, "probe did not finish");
             return Err(error);
@@ -401,67 +417,7 @@ fn run_with_stderr(
     timeout: Duration,
     cancelled: impl Fn() -> bool,
 ) -> Result<(std::process::ExitStatus, Vec<u8>, Vec<u8>)> {
-    #[cfg(unix)]
-    let mut child = ChildGuard(
-        command
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .spawn()?,
-    );
-    #[cfg(unix)]
-    let stdout = child.0.stdout.take().ok_or(Error::Closed)?;
-    #[cfg(unix)]
-    let stderr = match child.0.stderr.take() {
-        Some(stderr) => Some(failure::drain(stderr)?),
-        None => None,
-    };
-    // OpenSSH for Windows' `ssh.exe` stops delivering output into a
-    // synchronous pipe once its stdin has ended, on stderr as on stdout (a
-    // Windows host's PowerShell writes progress there); see
-    // `overlapped_output`. So stderr is always read here, and a caller that
-    // wanted it discarded ignores its tail.
-    #[cfg(windows)]
-    let (mut child, stdout, stderr) = {
-        let (stdout, out) = crate::overlapped_output()?;
-        let (stderr, err) = crate::overlapped_output()?;
-        let child = command.stdin(Stdio::null()).stdout(out).stderr(err).spawn();
-        // The caller's command holds the child's ends until replaced, and an
-        // exited child must read as closed.
-        command.stdout(Stdio::null()).stderr(Stdio::null());
-        (ChildGuard(child?), stdout, Some(failure::drain(stderr)?))
-    };
-    // The pipe reaches EOF once the child exits or the guard kills it.
-    let reader = std::thread::Builder::new()
-        .name("herdr-ssh-command".into())
-        .spawn(move || {
-            let mut output = Vec::new();
-            stdout
-                .take(PROBE_OUTPUT_LIMIT + 1)
-                .read_to_end(&mut output)
-                .map(|_| output)
-        })?;
-    let deadline = Instant::now() + timeout;
-    let status = loop {
-        if let Some(status) = child.0.try_wait()? {
-            break status;
-        }
-        if cancelled() {
-            return Err(Error::Cancelled.into());
-        }
-        if Instant::now() >= deadline {
-            return Err(Error::Timeout.into());
-        }
-        std::thread::sleep(Duration::from_millis(25));
-    };
-    let output = reader.join().map_err(|_| Error::Closed)??;
-    if output.len() as u64 > PROBE_OUTPUT_LIMIT {
-        return Err(Error::OutputLimit.into());
-    }
-    // The pipe closes once the child exits, so this waits only for the drain.
-    let stderr = stderr
-        .and_then(|stderr| stderr.recv_timeout(Duration::from_secs(2)).ok())
-        .unwrap_or_default();
-    Ok((status, output, stderr))
+    run_reading_banner(command, timeout, cancelled)
 }
 
 /// Agent forwarding and connection sharing follow the user's SSH config, as
@@ -761,7 +717,7 @@ pub(crate) fn start_bridge(
     stream.set_read_timeout(Some(POLL))?;
     stream.set_write_timeout(Some(Duration::from_secs(1)))?;
     let stderr = match child.0.stderr.take() {
-        Some(stderr) => failure::drain(stderr)?,
+        Some(stderr) => failure::drain_live(stderr)?,
         None => return Err(Error::Closed.into()),
     };
     match answer(&mut stream, stop) {
@@ -771,6 +727,18 @@ pub(crate) fn start_bridge(
             let (code, failure) = failure::diagnose(&mut child.0, &stderr, stop);
             Ok(Err(Closed { code, failure }))
         }
+        // A Tailscale check holds the bridge before its ready line: `ssh`
+        // printed the banner and waits for a browser, which is why the wait
+        // ran out. The address is reported with the failure, but this path has
+        // no way to put it in front of anyone, so the connection is given up
+        // on rather than held; Add Device is where a check is answered.
+        Err(error @ crate::Error::Ssh(Error::Timeout)) => match failure::waiting(&stderr) {
+            Some(check) => Ok(Err(Closed {
+                code: None,
+                failure: SshFailure::Tailscale(check),
+            })),
+            None => Err(error),
+        },
         result => result.map(|()| Ok((stream, child))),
     }
 }

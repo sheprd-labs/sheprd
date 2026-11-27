@@ -49,6 +49,7 @@ fn continued() -> ServerMessage {
         unreachable!("snapshot");
     };
     transcript.session = Some(SessionInfo {
+        can_steer: false,
         continued: Some(EntryId(5)),
         cwd: None,
         id: "s1".into(),

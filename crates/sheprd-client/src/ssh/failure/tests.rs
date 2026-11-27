@@ -233,15 +233,77 @@ fn only_failures_the_user_must_fix_wait_for_them() {
     // Granting the permission must be picked up by the next prompt redial.
     assert!(!SshFailure::LocalNetworkDenied.needs_user());
     assert!(!SshFailure::Other.needs_user());
+    // A Tailscale check waits on a person, so redialling cannot help.
+    assert!(SshFailure::classify(None, TAILSCALE_BANNER).needs_user());
+}
+
+/// The banner Tailscale SSH sends when its policy puts a connection in check
+/// mode, as OpenSSH prints it to stderr.
+pub(super) const TAILSCALE_BANNER: &[u8] =
+    b"Tailscale SSH requires an additional check to connect to alice@node1:\n\
+       To authenticate, visit: https://login.tailscale.com/a/c2e8ee2fe1cf\n\n";
+
+#[test]
+fn a_pending_check_is_told_before_the_failures_it_precedes() {
+    // A policy that refuses the check outright prints `Permission denied` too;
+    // the banner is what the user can act on, and it comes first.
+    let refused = SshFailure::classify(
+        Some(255),
+        &[TAILSCALE_BANNER, b"Permission denied, (publickey)\n"].concat(),
+    );
+    assert!(matches!(refused, SshFailure::Tailscale(check) if check.url().is_some()));
+    // A run the client gave up on has no exit code, and still says why.
+    assert!(matches!(
+        SshFailure::classify(None, TAILSCALE_BANNER),
+        SshFailure::Tailscale(_)
+    ));
+    // Without the banner, nothing here changes class.
+    assert_eq!(
+        SshFailure::classify(Some(255), b"Permission denied, (publickey)\n"),
+        SshFailure::Auth
+    );
 }
 
 #[test]
 fn the_stderr_tail_is_bounded_to_the_latest_output() {
     let mut input = vec![b'x'; STDERR_TAIL * 3];
     input.extend_from_slice(b"Permission denied");
-    let kept = tail(input.as_slice());
+    let stderr = Stderr::default();
+    pump(input.as_slice(), &stderr);
+    let kept = stderr.finished(Duration::from_secs(1));
     assert_eq!(kept.len(), STDERR_TAIL);
     assert!(kept.ends_with(b"Permission denied"));
+}
+
+#[test]
+fn the_stderr_tail_is_readable_while_the_child_still_runs() {
+    // A Tailscale check is the reason this exists: the child never exits, so
+    // classification can only read what has been read so far.
+    let written = b"Permission denied, please try again.\n";
+    let stderr = Stderr::default();
+    pump(written.as_slice(), &stderr);
+    assert_eq!(stderr.total(), written.len());
+    assert_eq!(stderr.finished(Duration::from_secs(1)), written.to_vec());
+    // Nothing has been read yet, and a caller is not held by an empty pipe.
+    let empty = Stderr::default();
+    assert_eq!(empty.total(), 0);
+    assert!(empty.finished(Duration::from_millis(10)).is_empty());
+}
+
+#[test]
+fn the_count_of_bytes_read_keeps_growing_once_the_tail_is_full() {
+    // A caller watching for a banner only rescans when this changes, and a
+    // chatty host fills the retained tail long before it asks for a check.
+    let stderr = Stderr::default();
+    pump(vec![b'x'; STDERR_TAIL * 2].as_slice(), &stderr);
+    let filled = stderr.total();
+    assert_eq!(stderr.finished(Duration::from_secs(1)).len(), STDERR_TAIL);
+    pump(b"more".as_slice(), &stderr);
+    assert_eq!(
+        stderr.total(),
+        filled + 4,
+        "bytes read grows even though the retained tail cannot"
+    );
 }
 
 #[test]
@@ -251,7 +313,7 @@ fn a_closed_child_is_diagnosed_from_its_real_exit_and_stderr() {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    let stderr = drain(child.stderr.take().unwrap()).unwrap();
+    let stderr = drain_live(child.stderr.take().unwrap()).unwrap();
     // A loaded runner can take longer than `DIAGNOSE_TIMEOUT` to start the
     // shell; the exit is what is diagnosed, not how soon it came.
     child.wait().unwrap();
@@ -266,7 +328,7 @@ fn a_child_that_will_not_exit_is_not_waited_on_past_cancellation() {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    let stderr = drain(child.stderr.take().unwrap()).unwrap();
+    let stderr = drain_live(child.stderr.take().unwrap()).unwrap();
     let stop = AtomicBool::new(true);
     let started = Instant::now();
     assert_eq!(diagnose(&mut child, &stderr, &stop).1, SshFailure::Other);

@@ -427,8 +427,9 @@ impl<'a> Builder<'a> {
         self.style.link = crate::browser::WebUrl::try_from(destination.as_ref())
             .ok()
             .map(|url| url.as_str().to_owned())
+            .or_else(|| crate::terminal::file_target(&destination).map(|_| destination.to_string()))
             .or_else(|| {
-                crate::terminal::file_target(&destination).map(|_| destination.to_string())
+                crate::chat::screen_link::target(&destination).map(|_| destination.to_string())
             });
         // Unsupported schemes remain visible, never actionable.
         let literal = self.style.link.is_none().then(|| destination.into_string());

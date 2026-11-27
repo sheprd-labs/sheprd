@@ -33,7 +33,7 @@ pub use endpoint::{
 pub use error::{Error, Result};
 pub use frame::{MAX_FRAME_SIZE, encode_frame, read_frame, write_frame};
 pub use harnesses::Harnesses;
-pub use media::{Author, Image, ImageType, MAX_IMAGE_DATA};
+pub use media::{Author, Image, ImageType, MAX_CAPTION, MAX_IMAGE_DATA};
 pub use model::*;
 pub use origin::{Device, Origin, Via};
 pub use settings::{MAX_SETTINGS, SETTINGS_ENV, Setting, Settings};

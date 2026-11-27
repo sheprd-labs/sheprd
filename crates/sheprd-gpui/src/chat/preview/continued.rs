@@ -96,6 +96,7 @@ pub(super) fn apply(case: &str, transcript: &mut Transcript) {
         None,
     ));
     transcript.session = Some(SessionInfo {
+        can_steer: false,
         continued: Some(DIVIDER),
         cwd: None,
         id: "synthetic-preview-session".into(),

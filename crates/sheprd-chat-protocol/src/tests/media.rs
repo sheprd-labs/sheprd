@@ -35,6 +35,7 @@ fn images_cross_the_wire_by_name() {
         kind: EntryKind::Image {
             author: Author::Agent,
             image: image.clone(),
+            caption: None,
         },
     };
     let value = serde_json::to_value(&entry).unwrap();
@@ -44,6 +45,17 @@ fn images_cross_the_wire_by_name() {
             "image": {"data": PNG, "mime_type": "image/png"}}})
     );
     assert_eq!(serde_json::from_value::<Entry>(value).unwrap(), entry);
+    let captioned = Entry {
+        id: EntryId(2),
+        kind: EntryKind::Image {
+            author: Author::Agent,
+            image: image.clone(),
+            caption: Some("Variant A".into()),
+        },
+    };
+    let value = serde_json::to_value(&captioned).unwrap();
+    assert_eq!(value["kind"]["caption"], "Variant A");
+    assert_eq!(serde_json::from_value::<Entry>(value).unwrap(), captioned);
     let content = ToolContent::Image { image };
     let value = serde_json::to_value(&content).unwrap();
     assert_eq!(value["type"], "image");
@@ -55,6 +67,7 @@ fn images_cross_the_wire_by_name() {
         EntryKind::Image {
             author: Author::User,
             image: Image::new("image/gif", PNG.to_owned()).unwrap(),
+            caption: None,
         }
         .text()
         .is_none()
@@ -71,6 +84,7 @@ fn text_cannot_be_appended_to_an_image() {
                 kind: EntryKind::Image {
                     author: Author::Agent,
                     image: Image::new("image/png", PNG.to_owned()).unwrap(),
+                    caption: None,
                 },
             },
         })

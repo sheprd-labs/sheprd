@@ -26,12 +26,16 @@ fn a_message_s_linked_pictures_follow_it_once_it_closes() {
     let mut harness = ready();
     harness.session.config.cwd = dir.path().to_owned();
     let id = prompt(&mut harness, 0, "draw it");
-    harness.agent_says("Here it is: ![chart](chart.png)");
+    harness.agent_says("Here it is: ![Sales by month](chart.png \"Q3 dips\")");
     harness.agent_says(" and ![gone](missing.png)");
     assert_eq!(kinds(&harness), ["user", "agent"], "still streaming");
     harness.update(json!({"sessionUpdate": "tool_call", "toolCallId": "t",
         "title": "ls", "kind": "execute", "status": "pending"}));
     assert_eq!(kinds(&harness), ["user", "agent", "image", "tool"]);
+    assert!(harness.transcript().entries.iter().any(|entry| matches!(
+        &entry.kind,
+        EntryKind::Image { caption: Some(caption), .. } if caption == "Sales by month\nQ3 dips"
+    )));
     harness.respond(id, json!({"stopReason": "end_turn"}));
     assert_eq!(kinds(&harness), ["user", "agent", "image", "tool", "turn"]);
 }

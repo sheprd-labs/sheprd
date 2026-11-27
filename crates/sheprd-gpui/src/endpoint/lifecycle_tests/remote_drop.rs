@@ -83,8 +83,8 @@ fn a_refusal_only_the_user_can_fix_waits_the_longest_retry_delay() {
         (SshFailure::Unreachable, false),
     ] {
         let (mut endpoint, _server) = connected_endpoint("ssh:remote");
-        let error =
-            sheprd_client::Error::Ssh(sheprd_client::ssh::Error::Refused(failure)).to_string();
+        let error = sheprd_client::Error::Ssh(sheprd_client::ssh::Error::Refused(failure.clone()))
+            .to_string();
         endpoint
             .connection
             .inbox
@@ -92,7 +92,7 @@ fn a_refusal_only_the_user_can_fix_waits_the_longest_retry_delay() {
             .unwrap()
             .apply(ClientEvent::Disconnected {
                 reason: error.clone(),
-                ssh: Some(failure),
+                ssh: Some(failure.clone()),
             });
         endpoint.connection.handle.as_ref().unwrap().disconnect();
         let now = Instant::now();

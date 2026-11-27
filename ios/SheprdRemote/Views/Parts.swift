@@ -343,7 +343,8 @@ struct LastAnswer: View {
     }
 }
 
-/// A question with its options as buttons, answered in place.
+/// A question with its options as buttons, answered in place. Its title and
+/// question open the chat, to read what the question refers to.
 struct AnswerCard: View {
     @Environment(AppModel.self) private var model
     var item: ChatItem
@@ -353,15 +354,24 @@ struct AnswerCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                AgentIcon(agent: item.chat.agent, size: 24)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(item.chat.title).font(.subheadline.weight(.semibold)).lineLimit(1)
-                    Text("\(item.computer.name) · \(item.workspace.label)").font(.caption).foregroundStyle(.secondary)
+            NavigationLink(value: Route.chat(item.key, title: item.chat.title)) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        AgentIcon(agent: item.chat.agent, size: 24)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(item.chat.title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                            Text("\(item.computer.name) · \(item.workspace.label)").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    AgentLabels(tags: item.workspace.rowLabels(agent: item.chat.labels))
+                    Text(question.title)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(.rect)
             }
-            AgentLabels(tags: item.workspace.rowLabels(agent: item.chat.labels))
-            Text(question.title)
+            .buttonStyle(.plain)
+            .navigationLinkIndicatorVisibility(.hidden)
+            .accessibilityHint("Opens the chat")
             // Permissions fit on one row; a question's answers get a row each.
             let compact = question.options.allSatisfy { $0.kind != .other } && question.options.count <= 4
             if compact {

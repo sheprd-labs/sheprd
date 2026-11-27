@@ -293,9 +293,14 @@ fn entry_view(entry: &Entry, focus: bool) -> Markup {
                 div class="prose mt-1" { (markdown(text)) }
             }
         },
-        EntryKind::Image { author, image } => html! {
+        EntryKind::Image {
+            author,
+            image,
+            caption,
+        } => html! {
             img class={ "rounded-xl max-h-80 " @if *author == Author::User { "self-end" } }
-                src={ "data:" (image.kind.mime()) ";base64," (image.data) } alt="Picture";
+                src={ "data:" (image.kind.mime()) ";base64," (image.data) }
+                alt=(caption.as_deref().unwrap_or("Picture"));
         },
         // A sub-agent's own steps stay inside its call.
         EntryKind::Tool(tool) if tool.parent.is_some() => html! {},

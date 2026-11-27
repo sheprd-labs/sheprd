@@ -185,7 +185,8 @@ fn plans_commands_usage_and_titles_are_projected() {
     );
     assert!(transcript.modes.is_none() && transcript.session.is_none());
 
-    transcript.session = Some(SessionInfo {
+    transcript.session = Some(sheprd_chat_protocol::SessionInfo {
+        can_steer: false,
         continued: None,
         cwd: None,
         id: "s".to_owned(),

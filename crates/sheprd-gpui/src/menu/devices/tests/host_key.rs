@@ -28,7 +28,7 @@ fn an_unknown_host_key_is_fetched_for_approval(cx: &mut gpui::TestAppContext) {
             let setup = view.menu.device_setup.as_ref().unwrap();
             assert!(setup.claim.is_some());
             assert!(setup.task.is_some());
-            assert!(view.menu.device_setup.as_ref().unwrap().error.is_none());
+            assert!(view.menu.device_setup.as_ref().unwrap().error().is_none());
         });
     });
 }
@@ -46,8 +46,7 @@ fn a_changed_host_key_is_never_offered_for_approval(cx: &mut gpui::TestAppContex
                     .device_setup
                     .as_ref()
                     .unwrap()
-                    .error
-                    .as_deref()
+                    .error()
                     .unwrap()
                     .replace(['\u{2068}', '\u{2069}'], "")
                     .starts_with("The host key of dev@box differs from the one you trusted before")
@@ -69,8 +68,7 @@ fn a_failed_key_fetch_offers_the_terminal_with_its_reason(cx: &mut gpui::TestApp
                     .device_setup
                     .as_ref()
                     .unwrap()
-                    .error
-                    .as_deref()
+                    .error()
                     .map(|error| error.replace(['\u{2068}', '\u{2069}'], ""))
             };
             assert_eq!(
@@ -102,7 +100,7 @@ fn a_key_fetch_for_a_closed_or_changed_dialog_is_ignored(cx: &mut gpui::TestAppC
             open_form(view, Step::Form, cx);
             view.host_key_fetched(Ok(HostKeyScan::Refused(SshFailure::HostKey)), cx);
             assert!(matches!(step(view), Step::Form));
-            assert!(view.menu.device_setup.as_ref().unwrap().error.is_none());
+            assert!(view.menu.device_setup.as_ref().unwrap().error().is_none());
         });
     });
 }
@@ -121,7 +119,7 @@ fn cancel_gives_up_the_host_so_it_can_be_tried_again(cx: &mut gpui::TestAppConte
             assert!(matches!(step(view), Step::Form));
             // A held claim would refuse the next submit as `Error::Adding`.
             assert!(view.menu.device_setup.as_ref().unwrap().claim.is_none());
-            assert!(view.menu.device_setup.as_ref().unwrap().error.is_none());
+            assert!(view.menu.device_setup.as_ref().unwrap().error().is_none());
         });
     });
 }

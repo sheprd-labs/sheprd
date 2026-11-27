@@ -274,6 +274,16 @@ impl Source {
         screen.call(&core, method, params)
     }
 
+    /// Turns the wheel for the program `pane` runs; false when it reads
+    /// none. Blocking.
+    pub(super) fn wheel(&self, pane: &str, lines: i32) -> Result<bool> {
+        let (core, terminal) = self.terminal(pane)?;
+        let screen = self.screen(&core, &terminal)?;
+        let mut screen = lock(&screen);
+        screen.follow_size(&terminal)?;
+        screen.send_wheel(&core, lines)
+    }
+
     /// The connection and the terminal `pane` names, as the last poll saw.
     fn terminal(&self, pane: &str) -> Result<(Arc<Core>, Terminal)> {
         let state = lock(&self.state);

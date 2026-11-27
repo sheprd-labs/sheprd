@@ -475,11 +475,11 @@ fn launch(program: &OsString, target: &str, lane: Lane, id: u64) -> Result<Maste
 /// watchdog follows the pid it started, so neither `ControlPersist` nor the
 /// user's `ForkAfterAuthentication` may detach it. OpenSSH before 8.7 does
 /// not know that option and refuses to start, before dialing, so such a
-/// client connects directly as before. The quick lane compresses; the bulk
-/// lane's data is often compressed already.
+/// client connects directly as before. The quick and stream lanes compress;
+/// the bulk lane's data is often compressed already.
 pub(super) fn master_args(target: &str, lane: Lane, socket: &Path) -> Vec<String> {
     let compression = match lane {
-        Lane::Quick => "Compression=yes",
+        Lane::Quick | Lane::Stream => "Compression=yes",
         Lane::Bulk => "Compression=no",
     };
     let mut args = vec!["-N".to_owned(), "-T".to_owned()];

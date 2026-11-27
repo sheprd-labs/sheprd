@@ -54,6 +54,24 @@ struct Cache: Sendable {
         return try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
     }
 
+    /// When this phone last heard from `device`: prefers the lightweight
+    /// `last-seen.json` timestamp (updated even across load-only heartbeats)
+    /// and falls back to `home.json`'s modification time for older caches.
+    func lastSeen(_ device: String) -> Date? {
+        let saved = read(Date.self, at: computerFolder(device).appending(path: "last-seen.json"))
+        let home = homeDate(device)
+        switch (saved, home) {
+        case let (saved?, home?): return max(saved, home)
+        case let (saved?, nil): return saved
+        case let (nil, home?): return home
+        case (nil, nil): return nil
+        }
+    }
+
+    func save(lastSeen date: Date, for device: String) {
+        write(date, to: computerFolder(device).appending(path: "last-seen.json"))
+    }
+
     func lastLinkStatus(_ device: String) -> LinkStatus? {
         read(LinkStatus.self, at: computerFolder(device).appending(path: "link-status.json"))
     }

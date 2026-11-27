@@ -79,6 +79,59 @@ impl SheprdWindow {
         self.show_core_pane(tab, &terminal, window, cx);
     }
 
+    /// Shows the tab of this computer's core holding `terminal`, in its
+    /// workspace, as a `sheprd://chat/core:t7` link in a chat asks: the tab
+    /// it types in rather than a mirror, or the shell shown in place of a
+    /// missing Herdr 1. False when nothing local holds it.
+    pub(crate) fn show_local_core_terminal(
+        &mut self,
+        terminal: &TerminalId,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let Some(index) = self.core_host() else {
+            return false;
+        };
+        // The tab it types in before a read-only mirror of it.
+        let holder = |mirror: bool| {
+            cx.try_global::<Store>().and_then(|store| {
+                store.tabs().find_map(|tab| match &tab.location {
+                    Some(Location::CoreTerminal { panes, observe, .. })
+                        if *observe == mirror
+                            && tab.scope.is_local()
+                            && panes.terminals().contains(&terminal) =>
+                    {
+                        Some((tab.id, tab.workspace_id.clone()))
+                    }
+                    _ => None,
+                })
+            })
+        };
+        let Some((tab, workspace)) = holder(false).or_else(|| holder(true)) else {
+            // The shell shown in place of a missing Herdr 1 is in no tab.
+            if self.core_terminals.fallback_terminal() != Some(terminal) {
+                return false;
+            }
+            let Some(view) = self.core_fallback_view() else {
+                return false;
+            };
+            window.focus(&view.read(cx).focus_handle().clone(), cx);
+            cx.notify();
+            return true;
+        };
+        let endpoint = self.endpoints[index].id.clone();
+        self.navigate_endpoint(
+            &endpoint,
+            crate::NavigationTarget::Workspace(&workspace),
+            cx,
+        );
+        if !self.core_terminals.tabs.contains_key(&tab) {
+            self.sync_core_views(cx);
+        }
+        self.show_core_pane(tab, terminal, window, cx);
+        true
+    }
+
     /// Shows `tab` with `terminal` as its pane in use, unzoomed if another
     /// pane filled it, and gives that pane the keyboard.
     pub(crate) fn show_core_pane(

@@ -13,7 +13,7 @@ use crate::{
 use gpui::{prelude::*, *};
 pub(super) use offer::Offer;
 use sheprd_client::protocol::{ClientKeyCode, ClientKeyKind, ClientPaneInputEvent};
-use sheprd_client::{HostKeys, HostProbe, NewHostKey, SshFailure};
+use sheprd_client::{HostKeys, HostProbe, NewHostKey, SshFailure, TailscaleCheck};
 
 pub(crate) fn enter() -> ClientPaneInputEvent {
     ClientPaneInputEvent::Key {
@@ -49,8 +49,14 @@ pub(in crate::menu) struct Setup {
     /// anything else drops it.
     pub(super) highlight: Option<(String, Vec<String>)>,
     /// Why the last check or save failed. Each source of Add Device keeps
-    /// its own, so a job finishing while another source shows stays here.
-    pub(super) error: Option<String>,
+    /// its own, so a job finishing while another source shows stays here. Read
+    /// through [`Self::error`] and written through [`Self::fail`], so it never
+    /// drifts from `ssh_failure`.
+    error: Option<String>,
+    /// The SSH failure behind `error`, when the failure was one. Written and
+    /// cleared with it: a Tailscale address offered beside a message that no
+    /// longer names it would be a link to a check nobody ran.
+    ssh_failure: Option<SshFailure>,
     pub(super) suggestion_scroll: ScrollHandle,
     /// Whether the host's key is checked; see `host_key_choice`.
     pub(super) host_keys: HostKeys,
@@ -74,6 +80,56 @@ impl CancelFlag {
 impl Drop for CancelFlag {
     fn drop(&mut self) {
         self.0.store(true, std::sync::atomic::Ordering::Release);
+    }
+}
+
+impl Setup {
+    /// The message the dialog shows, when the last check or save failed.
+    pub(super) fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+
+    /// The SSH failure behind that message, when it came from one: an address
+    /// is offered beside a refusal only when the refusal carried it.
+    pub(super) fn failure(&self) -> Option<&SshFailure> {
+        self.ssh_failure.as_ref()
+    }
+
+    /// Record the message and the failure behind it together, which is the only
+    /// way either is written. A message that came from no failure passes `None`,
+    /// which drops the failure behind the last one: an address kept past its
+    /// message would be a link to a check nobody ran.
+    pub(super) fn record(&mut self, error: Option<String>, failure: Option<SshFailure>) {
+        self.error = error;
+        self.ssh_failure = failure;
+    }
+
+    /// Forget why the last attempt failed, and with it the address it named: a
+    /// Tailscale check belongs to the attempt that printed it, so an address
+    /// kept past its message would outlive the thing it was a link to.
+    pub(super) fn clear_failure(&mut self) {
+        self.record(None, None);
+    }
+}
+
+#[cfg(test)]
+impl Setup {
+    /// A dialog holding nothing but the step under test, for the device tests.
+    pub(super) fn fixture(step: Step, cx: &mut Context<SheprdWindow>) -> Self {
+        Self {
+            fields: std::array::from_fn(|_| cx.new(SearchInput::new)),
+            step,
+            claim: None,
+            task: None,
+            discovery: None,
+            suggested_label: None,
+            _edits: Vec::new(),
+            highlight: None,
+            suggestion_scroll: ScrollHandle::new(),
+            error: None,
+            ssh_failure: None,
+            host_keys: HostKeys::Verify,
+        }
     }
 }
 
@@ -114,8 +170,26 @@ pub(super) enum Step {
 impl SheprdWindow {
     /// Set the SSH form's error, which stays with that form.
     pub(super) fn set_device_error(&mut self, error: Option<String>) {
+        self.set_device_failure(error, None);
+    }
+
+    /// As `set_device_error`, for a failure the dialog can say something useful
+    /// about. Both halves are written together, so an address is never shown
+    /// for a message that does not name it.
+    fn set_device_failure(&mut self, error: Option<String>, failure: Option<SshFailure>) {
         if let Some(setup) = &mut self.menu.device_setup {
-            setup.error = error;
+            setup.record(error, failure);
+        }
+    }
+
+    /// The SSH failure behind an error, when the error is one: an address is
+    /// offered beside a refusal only when the refusal itself carried it.
+    fn refused_failure(error: &crate::Error) -> Option<SshFailure> {
+        match error {
+            crate::Error::Client(sheprd_client::Error::Ssh(
+                sheprd_client::ssh::Error::Refused(failure),
+            )) => Some(failure.clone()),
+            _ => None,
         }
     }
 
@@ -151,7 +225,7 @@ impl SheprdWindow {
             {
                 setup.step = Step::Form;
                 setup.claim = None;
-                setup.error = None;
+                setup.clear_failure();
             }
             cx.notify();
         });
@@ -166,6 +240,7 @@ impl SheprdWindow {
             highlight: None,
             suggestion_scroll: ScrollHandle::new(),
             error: None,
+            ssh_failure: None,
             host_keys: HostKeys::Verify,
         });
         self.menu.page = Some(Page::AddDevice);
@@ -312,12 +387,35 @@ impl SheprdWindow {
             }
         }
         body = body.child(self.render_host_key_choice(setup, cx));
-        if let Some(error) = &setup.error {
+        if let Some(error) = setup.error() {
+            // A check Tailscale refused says so in its own words, and comes with
+            // the address that answers it. That check died with the connection
+            // which asked for it, so nothing is held open: opening the address
+            // is what lets the next check through, and the app never opens it.
+            let address = crate::tailscale::pending(setup.failure()).and_then(TailscaleCheck::url);
+            let shown = if address.is_some() {
+                // The dialog is already the form for this host, so the sentence
+                // does not name it again: it names what to open instead.
+                fl!("add-device-tailscale-refused")
+            } else {
+                error.to_owned()
+            };
             body = body.child(
                 div()
+                    .debug_selector(|| "device-setup-error".into())
                     .flex_none()
-                    .text_color(crate::menu::danger(theme))
-                    .child(error.clone()),
+                    .flex()
+                    .flex_col()
+                    .gap(px(6.))
+                    .child(
+                        div()
+                            .flex_none()
+                            .text_color(crate::menu::danger(theme))
+                            .child(shown),
+                    )
+                    .when_some(address, |row, url| {
+                        row.child(crate::tailscale::address_row(theme, url))
+                    }),
             );
         }
         let status = match &setup.step {
@@ -499,7 +597,7 @@ impl SheprdWindow {
         tracing::info!(category = "device_setup", "Checking device");
         form.step = Step::Checking(request.clone());
         form.claim = None;
-        form.error = None;
+        form.clear_failure();
         // Claim before probing: a second add of this host, from any window of
         // this process, is refused from here on rather than after a slow probe.
         let background = cx.background_executor().spawn(async move {
@@ -596,7 +694,7 @@ impl SheprdWindow {
             return;
         }
         let offer = match probe {
-            Ok(probe) => match Offer::for_probe(probe) {
+            Ok(probe) => match Offer::for_probe(&probe) {
                 None => return self.save_device(request, probe, claim, cx),
                 Some(offer) => {
                     // Say what SSH refused, since the terminal may not need to.
@@ -605,11 +703,18 @@ impl SheprdWindow {
                     if let HostProbe::SshFailed(failure) = probe
                         && offer != Offer::InstallKey
                     {
-                        self.set_device_error(Some(fl!(
+                        let message = fl!(
                             "add-device-ssh-failed",
                             target = request.target(),
                             error = failure.to_string(),
-                        )));
+                        );
+                        // The failure travels with its message, because the
+                        // address a Tailscale check names is rendered beside it
+                        // as the one thing the user can act on. Storing the
+                        // message alone leaves that row with nothing to read:
+                        // the text has the address in it, but as prose, and
+                        // prose is not something a person can click.
+                        self.set_device_failure(Some(message), Some(failure));
                     }
                     offer
                 }
@@ -640,7 +745,7 @@ impl SheprdWindow {
         let Some(form) = &mut self.menu.device_setup else {
             return;
         };
-        form.step = Step::Saving(request.clone(), probe);
+        form.step = Step::Saving(request.clone(), probe.clone());
         // The claim travels with the save and comes back, so a failure that
         // offers a terminal still holds the host.
         let background = cx.background_executor().spawn(async move {
@@ -672,7 +777,8 @@ impl SheprdWindow {
                 if this.refuse_duplicate(&error, cx) {
                     return;
                 }
-                this.set_device_error(Some(error.to_string()));
+                let refused = Self::refused_failure(&error);
+                this.set_device_failure(Some(error.to_string()), refused);
                 let offer = match error {
                     crate::Error::Devices(super::Error::ServerRestart) => Offer::Restart,
                     _ => Offer::Terminal,
@@ -695,7 +801,7 @@ impl SheprdWindow {
             setup.claim = None;
             // Ends a wait for Local Network permission, which holds a claim.
             setup.task = None;
-            setup.error = None;
+            setup.clear_failure();
             cx.notify();
         }
     }

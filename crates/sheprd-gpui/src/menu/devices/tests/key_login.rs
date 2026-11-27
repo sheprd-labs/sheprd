@@ -17,7 +17,7 @@ fn a_host_that_refuses_every_key_offers_to_install_one(cx: &mut gpui::TestAppCon
             );
             assert!(matches!(step(view), Step::Confirm(_, Offer::InstallKey)));
             // The offer explains it; agent advice does not fit a new host.
-            assert!(view.menu.device_setup.as_ref().unwrap().error.is_none());
+            assert!(view.menu.device_setup.as_ref().unwrap().error().is_none());
             assert!(
                 Offer::InstallKey
                     .question("m5mini.local", None)

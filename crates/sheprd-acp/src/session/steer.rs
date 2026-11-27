@@ -11,17 +11,6 @@ use crate::harness::steer;
 use crate::session::{Pending, Session, Update};
 
 impl<R: FnMut(Update)> Session<R> {
-    /// Whether a prompt typed now can go into the running turn: the harness
-    /// steers, a turn runs, and no ordinary prompt waits ahead of it.
-    pub(super) fn can_steer(&self) -> bool {
-        self.steers_now()
-            && self
-                .transcript
-                .queued
-                .iter()
-                .all(|queued| queued.steered || queued.held)
-    }
-
     /// Whether the running turn takes a prompt now.
     fn steers_now(&self) -> bool {
         self.can_steer && self.turn.is_some() && self.ready && !self.carrying()
@@ -71,7 +60,7 @@ impl<R: FnMut(Update)> Session<R> {
     }
 
     /// Sends the prompt into the running turn; `false` if it could not go.
-    pub(super) fn steer(
+    fn steer(
         &mut self,
         id: CommandId,
         text: &str,

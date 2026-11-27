@@ -477,7 +477,7 @@ impl SettingsWindow {
             let hex = self
                 .hex_edit
                 .as_ref()
-                .filter(|edit| edit.host == host)
+                .filter(|edit| matches!(&edit.target, super::super::sidebar::HexTarget::Host(label) if label == &host))
                 .map(|edit| (edit.input.clone(), edit.invalid));
             let (changed, editing) = (host.clone(), host.clone());
             page = page.child(ui::swatch_row(

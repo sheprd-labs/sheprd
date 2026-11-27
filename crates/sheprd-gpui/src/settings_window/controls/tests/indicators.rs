@@ -3,6 +3,8 @@ use crate::config::{StatusIcons, preferences::Preference};
 use crate::settings_window::controls::preferences::PreferenceIo;
 use std::sync::{Arc, Mutex};
 
+mod edge_light;
+
 type Edits = Arc<Mutex<Vec<Preference>>>;
 
 fn indicators_page(

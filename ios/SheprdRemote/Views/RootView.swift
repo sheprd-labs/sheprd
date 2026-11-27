@@ -197,7 +197,7 @@ struct RootView: View {
                 NavigationStack(path: $homePath) {
                     HomeTab(pairing: $window.pairing).makesRoomForConnectionToast().withRoutes()
                 }
-                .environment(\.offersWorkspace, true)
+                .environment(\.workspaceDestination, .pending)
                 // No tabs until there is something to show in them.
                 .slidesTabBar(hidden: !homePath.isEmpty || !model.hasComputers)
                 .connectionToast(pairing: $window.pairing)

@@ -44,6 +44,12 @@ async fn run(handle: WindowHandle<SheprdWindow>, cx: &mut AsyncApp) -> Result<()
                     }, // i18n: data
                 ];
                 view.ensure_traces_page(cx);
+                if let Some(page) = &mut view.traces.page {
+                    // Keep both activity charts visible on shorter guest displays.
+                    page.scroll.set_offset(point(px(0.), px(-255.)));
+                    page.overlap
+                        .fixture(example_overlap(snapshot.sessions.iter()));
+                }
                 window.resize(size(px(width), px(900.)));
                 cx.notify();
                 Ok(())
@@ -66,6 +72,12 @@ async fn run(handle: WindowHandle<SheprdWindow>, cx: &mut AsyncApp) -> Result<()
             view.set_trace_filter(scope.clone(), cx);
             if let Some(page) = &mut view.traces.page {
                 page.activity = Some(Ok(activity(&snapshot, &scope)));
+                page.overlap.fixture(example_overlap(
+                    snapshot
+                        .sessions
+                        .iter()
+                        .filter(|s| scope.includes(&s.host_id, &snapshot.hosts)),
+                ));
             }
             window.resize(size(px(1400.), px(1000.)));
             cx.notify();
@@ -78,6 +90,8 @@ async fn run(handle: WindowHandle<SheprdWindow>, cx: &mut AsyncApp) -> Result<()
         view.theme = view.config.theme(false)?;
         view.set_trace_filter(TraceFilter::All, cx);
         let page = view.traces.page.as_mut().context("missing traces page")?;
+        page.overlap
+            .fixture(example_overlap(snapshot.sessions.iter()));
         page.selected = Some(snapshot.sessions[0].id.clone());
         page.detail = Some(Detail::Loaded(events()));
         window.resize(size(px(1400.), px(1000.)));
@@ -254,4 +268,29 @@ fn events() -> Vec<Event> {
     ].into_iter().enumerate().map(|(i, (kind, tool, text))| Event {
         seq: i as i64, at: None, kind, tool: tool.map(str::to_owned), text: text.into(),
     }).collect()
+}
+
+fn example_overlap<'a>(sessions: impl Iterator<Item = &'a Session>) -> sheprd_traces::Overlap {
+    let recent_by_agent = sheprd_traces::ActiveAgent::counts(sessions.map(|s| s.agent));
+    let sessions: usize = recent_by_agent.iter().map(|entry| entry.count).sum();
+    let now = Utc::now();
+    let daily = (0..30)
+        .rev()
+        .map(|i| sheprd_traces::OverlapPoint {
+            at: (now - Days::new(i)).timestamp_millis(),
+            count: if i == 0 {
+                sessions
+            } else {
+                (i as usize + i as usize / 3) % (sessions + 1)
+            },
+        })
+        .collect();
+    sheprd_traces::Overlap {
+        recent_by_agent,
+        daily,
+        recent: sheprd_traces::OverlapPoint {
+            at: now.timestamp_millis(),
+            count: sessions,
+        },
+    }
 }

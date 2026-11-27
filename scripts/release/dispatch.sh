@@ -38,6 +38,27 @@ repo=sheprd-labs/sheprd
 sha=$(git rev-parse HEAD)
 [[ "$(gh api "repos/$repo/git/ref/heads/main" --jq .object.sha)" == "$sha" ]] || fail 'HEAD does not match origin main on GitHub; no fetch or checkout was performed'
 
+# A release runs from its own branch, release/<sha>, created on GitHub at this
+# commit: CI cancels runs per branch, so merges to main cannot cancel the CI
+# the release waits for. The name is the commit, so a retry reuses the branch
+# and verify-release derives the signing identity from --sha.
+ref=main
+if [[ $workflow == release.yml ]]; then
+    ref=release/$sha
+    # gh api --jq takes only a filter, so match the exact ref with jq itself.
+    existing=$(gh api "repos/$repo/git/matching-refs/heads/$ref" \
+        | jq -r --arg ref "refs/heads/$ref" '.[] | select(.ref == $ref) | .object.sha')
+    if [[ -z "$existing" ]]; then
+        gh api "repos/$repo/git/refs" -f "ref=refs/heads/$ref" -f "sha=$sha" --silent
+        printf 'Created branch %s\n' "$ref"
+    elif [[ "$existing" != "$sha" ]]; then
+        fail "Branch $ref exists at $existing, not $sha; inspect it before releasing"
+    fi
+    # Every suite runs on a manual run, whatever the commit changed.
+    gh workflow run ci.yml --repo "$repo" --ref "$ref"
+    printf 'Dispatched CI on %s\n' "$ref"
+fi
+
 # No CI wait here: the release builds while CI runs, and its ci-gate job
 # holds signing and publishing until CI has passed on this commit.
 
@@ -49,14 +70,14 @@ if [[ $workflow == promote.yml ]]; then
         -f "version=$version" -f "request_id=$request_id"
 else
     title="Release $channel @ $sha [$request_id]"
-    gh workflow run release.yml --repo "$repo" --ref main \
+    gh workflow run release.yml --repo "$repo" --ref "$ref" \
         -f "expected_sha=$sha" -f "request_id=$request_id" -f "channel=$channel"
 fi
 printf 'Dispatched %s\n' "$title"
 
 run_id=''
 for ((attempt = 0; attempt < 60; attempt++)); do
-    runs=$(gh run list --repo "$repo" --workflow "$workflow" --branch main \
+    runs=$(gh run list --repo "$repo" --workflow "$workflow" --branch "$ref" \
         --event workflow_dispatch --limit 100 \
         --json databaseId,displayTitle)
     # Match the input SHA in the title, not headSha: a main-HEAD race must still

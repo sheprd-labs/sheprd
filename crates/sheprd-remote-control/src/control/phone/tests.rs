@@ -130,6 +130,7 @@ fn settings_and_guidance_have_stable_wire_targets() {
         let drive = Drive::Guide {
             text: "Look here".into(),
             highlight: Some(*target),
+            from: None,
         };
         assert_eq!(
             serde_json::to_value(&drive).unwrap(),

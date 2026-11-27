@@ -32,6 +32,10 @@ pub enum Lane {
     Quick,
     /// Commands that move real data, such as uploads and installs.
     Bulk,
+    /// Long-lived interactive streams, such as a chat's connection. They
+    /// hold a channel for as long as they stay open, so they get a master
+    /// of their own rather than taking the quick lane's for hours.
+    Stream,
 }
 
 #[cfg(unix)]
@@ -41,7 +45,7 @@ impl Lane {
     /// directly instead of waiting.
     fn channels(self) -> usize {
         match self {
-            Self::Quick => 8,
+            Self::Quick | Self::Stream => 8,
             Self::Bulk => 2,
         }
     }

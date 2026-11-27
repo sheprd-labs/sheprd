@@ -466,7 +466,7 @@ handoff is built by `sheprd_chat_protocol::handoff`.
 ## Behaviour
 
 - Prompts sent while the agent works are queued and sent in order; cancelling
-  ends the turn, declines pending permission requests, and drops the queue.
+  ends the turn, declines pending permission requests, and holds the queue.
 - The agent runs in its own process group and stops with the program.
 - The program advertises no file system, terminal, or elicitation support, so
   agents use their own tools; it answers only permission requests.

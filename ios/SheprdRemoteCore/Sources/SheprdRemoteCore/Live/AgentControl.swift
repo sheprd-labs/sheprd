@@ -74,18 +74,22 @@ public enum AgentCommand: Hashable, Sendable {
     /// Say which screen is in front.
     case state
     case open(AgentScreen)
-    /// Put a note in front of the person.
-    case show(text: String)
-    case guide(text: String, highlight: AgentHighlight?)
-    case highlight(AgentHighlight)
+    /// Put a note in front of the person. `from` is the asking agent's
+    /// chat or terminal, which a tap on the note opens.
+    case show(text: String, from: AgentScreen? = nil)
+    case guide(text: String, highlight: AgentHighlight?, from: AgentScreen? = nil)
+    case highlight(AgentHighlight, from: AgentScreen? = nil)
     case clearGuide
     /// A command, or a screen, this app does not know: refused as `other`.
     case unknown
 
-    enum CodingKeys: String, CodingKey { case command, to, text, highlight, target }
+    enum CodingKeys: String, CodingKey { case command, to, text, highlight, target, from }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        // A screen this app does not know, from a newer computer, leaves
+        // the note opening nothing rather than refused.
+        let from = (try? c.decodeIfPresent(AgentScreen.self, forKey: .from)) ?? nil
         switch try c.decodeIfPresent(String.self, forKey: .command) {
         case "state": self = .state
         case "open":
@@ -94,16 +98,16 @@ public enum AgentCommand: Hashable, Sendable {
             } catch is AgentScreen.Unknown {
                 self = .unknown
             }
-        case "show": self = .show(text: try c.decode(String.self, forKey: .text))
+        case "show": self = .show(text: try c.decode(String.self, forKey: .text), from: from)
         case "clear_guide": self = .clearGuide
         case "highlight":
-            if let target = AgentHighlight(rawValue: try c.decode(String.self, forKey: .target)) { self = .highlight(target) }
+            if let target = AgentHighlight(rawValue: try c.decode(String.self, forKey: .target)) { self = .highlight(target, from: from) }
             else { self = .unknown }
         case "guide":
             let name = try c.decodeIfPresent(String.self, forKey: .highlight)
             let target = name.flatMap(AgentHighlight.init(rawValue:))
             if name != nil, target == nil { self = .unknown }
-            else { self = .guide(text: try c.decode(String.self, forKey: .text), highlight: target) }
+            else { self = .guide(text: try c.decode(String.self, forKey: .text), highlight: target, from: from) }
         default: self = .unknown
         }
     }

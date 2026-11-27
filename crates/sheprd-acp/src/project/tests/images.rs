@@ -23,12 +23,12 @@ fn an_image_in_a_message_is_an_entry_between_its_text() {
     let kinds: Vec<_> = transcript.entries.iter().map(|entry| &entry.kind).collect();
     assert!(matches!(kinds[0], EntryKind::Agent { text } if text == "before"));
     assert!(
-        matches!(kinds[1], EntryKind::Image { author: Author::Agent, image }
+        matches!(kinds[1], EntryKind::Image { author: Author::Agent, image, .. }
         if image.kind == ImageType::Png && image.data == PNG)
     );
     assert!(matches!(kinds[2], EntryKind::Agent { text } if text == "after"));
     assert!(
-        matches!(kinds[3], EntryKind::Image { author: Author::User, image }
+        matches!(kinds[3], EntryKind::Image { author: Author::User, image, .. }
         if image.kind == ImageType::Jpeg)
     );
     assert_eq!(kinds.len(), 4);

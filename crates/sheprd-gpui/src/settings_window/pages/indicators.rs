@@ -2,12 +2,14 @@
 //! edge rail. Each card's preview is the sidebar's own marks, so a mark that
 //! moves there moves here too.
 // i18n: migrated
-use super::{SettingsWindow, ui};
+use super::{SettingsWindow, on_value, ui};
 use crate::direction::Logical;
 use crate::{
     config::{StatusIcons, corners, preferences::Preference},
     i18n::{self, fl},
-    settings_window::controls::indicators::set_messages,
+    settings_window::{
+        controls::indicators::set_messages, inputs::NumberField, sidebar::HexTarget,
+    },
     sidebar::{Indicators, status_indicator},
 };
 use gpui::{prelude::*, *};
@@ -57,6 +59,7 @@ impl SettingsWindow {
                     cx,
                 )),
             )
+            .child(self.edge_light_controls(cx))
             .child(ui::section(
                 theme,
                 &fl!("settings-indicators-sets"),
@@ -80,6 +83,142 @@ impl SettingsWindow {
                             .map(|&set| self.set_card(set, indicators.with_icons(set), cx)),
                     ),
             )
+    }
+
+    fn edge_light_controls(&self, cx: &mut Context<Self>) -> Div {
+        let theme = &self.theme;
+        let light = self.config.edge_light;
+        let ready = !self.busy() && self.closing.is_none();
+        let mut color = ui::row(
+            theme,
+            "indicators-edge-light-color",
+            fl!("settings-indicators-edge-light-color"),
+        )
+        .description(fl!("settings-indicators-edge-light-color-description"));
+        if let Some(rgb) = light.color {
+            color = color.dot(rgb);
+        }
+        let presets = [
+            (0x63baff, "#63BAFF"),
+            (0xae81ff, "#AE81FF"),
+            (0xff72a8, "#FF72A8"),
+            (0xffad53, "#FFAD53"),
+            (0x67d9a6, "#67D9A6"),
+        ];
+        color = color.control(div().row().items_center().gap(px(4.)).children(presets.map(
+            |(tint, label)| {
+                ui::swatch(theme, tint, light.color == Some(tint))
+                    .id(("edge-light-swatch", tint as usize))
+                    .role(Role::Button)
+                    .aria_label(label)
+                    .debug_selector(move || format!("edge-light-swatch-{tint:06x}"))
+                    .when(ready, |swatch| {
+                        swatch
+                            .cursor_pointer()
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.save_preference(Preference::EdgeLightColor(Some(tint)), cx);
+                            }))
+                    })
+            },
+        )));
+        if let Some(edit) = self
+            .hex_edit
+            .as_ref()
+            .filter(|edit| matches!(edit.target, HexTarget::EdgeLight))
+        {
+            color = color.control(
+                div()
+                    .w(px(104.))
+                    .rounded(px(corners::SMALL))
+                    .border_1()
+                    .border_color(rgb(if edit.invalid {
+                        theme.ink(0xd45b5b)
+                    } else {
+                        theme.active
+                    }))
+                    .child(edit.input.clone()),
+            );
+        } else {
+            let reset = ready && light.color.is_some();
+            let label = light
+                .color
+                .map(|rgb| format!("#{rgb:06X}"))
+                .unwrap_or_else(|| fl!("settings-indicators-edge-light-custom"));
+            color = color
+                .control(
+                    ui::button(
+                        theme,
+                        "edge-light-auto",
+                        fl!("settings-indicators-edge-light-auto"),
+                        reset,
+                    )
+                    .when(reset, |button| {
+                        button.on_click(cx.listener(|this, _, _, cx| {
+                            this.save_preference(Preference::EdgeLightColor(None), cx);
+                        }))
+                    }),
+                )
+                .control(
+                    ui::button(theme, "edge-light-hex", label, ready).when(ready, |button| {
+                        button.on_click(cx.listener(move |this, _, window, cx| {
+                            this.begin_color_edit(HexTarget::EdgeLight, light.color, window, cx);
+                        }))
+                    }),
+                );
+        }
+        let mut controls = div()
+            .flex()
+            .flex_col()
+            .child(ui::section(
+                theme,
+                &fl!("settings-indicators-edge-light"),
+                Some(ui::Source::Sheprd),
+            ))
+            .child(color);
+        for (field, id, title, description, saved, unit) in [
+            (
+                NumberField::EdgeLightWidth,
+                "indicators-edge-light-width",
+                fl!("settings-indicators-edge-light-width"),
+                fl!("settings-indicators-edge-light-width-description"),
+                light.width,
+                ui::Unit::Pixels,
+            ),
+            (
+                NumberField::EdgeLightTrail,
+                "indicators-edge-light-trail",
+                fl!("settings-indicators-edge-light-trail"),
+                fl!("settings-indicators-edge-light-trail-description"),
+                light.trail,
+                ui::Unit::Percent,
+            ),
+        ] {
+            let value = self.number_value(field, f32::from(saved));
+            let view = cx.entity().downgrade();
+            controls = controls.child(ui::row(theme, id, title).description(description).control(
+                ui::number(
+                    theme,
+                    ui::Number {
+                        id: field.selector(),
+                        value,
+                        range: field.range(),
+                        unit,
+                        look: ui::Look::Slider,
+                        enabled: ready,
+                    },
+                    self.number_edit_for(field),
+                    on_value(cx, move |this, change, _, cx| {
+                        this.commit_number(field, change, cx)
+                    }),
+                    move |window, cx| {
+                        let _ = view.update(cx, |this, cx| {
+                            this.begin_number_edit(field, value, window, cx)
+                        });
+                    },
+                ),
+            ));
+        }
+        controls
     }
 
     /// One set as a card: its name and a radio mark, the five statuses drawn

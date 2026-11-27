@@ -38,7 +38,7 @@ impl SheprdWindow {
         #[cfg(unix)]
         {
             form.step = Step::Verifying(request.clone(), offer);
-            form.error = None;
+            form.clear_failure();
             let background = cx.background_executor().spawn(async move {
                 let claim = match claim {
                     Some(claim) => match setup::verify_unsaved(&request, &claim) {
@@ -88,7 +88,7 @@ impl SheprdWindow {
             offer,
             _cancel: cancel,
         };
-        form.error = None;
+        form.clear_failure();
         let background = cx.background_executor().spawn(async move {
             let claim = match claim {
                 Some(claim) => claim,
@@ -139,7 +139,7 @@ impl SheprdWindow {
                     if let Some(form) = &mut self.menu.device_setup {
                         form.step = Step::Confirm(request, offer);
                         form.claim = claim;
-                        form.error = Some(error.localize());
+                        form.record(Some(error.localize()), None);
                     }
                     cx.notify();
                 }
@@ -167,7 +167,7 @@ impl SheprdWindow {
                 if !self.refuse_duplicate(&error, cx) {
                     if let Some(form) = &mut self.menu.device_setup {
                         form.step = Step::Confirm(request, offer);
-                        form.error = Some(error.to_string());
+                        form.record(Some(error.to_string()), None);
                     }
                     cx.notify();
                 }
@@ -245,7 +245,7 @@ impl SheprdWindow {
             };
             form.step = Step::Form;
             form.claim = None;
-            form.error = Some(error.to_string());
+            form.record(Some(error.to_string()), None);
         }
         cx.notify();
     }

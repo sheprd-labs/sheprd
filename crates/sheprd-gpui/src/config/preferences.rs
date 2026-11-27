@@ -56,6 +56,9 @@ pub(crate) enum Preference {
     TabLayout(TabLayoutMode),
     /// `[undo_close_tab] enabled`: closed tabs wait before Herdr closes them.
     UndoCloseTab(bool),
+    EdgeLightColor(Option<u32>),
+    EdgeLightWidth(u8),
+    EdgeLightTrail(u8),
     /// `edge_rail`: the bar on busy and finished rows.
     EdgeRail(bool),
     ShowDeviceIcons(bool),
@@ -228,6 +231,17 @@ impl Config {
                 Preference::SmoothScroll(value) => (None, "smooth_scroll", Some(value.into())),
                 Preference::StatusIcons(value) => {
                     (None, "status_icons", Some(value.as_str().into()))
+                }
+                Preference::EdgeLightColor(color) => (
+                    Some("edge_light"),
+                    "color",
+                    color.map(|rgb| format!("#{rgb:06X}").into()),
+                ),
+                Preference::EdgeLightWidth(value) => {
+                    (Some("edge_light"), "width", Some(i64::from(value).into()))
+                }
+                Preference::EdgeLightTrail(value) => {
+                    (Some("edge_light"), "trail", Some(i64::from(value).into()))
                 }
                 Preference::EdgeRail(value) => (None, "edge_rail", Some(value.into())),
                 Preference::TabAgentTitle(value) => {

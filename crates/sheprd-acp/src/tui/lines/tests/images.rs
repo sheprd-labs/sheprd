@@ -12,6 +12,7 @@ fn the_terminal_names_a_picture_instead_of_drawing_it() {
         kind: EntryKind::Image {
             author: Author::Agent,
             image: png(),
+            caption: None,
         },
     };
     assert_eq!(plain(&entry(&item, 40))[0], "  [image]");
@@ -20,6 +21,7 @@ fn the_terminal_names_a_picture_instead_of_drawing_it() {
         kind: EntryKind::Image {
             author: Author::User,
             image: png(),
+            caption: None,
         },
     };
     assert_eq!(plain(&entry(&item, 40))[0], "[image]");

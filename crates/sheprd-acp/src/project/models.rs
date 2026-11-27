@@ -4,7 +4,8 @@
 use serde::Deserialize;
 use sheprd_chat_protocol::{Choice, ConfigOption, OptionCategory, OptionKind};
 
-use super::{MAX_CHOICES, bounded};
+use super::bounded;
+use super::options::MAX_CHOICES;
 
 /// The synthetic config option id used when an agent advertises `models`
 /// without a `configOptions` model selector.

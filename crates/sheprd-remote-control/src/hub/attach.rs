@@ -57,6 +57,17 @@ impl Hub {
         super::core::owns(&json!({"pane_id": pane}))
     }
 
+    /// Turns the wheel for the program a Herdr 2 `pane` runs, as Herdr 1
+    /// routes a phone's scroll; false when it reads none, and the view
+    /// scrolls the pane's history instead.
+    pub(crate) async fn wheel(&self, pane: &str, lines: i32) -> Result<bool> {
+        let core = self.core.clone().ok_or(super::core::Error::Disconnected)?;
+        let pane = pane.to_owned();
+        tokio::task::spawn_blocking(move || core.wheel(&pane, lines))
+            .await
+            .map_err(|_| super::core::Error::Disconnected)?
+    }
+
     /// Holds `pane`'s terminal at `cols` by `rows` until the hold is
     /// dropped. Never takes a Herdr 1 terminal from another direct client;
     /// a Herdr 2 terminal goes back to its previous driver's size.

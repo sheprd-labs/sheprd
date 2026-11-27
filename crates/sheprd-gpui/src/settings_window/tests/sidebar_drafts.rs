@@ -305,6 +305,33 @@ fn typed_hex_commits_on_enter_and_invalid_text_writes_nothing(cx: &mut TestAppCo
     );
 }
 
+#[gpui::test]
+fn changing_pages_queues_a_typed_host_color_during_a_save(cx: &mut TestAppContext) {
+    let (_, view, cx, edits) = settings_with_source(cx);
+    cx.update(|window, cx| view.update(cx, |view, cx| view.begin_hex_edit("Work", window, cx)));
+    let input = view.read_with(cx, |view, _| view.hex_edit.as_ref().unwrap().input.clone());
+    input.update(cx, |input, cx| input.set_text_selected("#123456", cx));
+    cx.update(|window, cx| {
+        view.update(cx, |view, cx| {
+            view.saving = true;
+            view.select_section(Section::Indicators, window, cx);
+            assert!(view.hex_edit.is_none());
+            assert!(view.sidebar_queued);
+            assert!(edits.lock().unwrap().is_empty());
+            view.saving = false;
+            view.finish_close(cx);
+        })
+    });
+    cx.run_until_parked();
+    assert_eq!(
+        *edits.lock().unwrap(),
+        [Preference::HostColor {
+            host: "Work".into(),
+            color: Some(0x123456),
+        }]
+    );
+}
+
 /// A writer whose reload reflects what it wrote, so a follow-up save diffs
 /// against the first one's result.
 fn disk_io(edits: Edits) -> controls::preferences::PreferenceIo {

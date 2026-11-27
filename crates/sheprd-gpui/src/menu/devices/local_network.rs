@@ -85,7 +85,7 @@ impl SheprdWindow {
             "Waiting for Local Network permission"
         );
         form.step = Step::AwaitingLocalNetwork(request.clone());
-        form.error = None;
+        form.clear_failure();
         let alive = Arc::new(());
         let watched = Arc::downgrade(&alive);
         let background = cx.background_executor().spawn(async move {

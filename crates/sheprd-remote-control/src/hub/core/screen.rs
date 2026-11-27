@@ -5,7 +5,10 @@
 use super::lines::Lines;
 use crate::hub::{ApiMethod, Error, Result};
 use serde_json::{Value, json};
-use sheprd_client::protocol::{CellData, ClientKeyCode, ClientKeyKind, ClientPaneInputEvent};
+use sheprd_client::protocol::{
+    CellData, ClientKeyCode, ClientKeyKind, ClientMouseKind, ClientMousePosition,
+    ClientPaneInputEvent,
+};
 use sheprd_core_client::{
     Attachment, Core, End,
     wire::{Attach, Terminal},
@@ -275,6 +278,20 @@ impl Screen {
         }
     }
 
+    /// Turns the wheel `lines` (up when positive) for a program that reads
+    /// it; false when it reads none, and a view scrolls history instead.
+    pub(super) fn send_wheel(&mut self, core: &Core, lines: i32) -> Result<bool> {
+        self.touched = Instant::now();
+        self.drain()?;
+        let bytes = wheel(&self.emulator, lines);
+        if bytes.is_empty() {
+            return Ok(false);
+        }
+        self.drive(core)?;
+        self.attachment.write(&bytes)?;
+        Ok(true)
+    }
+
     fn send(&self, event: ClientPaneInputEvent) -> Result<()> {
         if self.lost {
             return Err(super::Error::Disconnected.into());
@@ -408,6 +425,30 @@ fn recent(emulator: &mut Emulator, lines: usize) -> Vec<CellData> {
         }
         up -= take;
     }
+}
+
+/// One wheel notch up (`lines` above zero) or down, as the bytes the
+/// program asked for: a mouse report, or arrow keys under alternate scroll
+/// on the alternate screen. Empty when it reads no wheel. One notch per
+/// scroll whatever `lines`, as Herdr 1 routes a phone's scroll, at the
+/// middle of the screen.
+pub(super) fn wheel(emulator: &Emulator, lines: i32) -> Vec<u8> {
+    let size = emulator.size();
+    let kind = if lines > 0 {
+        ClientMouseKind::ScrollUp
+    } else {
+        ClientMouseKind::ScrollDown
+    };
+    emulator.encode(&ClientPaneInputEvent::Mouse {
+        kind,
+        position: ClientMousePosition::Cell {
+            column: size.cols() / 2,
+            row: size.rows() / 2,
+        },
+        geometry: None,
+        modifiers: 0,
+        lines: 1,
+    })
 }
 
 fn key_event(key: &str) -> Result<ClientPaneInputEvent> {

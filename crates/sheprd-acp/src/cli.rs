@@ -186,6 +186,8 @@ Usage:
                         changed session (JSON lines with --json) until stopped.
   sheprd-acp traces list [--agent AGENT] [--limit N] [--json]
                         The most recently updated indexed sessions.
+  sheprd-acp traces overlap [--days N] [--agent NAME] [--host ID] [--at UNIX_MS] [--json]
+                        Recent count and daily peaks, or active sessions at an instant.
   sheprd-acp traces activity [--days N] [--json]
                         Sessions and messages per day and agent.
   sheprd-acp traces peers [--json]

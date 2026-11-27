@@ -59,8 +59,13 @@ class CheckCi(unittest.TestCase):
             with self.subTest(missing=job["name"]), self.assertRaises(CI.CiError):
                 self.check([run()], [{"jobs": others}])
 
+    def test_release_branch_run_passes(self):
+        self.check([{**run(), "head_branch": f"release/{SHA}", "event": "workflow_dispatch"}],
+                   [{"jobs": jobs()}])
+
     def test_other_commits_branches_events_and_actors_do_not_qualify(self):
         for changes in ({"head_sha": "b" * 40}, {"head_branch": "topic"},
+                        {"head_branch": "release/" + "b" * 40}, {"head_branch": "release/topic"},
                         {"event": "pull_request"}, {"actor": {"login": "other"}},
                         {"triggering_actor": {"login": "other"}},
                         {"conclusion": "failure"}, {"status": "in_progress"}):

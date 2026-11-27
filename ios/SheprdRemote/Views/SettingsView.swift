@@ -37,7 +37,7 @@ struct SettingsView: View {
                 }
             }
             Section {
-                SettingsLink("Computers", symbol: "desktopcomputer", color: .blue, value: "\(model.computers.count)", page: .computers)
+                SettingsLink("Computers", symbol: "desktopcomputer", color: .blue, value: model.fleetHealthSummary.settingsValue, page: .computers)
                 SettingsLink("Fleet", symbol: "point.3.connected.trianglepath.dotted", color: .indigo, value: fleetSummary, page: .fleet)
                 SettingsLink("Relays", symbol: "antenna.radiowaves.left.and.right", color: .teal,
                              value: "\(model.savedRelays.relays.count)", page: .relays)

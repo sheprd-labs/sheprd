@@ -37,8 +37,18 @@ failure is not a surprise:
 | `origin` is `sheprd-labs/sheprd` | `git remote get-url origin` |
 | `gh` authenticated as `penso` | `gh api user --jq .login` |
 | Local HEAD == `origin/main` on GitHub | compare `git rev-parse HEAD` with `gh api repos/sheprd-labs/sheprd/git/ref/heads/main --jq .object.sha` |
+
+A release runs on its own branch. `dispatch.sh` creates `release/<sha>` on
+GitHub at that commit (through the API, so no push or YubiKey tap), starts a
+full manual CI run there, and dispatches the release on it. CI cancels runs per
+branch, so merges to main after dispatch no longer cancel the CI the release
+waits for, and the release's `validate` only requires the commit to still be
+on main, not to be its head. Rerunning `dispatch.sh` for the same commit reuses
+the branch. The branches stay as a record, like the tags.
+
 The release workflow runs no test suites of its own: its `ci-gate` job
-requires a successful owner-triggered push or manual CI run on main with every
+requires a successful owner-triggered CI run for the release commit, on its
+`release/<sha>` branch (or a push or manual run on main), with every
 platform check and Linux optimized build completed successfully. A green run
 with skipped checks does not qualify. CI builds macOS release binaries on pull
 requests only, so the release's macOS builds get the macOS runners. `dispatch.sh` does not wait for CI: the
@@ -49,9 +59,8 @@ while `ci-gate` waits. `sign` also waits for the `nix` job, which calls
 `nix.yml` to build the flake on both Linux architectures from the release
 commit: its one cargo build of all five packages unifies features that CI's
 builds keep apart, so it can fail where CI passed. Rerun it the same way on a
-flake. For a documentation-only commit whose push CI skipped
-the suites, run `gh workflow run ci.yml --repo sheprd-labs/sheprd --ref main`
-before dispatching. Apple's notary and stapler calls retry ten times in
+flake. Since `dispatch.sh` starts a manual CI run, a documentation-only
+commit no longer needs one started by hand. Apple's notary and stapler calls retry ten times in
 `sign-macos.sh`, so a dropped connection there rarely needs a rerun.
 
 The script never fetches or checks out for you: if HEAD does not match, stop and
@@ -111,6 +120,10 @@ then `macos-build` (arm64 + x86_64, both on Apple Silicon), `linux` (aarch64 + x
 the signed installers), `attest`, `publish`, and finally `homebrew` and `winget`.
 Until the `WINDOWS_SIGNING_SUBJECT` repository variable is set, `windows-sign`,
 `windows-smoke` and `winget` are skipped and Windows ships unsigned.
+
+Each environment allows deployments from `main` (for `promote.yml`) and
+`release/*` (for `release.yml`); a release branch outside that rule fails at its
+first gated job.
 
 `sign`, `windows-sign`, `attest` and `publish` use the **`release`** environment;
 `homebrew` uses the **`homebrew`** environment and `winget` the **`winget`**

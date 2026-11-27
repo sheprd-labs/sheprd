@@ -9,10 +9,20 @@ struct WorkspaceKey: Codable, Hashable, Identifiable {
     var id: Self { self }
 }
 
+/// How a chat screen's Space pill opens its workspace.
+enum WorkspaceDestination: Sendable {
+    /// Separate window or stack with `.withRoutes()`: push the workspace route
+    /// onto the current `NavigationStack`.
+    case push
+    /// Main window (Home tab or iPad split): route through `model.pendingWorkspace`.
+    case pending
+    /// Already pushed directly from `WorkspaceScreen`: dismissing returns there.
+    case dismiss
+}
+
 extension EnvironmentValues {
-    /// Whether a tab offers a button to its workspace: on Home, whose
-    /// lists open tabs straight away, so nothing behind them leads there.
-    @Entry var offersWorkspace = false
+    /// How a tab's Space pill navigates to its workspace.
+    @Entry var workspaceDestination = WorkspaceDestination.push
 }
 
 /// The Workspaces tab, laid out like Sheprd's sidebar: every computer
@@ -261,7 +271,7 @@ struct MachineStatus: View {
 }
 
 /// A share of the computer in use, as Sheprd's host rows draw it.
-private struct LoadGauge: View {
+struct LoadGauge: View {
     var label: String
     var percent: Int
 

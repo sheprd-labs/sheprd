@@ -19,6 +19,19 @@ pub(in crate::settings_window) const SWATCHES: [u32; 11] = [
 
 const SWATCH_SIZE: f32 = 18.;
 
+pub(in crate::settings_window) fn swatch(theme: &Theme, color: u32, selected: bool) -> Div {
+    div()
+        .size(px(SWATCH_SIZE))
+        .rounded(px(corners::SMALL))
+        .bg(rgb(color))
+        .border_2()
+        .border_color(if selected {
+            rgb(theme.foreground).into()
+        } else {
+            transparent_black()
+        })
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(in crate::settings_window) enum HostColorChange {
     Set(u32),
@@ -67,21 +80,11 @@ pub(in crate::settings_window) fn swatch_row(
     };
     let swatches = SWATCHES.iter().enumerate().map(|(k, &color)| {
         let on_change = on_change.clone();
-        let selected = current == Some(color);
-        div()
+        swatch(theme, color, current == Some(color))
             .id(SharedString::from(format!(
                 "host-colour-{index}-swatch-{k}"
             )))
             .debug_selector(move || format!("host-colour-{index}-swatch-{k}"))
-            .size(px(SWATCH_SIZE))
-            .rounded(px(corners::SMALL))
-            .bg(rgb(color))
-            .border_2()
-            .border_color(if selected {
-                rgb(theme.foreground).into()
-            } else {
-                transparent_black()
-            })
             .cursor_pointer()
             .on_click(move |_, window, cx| on_change(HostColorChange::Set(color), window, cx))
     });

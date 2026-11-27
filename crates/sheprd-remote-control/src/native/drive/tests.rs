@@ -101,13 +101,55 @@ fn a_screen_of_something_not_here_is_never_sent() {
         open(Screen::Term { pane: "p1".into() }),
         Err(Answer::NotFound)
     );
-    let show = |text: &str| resolve(&state, Command::Show { text: text.into() });
+    let show = |text: &str| {
+        resolve(
+            &state,
+            Command::Show {
+                text: text.into(),
+                from: None,
+            },
+        )
+    };
     assert_eq!(show(" "), Err(Answer::Invalid));
     assert_eq!(
         show("Tests pass"),
         Ok(Drive::Show {
-            text: "Tests pass".into()
+            text: "Tests pass".into(),
+            from: None,
         })
+    );
+}
+
+#[test]
+fn a_note_names_the_asking_agents_chat_or_terminal_when_listed() {
+    let dir = tempfile::tempdir().unwrap();
+    let state = state(dir.path());
+    let show = |from: &str| {
+        resolve(
+            &state,
+            Command::Show {
+                text: "Done".into(),
+                from: Some(from.into()),
+            },
+        )
+    };
+    let from = |drive| match drive {
+        Ok(Drive::Show { from, .. }) => from,
+        other => panic!("unexpected {other:?}"),
+    };
+    assert_eq!(from(show("p1")), Some(Screen::Chat { pane: "p1".into() }));
+    assert_eq!(from(show("p2")), Some(Screen::Term { pane: "p2".into() }));
+    // An unlisted or bad pane still shows the note, opening nothing.
+    assert_eq!(from(show("p9")), None);
+    assert_eq!(from(show("")), None);
+    assert_eq!(
+        serde_json::to_value(Drive::Guide {
+            text: "Look".into(),
+            highlight: None,
+            from: Some(Screen::Chat { pane: "p1".into() }),
+        })
+        .unwrap(),
+        json!({"command": "guide", "text": "Look", "highlight": null, "from": {"screen": "chat", "pane": "p1"}})
     );
 }
 
@@ -248,7 +290,8 @@ fn guidance_validates_text_and_routes_named_settings_without_a_pane() {
                 &state,
                 Command::Guide {
                     text,
-                    highlight: Some(Highlight::PushRelay)
+                    highlight: Some(Highlight::PushRelay),
+                    from: None,
                 }
             ),
             Err(Answer::Invalid)
@@ -259,23 +302,27 @@ fn guidance_validates_text_and_routes_named_settings_without_a_pane() {
             &state,
             Command::Guide {
                 text: "Push settings".into(),
-                highlight: Some(Highlight::PushRelay)
+                highlight: Some(Highlight::PushRelay),
+                from: None,
             }
         ),
         Ok(Drive::Guide {
             text: "Push settings".into(),
-            highlight: Some(Highlight::PushRelay)
+            highlight: Some(Highlight::PushRelay),
+            from: None,
         })
     );
     assert_eq!(
         resolve(
             &state,
             Command::Highlight {
-                target: Highlight::PushRelay
+                target: Highlight::PushRelay,
+                from: None,
             }
         ),
         Ok(Drive::Highlight {
-            target: Highlight::PushRelay
+            target: Highlight::PushRelay,
+            from: None,
         })
     );
     assert_eq!(resolve(&state, Command::ClearGuide), Ok(Drive::ClearGuide));

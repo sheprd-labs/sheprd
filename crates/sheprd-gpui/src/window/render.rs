@@ -24,7 +24,7 @@ impl SheprdWindow {
     /// top-right of the terminal area below the tab strip, whose buttons stay
     /// reachable. A menu page owns the window's attention, and zen mode keeps
     /// the window clear; they wait behind either.
-    fn render_notices(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+    pub(super) fn render_notices(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
         if !self.notices_allowed() {
             return None;
         }
@@ -940,37 +940,13 @@ impl Render for SheprdWindow {
             .when(zen, |root| {
                 root.children(crate::titlebar::zen_inset(fill.ground(), window))
             })
-            .child(
-                div()
-                    .debug_selector(|| "window-body".into())
-                    // The sidebar leads, on the right in a right-to-left
-                    // language; the terminal area beside it never mirrors.
-                    .row()
-                    .flex_1()
-                    .min_h_0()
-                    .relative()
-                    .children(sidebar.map(|(sidebar, width)| {
-                        let column = match merged {
-                            true => self.sidebar_column(sidebar, window, cx).into_any_element(),
-                            false => sidebar.into_any_element(),
-                        };
-                        self.sliding_sidebar(column, width)
-                    }))
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .flex_1()
-                            .min_w_0()
-                            .min_h_0()
-                            .relative()
-                            .child(content)
-                            .children(self.render_notices(cx))
-                            .when(!self.hosted, |column| {
-                                column.children(self.zen_status_bar(cx))
-                            }),
-                    ),
-            );
+            .child(self.render_body(
+                sidebar.map(|(sidebar, width)| (sidebar.into_any_element(), width)),
+                content,
+                merged,
+                window,
+                cx,
+            ));
         // After the body, whose rows reserve the marks it draws, and under
         // everything that covers the body.
         if !self.hosted {

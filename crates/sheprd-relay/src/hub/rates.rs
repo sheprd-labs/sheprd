@@ -58,6 +58,16 @@ impl PerAddress {
         }
         wide.check(wide_key, now_ms)
     }
+
+    /// What [`PerAddress::check`] would say for `address` now, spending
+    /// and tracking nothing.
+    pub fn peek(&self, address: IpAddr) -> Outcome {
+        let now_ms = u64::try_from(self.origin.elapsed().as_millis()).unwrap_or(u64::MAX);
+        match lock(&self.wide).peek(&wide_key(address), now_ms) {
+            Outcome::Allowed => lock(&self.narrow).peek(&source_key(address), now_ms),
+            refused => refused,
+        }
+    }
 }
 
 fn lock(limiter: &Mutex<Limiter<IpAddr>>) -> MutexGuard<'_, Limiter<IpAddr>> {

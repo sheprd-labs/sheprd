@@ -50,6 +50,12 @@ pub(crate) enum Dial {
     /// running `herdr-acp connect` on the program's host.
     Process(Command),
     Remote(sheprd_client::ConnectTarget, String),
+    /// A script run on an SSH host over the host's shared stream master
+    /// (`sheprd_client::SshLane::Stream`), so a window's chats on one host
+    /// take one login, not one each. A relay host's every login is a dial
+    /// the relay counts, and a dozen chats reconnecting would use up its
+    /// rate limit. Resolved on the reader thread: it may wait for the master.
+    Ssh(String, String),
 }
 
 impl From<PathBuf> for Dial {
@@ -119,7 +125,7 @@ fn open(dial: Dial) -> std::io::Result<Parts> {
             };
             Ok((Box::new(stdout), Box::new(stdin), closer))
         }
-        Dial::Remote(..) => Err(std::io::ErrorKind::Unsupported.into()),
+        Dial::Remote(..) | Dial::Ssh(..) => Err(std::io::ErrorKind::Unsupported.into()),
     }
 }
 
@@ -254,6 +260,15 @@ fn run(
             run(Dial::Process(command), since, queued, events, socket)
         })
         .unwrap_or_else(Error::Connect);
+    }
+    if let Dial::Ssh(host, script) = dial {
+        let shared =
+            sheprd_client::shared_script_command(&host, &script, sheprd_client::SshLane::Stream);
+        // The channel stays open until the child below is reaped.
+        return match shared {
+            Ok((command, _channel)) => run(Dial::Process(command), since, queued, events, socket),
+            Err(error) => Error::Remote(error),
+        };
     }
     let parts = open(dial).and_then(|(reader, writer, closer)| {
         let writer_closer = closer.try_clone()?;

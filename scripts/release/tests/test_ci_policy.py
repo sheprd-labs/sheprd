@@ -53,6 +53,11 @@ def condition_matches(job, context, jobs=JOBS):
         if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
                 and node.func.id == "always" and not node.args and not node.keywords):
             return True
+        # GitHub's startsWith ignores case.
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "startsWith" and len(node.args) == 2 and not node.keywords):
+            text, prefix = (evaluate(argument) for argument in node.args)
+            return text.lower().startswith(prefix.lower())
         raise AssertionError(f"Unsupported CI expression: {ast.dump(node)}")
 
     return evaluate(ast.parse(expression, mode="eval").body)
@@ -103,13 +108,16 @@ class CiPolicy(unittest.TestCase):
     def test_non_pr_events_require_owner_main_and_expected_event(self):
         for event, ref, actor, triggering_actor in itertools.product(
                 ("push", "workflow_dispatch", "pull_request_target", "workflow_run"),
-                ("refs/heads/main", "refs/heads/topic", "refs/tags/v1"),
+                ("refs/heads/main", f"refs/heads/release/{'a' * 40}", "refs/heads/topic",
+                 "refs/heads/releases", "refs/tags/v1"),
                 ("penso", "larry0x"), ("penso", "larry0x")):
             context = self.context(**{
                 "github.event_name": event, "github.ref": ref,
                 "github.actor": actor, "github.triggering_actor": triggering_actor,
             })
-            allowed = (event in ("push", "workflow_dispatch") and ref == "refs/heads/main"
+            # A release runs CI on its own release/<sha> branch.
+            allowed = (event in ("push", "workflow_dispatch")
+                       and (ref == "refs/heads/main" or ref.startswith("refs/heads/release/"))
                        and actor == "penso" and triggering_actor == "penso")
             for job in JOBS:
                 with self.subTest(job=job, context=context):

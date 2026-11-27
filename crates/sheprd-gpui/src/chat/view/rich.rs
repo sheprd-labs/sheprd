@@ -234,11 +234,11 @@ impl SheprdWindow {
                 let links = context.links.clone();
                 let guard = fragment.clone();
                 InteractiveText::new("rich-prose", text)
-                    .on_click(ranges, move |index, _, cx| {
+                    .on_click(ranges, move |index, window, cx| {
                         if guard.as_ref().is_none_or(Fragment::allows_link)
                             && let Some((_, url)) = targets.get(index)
                         {
-                            links.open(url, cx);
+                            links.open(url, window, cx);
                         }
                     })
                     .into_any_element()
@@ -293,9 +293,9 @@ impl SheprdWindow {
                             let guard = selected.clone();
                             item.child(InteractiveText::new(("rich-link", index), styled).on_click(
                                 std::iter::once(0..word.len()).collect(),
-                                move |_, _, cx| {
+                                move |_, window, cx| {
                                     if guard.as_ref().is_none_or(Fragment::allows_link) {
-                                        links.open(&url, cx);
+                                        links.open(&url, window, cx);
                                     }
                                 },
                             ))

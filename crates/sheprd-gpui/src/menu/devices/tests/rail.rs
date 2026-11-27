@@ -279,11 +279,7 @@ fn each_source_keeps_its_own_error(cx: &mut gpui::TestAppContext) {
     click(cx, "add-device-source-host");
     cx.update(|_, cx| {
         let setup = view.read(cx).menu.device_setup.as_ref().unwrap();
-        assert_eq!(
-            setup.error.as_deref(),
-            Some("SSH to box: refused"),
-            "kept for SSH"
-        );
+        assert_eq!(setup.error(), Some("SSH to box: refused"), "kept for SSH");
     });
 }
 

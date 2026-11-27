@@ -46,9 +46,9 @@ fn ordinary_markdown_keeps_hierarchy_lists_and_inline_semantics_without_visual_j
 }
 
 #[test]
-fn prose_links_accept_web_and_explicit_file_targets_but_leave_unsafe_schemes_literal() {
+fn prose_links_accept_web_file_and_screen_targets_but_leave_unsafe_schemes_literal() {
     let blocks = parse(
-        "[docs](https://example.org/docs) https://example.org/raw. `https://example.org/code` [bad](javascript:alert) [file](/tmp/x)",
+        "[docs](https://example.org/docs) https://example.org/raw. `https://example.org/code` [bad](javascript:alert) [file](/tmp/x) [space](sheprd://workspace/wF9) [app](herdr-remote://chat?id=1)",
         &mut Visuals::default(),
     ).unwrap();
     let Block::Paragraph { content, .. } = &blocks[0] else {
@@ -66,7 +66,8 @@ fn prose_links_accept_web_and_explicit_file_targets_but_leave_unsafe_schemes_lit
         [
             "https://example.org/docs",
             "https://example.org/raw",
-            "/tmp/x"
+            "/tmp/x",
+            "sheprd://workspace/wF9"
         ]
     );
     let visible = content
@@ -79,6 +80,7 @@ fn prose_links_accept_web_and_explicit_file_targets_but_leave_unsafe_schemes_lit
     assert!(visible.contains("file"));
     assert!(!visible.contains("[file](/tmp/x)"));
     assert!(visible.contains("[bad](javascript:alert)"));
+    assert!(visible.contains("[app](herdr-remote://chat?id=1)"));
 }
 
 #[test]

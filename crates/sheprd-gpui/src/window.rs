@@ -8,6 +8,7 @@ mod annotate;
 mod announcement;
 mod app_tab;
 mod backdrop;
+mod body;
 pub(crate) mod chrome_focus;
 pub(crate) mod clipboard;
 #[cfg(target_os = "macos")]
@@ -19,6 +20,7 @@ mod construct;
 mod copy_mode;
 mod device_themes;
 mod double_shift;
+mod edge_light;
 pub(crate) mod file_drop;
 mod file_links;
 pub(crate) use file_links::FileLink;

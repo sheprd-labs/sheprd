@@ -165,6 +165,7 @@ mod storage_warning;
 mod system_load;
 mod tab_layout;
 mod tab_menu;
+mod tailscale;
 mod taskbar;
 mod teleport;
 mod terminal;

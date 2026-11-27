@@ -44,6 +44,7 @@ mod reader;
 mod remote_route;
 mod restore;
 mod rich;
+pub(crate) mod screen_link;
 mod selection;
 mod session;
 mod shortcuts;

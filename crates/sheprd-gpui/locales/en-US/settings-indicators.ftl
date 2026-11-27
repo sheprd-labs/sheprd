@@ -25,3 +25,13 @@ settings-indicators-set-braille = Braille
 settings-indicators-set-braille-description = Braille cells; blocked fills and empties dot by dot.
 settings-indicators-set-orca = Orca
 settings-indicators-set-orca-description = Orca's stepping ring, question bubble, and ringed check.
+
+settings-indicators-edge-light = Edge Lighting
+settings-indicators-edge-light-color = Edge Lighting color
+settings-indicators-edge-light-color-description = Follow the focused agent’s status, or enter a custom #RRGGBB color.
+settings-indicators-edge-light-auto = Auto (status)
+settings-indicators-edge-light-custom = Custom hex…
+settings-indicators-edge-light-width = Edge Lighting width
+settings-indicators-edge-light-width-description = Width of the light along the window edge, in logical pixels.
+settings-indicators-edge-light-trail = Edge Lighting trail length
+settings-indicators-edge-light-trail-description = Length of the moving trail as a percentage of the window perimeter.

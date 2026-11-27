@@ -3,8 +3,8 @@ use super::{
     add_device::{Offer, Setup, Step},
     setup,
 };
-use crate::{SheprdWindow, search_input::SearchInput, sidebar::layout_tests::fixture_window};
-use gpui::{AppContext, Context};
+use crate::{SheprdWindow, sidebar::layout_tests::fixture_window};
+use gpui::Context;
 use sheprd_client::HostProbe;
 
 #[cfg(feature = "cloud")]
@@ -26,22 +26,23 @@ mod rail;
 mod scope;
 mod selection;
 mod session_chip;
+mod tailscale_address;
 mod version_warning;
 
 #[test]
 fn only_a_present_herdr_is_saved_without_a_terminal() {
-    assert_eq!(Offer::for_probe(HostProbe::Running), None);
-    assert_eq!(Offer::for_probe(HostProbe::Stopped), None);
+    assert_eq!(Offer::for_probe(&HostProbe::Running), None);
+    assert_eq!(Offer::for_probe(&HostProbe::Stopped), None);
     // herdr-core alone is a whole setup: saved as it is, nothing installed.
-    assert_eq!(Offer::for_probe(HostProbe::Core), None);
-    assert_eq!(Offer::for_probe(HostProbe::Missing), Some(Offer::Install));
-    assert_eq!(Offer::for_probe(HostProbe::Outdated), Some(Offer::Update));
+    assert_eq!(Offer::for_probe(&HostProbe::Core), None);
+    assert_eq!(Offer::for_probe(&HostProbe::Missing), Some(Offer::Install));
+    assert_eq!(Offer::for_probe(&HostProbe::Outdated), Some(Offer::Update));
     assert_eq!(
-        Offer::for_probe(HostProbe::SshFailed(sheprd_client::SshFailure::HostKey)),
+        Offer::for_probe(&HostProbe::SshFailed(sheprd_client::SshFailure::HostKey)),
         Some(Offer::Terminal)
     );
     assert_eq!(
-        Offer::for_probe(HostProbe::SshFailed(sheprd_client::SshFailure::Auth)),
+        Offer::for_probe(&HostProbe::SshFailed(sheprd_client::SshFailure::Auth)),
         Some(Offer::InstallKey)
     );
     // Without Fluent's isolation marks around each name.
@@ -62,19 +63,7 @@ fn only_a_present_herdr_is_saved_without_a_terminal() {
 }
 
 fn open_form(view: &mut SheprdWindow, step: Step, cx: &mut Context<SheprdWindow>) {
-    view.menu.device_setup = Some(Setup {
-        fields: std::array::from_fn(|_| cx.new(SearchInput::new)),
-        step,
-        claim: None,
-        task: None,
-        discovery: None,
-        suggested_label: None,
-        _edits: Vec::new(),
-        highlight: None,
-        suggestion_scroll: gpui::ScrollHandle::new(),
-        error: None,
-        host_keys: sheprd_client::HostKeys::Verify,
-    });
+    view.menu.device_setup = Some(Setup::fixture(step, cx));
     view.menu.page = Some(Page::AddDevice);
 }
 
@@ -170,7 +159,7 @@ fn a_host_already_saved_or_being_added_returns_to_the_form(cx: &mut gpui::TestAp
                 view.device_probed(Err(error), cx);
                 assert!(matches!(step(view), Step::Form));
                 assert_eq!(
-                    view.menu.device_setup.as_ref().unwrap().error.as_deref(),
+                    view.menu.device_setup.as_ref().unwrap().error(),
                     Some(message)
                 );
             }

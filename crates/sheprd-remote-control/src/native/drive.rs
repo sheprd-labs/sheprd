@@ -207,26 +207,37 @@ fn resolve(state: &State, command: Command) -> Result<Drive, Answer> {
     let layout = state.hub.layout();
     let to = match command {
         Command::State => return Ok(Drive::State),
-        Command::Guide { text, highlight } if phone::valid_text(&text) => {
-            return Ok(Drive::Guide { text, highlight });
+        Command::Guide {
+            text,
+            highlight,
+            from,
+        } if phone::valid_text(&text) => {
+            return Ok(Drive::Guide {
+                text,
+                highlight,
+                from: from.and_then(|pane| pane_screen(state, &layout, pane)),
+            });
         }
         Command::Guide { .. } => return Err(Answer::Invalid),
-        Command::Highlight { target } => return Ok(Drive::Highlight { target }),
+        Command::Highlight { target, from } => {
+            return Ok(Drive::Highlight {
+                target,
+                from: from.and_then(|pane| pane_screen(state, &layout, pane)),
+            });
+        }
         Command::ClearGuide => return Ok(Drive::ClearGuide),
-        Command::Show { text } if phone::valid_text(&text) => return Ok(Drive::Show { text }),
+        Command::Show { text, from } if phone::valid_text(&text) => {
+            return Ok(Drive::Show {
+                text,
+                from: from.and_then(|pane| pane_screen(state, &layout, pane)),
+            });
+        }
         Command::Show { .. } => return Err(Answer::Invalid),
         Command::OpenPane { pane } if !phone::valid_id(&pane) => return Err(Answer::Invalid),
-        Command::OpenPane { pane } => {
-            // A terminal agent's conversation is its chat, as the phone
-            // shows it; the phone falls back to the terminal otherwise.
-            if layout.chat(&pane).is_some() || state.hub.observable(&pane) {
-                Screen::Chat { pane }
-            } else if layout.terminal(&pane).is_some() {
-                Screen::Term { pane }
-            } else {
-                return Err(Answer::NotFound);
-            }
-        }
+        Command::OpenPane { pane } => match pane_screen(state, &layout, pane) {
+            Some(screen) => screen,
+            None => return Err(Answer::NotFound),
+        },
         Command::Open { to } if !to.is_valid() => return Err(Answer::Invalid),
         Command::Open { to } => to,
     };
@@ -247,6 +258,21 @@ fn resolve(state: &State, command: Command) -> Result<Drive, Answer> {
         return Err(Answer::NotFound);
     }
     Ok(Drive::Open { to })
+}
+
+/// A pane as the phone shows it: a terminal agent's conversation is its
+/// chat, and the phone falls back to the terminal otherwise. `None` for an
+/// id out of bounds or a pane this computer does not list.
+fn pane_screen(state: &State, layout: &crate::hub::Layout, pane: String) -> Option<Screen> {
+    if !phone::valid_id(&pane) {
+        None
+    } else if layout.chat(&pane).is_some() || state.hub.observable(&pane) {
+        Some(Screen::Chat { pane })
+    } else if layout.terminal(&pane).is_some() {
+        Some(Screen::Term { pane })
+    } else {
+        None
+    }
 }
 
 /// A live socket's place among the drivers, for the life of its session:

@@ -536,6 +536,7 @@ fn install(
                 author: sheprd_chat_protocol::Author::Agent,
                 image: sheprd_chat_protocol::Image::new("image/png", data)
                     .context("the preview picture is not a usable PNG")?,
+                caption: None,
             },
         });
     }

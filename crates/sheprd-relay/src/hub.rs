@@ -42,6 +42,11 @@ use tokio::sync::{Notify, mpsc, oneshot};
 const INCOMING_QUEUE: usize = 16;
 /// The most sessions the dashboard lists.
 const MAX_ROWS: usize = 50;
+/// Refused dials one address may make past the dial rate a minute before
+/// the relay stops checking its proofs there; a quarter of it at once.
+const REFUSED_PER_MINUTE: u32 = 20;
+/// The least time between two warnings about owners' dial bursts.
+const OWNER_WARNING: Duration = Duration::from_secs(60);
 /// Pairing keys one listener may hold at once: a pairing dialog or two.
 pub const MAX_PAIRING_KEYS: usize = 4;
 /// The longest a session opened with a pairing key may last.
@@ -57,6 +62,11 @@ pub struct Hub {
     /// New QUIC connections, per address and wide block.
     connects: PerAddress,
     dials: PerAddress,
+    /// Refused dials past `dials` on a private relay ([`Hub::may_prove_past_rate`]).
+    forged: PerAddress,
+    /// Owners' dials past `dials` since the last warning about them, and
+    /// when that was ([`Hub::owner_burst`]).
+    owner_bursts: Mutex<(u64, Option<Instant>)>,
     /// Bans, earned and manual.
     pub guard: Guard,
     pub limits: Limits,
@@ -224,6 +234,8 @@ impl Hub {
             bans: tokio::sync::broadcast::channel(16).0,
             connects: PerAddress::new(limits.connections_per_minute, origin),
             dials: PerAddress::new(limits.dials_per_minute, origin),
+            owner_bursts: Mutex::default(),
+            forged: PerAddress::new(REFUSED_PER_MINUTE, origin),
             guard: Guard::new(limits.auto_ban, limits.max_transfer_per_hour),
             limits,
             listens: PerAddress::new(limits.listens_per_minute, origin),
@@ -257,6 +269,53 @@ impl Hub {
     /// Whether `address` may start another dial now.
     pub fn allow_dial(&self, address: IpAddr) -> Outcome {
         self.dials.check(address)
+    }
+
+    /// Whether a dial past the dial rate from `address` may still have its
+    /// proof checked: not once it has had too many refused. This bounds
+    /// the signature work past the rate without a ban, which would tell the
+    /// caller the key it forged for is named. Every refusal spends from it,
+    /// named key or not, so what it has left tells nothing either; only an
+    /// owner's dial that goes through spends nothing. Only an address that
+    /// spent its own budget is held back: a table full of others' leaves
+    /// a new one as it was, so a flood from many addresses cannot close
+    /// this room to every owner.
+    #[must_use]
+    pub fn may_prove_past_rate(&self, address: IpAddr) -> bool {
+        self.forged.peek(address) != Outcome::Limited
+    }
+
+    /// A dial past the dial rate from `address` was refused.
+    pub fn refused_past_rate(&self, address: IpAddr) {
+        let _ = self.forged.check(address);
+    }
+
+    /// An owner's dial went past the dial rate on a private relay, which
+    /// lets it through ([`crate::broker::dial`]). Warns at most once a
+    /// minute, with how many did since, so a device stuck reconnecting
+    /// shows in the log without flooding it. Like every line, it names no
+    /// address.
+    pub fn owner_burst(&self) {
+        let mut bursts = match self.owner_bursts.lock() {
+            Ok(bursts) => bursts,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        bursts.0 = bursts.0.saturating_add(1);
+        let now = Instant::now();
+        if bursts
+            .1
+            .is_some_and(|warned| now.saturating_duration_since(warned) < OWNER_WARNING)
+        {
+            return;
+        }
+        let dials = std::mem::take(&mut bursts.0);
+        bursts.1 = Some(now);
+        drop(bursts);
+        tracing::warn!(
+            dials,
+            per_minute = self.limits.dials_per_minute,
+            "an owner's devices dialed past the dial rate; let through"
+        );
     }
 
     /// Whether `address` may start another listen now.
@@ -461,6 +520,17 @@ impl Hub {
 
     /// Tells `route`'s listener that `key` dials, holding a slot for it, if
     /// the listener allows `key`. A pairing key is used up here.
+    /// Whether the listener on `route` names `key` among its dial keys: a
+    /// device it paired, never a pairing key still waiting to be used. A
+    /// lookup only, cheap enough to run before any proof is checked.
+    #[must_use]
+    pub fn names_dial_key(&self, route: RouteId, key: &Key) -> bool {
+        self.state()
+            .listeners
+            .get(&route)
+            .is_some_and(|listener| listener.dial_keys.contains(key))
+    }
+
     pub fn dial(
         self: &Arc<Self>,
         route: RouteId,

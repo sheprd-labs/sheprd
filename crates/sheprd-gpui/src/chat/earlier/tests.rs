@@ -44,6 +44,7 @@ fn transcript(entries: Vec<Entry>, continued: Option<u64>) -> Transcript {
     Transcript {
         entries,
         session: Some(SessionInfo {
+            can_steer: false,
             continued: continued.map(EntryId),
             cwd: None,
             id: "s".into(),

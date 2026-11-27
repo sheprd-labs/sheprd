@@ -27,6 +27,17 @@ fn narrow_tables_scroll_inside_the_page_with_and_without_details(cx: &mut gpui::
                 ..Snapshot::default()
             }));
             view.poll_traces(cx);
+            let point = sheprd_traces::OverlapPoint { at: NOW, count: 3 };
+            view.traces
+                .page
+                .as_mut()
+                .unwrap()
+                .overlap
+                .fixture(sheprd_traces::Overlap {
+                    recent: point,
+                    recent_by_agent: vec![],
+                    daily: vec![point],
+                });
             view
         });
         cx.observe(&view, |_, _, cx| cx.notify()).detach();
@@ -54,4 +65,10 @@ fn narrow_tables_scroll_inside_the_page_with_and_without_details(cx: &mut gpui::
             }
         }
     }
+
+    let peak = cx.debug_bounds("traces-overlap-day-20774").unwrap();
+    cx.simulate_click(peak.center(), gpui::Modifiers::default());
+    assert!(view.read_with(cx, |v, _| {
+        v.traces.page.as_ref().unwrap().overlap.selection.is_some()
+    }));
 }

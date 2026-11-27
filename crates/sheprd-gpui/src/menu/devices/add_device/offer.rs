@@ -23,7 +23,10 @@ pub(in crate::menu::devices) enum Offer {
 
 impl Offer {
     /// `None` when a usable daemon is present, so the device is saved directly.
-    pub(in crate::menu::devices) fn for_probe(probe: HostProbe) -> Option<Self> {
+    /// Takes the probe by reference: it only reads what the probe says, and a
+    /// probe that failed over SSH now owns the text of the refusal, so the
+    /// caller keeps it to show or log.
+    pub(in crate::menu::devices) fn for_probe(probe: &HostProbe) -> Option<Self> {
         match probe {
             HostProbe::Tmux | HostProbe::Core | HostProbe::Running | HostProbe::Stopped => None,
             HostProbe::Missing => Some(Self::Install),

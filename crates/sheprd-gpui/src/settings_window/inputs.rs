@@ -19,6 +19,8 @@ use std::ops::RangeInclusive;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::settings_window) enum NumberField {
     ChatMaxWidth,
+    EdgeLightWidth,
+    EdgeLightTrail,
     Spacing(Spacing),
     FontSize(FontFace),
     ToastDelay,
@@ -31,6 +33,8 @@ impl NumberField {
     pub(in crate::settings_window) fn selector(self) -> &'static str {
         match self {
             Self::ChatMaxWidth => "chat-width-control",
+            Self::EdgeLightWidth => "edge-light-width-control",
+            Self::EdgeLightTrail => "edge-light-trail-control",
             Self::Spacing(spacing) => spacing.control(),
             Self::FontSize(face) => size_control(face),
             Self::ToastDelay => "notif-delay-control",
@@ -45,6 +49,14 @@ impl NumberField {
         match self {
             Self::ChatMaxWidth => {
                 let range = crate::config::chat::MAX_WIDTH_RANGE;
+                f32::from(*range.start())..=f32::from(*range.end())
+            }
+            Self::EdgeLightWidth | Self::EdgeLightTrail => {
+                let range = if self == Self::EdgeLightWidth {
+                    crate::config::EdgeLight::WIDTH
+                } else {
+                    crate::config::EdgeLight::TRAIL
+                };
                 f32::from(*range.start())..=f32::from(*range.end())
             }
             Self::Spacing(spacing) => spacing.range(),
@@ -281,6 +293,8 @@ impl SettingsWindow {
                 if matches!(
                     field,
                     NumberField::ChatMaxWidth
+                        | NumberField::EdgeLightWidth
+                        | NumberField::EdgeLightTrail
                         | NumberField::SoundVolume
                         | NumberField::TerminalPadding(..)
                 ) && field.range().contains(&value)
@@ -304,6 +318,12 @@ impl SettingsWindow {
             match field {
                 NumberField::ChatMaxWidth => {
                     self.save_preference(Preference::ChatMaxWidth(value as u16), cx);
+                }
+                NumberField::EdgeLightWidth => {
+                    self.save_preference(Preference::EdgeLightWidth(value as u8), cx)
+                }
+                NumberField::EdgeLightTrail => {
+                    self.save_preference(Preference::EdgeLightTrail(value as u8), cx)
                 }
                 NumberField::ToastDelay => {
                     self.save_preference(Preference::NotificationDelay(Some(value as u64)), cx);

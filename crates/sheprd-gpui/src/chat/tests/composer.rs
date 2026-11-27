@@ -6,7 +6,7 @@ use super::{
     overlay::{attach_with, open, poll},
     *,
 };
-use gpui::{ClipboardItem, TestAppContext};
+use gpui::{ClipboardItem, Modifiers, TestAppContext};
 use sheprd_chat_protocol::Command;
 use sheprd_client::ConnectTarget;
 
@@ -212,16 +212,44 @@ fn a_steered_prompt_cannot_be_withdrawn_or_sent_now(cx: &mut TestAppContext) {
             text: format!("steered {steered}"),
         })
         .collect();
+    let waiting = transcript.queued[1].id;
+    transcript.turn = Some(sheprd_chat_protocol::Turn { started_ms: 1 });
+    transcript.session = Some(sheprd_chat_protocol::SessionInfo {
+        can_steer: true,
+        continued: None,
+        cwd: None,
+        id: "s".into(),
+        title: None,
+    });
     let snapshot = ServerMessage::Snapshot {
         cursor: cursor(1, 0),
         transcript: Box::new(transcript),
     };
-    let _stream = attach_with(&view, &program, snapshot, cx);
+    let mut stream = attach_with(&view, &program, snapshot, cx);
     // The agent already has the first; only the second waits to be sent.
     assert!(cx.debug_bounds("chat-unqueue-0").is_none());
-    assert!(cx.debug_bounds("chat-send-now-0").is_none());
+    assert!(cx.debug_bounds("chat-steer-0").is_none());
     assert!(cx.debug_bounds("chat-unqueue-1").is_some());
-    assert!(cx.debug_bounds("chat-send-now-1").is_some());
+    let steer = cx.debug_bounds("chat-steer-1").unwrap();
+    let hint_shown = std::rc::Rc::new(std::cell::Cell::new(false));
+    let observed = hint_shown.clone();
+    let _subscription = cx.update(|_, cx| {
+        cx.observe_new::<crate::menu::SettingsHint>(move |hint, _, _| {
+            observed.set(hint.text.as_ref() == crate::i18n::fl!("chat-steer-hint"));
+        })
+    });
+    cx.simulate_mouse_move(steer.center(), None, Modifiers::default());
+    cx.executor().advance_clock(Duration::from_secs(1));
+    cx.run_until_parked();
+    assert!(hint_shown.get(), "hover explains steering");
+    cx.simulate_click(steer.center(), Modifiers::default());
+    assert!(matches!(
+        read(&mut stream),
+        Some(ClientMessage::Command {
+            command: Command::SendNow { id },
+            ..
+        }) if id == waiting
+    ));
 }
 
 #[gpui::test]

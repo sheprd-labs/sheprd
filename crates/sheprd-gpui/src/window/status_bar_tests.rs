@@ -1,7 +1,7 @@
 //! The status bar at the window's foot: Toggle Status Bar hides and restores
 //! it for the session, and `[status_bar] show` in the config chooses where it starts.
 
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::SheprdWindow;
 use crate::{
@@ -87,4 +87,69 @@ fn a_new_window_starts_with_the_configured_status_bar(cx: &mut TestAppContext) {
         run(&view, Command::ToggleStatusBar, cx);
         assert_eq!(status_bar(cx).is_some(), !configured);
     }
+}
+
+/// The refused host's address is the item's only purpose, so a click has to
+/// reach the opener. Nothing rendered this item in a test before, which is how
+/// it could show an address no click could reach.
+#[gpui::test]
+fn the_tailscale_item_opens_the_address_it_shows(cx: &mut TestAppContext) {
+    use sheprd_client::{SshFailure, TailscaleCheck};
+
+    let (view, cx) = cx.add_window_view(fixture_window);
+    let address = "https://login.tailscale.com/a/clicks";
+    view.update(cx, |view, _| {
+        view.endpoints[0].live.ssh_failure = Some(SshFailure::Tailscale(
+            TailscaleCheck::from_address(address).unwrap(),
+        ));
+    });
+
+    cx.update(|window, cx| full_draw(window, cx).clear(cx));
+    let item = cx
+        .debug_bounds("status-tailscale")
+        .expect("the item is drawn");
+
+    cx.simulate_click(item.center(), gpui::Modifiers::default());
+    assert_eq!(cx.opened_url().as_deref(), Some(address));
+}
+
+/// The transport reports `PermissionDenied`, so a check usually reaches the
+/// window as a sentence and not as a typed failure. The item reads the endpoint's
+/// answer, which is the prompt's answer too: a gate on the failure alone showed
+/// nothing for the one case this item exists for.
+#[gpui::test]
+fn the_tailscale_item_shows_the_address_a_sentence_names(cx: &mut TestAppContext) {
+    use sheprd_client::TailscaleCheck;
+
+    let (view, cx) = cx.add_window_view(fixture_window);
+    let address = "https://login.tailscale.com/a/textpath";
+    view.update(cx, |view, _| {
+        view.endpoints[0].live.error = Some(format!(
+            "Tailscale SSH wants you to verify your identity: open {address} to authenticate, then try again"
+        ));
+        view.endpoints[0].observe_tailscale();
+    });
+
+    cx.update(|window, cx| full_draw(window, cx).clear(cx));
+    assert!(
+        cx.debug_bounds("status-tailscale").is_some(),
+        "a check the transport reported as text is still a check"
+    );
+    assert_eq!(
+        view.read_with(cx, |view, _| view.endpoints[0]
+            .tailscale_check()
+            .and_then(TailscaleCheck::url)
+            .map(str::to_owned)),
+        Some(address.to_owned())
+    );
+}
+
+/// No check, no item: the bar must not offer to open an address nobody asked
+/// for.
+#[gpui::test]
+fn the_tailscale_item_is_absent_when_nothing_waits(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(fixture_window);
+    cx.update(|window, cx| full_draw(window, cx).clear(cx));
+    assert!(cx.debug_bounds("status-tailscale").is_none());
+    assert!(view.read_with(cx, |view, _| view.endpoints[0].tailscale_check().is_none()));
 }

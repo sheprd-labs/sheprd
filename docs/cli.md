@@ -112,7 +112,7 @@ Every command accepts:
 | `ui guide --clear` | Dismiss the banner and highlight; the person can also dismiss it |
 | `ui sidebar\|statusbar\|menubar [on\|off\|toggle]` | For this window and session. `menubar` is the in-window menu bar on Linux and Windows; macOS, whose menus are the system's, exits 8 |
 | `ui font-size +\|-\|reset\|POINTS` | The terminal font size for this session |
-| `ui traces [--host ID\|--tag TAG\|--all]` | Without options, read prepared replication status, the current `filter`, and indexed `hosts` with stable IDs and device tags. `peers` report `waiting`, `syncing`, `ready`, or `failed` (with `error`). With a filter, open Traces for that host or existing device label, or clear the source filter. Unknown hosts/tags exit 5; usual `--json` and `--window` targeting applies. Cached hosts remain filterable offline. |
+| `ui traces [--host ID\|--tag TAG\|--all]` | Without options, read prepared replication status, the current `filter`, and indexed `hosts` with stable IDs and device tags. `peers` report `waiting`, `syncing`, `ready`, or `failed` (with `error`). With a filter, open Traces for that host or existing device label, or clear the source filter. Unknown hosts/tags exit 5; usual `--json` and `--window` targeting applies. Cached hosts remain filterable offline. For recent concurrency, daily peaks, and participants, use the companion’s [traces overlap command](traces.md#host-command-line). |
 | `ui agent-group [NAME\|all]` | List the agents panel's coordinator groups, marking the one shown, or show one group's sessions with its coordinator first, or `all` of them, for this window and session. Exits 5 for a group no coordinator names and 8 unless `[sidebar] coordinator_suffix` is set and the agents panel is shown |
 | `ui panel workspaces\|overview\|pull-requests\|issues\|tasks\|security\|automations\|ports\|usage\|traces` | Show an activity bar section: Workspaces with the sidebar expanded, Overview of what needs you on every host, the focused workspace's pull requests or issues across the window, Beads tasks across the window's projects, the vulnerability reports and Dependabot alerts of your repositories, every host's automation scripts and runs, every port this computer's user listens on, every host's plan usage, or local and replicated agent session history and connected-host sync status in [Traces](traces.md) |
 | `run COMMAND` | Any app command by its `[keybindings]` name, as the palette runs it. `run new_tmux_terminal` (tmux-enabled builds) and `run new_core_terminal` open a terminal on that backend regardless of the default |
@@ -535,8 +535,8 @@ sheprd remote relays token relay.example.org --clear
 
 Agents bring the person to a screen of the Sheprd phone app, or put a note
 in front of them there. A phone is driven only while the app is open on it
-and its person turned on **Let agents open screens** for this computer (that
-computer's page in the app's Settings; off by default). It refuses while its
+and its person left **Let agents open screens** on for this computer (that
+computer's page in the app's Settings; on by default). It refuses while its
 app is locked, and shows which computer's agent opened a screen. Nothing
 pairs, approves, or changes a setting from here. Remote control must be on.
 
@@ -552,8 +552,8 @@ pairs, approves, or changes a setting from here. Remote control must be on.
 | `phone open settings [PAGE]` | Open Settings or a named page, including nested delivery, desk-hold, and text-shortcuts pages |
 | `phone highlight TARGET` | Open the target's page, scroll to it, and highlight the control |
 | `phone guide TEXT [--highlight TARGET]` | Replace the persistent top banner, optionally highlighting a control; maximum three lines including the source |
-| `phone guide --clear` | Clear this computer's banner and highlight; tapping the banner also dismisses both |
-| `phone show TEXT` | A note on the phone, from this computer's agent (at most 500 characters) |
+| `phone guide --clear` | Clear this computer's banner and highlight; tapping the banner also dismisses both and opens the caller's chat, and its close button only dismisses |
+| `phone show TEXT` | A note on the phone, from this computer's agent (at most 500 characters); tapping it opens the caller's chat |
 
 Every `phone` command takes `--device ID|NAME`; without it, the phone with
 the most recent connection traffic is selected. This is not proof of user
@@ -568,7 +568,11 @@ example, `phone guide "This controls push delivery" --highlight push-relay
 --device ID` opens Notifications and highlights the push-relay switch. Guides
 remain until cleared or dismissed, or the phone backgrounds, locks, or revokes
 that computer's permission. Repeating `guide` updates the existing banner.
-Opening, highlighting, and guiding do not change settings. Keep notes short;
+Run from a Herdr pane, `show`, `guide`, and `highlight` name the caller's pane
+(`HERDR_PANE_ID`), so a tap on the note brings the person back to that agent's
+chat, or its terminal; from outside a pane, or for a pane the phone does not
+list, the tap only dismisses it. Opening, highlighting, and guiding do not
+change settings. Keep notes short;
 long text is clipped to the three-line banner. `ui settings --json` discovers
 the desktop's available Settings pages and row IDs; `ui guide` and `ui highlight`
 use those row IDs. Desktop guidance is scoped to the caller's main window and

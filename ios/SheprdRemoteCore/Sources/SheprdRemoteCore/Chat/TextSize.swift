@@ -49,18 +49,19 @@ public enum TextSizeAttribute: CodableAttributedStringKey {
 }
 
 /// Inline Markdown as the chat shows it: `:big[…]` spans set their text
-/// larger or smaller, and only web links stay links.
+/// larger or smaller, and only web links and `ScreenLink`s stay links.
 public enum InlineMarkdown {
     /// Spans open at once; deeper openings stay text.
     static let maxOpen = 8
     /// What stands for a span's closing `]` while Markdown parses.
     static let closing: Character = "\u{E000}"
-    static let schemes: Set<String> = ["http", "https"]
+    static let schemes: Set<String> = ["http", "https", ScreenLink.scheme]
 
     /// `text` as inline Markdown, with each sized run marked by a
     /// `TextSizeAttribute`. Agent text is untrusted: only `http` and `https`
-    /// links stay links, so transcript text can never follow the app's own
-    /// scheme.
+    /// links stay links, and `ScreenLink`s, which only show a screen of the
+    /// chat's own computer, so transcript text can never follow the app's
+    /// own scheme.
     public static func attributed(_ text: String) -> AttributedString {
         let marked = mark(text)
         let parsed = (try? AttributedString(

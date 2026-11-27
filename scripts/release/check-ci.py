@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Require a complete, successful main-branch CI run for a release commit."""
+"""Require a complete, successful CI run for a release commit.
+
+The run is on the commit's release/<sha> branch, where merges to main cannot
+cancel it, or on main itself.
+"""
 import argparse
 import json
 import os
@@ -39,8 +43,12 @@ def api(path, *, paginate=False):
                          check=True, stdout=subprocess.PIPE).stdout)
 
 
+def branches(sha):
+    return ("main", f"release/{sha}")
+
+
 def eligible(run, sha):
-    return (run["head_sha"] == sha and run["head_branch"] == "main"
+    return (run["head_sha"] == sha and run["head_branch"] in branches(sha)
             and run["event"] in ("push", "workflow_dispatch")
             and run["actor"]["login"] == "penso"
             and run["triggering_actor"]["login"] == "penso")
@@ -53,7 +61,7 @@ def missing_jobs(jobs):
 
 
 def require_ci(sha, wait=False):
-    runs = api(f"actions/workflows/ci.yml/runs?head_sha={sha}&branch=main&per_page=20")
+    runs = api(f"actions/workflows/ci.yml/runs?head_sha={sha}&per_page=50")
     candidates = [run for run in runs["workflow_runs"] if eligible(run, sha)]
     for run in candidates:
         if run["status"] != "completed" or run["conclusion"] != "success":
@@ -76,7 +84,7 @@ def require_ci(sha, wait=False):
             # Re-query jobs even when watch succeeds: the run may have skipped them.
             return require_ci(sha)
     raise CiError(f"No full successful CI run for {sha}. Run "
-                  f"`gh workflow run ci.yml --repo {REPO} --ref main`, "
+                  f"`gh workflow run ci.yml --repo {REPO} --ref release/{sha}`, "
                   "wait for it, then retry the release.")
 
 

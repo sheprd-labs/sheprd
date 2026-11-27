@@ -30,11 +30,17 @@ fn a_program_that_cannot_run_offers_no_choice() {
 #[cfg(unix)]
 #[test]
 fn a_program_whose_help_never_ends_offers_no_choice() {
-    use std::os::unix::fs::PermissionsExt;
+    // Written from a child shell: a file this process held open for
+    // writing would fail to run (ETXTBSY) when another test forks meanwhile.
+    use crate::test_executable::write;
     let dir = tempfile::tempdir().unwrap();
     let wrapper = dir.path().join("sheprd-acp");
-    std::fs::write(&wrapper, "#!/bin/sh\necho '  --choose'\nsleep 30 &\nwait\n").unwrap();
-    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
+    write(
+        &wrapper,
+        "#!/bin/sh\necho '  --choose'\nsleep 30 &\nwait\n",
+        0o755,
+    )
+    .unwrap();
     let started = Instant::now();
     let deadline = Duration::from_millis(300);
     assert_eq!(
@@ -44,12 +50,12 @@ fn a_program_whose_help_never_ends_offers_no_choice() {
     assert!(started.elapsed() < Duration::from_secs(5));
 
     let quick = dir.path().join("quick");
-    std::fs::write(
+    write(
         &quick,
         "#!/bin/sh\necho '  --choose   Let clients switch'\n",
+        0o755,
     )
     .unwrap();
-    std::fs::set_permissions(&quick, std::fs::Permissions::from_mode(0o755)).unwrap();
     assert_eq!(
         AgentChoice::of_within(&quick, Duration::from_secs(5)),
         AgentChoice::Open

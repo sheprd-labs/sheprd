@@ -2,6 +2,7 @@
 //! with its connection, retries, and the view state drawn from it.
 
 mod diagnostics;
+mod retry;
 
 use super::{
     Error, MAX_FAILURES, Result, Target,
@@ -23,8 +24,6 @@ use std::{
 const POLL_BUDGET: usize = 512;
 /// How far past the viewport the entry list lays rows out.
 const OVERDRAW: f32 = 400.;
-const FIRST_RETRY: Duration = Duration::from_millis(250);
-const LAST_RETRY: Duration = Duration::from_secs(5);
 
 /// Starts a connection to `target`'s program; tests connect elsewhere.
 pub(crate) type Connect<'a> =
@@ -77,8 +76,11 @@ pub(crate) fn connect(
                     .map(|arg| sheprd_client::shell_quote(arg))
                     .collect::<Vec<_>>()
                     .join(" ");
-                let script = super::remote_program_script(&args);
-                sheprd_client::script_command(host, &script).map_err(Error::Remote)?
+                return Link::start(
+                    Dial::Ssh(host.clone(), super::remote_program_script(&args)),
+                    since,
+                    resend,
+                );
             }
         };
         return Link::start(Dial::Process(command), since, resend);
@@ -91,10 +93,10 @@ pub(crate) fn connect(
         super::Route::Local => Dial::Socket(
             sheprd_chat_protocol::endpoint_address(&target.endpoint).ok_or(Error::NoEndpointDir)?,
         ),
-        super::Route::Ssh(host) => {
-            let script = super::remote_program_script(&format!("connect {}", target.endpoint));
-            Dial::Process(sheprd_client::script_command(host, &script).map_err(Error::Remote)?)
-        }
+        super::Route::Ssh(host) => Dial::Ssh(
+            host.clone(),
+            super::remote_program_script(&format!("connect {}", target.endpoint)),
+        ),
     };
     Link::start(dial, since, resend)
 }
@@ -442,9 +444,7 @@ impl ChatPane {
             Duration::ZERO
         } else {
             self.failures = self.failures.saturating_add(1);
-            FIRST_RETRY
-                .saturating_mul(1 << self.failures.min(5))
-                .min(LAST_RETRY)
+            retry::delay(&self.target.route, self.failures)
         };
         self.retry_at = Some(now + delay);
     }

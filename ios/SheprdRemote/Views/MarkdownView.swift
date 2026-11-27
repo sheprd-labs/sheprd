@@ -7,7 +7,8 @@ import UIKit
 /// block. Blocks keep their positions as text streams in, so appended text
 /// grows the last block without reflowing the ones above it. Inline text
 /// is `InlineMarkdown`'s: `:big[…]` spans set their size, and only web
-/// links stay links (opening one asks first, see ChatScreen).
+/// links stay links (opening one asks first, see ChatScreen), besides
+/// `ScreenLink`s to a screen of the chat's computer.
 struct MarkdownView: View {
     let blocks: [MarkdownBlock]
 

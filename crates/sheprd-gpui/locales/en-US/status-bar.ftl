@@ -11,6 +11,11 @@ status-bar-disconnected = Disconnected
 status-bar-detached = Detached (daemon still running)
 # $status is one of the above, $error what went wrong.
 status-bar-status-error = { $status }: { $error }
+# A host that authenticates over Tailscale SSH holds the connection until the
+# user proves their identity in a browser. The bar has no room for the address,
+# so this names what waits and the item itself opens it, with the full address
+# as its tooltip. Nothing opens before the person being checked clicks.
+status-bar-tailscale = Tailscale SSH: verify your identity
 # Pane resize mode, which has no control on screen; keep the key names.
 status-bar-resize = Resize
 status-bar-resize-keys = h j k l or arrows resize, Esc ends

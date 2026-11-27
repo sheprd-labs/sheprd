@@ -201,7 +201,7 @@ struct IPadRoot: View {
             detail
                 // A chat or terminal leads to its workspace, to start
                 // another tab there.
-                .environment(\.offersWorkspace, true)
+                .environment(\.workspaceDestination, .pending)
                 .frame(maxWidth: .infinity)
                 .overlay(alignment: .topLeading) {
                     if !sidebarShown {

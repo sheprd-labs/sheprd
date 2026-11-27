@@ -114,28 +114,66 @@ pub async fn dial(
         }
         status
     };
-    if let Some(offense) = limited(hub.allow_dial(address)) {
+    // Past the dial rate, a private relay still lets through a dial that
+    // proves a key the computer named among its devices: its owners'
+    // devices reconnecting together are not a flood, so they are only
+    // logged. The key is looked up before its proof is checked, so a
+    // stranger past the rate costs no cryptography, and a pairing key, an
+    // invitation rather than a device, never gets this room. Any other dial
+    // past it answers `Limited`, whatever it would have answered. Only its
+    // timing differs: a named key's forged proof is refused one signature
+    // check later, which could confirm to a caller who already holds both a
+    // route and a device's public key that they belong together. That is
+    // the price of sparing the relay that check for every other caller.
+    let over = limited(hub.allow_dial(address));
+    if let Some(offense) = over
+        && !(hub.access.requires_token()
+            && hub.names_dial_key(route, key)
+            && hub.may_prove_past_rate(address))
+    {
+        if hub.access.requires_token() && offense.is_some() {
+            hub.refused_past_rate(address);
+        }
         return Err(refuse(Status::Limited, Dial::Limited, offense));
     }
+    // Past the rate, every refusal costs what the rate alone costs: were a
+    // named key's forged proof to earn ban points, the ban closing the
+    // caller's connection would tell it the key was named.
+    let unproven = |status, outcome, offense: Option<Offense>| match over {
+        Some(limit) => {
+            // Only a caller that went too fast itself spends; one refused
+            // because the limiter was full of others did nothing wrong.
+            if limit.is_some() {
+                hub.refused_past_rate(address);
+            }
+            refuse(Status::Limited, Dial::Limited, limit)
+        }
+        None => refuse(status, outcome, offense),
+    };
     if prove(key, signature, signed).is_err() {
         let offense = Some(Offense::BadProof);
-        return Err(refuse(Status::Offline, Dial::Unauthorized, offense));
+        return Err(unproven(Status::Offline, Dial::Unauthorized, offense));
     }
     let waiting = match hub.dial(route, *key, address) {
-        Ok(Ok(waiting)) => waiting,
+        Ok(Ok(waiting)) => {
+            if over.is_some() {
+                hub.owner_burst();
+            }
+            waiting
+        }
         // Neither an empty route nor a key the listener did not name costs
         // a point: they must cost the same, as they answer the same, so a
         // caller's ban cannot reveal whether a computer is online; and a
         // phone retrying while its computer is off must not get its
         // household banned. The dial rate limit catches a flood of either.
         Ok(Err(DialRefusal::Offline)) => {
-            return Err(refuse(Status::Offline, Dial::Offline, None));
+            return Err(unproven(Status::Offline, Dial::Offline, None));
         }
         Ok(Err(DialRefusal::Unauthorized)) => {
-            return Err(refuse(Status::Offline, Dial::Unauthorized, None));
+            return Err(unproven(Status::Offline, Dial::Unauthorized, None));
         }
         Ok(Err(DialRefusal::Busy)) | Err(_) => {
-            return Err(refuse(Status::Busy, Dial::Busy, None));
+            return Err(unproven(Status::Busy, Dial::Busy, None));
         }
     };
     let accepted = match timeout(hub.limits.accept_timeout, waiting.accepted).await {

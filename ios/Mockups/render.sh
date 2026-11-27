@@ -53,6 +53,8 @@ case "$round" in
      ipad="" ;;
   live) phone="live-Now-0 live-A-0 live-B-0 live-C-0 live-D-0 live-Now-1 live-A-1 live-B-1 live-C-1 live-D-1 live-Pick-0"
      ipad="" ;;
+  csettings) phone="csettings-A-0 csettings-B-0 csettings-B-1 csettings-C-0 csettings-D-0"
+     ipad="" ;;
   *) echo "unknown round $round" >&2; exit 2 ;;
 esac
 

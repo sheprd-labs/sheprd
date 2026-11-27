@@ -107,9 +107,10 @@ pub use ssh::{
 };
 pub use ssh::{
     Destination, FORWARD_READY, HostKeyFingerprint, HostKeyScan, HostKeys, HostProbe,
-    MAX_UNVERIFIED_HOSTS, NewHostKey, SshFailure, confirm_host_key, forward_command,
-    known_host_keys, probe_host, probe_host_with, remote_config_value, remote_origin_url,
-    resolve_destination, scan_host_key, set_host_keys, set_unverified_hosts, trust_host_key,
+    MAX_UNVERIFIED_HOSTS, NewHostKey, SshFailure, TailscaleCheck, confirm_host_key,
+    forward_command, known_host_keys, probe_host, probe_host_with, remote_config_value,
+    remote_origin_url, resolve_destination, scan_host_key, set_host_keys, set_unverified_hosts,
+    trust_host_key,
 };
 pub use surface_images::{
     ImageStore, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE, MAX_IMAGES, MAX_PLACEMENTS, SurfaceImage,

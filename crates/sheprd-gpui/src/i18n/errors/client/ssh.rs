@@ -38,6 +38,10 @@ impl Localize for SshFailure {
             Self::NoRoute => fl!("error-client-ssh-failure-no-route"),
             Self::Other => fl!("error-client-ssh-failure-other"),
             Self::RelayBanned(ban) => ban.localize(),
+            Self::Tailscale(check) => match check.url() {
+                Some(url) => fl!("error-client-ssh-failure-tailscale-url", url = url),
+                None => fl!("error-client-ssh-failure-tailscale"),
+            },
             Self::Unreachable => fl!("error-client-ssh-failure-unreachable"),
             // keep-sorted end
         }

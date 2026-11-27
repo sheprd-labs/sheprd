@@ -367,8 +367,11 @@ impl<R: FnMut(Update)> Session<R> {
         let continued = self.continued(loaded);
         self.emit(Change::Session {
             session: Some(sheprd_chat_protocol::SessionInfo {
+                can_steer: self.can_steer,
                 continued,
-                ..project::session(&id, &self.config.cwd)
+                cwd: Some(self.config.cwd.display().to_string()),
+                id: id.0.to_string(),
+                title: None,
             }),
         });
         // The session's answer replaces whatever the chat showed while it

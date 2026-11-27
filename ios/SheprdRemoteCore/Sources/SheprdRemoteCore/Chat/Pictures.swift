@@ -5,11 +5,15 @@ public struct TranscriptPicture: Hashable, Sendable, Identifiable {
     public var id: EntryId
     public var author: Author
     public var image: ChatImage
+    /// What the picture shows, as its author put it: a title line, then
+    /// any detail.
+    public var caption: String?
 
-    public init(id: EntryId, author: Author, image: ChatImage) {
+    public init(id: EntryId, author: Author, image: ChatImage, caption: String? = nil) {
         self.id = id
         self.author = author
         self.image = image
+        self.caption = caption
     }
 }
 
@@ -17,8 +21,8 @@ extension Transcript {
     /// The chat's pictures in the order it shows them, oldest first.
     public var pictures: [TranscriptPicture] {
         entries.compactMap {
-            guard case let .image(author, image) = $0.kind else { return nil }
-            return TranscriptPicture(id: $0.id, author: author, image: image)
+            guard case let .image(author, image, caption) = $0.kind else { return nil }
+            return TranscriptPicture(id: $0.id, author: author, image: image, caption: caption)
         }
     }
 }

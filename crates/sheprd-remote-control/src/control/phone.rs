@@ -5,7 +5,7 @@
 //! said ([`Answer`]).
 //!
 //! A phone is driven only while its live socket is open and its person
-//! turned on Settings > Agents for this computer there, which the phone says
+//! turned on, or left on, Let agents open screens for this computer there, which the phone says
 //! with `agent_control` on the socket. The phone refuses while its app is
 //! locked. Nothing here pairs, forgets, signs, or approves: those stay the
 //! person's, on the phone or the computer.
@@ -102,14 +102,21 @@ pub enum Command {
     Guide {
         text: String,
         highlight: Option<Highlight>,
+        /// The asking agent's pane, which a tap on the banner opens.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        from: Option<String>,
     },
     Highlight {
         target: Highlight,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        from: Option<String>,
     },
     ClearGuide,
     /// A note the person sees on the phone, from this computer's agent.
     Show {
         text: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        from: Option<String>,
     },
 }
 
@@ -122,15 +129,24 @@ pub enum Drive {
     Open {
         to: Screen,
     },
+    /// `from` is the asking agent's chat or terminal, which a tap on the
+    /// note opens; absent when it asked from outside a pane, or its pane is
+    /// not listed.
     Show {
         text: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        from: Option<Screen>,
     },
     Guide {
         text: String,
         highlight: Option<Highlight>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        from: Option<Screen>,
     },
     Highlight {
         target: Highlight,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        from: Option<Screen>,
     },
     ClearGuide,
 }

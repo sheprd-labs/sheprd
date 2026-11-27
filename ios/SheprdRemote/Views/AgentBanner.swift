@@ -1,10 +1,11 @@
 import SwiftUI
 import UIKit
 
-/// A capsule along the top saying what an agent on a computer showed or
+/// A card along the top saying what an agent on a computer showed or
 /// opened (`AgentControl`): its note, or that it opened the screen now in
-/// front, so the screen never changes unexplained. It goes by itself; a
-/// tap sends it sooner. It never takes input beyond that tap.
+/// front, so the screen never changes unexplained. A note goes by itself; a
+/// guide stays, on a bar of its own above the app. A tap opens the asking
+/// agent's chat when it named one, and the close button only dismisses.
 struct AgentBanner: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -12,11 +13,20 @@ struct AgentBanner: View {
     var body: some View {
         // Nothing shows behind the lock, whose cover is above this window.
         let banner = LockState.shared.hidesNames ? nil : (model.agents.guide ?? model.agents.banner)
+        let guiding = model.agents.guide != nil
         Group {
             if let banner {
                 content(banner)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
                         if model.agents.guide != nil { model.agents.guideHeight = height }
+                    }
+                    // A guide's bar, which the app is pushed below, reads
+                    // as part of the screen rather than a gap above it.
+                    .background(alignment: .bottom) {
+                        if guiding {
+                            Rectangle().fill(.bar).ignoresSafeArea(edges: .top)
+                                .overlay(alignment: .bottom) { Divider() }
+                        }
                     }
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
@@ -30,33 +40,67 @@ struct AgentBanner: View {
     }
 
     private func content(_ banner: AgentControl.Banner) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: banner.note ? "text.bubble" : "sparkles")
-                .foregroundStyle(.tint)
+        let opens = banner.from != nil
+        return HStack(alignment: .center, spacing: 12) {
+            Image(systemName: banner.note ? "sparkles" : "arrow.up.forward.app")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 34, height: 34)
+                .background(Circle().fill(Color.accentColor.gradient))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 if banner.note {
-                    Text("From \(banner.computer)'s agent")
-                        .font(.caption.weight(.semibold))
-                        .lineLimit(1)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Text(banner.computer).fontWeight(.semibold).foregroundStyle(.primary)
+                        Text("· Agent").foregroundStyle(.secondary)
+                        if opens {
+                            Spacer(minLength: 4)
+                            Text("Open chat").foregroundStyle(.tint)
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.tint)
+                        }
+                    }
+                    .font(.caption)
+                    .lineLimit(1)
                 }
                 Text(banner.text)
                     .font(.subheadline)
+                    .foregroundStyle(.primary)
                     .lineLimit(banner.note ? 2 : 1)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Spacer(minLength: 0)
+            Button {
+                model.agents.banner = nil
+                model.agents.clearGuide()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(.quaternary))
+                    .contentShape(.circle)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss")
         }
-        .padding(.horizontal, 14)
+        .padding(.leading, 12)
+        .padding(.trailing, 10)
         .padding(.vertical, 10)
-        .glassEffect(in: .rect(cornerRadius: 18))
-        .padding(.horizontal, 16)
+        .glassEffect(in: .rect(cornerRadius: 22))
+        .padding(.horizontal, 12)
         .padding(.top, 4)
+        .padding(.bottom, model.agents.guide == nil ? 0 : 8)
         .contentShape(.rect)
-        .onTapGesture { model.agents.banner = nil; model.agents.clearGuide() }
+        .onTapGesture { model.agents.tapped(banner, model: model) }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint("Dismisses it")
+        .accessibilityHint(opens ? "Opens the agent's chat" : "Dismisses it")
+        .accessibilityAction(named: "Dismiss") {
+            model.agents.banner = nil
+            model.agents.clearGuide()
+        }
     }
 }
 

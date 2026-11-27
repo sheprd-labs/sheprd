@@ -38,16 +38,39 @@ pub(super) fn phone(command: PhoneCommand, context: &Context) -> crate::Result<O
             text,
             highlight,
         } => (
-            drive(device, Command::Guide { text, highlight }),
+            drive(
+                device,
+                Command::Guide {
+                    text,
+                    highlight,
+                    from: from(context),
+                },
+            ),
             Asked::Show,
         ),
-        PhoneCommand::Highlight { device, target } => {
-            (drive(device, Command::Highlight { target }), Asked::Show)
-        }
+        PhoneCommand::Highlight { device, target } => (
+            drive(
+                device,
+                Command::Highlight {
+                    target,
+                    from: from(context),
+                },
+            ),
+            Asked::Show,
+        ),
         PhoneCommand::ClearGuide { device } => (drive(device, Command::ClearGuide), Asked::Show),
         PhoneCommand::Phones => (Ask::Phones, Asked::Phones),
         PhoneCommand::State { device } => (drive(device, Command::State), Asked::State),
-        PhoneCommand::Show { device, text } => (drive(device, Command::Show { text }), Asked::Show),
+        PhoneCommand::Show { device, text } => (
+            drive(
+                device,
+                Command::Show {
+                    text,
+                    from: from(context),
+                },
+            ),
+            Asked::Show,
+        ),
         PhoneCommand::Open { device, target } => {
             let command = open(target, context)?;
             (drive(device, command), Asked::Open)
@@ -61,6 +84,12 @@ pub(super) fn phone(command: PhoneCommand, context: &Context) -> crate::Result<O
 
 fn drive(device: Option<String>, command: Command) -> Ask {
     Ask::Drive { device, command }
+}
+
+/// The caller's pane, whose chat a tap on its note opens on the phone;
+/// `None` outside a Herdr pane, where the note opens nothing.
+fn from(context: &Context) -> Option<String> {
+    context.caller().ok().and_then(|caller| caller.pane_id)
 }
 
 /// What `open` names, with a pane or workspace left out taken from the

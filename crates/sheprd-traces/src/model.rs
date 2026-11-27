@@ -129,6 +129,33 @@ pub struct Activity {
     pub messages: i64,
 }
 
+/// Distinct recently active sessions of one agent type.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct ActiveAgent {
+    #[serde(serialize_with = "agent_name")]
+    pub agent: AgentKind,
+    pub count: usize,
+}
+
+impl ActiveAgent {
+    pub fn counts(agents: impl IntoIterator<Item = AgentKind>) -> Vec<Self> {
+        let mut result: Vec<Self> = Vec::new();
+        for agent in agents {
+            if let Some(entry) = result.iter_mut().find(|entry| entry.agent == agent) {
+                entry.count += 1;
+            } else {
+                result.push(Self { agent, count: 1 });
+            }
+        }
+        result.sort_by(|a, b| {
+            b.count
+                .cmp(&a.count)
+                .then_with(|| a.agent.name().cmp(b.agent.name()))
+        });
+        result
+    }
+}
+
 fn agent_name<S: Serializer>(agent: &AgentKind, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(agent.name())
 }

@@ -248,7 +248,7 @@ fn codex_embedded_attachment_renders_image_keeps_caption_and_preserves_wrapper_s
     ));
     assert!(matches!(
         &transcript.entries[1].kind,
-        EntryKind::Image { author: Author::User, image }
+        EntryKind::Image { author: Author::User, image, .. }
             if image.kind == ImageType::Png && image.data == PNG
     ));
     assert!(

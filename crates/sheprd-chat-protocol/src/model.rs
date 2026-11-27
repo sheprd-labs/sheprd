@@ -222,6 +222,10 @@ pub enum EntryKind {
     Image {
         author: Author,
         image: Image,
+        /// What the picture shows, in at most [`crate::MAX_CAPTION`]
+        /// characters: a title line, then any detail on the lines after it.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        caption: Option<String>,
     },
     Tool(Tool),
     /// How a prompt turn ended: how long it took and what it used.
@@ -567,6 +571,9 @@ impl Attachment {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SessionInfo {
+    /// The agent accepts a queued message inside its running turn.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub can_steer: bool,
     /// The notice that closes the conversation a continued session brought
     /// with it, such as a terminal agent's moved into this chat: entries up
     /// to it came before this chat, and a client may fold them.

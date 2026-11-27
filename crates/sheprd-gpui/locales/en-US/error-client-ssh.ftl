@@ -20,6 +20,14 @@ error-client-ssh-failure-host-key = the host key is not trusted; verify it by ru
 error-client-ssh-failure-local-network-denied = macOS denied Sheprd access to your local network. If it just asked, allow it and try again; otherwise turn on Sheprd in System Settings › Privacy & Security › Local Network
 error-client-ssh-failure-no-route = there is no route to the host
 error-client-ssh-failure-other = check host trust, authentication, and remote Herdr installation
+# Tailscale SSH answers authentication from the tailnet policy, and in check
+# mode the host holds the connection until the user proves their identity in a
+# browser. $url is the address ssh was told to open; it serves that one
+# connection, so a terminal that connects again gets a different one. The
+# address reads last as the final step, and a surface with room for a link shows
+# it on a line of its own rather than cutting it out of this sentence.
+error-client-ssh-failure-tailscale = Tailscale SSH wants you to verify your identity: connect to this host from a terminal and complete the check it asks for
+error-client-ssh-failure-tailscale-url = Tailscale SSH wants you to verify your identity: open { $url } to authenticate, then try again
 error-client-ssh-failure-unreachable = the host is unreachable
 error-client-ssh-failure-relay-banned = the relay banned this computer's network address
 # $reason is one of the error-client-ssh-ban-reason messages.

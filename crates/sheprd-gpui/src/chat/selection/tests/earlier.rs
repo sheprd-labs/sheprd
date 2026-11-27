@@ -32,6 +32,7 @@ fn continued() -> (Transcript, Prepared, Vec<(EntryId, u64)>) {
         },
     ]);
     transcript.session = Some(SessionInfo {
+        can_steer: false,
         continued: Some(EntryId(5)),
         cwd: None,
         id: "s".into(),

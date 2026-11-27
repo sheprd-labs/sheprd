@@ -38,7 +38,7 @@ extension Home {
 
     /// Agents working on this computer now. An older computer sends no
     /// count, so its tabs' most pressing agents are all there is to go on.
-    var workingAgents: Int {
+    public var workingAgents: Int {
         working ?? workspaces.reduce(0) { count, workspace in
             let statuses = workspace.chats.map(\.status) + workspace.terminals.compactMap(\.agent?.status)
             return count + statuses.filter { $0 == .working }.count

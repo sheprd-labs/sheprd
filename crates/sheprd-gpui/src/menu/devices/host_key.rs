@@ -27,7 +27,7 @@ impl SheprdWindow {
         tracing::info!(category = "device_setup", "Fetching host key");
         form.step = Step::FetchingKey(request.clone());
         form.claim = Some(claim);
-        form.error = None;
+        form.clear_failure();
         let background = cx
             .background_executor()
             .spawn(async move { sheprd_client::scan_host_key(request.target()) });
@@ -104,7 +104,7 @@ impl SheprdWindow {
         let claim = form.claim.take();
         tracing::info!(category = "device_setup", "Trusting host key");
         form.step = Step::Checking(request.clone());
-        form.error = None;
+        form.clear_failure();
         let background = cx.background_executor().spawn(async move {
             let claim = match claim {
                 Some(claim) => claim,

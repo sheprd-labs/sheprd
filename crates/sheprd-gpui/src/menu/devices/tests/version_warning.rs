@@ -10,7 +10,7 @@ fn saved_warning_stays_until_dismissed_and_wraps_in_a_narrow_window(cx: &mut gpu
                 let request = setup::Request::new("remote.test", "Remote", "").unwrap();
                 open_form(view, Step::Saving(request, HostProbe::Running), cx);
                 view.device_save_succeeded(setup::SaveOutcome::ExistingServer, cx);
-                assert!(view.menu.device_setup.as_ref().unwrap().error.is_none());
+                assert!(view.menu.device_setup.as_ref().unwrap().error().is_none());
                 assert!(view.flash.is_none());
                 view.tick_flash(std::time::Instant::now() + std::time::Duration::from_secs(60));
                 view.poll_device_setup(window, cx);

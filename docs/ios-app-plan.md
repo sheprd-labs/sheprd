@@ -310,7 +310,11 @@ daemon sends it over the held attach as one mouse wheel scroll at the
 middle of the terminal, so Herdr hands it to an app that reports the
 mouse (`less`, `vim`, an agent's TUI) or scrolls the terminal's own
 history otherwise, and reads the screen again at once and shortly after,
-as after typing. `lines` of 0 answers `error` "scroll out of range"; more
+as after typing. A Herdr 2 terminal routes it the same way: one wheel
+notch at the middle of the terminal goes to an app that reports the mouse,
+or as an arrow key to a full-screen app under alternate scroll mode
+(DECSET 1007); otherwise the view scrolls through the history the daemon
+keeps. `lines` of 0 answers `error` "scroll out of range"; more
 than 50 either way moves 50. A terminal the view follows without an
 attach (no `size`, or Herdr refused it) answers `error` "this terminal
 cannot scroll from the phone" once per subscription and ignores later

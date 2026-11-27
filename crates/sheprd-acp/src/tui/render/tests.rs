@@ -112,6 +112,7 @@ fn empty(clients: u32) -> View {
     transcript.status = Status::Idle;
     transcript.clients = clients;
     transcript.session = Some(sheprd_chat_protocol::SessionInfo {
+        can_steer: false,
         continued: None,
         cwd: Some("/srv/projects/parser".to_owned()),
         id: "s".to_owned(),

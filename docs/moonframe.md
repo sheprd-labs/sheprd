@@ -53,7 +53,7 @@ The window layout is defined in `crates/sheprd-gpui/moonframe/app`:
 | `mods/turns/main.luau` | The optional chat turn timeline in the left gutter, with Moonframe tools enabled: a tight stack of ticks in the gutter's middle, one per prompt, the prompt and the start of its reply on the card under the pointer, the turn being read marked, and a click back to a prompt. The shell floats it where Sheprd laid the gutter out |
 | `mods/build/main.luau` | Hosts the shared worktree build strip with its branch and pull request link |
 | `mods/status/main.luau` | Hosts the classic status bar with `region = "status"`, including the version and update button, configured controls, and mod items |
-| `components/sheprd-*.luau` | Reusable Luau rows, status dots and section headings for custom mods |
+| `components/sheprd-*.luau` | Reusable Luau rows, Orca status marks (working spinner, blocked question bubble, completed check and idle dot), and section headings for custom mods |
 | `style.luau` | The hover looks, for every mod |
 
 The stock shell places the terminals, tabs and pages with `region = "body"`.
@@ -77,6 +77,20 @@ Luau shell must stay transparent; the native window supplies the base and
 Sheprd's main region paints around page rectangles. Sidebar, toolbar and
 popover backgrounds remain solid. Adding a full-window background to the shell
 hides loaded pages, even when WebKit text and page captures look correct.
+
+## Edge lighting
+
+The window can carry a passive light around its edge, following the focused
+workspace's `agent_status`: a clockwise comet while working, two pulses while
+blocked, split waves when done, and a quiet breath while idle. No focused
+workspace or an unknown status clears it. This is native
+(`crates/sheprd-gpui/src/window/edge_light.rs`), not a Luau mod: it follows
+both sides of each macOS window corner and uses square corners in fullscreen.
+
+**Settings > Indicators > Edge Lighting** chooses **Auto (status)**, a
+preset, or a custom `#RRGGBB` color; the stroke width (1–12 logical pixels)
+and trail length (5–50% of the perimeter). The same values are available as
+`[edge_light] color`, `width` and `trail` in `config-gpui.toml`.
 
 ## Changing it
 

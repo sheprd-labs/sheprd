@@ -55,6 +55,10 @@ impl Filter {
         if self.agent.is_some_and(|agent| agent != session.agent) {
             return false;
         }
+        self.matches_query(session)
+    }
+
+    pub(super) fn matches_query(&self, session: &Session) -> bool {
         let query = self.query.trim().to_lowercase();
         query.is_empty()
             || [

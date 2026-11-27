@@ -19,7 +19,7 @@ struct ChatPicture: View {
         }
         .buttonStyle(.plain)
         .matchedTransitionSource(id: "picture", in: zoom)
-        .accessibilityLabel("Picture")
+        .accessibilityLabel(picture.about ?? String(localized: "Picture"))
         .accessibilityHint("Shows it full screen")
         .fullScreenCover(isPresented: $showing) {
             let all = pictures.contains { $0.id == picture.id } ? pictures : [picture]
@@ -40,6 +40,8 @@ struct ImageViewer: View {
     var openTab: ((GalleryPicture) -> Void)?
     @State private var selection: String
     @State private var chromeHidden = false
+    /// The viewer's height, which bounds an opened caption.
+    @State private var height: CGFloat = 0
     /// The pictures decoded so far, kept only around the one shown.
     @State private var decoded: [String: UIImage]
 
@@ -73,14 +75,24 @@ struct ImageViewer: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .ignoresSafeArea()
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
         .background(.black)
         .onChange(of: selection) { forgetFarPictures() }
         .overlay(alignment: .top) {
             if !chromeHidden { chrome.transition(.opacity) }
         }
         .overlay(alignment: .bottom) {
-            if !chromeHidden, let openTab, let picture = pictures.first(where: { $0.id == selection }), picture.tab != nil {
-                tabButton(picture, open: openTab).transition(.opacity)
+            if !chromeHidden, let picture = pictures.first(where: { $0.id == selection }) {
+                VStack(spacing: 10) {
+                    if let about = picture.about {
+                        PictureCaption(text: about, maxHeight: max(height * 0.4, 80)).id(picture.id)
+                    }
+                    if let openTab, picture.tab != nil {
+                        tabButton(picture, open: openTab)
+                    }
+                }
+                .padding(.bottom, 12)
+                .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.2), value: chromeHidden)
@@ -127,7 +139,6 @@ struct ImageViewer: View {
         .buttonStyle(.glass)
         .buttonBorderShape(.capsule)
         .padding(.horizontal, 24)
-        .padding(.bottom, 12)
         .accessibilityLabel("Open \(picture.caption ?? String(localized: "the tab"))")
     }
 
@@ -159,6 +170,44 @@ struct ImageViewer: View {
         guard let index = pictures.firstIndex(where: { $0.id == selection }) else { return }
         let near = Set(pictures[max(index - 1, 0)...min(index + 1, pictures.count - 1)].map(\.id))
         decoded = decoded.filter { near.contains($0.key) }
+    }
+}
+
+/// What the agent said a picture shows, on glass over its bottom edge: the
+/// first line as a title, the rest as detail that a tap opens in full,
+/// scrolling when it is taller than a share of the screen, as at large
+/// text sizes or in landscape.
+private struct PictureCaption: View {
+    let text: String
+    /// The tallest it grows when opened in full.
+    let maxHeight: CGFloat
+    @State private var expanded = false
+
+    var body: some View {
+        ViewThatFits(in: .vertical) {
+            lines
+            ScrollView { lines }.scrollBounceBehavior(.basedOnSize)
+        }
+        .frame(maxHeight: expanded ? maxHeight : nil)
+        .padding(.horizontal, 16).padding(.vertical, 12)
+        .glassEffect(in: .rect(cornerRadius: 22))
+        .contentShape(.rect)
+        .onTapGesture { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } }
+        .padding(.horizontal, 20)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isStaticText)
+    }
+
+    private var lines: some View {
+        let lines = text.split(separator: "\n", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+        let detail = lines.count > 1 ? lines[1] : nil
+        return VStack(alignment: .leading, spacing: 3) {
+            Text(lines.first ?? text).font(.body.weight(.semibold)).lineLimit(expanded ? nil : 2)
+            if let detail, !detail.isEmpty {
+                Text(detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(expanded ? nil : 2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

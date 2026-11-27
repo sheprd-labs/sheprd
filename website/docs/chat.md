@@ -135,7 +135,7 @@ Limits:
 
 ## Reading a chat
 
-The header shows how long the running turn has taken, how full the context window is (yellow past 75%, red past 90%), and what the session has cost when the agent reports it. It also stops a turn and switches back to the pane's terminal. Buttons under it pick the agent's model, thinking level, and mode; the gear lists the rest. In the prompt box, `/` completes the agent's commands and Up recalls earlier prompts. Prompts sent while the agent works are queued.
+The header shows how long the running turn has taken, how full the context window is (yellow past 75%, red past 90%), and what the session has cost when the agent reports it. It also stops a turn and switches back to the pane's terminal. Buttons under it pick the agent's model, thinking level, and mode; the gear lists the rest. In the prompt box, `/` completes the agent's commands and Up recalls earlier prompts. During a turn, Enter or Send queues your message for the next turn. To steer an agent that supports it, click the curved arrow on the queued message. Hover over the arrow to see what it does, or click × to withdraw the message.
 
 ### What the agent is doing
 

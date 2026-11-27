@@ -39,6 +39,7 @@ impl Fixture {
             transcript: Transcript {
                 agent: "Example agent".into(),
                 session: Some(SessionInfo {
+                    can_steer: false,
                     id: "stable-agent-session".into(),
                     cwd: Some("private-folder".into()),
                     title: Some("private-title".into()),

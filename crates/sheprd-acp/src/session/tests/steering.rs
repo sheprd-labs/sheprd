@@ -49,12 +49,16 @@ fn users(harness: &Harness) -> Vec<String> {
 }
 
 #[test]
-fn a_prompt_typed_during_a_turn_goes_into_it_and_shows_once_taken() {
+fn a_busy_prompt_stays_queued_until_explicitly_steered_and_shows_once_taken() {
     let mut harness = steering();
     prompt(&mut harness, 0, "one");
     harness.agent_says("Working on it.");
     let id = typed(&mut harness, "also check the docs");
+    assert!(harness.transcript().session.as_ref().unwrap().can_steer);
+    assert!(!harness.transcript().queued[0].steered);
+    assert!(harness.sent().is_empty());
 
+    harness.command(0, Command::SendNow { id });
     let request = harness.last_request(steer::METHOD);
     assert_eq!(request["params"]["id"], json!(id.0));
     assert_eq!(request["params"]["sessionId"], "s1");
@@ -95,7 +99,8 @@ fn a_prompt_typed_during_a_turn_goes_into_it_and_shows_once_taken() {
 fn a_steer_the_agent_refuses_waits_for_the_next_turn() {
     let mut harness = steering();
     let first = prompt(&mut harness, 0, "one");
-    typed(&mut harness, "two");
+    let id = typed(&mut harness, "two");
+    harness.command(0, Command::SendNow { id });
     let request = harness.last_request(steer::METHOD);
     harness.fail(
         request["id"].as_i64().unwrap(),
@@ -124,6 +129,7 @@ fn a_steer_given_back_goes_next_as_it_was_sent() {
     let mut harness = steering();
     let first = prompt(&mut harness, 0, "one");
     let id = typed(&mut harness, "two");
+    harness.command(0, Command::SendNow { id });
     let request = harness.last_request(steer::METHOD);
     harness.respond(request["id"].as_i64().unwrap(), json!({}));
     notify(&mut harness, steer::UNSTEERED, id);
@@ -139,7 +145,8 @@ fn a_steer_given_back_goes_next_as_it_was_sent() {
 fn a_turn_that_ends_without_a_steer_sends_it_next() {
     let mut harness = steering();
     let first = prompt(&mut harness, 0, "one");
-    typed(&mut harness, "two");
+    let id = typed(&mut harness, "two");
+    harness.command(0, Command::SendNow { id });
     let request = harness.last_request(steer::METHOD);
     harness.respond(request["id"].as_i64().unwrap(), json!({}));
     harness.respond(first, json!({"stopReason": "end_turn"}));
@@ -153,6 +160,7 @@ fn cancelling_holds_steered_prompts_unless_the_agent_took_them() {
     let mut harness = steering();
     prompt(&mut harness, 0, "one");
     let id = typed(&mut harness, "two");
+    harness.command(0, Command::SendNow { id });
     harness.command(0, Command::Cancel);
     let queued = &harness.transcript().queued;
     assert_eq!(queued.len(), 1);
@@ -182,6 +190,7 @@ fn withdrawing_a_refused_steer_keeps_nothing_it_was_prepared_with() {
     let mut harness = steering();
     prompt(&mut harness, 0, "one");
     let id = typed(&mut harness, "two");
+    harness.command(0, Command::SendNow { id });
     let request = harness.last_request(steer::METHOD);
     harness.fail(
         request["id"].as_i64().unwrap(),
@@ -222,6 +231,7 @@ fn a_steer_given_back_goes_with_its_files_as_they_were_sent() {
             }],
         },
     );
+    harness.command(0, Command::SendNow { id });
     let request = harness.last_request(steer::METHOD);
     assert!(request.to_string().contains("as sent"));
     harness.respond(request["id"].as_i64().unwrap(), json!({}));
@@ -232,4 +242,19 @@ fn a_steer_given_back_goes_with_its_files_as_they_were_sent() {
     let next = harness.last_request("session/prompt");
     assert_eq!(next["params"]["prompt"], request["params"]["prompt"]);
     assert!(harness.session.steering.is_empty());
+}
+
+#[test]
+fn an_unsteered_follow_up_starts_the_next_turn_on_a_steering_agent() {
+    let mut harness = steering();
+    let first = prompt(&mut harness, 0, "one");
+    let withdrawn = typed(&mut harness, "withdraw this");
+    typed(&mut harness, "two");
+    typed(&mut harness, "three");
+    harness.command(0, Command::Unqueue { id: withdrawn });
+    assert!(harness.sent().is_empty());
+    harness.respond(first, json!({"stopReason": "end_turn"}));
+    assert_eq!(users(&harness), ["one", "two"]);
+    assert_eq!(harness.transcript().queued.len(), 1);
+    assert_eq!(harness.transcript().queued[0].text, "three");
 }

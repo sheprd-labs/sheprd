@@ -9,6 +9,7 @@ use sheprd_client::herdr::AgentKind;
 use std::{fs, io::Write, path::Path};
 
 mod fixtures;
+mod overlap;
 mod pi;
 mod profile_roots;
 mod scan_links;

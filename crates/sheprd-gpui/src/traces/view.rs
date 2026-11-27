@@ -110,6 +110,16 @@ impl SheprdWindow {
             .into_any_element(),
             None => note(look, fl!("traces-activity-loading")).into_any_element(),
         };
+        let drilling = page.overlap.selection.is_some();
+        let shown = if drilling {
+            page.overlap
+                .sessions
+                .iter()
+                .filter(|s| page.filter.matches_query(s))
+                .collect()
+        } else {
+            shown
+        };
         let selected = page
             .selected
             .as_deref()
@@ -121,20 +131,21 @@ impl SheprdWindow {
             .child(self.trace_filters(look, page, &agents, cx))
             .child(self.trace_host_filters(look, &snapshot.hosts, &page.filter.scope, cx))
             .child(tiles(look, &totals))
-            .child(chart)
+            .child(self.overlap_panel(look, page, cx))
+            .when(!drilling, |body| body.child(chart))
             .child(
                 div()
                     .flex()
                     .flex_wrap()
                     .items_start()
                     .gap_4()
-                    .child(
-                        div()
-                            .flex_1()
-                            .flex_basis(px(740.))
-                            .min_w_0()
-                            .child(self.trace_table(look, &shown, page, now, cx)),
-                    )
+                    .child(div().flex_1().flex_basis(px(740.)).min_w_0().child(
+                        if page.overlap.loading_sessions() {
+                            note(look, fl!("traces-activity-loading"))
+                        } else {
+                            self.trace_table(look, &shown, page, now, cx)
+                        },
+                    ))
                     .when_some(selected, |row, session| {
                         row.child(
                             div()
@@ -163,6 +174,7 @@ impl SheprdWindow {
             .on_click(cx.listener(move |this, _, _, cx| {
                 if let Some(page) = &mut this.traces.page {
                     page.filter.range = range;
+                    page.overlap.reset();
                     cx.notify();
                 }
             }))
@@ -182,6 +194,7 @@ impl SheprdWindow {
                 .on_click(cx.listener(move |this, _, _, cx| {
                     if let Some(page) = &mut this.traces.page {
                         page.filter.agent = agent;
+                        page.overlap.reset();
                         cx.notify();
                     }
                 }))

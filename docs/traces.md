@@ -37,6 +37,24 @@ exchange its redacted session records automatically; previously replicated
 sessions remain readable when their source is offline. Nothing is published
 to a public server.
 
+## Agents running at once
+
+The first chart shows the highest number of sessions active at the same instant
+on each UTC day. A timestamped reply, reasoning event, or tool call counts its
+session for the next 15 minutes. Another such event extends the window. This
+estimate includes activity across midnight and expires while a session is idle.
+Counts reflect indexed traces, including the last history received from offline hosts.
+A subagent contributes separately only when Traces indexes it as its own session.
+
+The recent count is broken down by agent type and refreshes about every 30 seconds.
+Select the recent count, the peak badge, or a day in the chart to see the
+participating sessions and open their transcripts. A selected daily peak keeps
+its timestamp if newer trace history moves the peak. Tied peaks use the earliest
+instant. The chart follows the host, device label, agent, and date filters.
+Search narrows the session list. **Show all sessions** closes the drill-down.
+The drill-down reads up to 1,000 participants directly from the index, including
+older sessions outside the regular recent-session listing.
+
 ## Replication
 
 Every running Sheprd exchanges traces in both directions with the enabled hosts
@@ -93,6 +111,8 @@ sheprd-acp traces index --json
 sheprd-acp traces watch --json
 sheprd-acp traces list --agent claude --limit 50 --json
 sheprd-acp traces activity --days 30 --json
+sheprd-acp traces overlap --days 30 --json
+sheprd-acp traces overlap --at UNIX_MILLISECONDS --agent codex --host HOST_ID --json
 sheprd-acp traces peers --json
 sheprd ui traces --json
 sheprd ui traces --tag work
@@ -101,7 +121,9 @@ sheprd ui traces --all
 ```
 
 `index` reads one bounded batch per file; repeat it or use `watch` to catch up
-with very large files. `list` and `activity` read the existing index.
+with very large files. `list`, `activity`, and `overlap` read the existing index.
+`overlap` covers 1–365 UTC days. Its JSON contains `recent` and `daily` points
+with Unix millisecond `at` and session `count`, plus `recent_by_agent`. Pass a point’s `at` to list its sessions.
 Without `--json`, the commands print human-readable summaries.
 `watch --json` emits a host record, changed session records, and quiet-rescan
 heartbeats as JSON lines. It runs until stopped or its output reader closes.
@@ -127,6 +149,8 @@ batches are capped at 64 records and 512 KiB of serialized record data.
   coordinate connected hosts. `watch` indexes files; it does not discover peers.
 
 ## Native screenshots
+
+[Wide concurrency chart](screenshots/traces/overlap-wide.png) · [Narrow concurrency chart](screenshots/traces/overlap-narrow.png)
 
 The opt-in fixture uses synthetic data and the real native window, with the
 shared test sandbox. With a desktop available, capture dark, light, narrow,

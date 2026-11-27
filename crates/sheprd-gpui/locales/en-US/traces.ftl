@@ -88,3 +88,11 @@ traces-replication-syncing = Synchronizing…
 traces-replication-ready = Up to date at the last exchange
 traces-replication-failed = Could not synchronize: { $error }. Check the connection and the host’s sheprd-acp version.
 traces-replication-peer = { $host }: { $status }
+
+traces-overlap-title = Agents running at once
+traces-overlap-recent = { $count } active in the last 15 min
+traces-overlap-peak = Peak { $count } · { $time }
+traces-overlap-rule = Daily peak. Each session counts for 15 minutes after a reply, reasoning event, or tool call. Select a peak to see its sessions.
+traces-overlap-selection = Sessions active at { $time }
+traces-overlap-clear = Show all sessions
+traces-overlap-agent = { $count } { $agent }

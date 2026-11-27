@@ -19,6 +19,7 @@ mod lockout;
 mod metrics;
 mod neutral_names;
 mod options;
+mod owner_dials;
 mod pings;
 #[cfg(feature = "client")]
 mod pinned;

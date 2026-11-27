@@ -40,7 +40,7 @@ fn native_setup_failure_preserves_the_key_offer(cx: &mut gpui::TestAppContext) {
                 cx,
             );
             assert!(matches!(step(view), Step::Confirm(_, Offer::InstallKey)));
-            assert!(view.menu.device_setup.as_ref().unwrap().error.is_some());
+            assert!(view.menu.device_setup.as_ref().unwrap().error().is_some());
         });
     });
 }
@@ -101,8 +101,7 @@ fn native_completion_and_failures_stay_with_the_ssh_form(cx: &mut gpui::TestAppC
                             .device_setup
                             .as_ref()
                             .unwrap()
-                            .error
-                            .as_deref()
+                            .error()
                             .unwrap()
                             .contains("Connection refused")
                     );
@@ -161,7 +160,7 @@ fn core_install_completes_or_returns_to_confirm_with_claim(cx: &mut gpui::TestAp
             assert!(matches!(step(view), Step::Confirm(_, Offer::Install)));
             let setup = view.menu.device_setup.as_ref().unwrap();
             assert!(setup.claim.is_some());
-            assert!(setup.error.as_deref().unwrap().contains("curl"));
+            assert!(setup.error().unwrap().contains("curl"));
 
             let cancel = super::super::add_device::CancelFlag::new();
             open_form(

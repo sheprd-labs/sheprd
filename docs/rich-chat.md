@@ -612,17 +612,17 @@ computer's and every connected SSH host's that has the program, keeps the
 latest edit, and offers it to the others, so an edit made anywhere reaches all
 of them. A host without the program is skipped.
 
-A prompt sent while Claude Code, Codex or pi works goes into the running turn
-rather than waiting for it to end: the agent reads it at its next step, such
-as after the tool call running now, and the conversation shows it there. Until
-then it waits above the composer marked **Steering**, and cannot be withdrawn,
-as the agent already has it. One the agent did not take before its turn ended
-goes as the next prompt. Other agents, and a prompt sent behind one still
-waiting to be sent, keep the queue: it waits marked **Queued** until the turn
-ends, and its × withdraws it.
+During a turn, Enter or Send queues the message for the next turn. Queued
+messages appear above the composer in send order. Click × to withdraw one.
 
-**Send now** on a queued prompt sends it ahead of the others: into the running
-turn when the agent steers, otherwise in place of the turn, which it stops.
+When the agent supports steering, each queued row has a curved arrow. Hover
+over it for **Steer the current turn with this message**. Click it to send
+that message into the running turn. The row shows **Steering** until the
+agent takes it, then the message appears in the conversation. If the turn
+ends first, the message goes as a follow-up.
+
+On other agents, **Send now** stops the running turn and sends the selected
+message first. With the agent idle, **Send now** starts a turn.
 **Stop** keeps what you typed: queued prompts, and those still marked
 **Steering**, wait marked **Held**, and no later turn sends them on its own.
 Send one now, or withdraw it with ×; a new prompt goes at once meanwhile.
@@ -721,6 +721,27 @@ differences:
 
 The phone web app draws neither, so `phone.md` does not mention them and only
 `phone-app.md`, which follows it for the iPhone and iPad app, does.
+
+In the iPhone and iPad app and the desktop chat, an agent's answer may also
+link a screen of its own computer, so the person opens a workspace, worktree,
+tab, or agent the agent just made with a tap or a click: `sheprd://workspace/WORKSPACE`,
+`sheprd://changes/WORKSPACE`, `sheprd://chat/PANE` (its terminal when the
+agent has no chat), or `sheprd://term/PANE`, with Herdr's ids
+(`ScreenLink.swift`). A link names no computer: the chat showing it opens it
+on that chat's computer, so one computer's text never reaches another's
+screens. A Herdr 2 pane goes by the id the desktop and `sheprd chat
+list` give it, `core:t7`; the phone matches it to its own `core:TAG-HEX`
+(`ScreenLink.pane(_:isNamed:)`), and the desktop opens its herdr-core tab.
+On an iPad, a link in a chat shown in a window of its own pushes onto that
+window's stack. It only shows a screen, as `sheprd phone open` does, without the
+banner or **Let agents open screens**, since the person tapped it. Every
+other non-web link in agent text stays plain text. `phone-app.md` and
+`desktop.md` tell the agent to write these links; the phone web app and
+`remote.md` places do not open them. On the desktop
+(`chat/screen_link.rs`), a click focuses the pane or workspace in the Herdr
+the window shows the chat from, as an agents-list row does, and a changes
+link goes to its workspace; links in an SSH chat stay inert, as its ids are
+its host's.
 
 The catalog is application-specific, not an A2UI implementation or MCP Apps
 host. Embedded HTML pages use the platform webview; see the

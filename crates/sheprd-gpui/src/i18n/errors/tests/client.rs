@@ -209,6 +209,10 @@ fn every_sessions_variant_has_a_message() {
 
 #[test]
 fn every_ssh_variant_has_a_message() {
+    // A check names an address, so the message every surface shows for it is the
+    // one that carries it; the address is proof enough that Tailscale asked.
+    let check = ssh::TailscaleCheck::from_address("https://login.tailscale.com/a/abc123")
+        .expect("a real sign-in address");
     let failures = [
         SshFailure::Auth,
         SshFailure::HerdrMissing,
@@ -221,6 +225,7 @@ fn every_ssh_variant_has_a_message() {
             reason: Some(BanReason::Probe),
             remaining: Some(std::time::Duration::from_secs(540)),
         }),
+        SshFailure::Tailscale(check),
         SshFailure::Unreachable,
     ];
     assert_localized(&failures);

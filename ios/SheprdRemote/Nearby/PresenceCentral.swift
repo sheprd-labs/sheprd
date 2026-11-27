@@ -1,5 +1,6 @@
 import CoreBluetooth
 import Foundation
+import Observation
 import SheprdRemoteCore
 import SheprdNearby
 import os
@@ -25,22 +26,35 @@ private let log = Logger(subsystem: "so.pen.herdr.remote", category: "presence")
 /// Callbacks arrive on the main queue (`queue: nil`); the preconcurrency
 /// conformances check that at run time.
 @MainActor
+@Observable
 final class PresenceCentral: NSObject {
     static let presence = CBUUID(string: "6E3A4F21-8C0B-4D7E-9A55-2F1C0B7D4E93")
     static let restoreIdentifier = "so.pen.herdr.remote.presence"
 
+    /// Computers this phone is currently near over Bluetooth, holding alerts.
+    private(set) var near: Set<Fingerprint> = []
+
     /// The paired computers, kept current by the app model.
-    var computers: [Computer] = [] {
+    @ObservationIgnored var computers: [Computer] = [] {
         didSet { apply() }
     }
     /// A computer sent its current addresses.
-    var onAddresses: ((Fingerprint, [String]) -> Void)?
+    @ObservationIgnored var onAddresses: ((Fingerprint, [String]) -> Void)?
     /// iOS relaunched the app because a computer came back in range.
-    var onWake: (() -> Void)?
+    @ObservationIgnored var onWake: (() -> Void)?
 
-    private var manager: CBCentralManager?
-    private var links: [UUID: Link] = [:]
-    private var ticker: Task<Void, Never>?
+    @ObservationIgnored private var manager: CBCentralManager?
+    @ObservationIgnored private var links: [UUID: Link] = [:]
+    @ObservationIgnored private var ticker: Task<Void, Never>?
+
+    func isNear(_ fingerprint: Fingerprint) -> Bool {
+        near.contains(fingerprint)
+    }
+
+    private func refreshNear() {
+        let current = Set(links.values.compactMap { $0.nearness.near ? $0.proven?.fingerprint : nil })
+        if current != near { near = current }
+    }
 
     /// One peripheral: where its proof stands and its nearness.
     private final class Link {
@@ -70,6 +84,7 @@ final class PresenceCentral: NSObject {
                 for link in links.values { manager.cancelPeripheralConnection(link.peripheral) }
             }
             links = [:]
+            refreshNear()
             return
         }
         dropUnwanted()
@@ -113,6 +128,7 @@ final class PresenceCentral: NSObject {
                 manager?.cancelPeripheralConnection(link.peripheral)
             }
         }
+        refreshNear()
     }
 
     private func scan() {
@@ -205,6 +221,7 @@ final class PresenceCentral: NSObject {
         link.reassembly = NearbyFraming.Reassembly()
         link.nearness = Presence.Nearness()
         link.candidates = wanted
+        refreshNear()
         link.peripheral.discoverServices([NearbyBluetooth.service])
     }
 }
@@ -236,11 +253,13 @@ extension PresenceCentral: @preconcurrency CBCentralManagerDelegate {
         guard let link = links[peripheral.identifier] else { return }
         link.proven = nil
         link.characteristic = nil
+        refreshNear()
         if !wanted.isEmpty { central.connect(peripheral) }
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         links[peripheral.identifier] = nil
+        refreshNear()
     }
 }
 
@@ -280,6 +299,7 @@ extension PresenceCentral: @preconcurrency CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
         guard error == nil, let link = links[peripheral.identifier], link.proven != nil else { return }
         if let near = link.nearness.update(rssi: RSSI.intValue) {
+            refreshNear()
             send(.near(near), on: link)
         }
     }

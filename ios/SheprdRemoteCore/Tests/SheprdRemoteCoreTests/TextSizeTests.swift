@@ -93,9 +93,9 @@ import Testing
         #expect(styled.runs.last?[TextSizeAttribute.self] == .big)
     }
 
-    @Test func onlyWebLinksStayLinks() {
-        let styled = InlineMarkdown.attributed("[a](https://x.dev) [b](herdr-remote://chat?id=1)")
-        #expect(styled.runs.compactMap(\.link).map(\.absoluteString) == ["https://x.dev"])
+    @Test func onlyWebAndScreenLinksStayLinks() {
+        let styled = InlineMarkdown.attributed("[a](https://x.dev) [b](herdr-remote://chat?id=1) [c](sheprd://workspace/wF9)")
+        #expect(styled.runs.compactMap(\.link).map(\.absoluteString) == ["https://x.dev", "sheprd://workspace/wF9"])
     }
 
     @Test func largerStepsReadHeavier() {

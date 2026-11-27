@@ -574,9 +574,7 @@ final class AppModel {
     /// The name to show for `computer`: its own, plus the start of its
     /// fingerprint when another paired computer has the same name.
     func displayName(_ computer: Computer) -> String {
-        let twins = computers.filter { $0.name == computer.name }.count
-        guard twins > 1 else { return computer.name }
-        return "\(computer.name) (\(computer.fingerprint.hex.prefix(8)))"
+        shownComputers.displayName(of: computer)
     }
 
     /// The paired computer that vouched for `computer`, for one paired

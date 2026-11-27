@@ -175,10 +175,14 @@ impl SidebarIntent {
     }
 }
 
-/// The host colour being typed as hex, for the host it was opened on: rows
-/// can reorder while it is open.
+pub(super) enum HexTarget {
+    Host(String),
+    EdgeLight,
+}
+
+/// Keep the target with its input: hosts can reorder before a colour is saved.
 pub(super) struct HexEdit {
-    pub host: String,
+    pub target: HexTarget,
     pub input: Entity<SearchInput>,
     pub invalid: bool,
     pub _blur: Subscription,
@@ -449,17 +453,28 @@ impl SettingsWindow {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.quitting || self.closing.is_some() {
+        let color = self
+            .host_rows(cx)
+            .into_iter()
+            .find(|(label, ..)| label == host)
+            .and_then(|(_, color, _)| color);
+        self.begin_color_edit(HexTarget::Host(host.to_owned()), color, window, cx);
+    }
+
+    pub(super) fn begin_color_edit(
+        &mut self,
+        target: HexTarget,
+        color: Option<u32>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.quitting || self.closing.is_some() || self.busy() {
             return;
         }
         if !self.finish_hex_edit(true, cx) {
             self.finish_hex_edit(false, cx);
         }
-        let current = self
-            .host_rows(cx)
-            .into_iter()
-            .find(|(label, ..)| label == host)
-            .and_then(|(_, color, _)| color)
+        let current = color
             .map(|color| format!("{color:06x}"))
             .unwrap_or_default();
         let input = cx.new(SearchInput::new);
@@ -474,7 +489,7 @@ impl SettingsWindow {
             this.finish_hex_edit(true, cx);
         });
         self.hex_edit = Some(HexEdit {
-            host: host.to_owned(),
+            target,
             input,
             invalid: false,
             _blur: blur,
@@ -486,6 +501,7 @@ impl SettingsWindow {
     /// Commits or abandons the typed colour. False means the text is not a
     /// colour (or is mid-composition) and the field stays open, marked.
     pub(super) fn finish_hex_edit(&mut self, save: bool, cx: &mut Context<Self>) -> bool {
+        let busy = self.busy();
         let Some(edit) = &mut self.hex_edit else {
             return true;
         };
@@ -502,10 +518,19 @@ impl SettingsWindow {
         } else {
             None
         };
-        let host = std::mem::take(&mut edit.host);
-        self.hex_edit = None;
-        if let Some(color) = color {
-            self.set_host_color(&host, Some(color), cx);
+        // Host colors queue through commit_sidebar. Edge colors write directly.
+        if save && busy && matches!(edit.target, HexTarget::EdgeLight) {
+            return false;
+        }
+        if let Some(edit) = self.hex_edit.take()
+            && let Some(color) = color
+        {
+            match edit.target {
+                HexTarget::Host(host) => self.set_host_color(&host, Some(color), cx),
+                HexTarget::EdgeLight => {
+                    self.save_preference(Preference::EdgeLightColor(Some(color)), cx)
+                }
+            }
         }
         cx.notify();
         true

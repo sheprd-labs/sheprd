@@ -13,6 +13,9 @@ error-config-invalid-code-table = code must be a TOML table
 # $device is the ID the config named, quoted.
 error-config-invalid-device-id = devices.{ $device } is not a saved device ID
 error-config-invalid-devices-table = devices and each devices.<id> must be tables
+error-config-invalid-edge-light-color = edge_light.color must be auto or #RRGGBB
+error-config-invalid-edge-light-trail = edge_light.trail must be 5–50 percent
+error-config-invalid-edge-light-width = edge_light.width must be 1–12 pixels
 error-config-invalid-favorite-themes = favorite_themes must be a list of theme names
 error-config-invalid-font-size = { $table }.size must be finite and between 8 and 48 logical pixels
 error-config-invalid-font-weight = { $table }.weight must be a weight name such as "medium" or a number from 100 to 900

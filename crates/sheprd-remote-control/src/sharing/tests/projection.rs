@@ -100,6 +100,7 @@ fn only_explicit_text_crosses_the_boundary() {
                 data: "private-image".into(),
                 kind: ImageType::Png,
             },
+            caption: None,
         },
     );
     f.push(4, tool("private-tool-output"));

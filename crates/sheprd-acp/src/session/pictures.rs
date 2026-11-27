@@ -40,8 +40,11 @@ impl<R: FnMut(Update)> Session<R> {
                 })
                 .unwrap_or_default();
             let mut added = false;
-            for image in linked.iter().filter_map(|path| crate::pictures::read(path)) {
-                let picture = self.projector.image(Author::Agent, image);
+            for link in linked {
+                let Some(image) = crate::pictures::read(&link.path) else {
+                    continue;
+                };
+                let picture = self.projector.image(Author::Agent, image, link.caption);
                 self.emit(picture);
                 added = true;
             }

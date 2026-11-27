@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       expected_sha:
-        description: Full commit SHA of main HEAD
+        description: Full commit SHA on main, dispatched from its release/<sha> branch
         required: true
         type: string
       request_id:
@@ -39,7 +39,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' &&
       github.repository == 'sheprd-labs/sheprd' &&
-      github.ref == 'refs/heads/main' &&
+      startsWith(github.ref, 'refs/heads/release/') &&
       github.actor == 'penso' && github.triggering_actor == 'penso'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -60,7 +60,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' &&
       github.repository == 'sheprd-labs/sheprd' &&
-      github.ref == 'refs/heads/main' &&
+      startsWith(github.ref, 'refs/heads/release/') &&
       github.actor == 'penso' && github.triggering_actor == 'penso'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -89,7 +89,10 @@ jobs:
           [[ "$CHANNEL" == stable || "$CHANNEL" == beta ]]
           [[ "$EXPECTED_SHA" == "$GITHUB_SHA" ]]
           [[ "$(git rev-parse HEAD)" == "$EXPECTED_SHA" ]]
-          [[ "$(gh api repos/sheprd-labs/sheprd/git/ref/heads/main --jq .object.sha)" == "$EXPECTED_SHA" ]]
+          # Dispatched from release/<sha>, so merges to main cannot cancel this
+          # release's CI; the commit must still be one main has reached.
+          [[ "$GITHUB_REF" == "refs/heads/release/$EXPECTED_SHA" ]]
+          [[ "$(gh api "repos/sheprd-labs/sheprd/compare/$EXPECTED_SHA...main" --jq .status)" =~ ^(identical|ahead)$ ]]
           # The calendar version is derived here, never dispatched: today's UTC
           # date and the next same-day counter after the tags GitHub already has.
           version=$(gh api --paginate repos/sheprd-labs/sheprd/git/matching-refs/tags/v --jq '.[].ref' |
@@ -125,7 +128,7 @@ jobs:
   ci-gate:
     needs: validate
     if: >-
-      github.repository == 'sheprd-labs/sheprd' && github.ref == 'refs/heads/main' &&
+      github.repository == 'sheprd-labs/sheprd' && startsWith(github.ref, 'refs/heads/release/') &&
       github.actor == 'penso' && github.triggering_actor == 'penso'
     runs-on: ubuntu-24.04
     timeout-minutes: 180
@@ -149,7 +152,7 @@ jobs:
   nix:
     needs: validate
     if: >-
-      github.repository == 'sheprd-labs/sheprd' && github.ref == 'refs/heads/main' &&
+      github.repository == 'sheprd-labs/sheprd' && startsWith(github.ref, 'refs/heads/release/') &&
       github.actor == 'penso' && github.triggering_actor == 'penso'
     permissions:
       contents: read
@@ -436,7 +439,7 @@ jobs:
     name: Windows signing (${{ matrix.target }})
     needs: [validate, windows, ci-gate]
     if: >-
-      github.repository == 'sheprd-labs/sheprd' && github.ref == 'refs/heads/main' &&
+      github.repository == 'sheprd-labs/sheprd' && startsWith(github.ref, 'refs/heads/release/') &&
       github.actor == 'penso' && github.triggering_actor == 'penso' &&
       needs.validate.outputs.windows_signed == 'true'
     strategy:
@@ -636,7 +639,7 @@ jobs:
     # skipped need skips this job unless its condition checks results itself.
     if: >-
       !cancelled() &&
-      github.repository == 'sheprd-labs/sheprd' && github.ref == 'refs/heads/main' &&
+      github.repository == 'sheprd-labs/sheprd' && startsWith(github.ref, 'refs/heads/release/') &&
       github.actor == 'penso' && github.triggering_actor == 'penso' &&
       needs.validate.result == 'success' && needs.ci-gate.result == 'success' &&
       needs.nix.result == 'success' &&
@@ -828,7 +831,7 @@ jobs:
     # Like sign: the Windows signing jobs may be skipped, never failed.
     if: >-
       !cancelled() &&
-      github.repository == 'sheprd-labs/sheprd' && github.ref == 'refs/heads/main' &&
+      github.repository == 'sheprd-labs/sheprd' && startsWith(github.ref, 'refs/heads/release/') &&
       github.actor == 'penso' && github.triggering_actor == 'penso' &&
       needs.validate.result == 'success' && needs.sign.result == 'success' &&
       needs.linux.result == 'success' && needs.metadata.result == 'success' &&
@@ -934,7 +937,7 @@ jobs:
   publish:
     needs: [validate, attest, changelog]
     if: >-
-      github.repository == 'sheprd-labs/sheprd' && github.ref == 'refs/heads/main' &&
+      github.repository == 'sheprd-labs/sheprd' && startsWith(github.ref, 'refs/heads/release/') &&
       github.actor == 'penso' && github.triggering_actor == 'penso'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -1016,7 +1019,7 @@ jobs:
   homebrew:
     needs: [validate, publish]
     if: >-
-      github.repository == 'sheprd-labs/sheprd' && github.ref == 'refs/heads/main' &&
+      github.repository == 'sheprd-labs/sheprd' && startsWith(github.ref, 'refs/heads/release/') &&
       github.actor == 'penso' && github.triggering_actor == 'penso' &&
       needs.validate.outputs.channel == 'stable'
     runs-on: ubuntu-24.04
@@ -1060,7 +1063,7 @@ jobs:
   winget:
     needs: [validate, publish]
     if: >-
-      github.repository == 'sheprd-labs/sheprd' && github.ref == 'refs/heads/main' &&
+      github.repository == 'sheprd-labs/sheprd' && startsWith(github.ref, 'refs/heads/release/') &&
       github.actor == 'penso' && github.triggering_actor == 'penso' &&
       needs.validate.outputs.windows_signed == 'true' &&
       needs.validate.outputs.channel == 'stable'

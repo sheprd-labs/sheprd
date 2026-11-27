@@ -101,6 +101,7 @@ chat-queued = Queued
 chat-steering = Steering
 chat-held = Held
 chat-send-now = Send now
+chat-steer-hint = Steer the current turn with this message
 chat-working = Working
 chat-working-writing = Writing
 chat-working-thinking = Thinking

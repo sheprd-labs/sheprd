@@ -5,18 +5,22 @@ import SheprdRemoteCore
 private let log = Logger(subsystem: "so.pen.herdr.remote", category: "agents")
 
 /// Agents on a paired computer driving this app (`sheprd phone` there):
-/// opening a screen, saying which one is in front, and showing a note. Off
-/// for every computer until its person turns it on in that computer's page;
-/// refused while the app is locked. Every open and note says which
-/// computer's agent did it, so the screen never changes unexplained.
+/// opening a screen, saying which one is in front, and showing a note. On
+/// for every paired computer until its person turns it off in that
+/// computer's page; refused while the app is locked. Every open and note
+/// says which computer's agent did it, so the screen never changes
+/// unexplained, and a tap on a note opens the agent's own chat.
 @MainActor
 @Observable
 final class AgentControl {
-    /// The computers whose agents may drive the app, by fingerprint.
-    private(set) var allowed: Set<String> = Set(UserDefaults.standard.stringArray(forKey: AgentControl.key) ?? []) {
-        didSet { UserDefaults.standard.set(allowed.sorted(), forKey: Self.key) }
+    /// The computers whose person turned agents off, by fingerprint; every
+    /// other paired computer's agents may drive the app.
+    private(set) var turnedOff: Set<String> = Set(UserDefaults.standard.stringArray(forKey: AgentControl.key) ?? []) {
+        didSet { UserDefaults.standard.set(turnedOff.sorted(), forKey: Self.key) }
     }
-    private static let key = "agentControl"
+    /// Not the older `agentControl` key, which listed the computers turned
+    /// on while agents were off by default.
+    private static let key = "agentControlOff"
     /// The note on screen, from an agent or about what one opened. It
     /// shows in a window of its own above every sheet (`AgentBannerWindows`).
     var banner: Banner? {
@@ -49,6 +53,10 @@ final class AgentControl {
         let text: String
         /// An agent's own note, rather than word of what it opened.
         let note: Bool
+        /// The asking agent's chat or terminal on `device`, which a tap
+        /// opens.
+        var from: AgentScreen? = nil
+        var device: String? = nil
 
         /// How long it stays unless tapped away.
         var shown: Duration { note ? .seconds(8) : .seconds(3) }
@@ -65,11 +73,11 @@ final class AgentControl {
         var settingsPage: AgentSettingsPage?
     }
 
-    func allows(_ computer: Computer) -> Bool { allowed.contains(computer.fingerprint.hex) }
+    func allows(_ computer: Computer) -> Bool { !turnedOff.contains(computer.fingerprint.hex) }
 
     /// Turns agents on or off for `computer`, which hears it at once.
     func set(_ on: Bool, for computer: Computer, fleet: Fleet) {
-        if on { allowed.insert(computer.fingerprint.hex) } else { allowed.remove(computer.fingerprint.hex) }
+        if on { turnedOff.remove(computer.fingerprint.hex) } else { turnedOff.insert(computer.fingerprint.hex) }
         fleet.setAgentControl(on, device: computer.device)
         if !on, guidingDevice == computer.device { clearGuide() }
     }
@@ -90,30 +98,52 @@ final class AgentControl {
             guard guidingDevice == nil || guidingDevice == computer.device else { return answer(.refused(.other)) }
             clearGuide()
             answer(.done(state(for: computer, model: model)))
-        case let .guide(text, target):
+        case let .guide(text, target, from):
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.unicodeScalars.count <= 500 else { return answer(.refused(.other)) }
             if target == .haptics, !FeedbackSettings.canTap { return answer(.refused(.notFound)) }
             if guidingDevice != computer.device { clearGuide() }
             guidingDevice = computer.device
-            guide = Banner(computer: model.displayName(computer), text: text, note: true)
+            guide = Banner(computer: model.displayName(computer), text: text, note: true, from: from, device: computer.device)
             if let target { showHighlight(target, model: model) }
             answerAfterNavigation(computer, model: model, answer: answer)
-        case let .highlight(target):
+        case let .highlight(target, from):
             if target == .haptics, !FeedbackSettings.canTap { return answer(.refused(.notFound)) }
             if guidingDevice != computer.device { clearGuide() }
             guidingDevice = computer.device
-            guide = Banner(computer: model.displayName(computer), text: guide?.text ?? "Highlighted in Settings", note: true)
+            guide = Banner(
+                computer: model.displayName(computer), text: guide?.text ?? "Highlighted in Settings", note: true,
+                from: from, device: computer.device
+            )
             showHighlight(target, model: model)
             answerAfterNavigation(computer, model: model, answer: answer)
-        case let .show(text):
-            banner = Banner(computer: model.displayName(computer), text: text, note: true)
+        case let .show(text, from):
+            banner = Banner(computer: model.displayName(computer), text: text, note: true, from: from, device: computer.device)
             answer(.done(state(for: computer, model: model)))
         case let .open(screen):
-            guard open(screen, on: computer, model: model) else { return answer(.refused(.notFound)) }
+            guard open(screen, on: computer.device, model: model) else { return answer(.refused(.notFound)) }
             log.notice("an agent on \(computer.name, privacy: .public) opened \(String(describing: screen), privacy: .public)")
             banner = Banner(computer: model.displayName(computer), text: "Opened by an agent on \(model.displayName(computer))", note: false)
             answerAfterNavigation(computer, model: model, answer: answer)
         }
+    }
+
+    /// A tap on `banner`: dismisses it and opens the chat or terminal of
+    /// the agent that showed it, when it named one this app still lists.
+    func tapped(_ banner: Banner, model: AppModel) {
+        self.banner = nil
+        clearGuide()
+        guard let from = banner.from, let device = banner.device,
+              let computer = model.computers.first(where: { $0.device == device }), allows(computer),
+              !LockState.shared.hidesNames
+        else { return }
+        // Its chat may have closed since: the note just goes then.
+        guard Self.route(for: from, on: computer.device, fleet: model.fleet) != nil else { return }
+        // The person asked for the chat: a sheet over every tab, such as
+        // the new workspace form or the voice sheet, would hide it.
+        model.creating = nil
+        model.voice = nil
+        model.pendingPullRequest = nil
+        _ = open(from, on: computer.device, model: model)
     }
 
     private func answerAfterNavigation(_ computer: Computer, model: AppModel, answer: @escaping (AgentOutcome) -> Void) {
@@ -123,9 +153,10 @@ final class AgentControl {
         }
     }
 
-    /// Shows `screen`; false when `computer` lists no such pane or workspace.
-    private func open(_ screen: AgentScreen, on computer: Computer, model: AppModel) -> Bool {
-        let device = computer.device
+    /// Shows `screen` of the computer `device`; false when it lists no
+    /// such pane or workspace. An agent's `sheprd phone open` and a
+    /// `ScreenLink` tapped in its chat both come here.
+    func open(_ screen: AgentScreen, on device: String, model: AppModel) -> Bool {
         switch screen {
         case .home: showTab(.home, model: model)
         case .workspaces: showTab(.workspaces, model: model)
@@ -137,22 +168,15 @@ final class AgentControl {
             settingsPath = page.path
             showTab(.settings, model: model)
         case .newWorkspace: model.creating = .workspace(device: device)
-        case let .chat(pane):
+        case .chat, .term, .changes:
             // A terminal agent this phone does not show as a chat opens
             // in its terminal.
-            guard let route = Self.chat(pane, on: device, fleet: model.fleet) ?? Self.term(pane, on: device, fleet: model.fleet)
-            else { return false }
-            model.pendingRoute = route
-        case let .term(pane):
-            guard let route = Self.term(pane, on: device, fleet: model.fleet) else { return false }
+            guard let route = Self.route(for: screen, on: device, fleet: model.fleet) else { return false }
             model.pendingRoute = route
         case let .workspace(workspace):
             guard Self.lists(workspace, on: device, fleet: model.fleet) else { return false }
             model.pendingTab = .home
             model.pendingWorkspace = WorkspaceKey(device: device, workspace: workspace)
-        case let .changes(workspace):
-            guard Self.lists(workspace, on: device, fleet: model.fleet) else { return false }
-            model.pendingRoute = .changes(WorkspaceKey(device: device, workspace: workspace))
         }
         return true
     }
@@ -163,22 +187,44 @@ final class AgentControl {
         showTab(.settings, model: model)
     }
 
+    /// The chat, terminal, workspace, or changes `screen` names on
+    /// `device`, as a stack shows it; `nil` for a tab or form, or when the
+    /// computer lists no such pane or workspace.
+    static func route(for screen: AgentScreen, on device: String, fleet: Fleet) -> Route? {
+        switch screen {
+        case let .chat(pane): chat(pane, on: device, fleet: fleet) ?? term(pane, on: device, fleet: fleet)
+        case let .term(pane): term(pane, on: device, fleet: fleet)
+        case let .workspace(workspace):
+            lists(workspace, on: device, fleet: fleet) ? .workspace(WorkspaceKey(device: device, workspace: workspace)) : nil
+        case let .changes(workspace):
+            lists(workspace, on: device, fleet: fleet) ? .changes(WorkspaceKey(device: device, workspace: workspace)) : nil
+        case .home, .workspaces, .pullRequests, .settings, .settingsPage, .newWorkspace: nil
+        }
+    }
+
     /// A chat's route, or a terminal agent's conversation when its
     /// computer shows it as a chat, as a link to it opens (`AppModel.open`).
+    /// `pane` may be a herdr-core terminal as the desktop names it
+    /// (`ScreenLink.pane(_:isNamed:)`).
     private static func chat(_ pane: String, on device: String, fleet: Fleet) -> Route? {
-        if let item = fleet.chatItems.first(where: { $0.computer.device == device && $0.chat.pane == pane }) {
-            return .chat(PaneKey(device: device, pane: pane), title: item.chat.title)
+        if let item = fleet.chatItems.first(where: { $0.computer.device == device && ScreenLink.pane($0.chat.pane, isNamed: pane) }) {
+            return .chat(PaneKey(device: device, pane: item.chat.pane), title: item.chat.title)
         }
-        let terminal = fleet.terminalItems.first { $0.computer.device == device && $0.agent?.pane == pane }
+        let terminal = fleet.terminalItems.first { item in
+            item.computer.device == device && item.agent?.pane.map { ScreenLink.pane($0, isNamed: pane) } == true
+        }
         if case let .chat(key, title)? = terminal?.route { return .chat(key, title: title) }
         return nil
     }
 
     /// The route of the terminal holding `pane`.
     private static func term(_ pane: String, on device: String, fleet: Fleet) -> Route? {
-        guard let terminal = fleet.terminalItems.first(where: { $0.computer.device == device && $0.terminal.panes.contains { $0.pane == pane } })
-        else { return nil }
-        return .term(PaneKey(device: device, pane: pane), title: terminal.terminal.label)
+        for item in fleet.terminalItems where item.computer.device == device {
+            if let listed = item.terminal.panes.first(where: { ScreenLink.pane($0.pane, isNamed: pane) }) {
+                return .term(PaneKey(device: device, pane: listed.pane), title: item.terminal.label)
+            }
+        }
+        return nil
     }
 
     /// Shows `tab` at its root: an agent asking for a tab means the tab,

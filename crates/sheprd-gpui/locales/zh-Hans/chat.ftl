@@ -74,6 +74,7 @@ chat-queued = 已排队
 chat-steering = 引导中
 chat-held = 已暂停
 chat-send-now = 立即发送
+chat-steer-hint = 用这条消息引导当前轮次
 chat-working = 工作中
 chat-working-writing = 正在撰写
 chat-working-thinking = 正在思考

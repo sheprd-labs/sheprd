@@ -43,6 +43,13 @@ pub(crate) enum Command {
         limit: usize,
         json: bool,
     },
+    Overlap {
+        days: u32,
+        agent: Option<AgentKind>,
+        host: Option<String>,
+        at: Option<i64>,
+        json: bool,
+    },
     Activity {
         days: u32,
         json: bool,
@@ -134,6 +141,36 @@ pub(crate) fn run(command: Command) -> Result<()> {
             }
             for session in sessions {
                 println!("{}", summary(&session));
+            }
+        }
+        Command::Overlap {
+            days,
+            agent,
+            host,
+            at,
+            json,
+        } => {
+            let host = host.as_deref().map(|id| [id]);
+            let hosts = host.as_ref().map(|ids| ids.as_slice());
+            if let Some(at) = at {
+                let sessions = store.active_sessions(at, hosts, agent)?;
+                if json {
+                    println!("{}", serde_json::to_string(&sessions)?);
+                } else {
+                    for session in sessions {
+                        println!("{}", summary(&session));
+                    }
+                }
+            } else {
+                let overlap = store.overlap(now, days, hosts, agent)?;
+                if json {
+                    println!("{}", serde_json::to_string(&overlap)?);
+                } else {
+                    println!("{} active in the last 15 minutes", overlap.recent.count);
+                    for peak in overlap.daily {
+                        println!("{}  {} peak", time(peak.at), peak.count);
+                    }
+                }
             }
         }
         Command::Activity { days, json } => {

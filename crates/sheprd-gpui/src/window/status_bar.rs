@@ -74,6 +74,7 @@ impl SheprdWindow {
             .children(self.render_agent_model(cx))
             .children(usage)
             .children(self.render_device_tags_status(cx))
+            .children(self.render_tailscale_status())
             .when_some(
                 self.prefix_armed
                     .then(|| self.keymap().prefix_label())
@@ -234,6 +235,40 @@ impl SheprdWindow {
                 .text_color(rgb(theme.subtext()))
                 .child(glyph("icons/phone.svg", theme.ink(color)))
                 .child(text),
+        )
+    }
+
+    /// A Tailscale SSH check this connection is waiting on, wherever it came
+    /// from: adding the device, or connecting to one already saved. The bar has
+    /// no room for an address, so the item names what waits, carries the whole
+    /// address as its tooltip, and hands it to a browser when clicked, which is
+    /// the only way the check can be finished. The app never opens it by itself.
+    ///
+    /// Which check is pending is the endpoint's answer, the same one the prompt
+    /// and the dialog read: the transport reports `PermissionDenied`, so a
+    /// refusal usually reaches the window as a sentence rather than as a typed
+    /// failure, and a gate on the failure alone showed nothing for it.
+    fn render_tailscale_status(&self) -> Option<Stateful<Div>> {
+        let url = self.endpoints[self.selected_endpoint]
+            .tailscale_check()?
+            .url()?
+            .to_owned();
+        let theme = &self.theme;
+        Some(
+            div()
+                .id("status-tailscale")
+                .debug_selector(|| "status-tailscale".into())
+                .row()
+                .flex_none()
+                .items_center()
+                .gap(px(4.))
+                .cursor_pointer()
+                .hover(|item| item.underline())
+                .tooltip(self.hint(url.clone()))
+                .on_click(move |_, _, cx| crate::tailscale::open_and_copy(&url, cx))
+                .text_color(rgb(theme.ink(theme.palette[3])))
+                .child(glyph("icons/shield.svg", theme.ink(theme.palette[3])))
+                .child(fl!("status-bar-tailscale")),
         )
     }
 

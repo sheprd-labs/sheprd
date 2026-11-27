@@ -26,6 +26,16 @@ struct PicturesTests {
         ])
     }
 
+    @Test func aPictureKeepsTheCaptionItsAgentGaveIt() throws {
+        let json = #"{"id": 4, "kind": {"type": "image", "author": "agent", "caption": "Variant A\nGlass pill", "image": {"data": "b", "mime_type": "image/png"}}}"#
+        let entry = try JSONDecoder().decode(Entry.self, from: Data(json.utf8))
+        #expect(transcript([entry.kind]).pictures.first?.caption == "Variant A\nGlass pill")
+        let again = try JSONDecoder().decode(Entry.self, from: JSONEncoder().encode(entry))
+        #expect(again == entry)
+        let bare = #"{"id": 5, "kind": {"type": "image", "author": "user", "image": {"data": "a", "mime_type": "image/png"}}}"#
+        #expect(try JSONDecoder().decode(Entry.self, from: Data(bare.utf8)).kind == .image(author: .user, image: image("a")))
+    }
+
     @Test func aChatWithoutPicturesHasNone() {
         #expect(transcript([.agent(text: "no pictures")]).pictures.isEmpty)
     }

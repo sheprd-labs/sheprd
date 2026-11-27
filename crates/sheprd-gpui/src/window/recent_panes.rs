@@ -250,11 +250,19 @@ impl SheprdWindow {
         if self.endpoints[self.selected_endpoint].id != *endpoint {
             return;
         }
+        let pane = pane.clone();
+        self.reveal_herdr_pane(&pane);
+    }
+
+    /// Shows the Herdr tab holding `pane` in its group, when it is a pane of
+    /// the workspace in front: a focus Herdr already had moves nothing, so
+    /// the window would keep a page or chat shown over it.
+    pub(crate) fn reveal_herdr_pane(&mut self, pane: &str) {
         let Some(pane) = self
             .live
             .snapshot
             .as_ref()
-            .and_then(|snapshot| snapshot.panes.iter().find(|known| known.pane_id == *pane))
+            .and_then(|snapshot| snapshot.panes.iter().find(|known| known.pane_id == pane))
         else {
             return;
         };

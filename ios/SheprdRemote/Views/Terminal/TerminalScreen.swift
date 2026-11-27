@@ -11,7 +11,7 @@ import UIKit
 struct TerminalScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.offersWorkspace) private var offersWorkspace
+    @Environment(\.workspaceDestination) private var workspaceDestination
     let key: PaneKey
     let title: String
     @State private var store: TermStore?
@@ -166,7 +166,7 @@ struct TerminalScreen: View {
         .toolbar(.hidden, for: .tabBar)
         .hidesConnectionToast()
         .toolbar {
-            if offersWorkspace, let workspace = item?.workspace {
+            if workspaceDestination == .pending, let workspace = item?.workspace {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { model.pendingWorkspace = WorkspaceKey(device: key.device, workspace: workspace.id) } label: {
                         Image(systemName: "square.stack.3d.up")

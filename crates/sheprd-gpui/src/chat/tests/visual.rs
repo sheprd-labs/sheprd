@@ -110,6 +110,7 @@ fn image_entries_and_tool_images_ask_for_visuals() {
         kind: EntryKind::Image {
             author: Author::Agent,
             image: image.clone(),
+            caption: None,
         },
     }];
     let mut prepared = Prepared::default();

@@ -69,6 +69,7 @@ impl Session {
             transcript: Arc::new(Transcript {
                 agent: "Fixture agent".into(),
                 session: Some(SessionInfo {
+                    can_steer: false,
                     id: "session-A".into(),
                     cwd: Some("private-cwd".into()),
                     title: None,

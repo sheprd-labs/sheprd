@@ -162,7 +162,11 @@ fn embedded_image(block: &Value) -> Option<Image> {
 
 fn picture(image: Option<Image>, author: Author) -> EntryKind {
     match image {
-        Some(image) => EntryKind::Image { author, image },
+        Some(image) => EntryKind::Image {
+            author,
+            image,
+            caption: None,
+        },
         None => notices::source(
             "Image unavailable".into(),
             "The embedded image data is missing, invalid, too large, or unsupported. Supported formats are PNG, JPEG, GIF, and WebP.",

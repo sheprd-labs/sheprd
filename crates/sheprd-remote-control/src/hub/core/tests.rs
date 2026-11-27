@@ -134,6 +134,7 @@ mod socket {
     mod shared_spaces_safety;
     mod spaces;
     mod wake;
+    mod wheel;
 
     /// The fake core's documents, by name: value and version.
     type Docs = Arc<Mutex<HashMap<String, (Value, u64)>>>;
@@ -352,7 +353,11 @@ mod socket {
                         return;
                     }
                 }
-                let screen = if channel == 7 {
+                // The terminal `wheel` runs a program reading the wheel:
+                // alternate screen, wheel reports, SGR encoding.
+                let screen = if request["params"]["terminal"] == "wheel" {
+                    &b"\x1b[?1049h\x1b[?1000h\x1b[?1006h"[..]
+                } else if channel == 7 {
                     &b"\x1b[31mhello\x1b[0m\x1b[?2004h"[..]
                 } else {
                     b"recovered"
@@ -526,6 +531,7 @@ mod saved_beside_spaces;
 mod screen_history;
 mod shared_poller;
 mod unlisted_name;
+mod wheel;
 mod workspace_changes;
 
 #[test]

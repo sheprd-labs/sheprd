@@ -100,6 +100,12 @@ struct AgentControlTests {
         #expect(try event(#"{"type":"drive","id":9,"command":"guide","text":"Push settings","highlight":"push-relay"}"#) == .drive(id: 9, command: .guide(text: "Push settings", highlight: .pushRelay)))
         #expect(try event(#"{"type":"drive","id":9,"command":"guide","text":"Done"}"#) == .drive(id: 9, command: .guide(text: "Done", highlight: nil)))
         #expect(try event(#"{"type":"drive","id":9,"command":"clear_guide"}"#) == .drive(id: 9, command: .clearGuide))
+        // The asking agent's screen, which a tap opens; one this app does
+        // not know still shows the note.
+        #expect(try event(#"{"type":"drive","id":9,"command":"guide","text":"Done","highlight":null,"from":{"screen":"chat","pane":"p1"}}"#) == .drive(id: 9, command: .guide(text: "Done", highlight: nil, from: .chat(pane: "p1"))))
+        #expect(try event(#"{"type":"drive","id":9,"command":"show","text":"Look","from":{"screen":"term","pane":"p2"}}"#) == .drive(id: 9, command: .show(text: "Look", from: .term(pane: "p2"))))
+        #expect(try event(#"{"type":"drive","id":9,"command":"highlight","target":"haptics","from":{"screen":"chat","pane":"p1"}}"#) == .drive(id: 9, command: .highlight(.haptics, from: .chat(pane: "p1"))))
+        #expect(try event(#"{"type":"drive","id":9,"command":"show","text":"Look","from":{"screen":"future"}}"#) == .drive(id: 9, command: .show(text: "Look", from: nil)))
         for command in [#""command":"highlight","target":"future""#, #""command":"guide","text":"Note","highlight":"future""#, #""command":"open","to":{"screen":"settings_page","page":"future"}"#] {
             #expect(try event(#"{"type":"drive","id":9,\#(command)}"#) == .drive(id: 9, command: .unknown))
         }

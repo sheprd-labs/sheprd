@@ -87,6 +87,7 @@ fn send_now_steers_a_held_prompt_into_a_turn_as_first_sent() {
 
     let first = prompt(&mut harness, 0, "one");
     let two = typed(&mut harness, "two");
+    harness.command(0, Command::SendNow { id: two });
     let steered = harness.last_request(steer::METHOD);
     harness.command(0, Command::Cancel);
     harness.respond(first, json!({"stopReason": "cancelled"}));

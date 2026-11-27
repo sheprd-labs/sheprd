@@ -18,13 +18,14 @@ public enum EntryKind: Codable, Hashable, Sendable {
     case user(text: String, files: Int)
     case agent(text: String)
     case thought(text: String)
-    case image(author: Author, image: ChatImage)
+    /// `caption` says what the picture shows: a title line, then detail.
+    case image(author: Author, image: ChatImage, caption: String? = nil)
     case tool(Tool)
     /// How a prompt turn ended.
     case turn(TurnSummary)
     case notice(Notice)
 
-    enum CodingKeys: String, CodingKey { case type, text, files, author, image }
+    enum CodingKeys: String, CodingKey { case type, text, files, author, image, caption }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -34,7 +35,9 @@ public enum EntryKind: Codable, Hashable, Sendable {
         case "agent": self = .agent(text: try c.decode(String.self, forKey: .text))
         case "thought": self = .thought(text: try c.decode(String.self, forKey: .text))
         case "image":
-            self = .image(author: try c.decode(Author.self, forKey: .author), image: try c.decode(ChatImage.self, forKey: .image))
+            self = .image(
+                author: try c.decode(Author.self, forKey: .author), image: try c.decode(ChatImage.self, forKey: .image),
+                caption: try c.decodeIfPresent(String.self, forKey: .caption))
         case "tool": self = .tool(try Tool(from: decoder))
         case "turn": self = .turn(try TurnSummary(from: decoder))
         case "notice": self = .notice(try Notice(from: decoder))
@@ -56,10 +59,11 @@ public enum EntryKind: Codable, Hashable, Sendable {
         case let .thought(text):
             try c.encode("thought", forKey: .type)
             try c.encode(text, forKey: .text)
-        case let .image(author, image):
+        case let .image(author, image, caption):
             try c.encode("image", forKey: .type)
             try c.encode(author, forKey: .author)
             try c.encode(image, forKey: .image)
+            try c.encodeIfPresent(caption, forKey: .caption)
         case let .tool(tool):
             try c.encode("tool", forKey: .type)
             try tool.encode(to: encoder)

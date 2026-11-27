@@ -215,6 +215,14 @@ herdr_2_terminals = false
 # Also under Settings > Tabs.
 herdr_2_scrollback = 10000
 
+# Settings > Indicators: the focused agent's perimeter light in Moonframe.
+[edge_light]
+# Follow the agent status, or use a fixed sRGB color such as "#32D5FF".
+color = "auto"
+# Stroke width in logical pixels (1–12) and trail length in percent of the perimeter (5–50).
+width = 5
+trail = 16
+
 [palette]
 # Two short Shift taps open the unified palette in the focused GUI window.
 # Cmd-Shift-P opens All; Cmd-P starts on Navigation. Ordinary Shift typing and
