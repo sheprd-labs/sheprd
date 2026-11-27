@@ -19,15 +19,24 @@ local function header(title: string, shown: number, total: number)
 	}
 end
 
-local function section(key: string, title: string, keys, total: number)
+-- A section's rows are drawn as they scroll into view: `row(i)` only
+-- for the rows on screen.
+local function section(key: string, title: string, keys, total: number, rows)
 	if #keys == 0 then
 		return false
 	end
-	local rows = {}
-	for i, id in keys do
-		rows[i] = key .. ":" .. id
-	end
-	return ui.section { key = key, header = header(title, #keys, total), rows = rows, row = "pull" }
+	return ui.section {
+		key = key,
+		header = header(title, #keys, total),
+		count = #keys,
+		row = function(i: number)
+			local pull = rows[keys[i]]
+			if not pull then
+				return ui.text { "" }
+			end
+			return row.view(pull, key == "requested")
+		end,
+	}
 end
 
 local function loading()
@@ -74,8 +83,6 @@ local function empty(pulls)
 end
 
 return mod {
-	providers = { "pulls" },
-
 	init = function(previous)
 		return previous or {}
 	end,
@@ -110,6 +117,7 @@ return mod {
 			mine = given.mine or {},
 			requestedTotal = given.requestedTotal or 0,
 			mineTotal = given.mineTotal or 0,
+			rows = given.rows or {},
 		}
 		local list = {
 			variant = "inset",
@@ -155,20 +163,8 @@ return mod {
 				}
 			)
 		end
-		table.insert(list, section("requested", "Review requested", pulls.requested, pulls.requestedTotal))
-		table.insert(list, section("mine", "Mine", pulls.mine, pulls.mineTotal))
+		table.insert(list, section("requested", "Review requested", pulls.requested, pulls.requestedTotal, pulls.rows))
+		table.insert(list, section("mine", "Mine", pulls.mine, pulls.mineTotal, pulls.rows))
 		return ui.list(list)
 	end,
-
-	views = {
-		-- One row, drawn as it scrolls in: `requested:ID` or `mine:ID`.
-		pull = function(state: State, key: string, app)
-			local part, id = string.match(key, "^(%a+):(.+)$")
-			local pull = id and (app.pulls.rows or {})[id]
-			if not pull then
-				return ui.text { "" }
-			end
-			return row.view(pull, part == "requested")
-		end,
-	},
 }

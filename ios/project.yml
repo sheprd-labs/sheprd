@@ -27,7 +27,7 @@ packages:
   # app links MoonKit and MoonUI only, never MoonLive: tools/luau_store_audit.sh.
   MoonKit:
     url: https://github.com/moonframehq/moonswift
-    revision: a7d2f30c09850427ed611e17b222090c8fea8ee1
+    revision: 63bfe271431d60dffda4a5bb73da17be601b07f6
   SheprdRemoteCore:
     path: SheprdRemoteCore
 

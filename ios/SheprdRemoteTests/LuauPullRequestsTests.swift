@@ -88,8 +88,12 @@ final class LuauPullRequestsTests: XCTestCase {
             XCTAssertEqual(tree.problems, [], "\(state)")
             XCTAssertEqual(tree.kind, .list)
             for section in ["requested", "mine"] {
-                for id in ids(published.value, section) {
-                    let row = workspace.part("pull", key: .string("\(section):\(id)"), of: Workspace.shell)
+                let expected = ids(published.value, section)
+                let node = tree.children.first { $0.kind == .section && $0.string("key") == section }
+                XCTAssertEqual(node?.lazyRows?.count ?? 0, expected.count, "\(section) in \(state)")
+                guard let rows = node?.lazyRows else { continue }
+                for (index, id) in expected.enumerated() {
+                    let row = workspace.part(rows.function, key: .number(Double(index + 1)), of: Workspace.shell)
                     XCTAssertEqual(row.problems, [], "\(section) \(id)")
                     XCTAssertEqual(row.kind, .link)
                     XCTAssertEqual(row.props["route"]?["pull"]?.string, id)
