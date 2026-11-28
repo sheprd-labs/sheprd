@@ -110,9 +110,9 @@ fn the_switch_narrows_the_list_and_keeps_the_device_on_screen(cx: &mut gpui::Tes
 #[gpui::test]
 fn stepping_through_workspaces_follows_the_sections(cx: &mut gpui::TestAppContext) {
     let (view, cx) = grouped_window(cx, &[("ssh:c", &["personal"]), ("ssh:a", &["work"])]);
-    let hosts = view.read_with(cx, |view, _| {
+    let hosts = view.read_with(cx, |view, cx| {
         let mut hosts: Vec<usize> = view
-            .sidebar_workspaces()
+            .sidebar_workspaces(cx)
             .into_iter()
             .map(|(host, _)| host)
             .collect();
@@ -146,8 +146,8 @@ fn a_section_folds_and_unfolds_from_its_heading(cx: &mut gpui::TestAppContext) {
     assert!(cx.debug_bounds("host-label-ssh:a").is_none());
     assert!(cx.debug_bounds("host-label-ssh:c").is_none());
     assert!(cx.debug_bounds("host-label-ssh:b").is_some());
-    let hosts = view.read_with(cx, |view, _| {
-        view.sidebar_workspaces()
+    let hosts = view.read_with(cx, |view, cx| {
+        view.sidebar_workspaces(cx)
             .iter()
             .map(|(host, _)| view.endpoints[*host].id.clone())
             .collect::<Vec<_>>()

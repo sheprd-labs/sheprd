@@ -26,7 +26,7 @@ fn removing_the_workspace_in_front_brings_the_row_above_forward(cx: &mut gpui::T
     cx.update(|_, cx| {
         view.update(cx, |view, cx| {
             let mut snapshot = (**view.live.snapshot.as_ref().unwrap()).clone();
-            let rows = view.sidebar_workspaces();
+            let rows = view.sidebar_workspaces(cx);
             // The last row, so the daemon's own pick would differ.
             let (_, last) = rows.iter().rfind(|(host, _)| *host == 0).unwrap().clone();
             let above = successors(&rows, 0, &last)[0].clone();
@@ -77,7 +77,7 @@ fn rows_removed_together_land_on_the_nearest_survivor_above(cx: &mut gpui::TestA
     cx.update(|_, cx| {
         view.update(cx, |view, cx| {
             let mut snapshot = (**view.live.snapshot.as_ref().unwrap()).clone();
-            let rows = view.sidebar_workspaces();
+            let rows = view.sidebar_workspaces(cx);
             let (_, last) = rows.iter().rfind(|(host, _)| *host == 0).unwrap().clone();
             let above = successors(&rows, 0, &last);
             snapshot.focused_workspace_id = Some(last.clone());

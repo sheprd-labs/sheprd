@@ -12,6 +12,7 @@ worktree-popover-unmute-button = Unmute
 worktree-popover-fan-out = Fan out prompt...
 # Opens the comparison of a fan-out already launched.
 worktree-popover-fan-out-comparison = Fan-out comparison...
+worktree-popover-remove-project = Remove from list
 worktree-popover-rename = Rename
 # Focuses the copy this workspace was teleported to.
 worktree-popover-go-to-teleported = Go to teleported copy
@@ -26,6 +27,8 @@ worktree-popover-checkpoints = Checkpoints...
 worktree-popover-note = Note...
 worktree-popover-orchestrator = Issues and pull requests
 worktree-popover-open-worktree = Open worktree...
+worktree-popover-reveal-in-finder = Reveal in Finder
+worktree-popover-reveal-in-file-manager = Reveal in File Manager
 worktree-popover-sandbox-images = Build sandbox images
 worktree-popover-run-script = Run script
 worktree-popover-run-setup-script = Run setup script

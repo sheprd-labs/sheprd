@@ -104,7 +104,7 @@ impl SheprdWindow {
         if self.front_watch.key.as_ref() == Some(&key) {
             return;
         }
-        let successors = successors(&self.sidebar_workspaces(), endpoint, &workspace);
+        let successors = successors(&self.sidebar_workspaces(cx), endpoint, &workspace);
         self.front_watch.key = Some(key);
         self.front_watch.front = Some(Front {
             endpoint,

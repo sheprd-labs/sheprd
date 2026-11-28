@@ -8,7 +8,9 @@ use super::{
     visible_workspace_entries,
 };
 use crate::{SheprdWindow, controls::Command, state::LiveState};
+use gpui::{App, Context, Window};
 use sheprd_client::protocol::ClientShellSnapshot;
+use std::sync::Arc;
 
 /// A listed row: its host, by endpoint index, and the workspace or agent
 /// pane it shows.
@@ -19,6 +21,87 @@ pub(crate) type Row<'a> = (usize, &'a str);
 pub(crate) type WorkspaceRow = (usize, String);
 
 impl SheprdWindow {
+    /// The sessions the Spaces list draws, with projects whose final Herdr 1
+    /// tab closed kept as selectable rows until their folder is opened again.
+    pub(crate) fn sidebar_sessions(
+        &self,
+        index: usize,
+        cx: &App,
+    ) -> crate::session_model::Sessions {
+        let mut sessions = self.sessions(index);
+        let Some(endpoint) = self.endpoints.get(index) else {
+            return sessions;
+        };
+        if endpoint.id != crate::endpoint::LOCAL || endpoint.connection.target.is_remote() {
+            return sessions;
+        }
+        let scope = crate::browser::scope(endpoint);
+        let projects: Vec<_> = cx
+            .try_global::<crate::browser::Store>()
+            .into_iter()
+            .flat_map(|store| store.closed_projects(&scope).cloned())
+            .collect();
+        if projects.is_empty() {
+            return sessions;
+        }
+        let mut local = sessions.herdr_1.as_deref().cloned().unwrap_or_default();
+        for project in projects {
+            if sessions.each().any(|session| {
+                session
+                    .workspaces
+                    .iter()
+                    .any(|workspace| workspace.cwd == project.cwd)
+            }) {
+                continue;
+            }
+            local.workspaces.push(project.workspace());
+        }
+        sessions.herdr_1 = Some(Arc::new(local));
+        sessions
+    }
+
+    /// Whether `id` names a retained project rather than a live daemon space.
+    pub(crate) fn is_closed_project_row(&self, endpoint: &str, id: &str, cx: &App) -> bool {
+        let Some(endpoint) = self.endpoints.iter().find(|host| host.id == endpoint) else {
+            return false;
+        };
+        let scope = crate::browser::scope(endpoint);
+        cx.try_global::<crate::browser::Store>()
+            .is_some_and(|store| store.closed_project(&scope, id).is_some())
+    }
+
+    /// Opens a retained project from its Spaces row, or focuses a live space.
+    pub(crate) fn activate_sidebar_workspace(
+        &mut self,
+        endpoint: &str,
+        id: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let project = self
+            .endpoints
+            .iter()
+            .find(|host| host.id == endpoint)
+            .and_then(|host| {
+                let scope = crate::browser::scope(host);
+                cx.try_global::<crate::browser::Store>()
+                    .and_then(|store| store.closed_project(&scope, id))
+                    .cloned()
+            });
+        if let Some(project) = project {
+            if !self.select_endpoint(endpoint, cx) {
+                return false;
+            }
+            if let Err(error) =
+                self.open_project_at(std::path::PathBuf::from(project.cwd), window, cx)
+            {
+                self.show_flash(crate::window::Flash::warning(error.to_string()), cx);
+            }
+            return true;
+        }
+        self.navigate_endpoint(endpoint, crate::NavigationTarget::Workspace(id), cx)
+    }
+
     /// Each host the sidebar lists, with the live state it draws from.
     pub(super) fn listed_lives(&self) -> impl Iterator<Item = (usize, &LiveState)> {
         self.displayed_devices()
@@ -42,7 +125,7 @@ impl SheprdWindow {
 
     /// The workspace rows the sidebar shows: a folded group or host hides
     /// its rows here too.
-    pub(crate) fn sidebar_workspaces(&self) -> Vec<WorkspaceRow> {
+    pub(crate) fn sidebar_workspaces(&self, cx: &App) -> Vec<WorkspaceRow> {
         let multi = self.endpoints.len() > 1;
         self.listed_lives()
             .map(|(index, _)| index)
@@ -56,7 +139,7 @@ impl SheprdWindow {
                 } else {
                     &self.endpoints[index].collapsed_repos
                 };
-                let sessions = self.sessions(index);
+                let sessions = self.sidebar_sessions(index, cx);
                 sessions
                     .each()
                     .flat_map(|session| {

@@ -33,7 +33,13 @@ impl Label {
     pub(crate) const NOTE: Self = Self::new("worktree-popover-note");
     pub(crate) const OPEN_WORKTREE: Self = Self::new("worktree-popover-open-worktree");
     pub(crate) const ORCHESTRATOR: Self = Self::new("worktree-popover-orchestrator");
+    pub(crate) const REMOVE_PROJECT: Self = Self::new("worktree-popover-remove-project");
     pub(crate) const RENAME: Self = Self::new("worktree-popover-rename");
+    #[cfg(target_os = "linux")]
+    pub(crate) const REVEAL_IN_FILE_MANAGER: Self =
+        Self::new("worktree-popover-reveal-in-file-manager");
+    #[cfg(target_os = "macos")]
+    pub(crate) const REVEAL_IN_FINDER: Self = Self::new("worktree-popover-reveal-in-finder");
     pub(crate) const RUN_SCRIPT: Self = Self::new("worktree-popover-run-script");
     pub(crate) const RUN_SETUP_SCRIPT: Self = Self::new("worktree-popover-run-setup-script");
     pub(crate) const TELEPORT: Self = Self::new("worktree-popover-teleport");
@@ -208,6 +214,14 @@ impl SheprdWindow {
     /// short and few, and GPUI caches each shaped line, so measuring them as
     /// the popover draws costs no more than drawing them.
     pub(in crate::menu) fn workspace_popover_width(&self, window: &Window, room: Pixels) -> Pixels {
+        if self
+            .menu
+            .target
+            .as_ref()
+            .is_some_and(|target| target.retained)
+        {
+            return px(WIDTH).min(room);
+        }
         let size = px((self.config.ui.size - 1.).max(8.));
         let font = self.config.ui.font();
         let (tiles, _) = layout(&self.workspace_items());
@@ -287,6 +301,17 @@ impl SheprdWindow {
                             .map(|&(action, label)| self.render_workspace_mute(action, label, cx)),
                     ),
             );
+        }
+        if self
+            .menu
+            .target
+            .as_ref()
+            .is_some_and(|target| target.retained)
+        {
+            for (action, label) in items {
+                panel = panel.child(self.render_workspace_row(action, label, cx));
+            }
+            return panel;
         }
         let (tiles, rest) = layout(&items);
         let mut grid = div()

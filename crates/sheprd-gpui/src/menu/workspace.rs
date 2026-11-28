@@ -10,10 +10,12 @@ pub(super) mod popover;
 mod removal_progress;
 mod render;
 mod requests;
+mod retained;
 mod reuse;
 #[cfg(feature = "cloud")]
 mod sandbox_images;
 mod scripts;
+mod target;
 
 pub(super) use kept_worktrees::Ask;
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
@@ -28,41 +30,7 @@ use sheprd_client::{
     Method,
     protocol::{ClientShellSnapshot, ClientShellWorkspace, ClientShellWorktree},
 };
-
-pub(crate) struct WorkspaceTarget {
-    pub(super) boot_id: String,
-    pub(super) id: String,
-    pub(super) label: String,
-    pub(super) worktree: Option<ClientShellWorktree>,
-    pub(super) close_members: Vec<String>,
-    /// Whether linked worktrees of this parent's repository are open, so its
-    /// row folds a group even when another parent closes on its own.
-    pub(super) heads_group: bool,
-    pub(super) branch: Option<String>,
-    /// The branch a new worktree starts from, when it is not this checkout's
-    /// `HEAD`: a linked checkout asks its main checkout, the only source the
-    /// daemon accepts, to branch from the linked checkout's branch instead.
-    pub(super) base: Option<String>,
-    /// How worktree requests name the repository to the daemon.
-    pub(super) source: Source,
-    /// Who carries out what the menu asks: Herdr 1's daemon, or the app for
-    /// a workspace it keeps for Herdr 2 (`kept.rs`).
-    pub(super) keeper: sheprd_session::Keeper,
-    /// Whether the user muted the workspace's notifications when the menu
-    /// opened, which picks what the toggle in its header does.
-    pub(super) muted: bool,
-}
-
-impl WorkspaceTarget {
-    pub(crate) fn id(&self) -> &str {
-        &self.id
-    }
-
-    /// Who renames it: Herdr 1's daemon, or the app.
-    pub(crate) fn keeper(&self) -> sheprd_session::Keeper {
-        self.keeper
-    }
-}
+pub(crate) use target::WorkspaceTarget;
 
 /// How a worktree request tells the daemon which repository it is for.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -99,6 +67,7 @@ impl WorkspaceTarget {
             boot_id: snapshot.boot_id.clone(),
             id: workspace.workspace_id.clone(),
             label: workspace.label.clone(),
+            cwd: workspace.new_workspace_cwd.clone(),
             worktree: known_worktree(workspace),
             close_members: close_members(snapshot, workspace),
             heads_group: heads_group(snapshot, workspace),
@@ -107,6 +76,7 @@ impl WorkspaceTarget {
             source: Source::of(workspace),
             keeper: sheprd_session::Keeper::Herdr1,
             muted: false,
+            retained: false,
         }
     }
 
@@ -660,6 +630,9 @@ impl SheprdWindow {
         let Some(target) = &self.menu.target else {
             return vec![];
         };
+        if target.retained {
+            return self.retained_workspace_items();
+        }
         if target.keeper == sheprd_session::Keeper::App {
             // Scripts run on the shown host, so only for a workspace it
             // keeps: remote ones through the host's POSIX shell, including
@@ -676,6 +649,9 @@ impl SheprdWindow {
                 self.fan_out_item(),
             );
             items.extend(self.teleport_items());
+            if let Some(item) = self.reveal_item() {
+                items.push(item);
+            }
             return items;
         }
         let mut items = vec![if target.muted {
@@ -697,6 +673,9 @@ impl SheprdWindow {
         }
         if self.note_checkout().is_some() {
             items.push((Dialog(WorkspaceAction::Note), Label::NOTE));
+        }
+        if let Some(item) = self.reveal_item() {
+            items.push(item);
         }
         if target.worktree.is_some() && self.orchestrator_host() {
             items.push((WorkspaceMenuAction::Orchestrator, Label::ORCHESTRATOR));
@@ -930,6 +909,36 @@ impl SheprdWindow {
         actions
     }
 
+    /// The rows an explicit close would leave behind: the closed workspaces'
+    /// projects are forgotten and never retained, so the close removes them
+    /// from Spaces. Opening the folder again brings its row back.
+    fn drop_closed_rows(&self, cx: &mut Context<Self>) {
+        let Some(target) = &self.menu.target else {
+            return;
+        };
+        let endpoint = &self.endpoints[self.selected_endpoint];
+        if endpoint.id != crate::endpoint::LOCAL || endpoint.connection.target.is_remote() {
+            return;
+        }
+        let scope = crate::browser::scope(endpoint);
+        let mut cwds: Vec<String> = Vec::new();
+        if let Some(snapshot) = &self.live.snapshot {
+            for workspace in &snapshot.workspaces {
+                if target.close_members.contains(&workspace.workspace_id)
+                    && !workspace.new_workspace_cwd.is_empty()
+                    && !cwds.contains(&workspace.new_workspace_cwd)
+                {
+                    cwds.push(workspace.new_workspace_cwd.clone());
+                }
+            }
+        }
+        crate::browser::Store::update(cx, |store| {
+            for cwd in &cwds {
+                store.forget_closed_project_path(&scope, cwd);
+            }
+        });
+    }
+
     pub(super) fn activate_workspace_menu(
         &mut self,
         action: WorkspaceMenuAction,
@@ -937,6 +946,17 @@ impl SheprdWindow {
         cx: &mut Context<Self>,
     ) {
         match action {
+            WorkspaceMenuAction::RemoveProject => {
+                if let Some(target) = &self.menu.target {
+                    let endpoint = &self.endpoints[self.selected_endpoint];
+                    let scope = crate::browser::scope(endpoint);
+                    let id = target.id.clone();
+                    crate::browser::Store::update(cx, |store| {
+                        store.forget_closed_project(&scope, &id);
+                    });
+                }
+                self.dismiss_menu(window, cx);
+            }
             WorkspaceMenuAction::Dialog(action) => self.open_workspace_dialog(action, window, cx),
             WorkspaceMenuAction::Collapse | WorkspaceMenuAction::Expand => {
                 self.toggle_selected_group(cx)
@@ -971,6 +991,8 @@ impl SheprdWindow {
                     self.open_orchestrator_in(workspace, folder, window, cx);
                 }
             }
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            WorkspaceMenuAction::RevealInFileManager => self.reveal_workspace_target(window, cx),
         }
     }
 }

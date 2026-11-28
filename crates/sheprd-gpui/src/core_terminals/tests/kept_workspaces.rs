@@ -42,8 +42,8 @@ fn front(view: &Entity<SheprdWindow>, cx: &mut VisualTestContext) -> String {
 }
 
 fn listed(view: &Entity<SheprdWindow>, cx: &mut VisualTestContext) -> Vec<String> {
-    view.read_with(cx, |view, _| {
-        view.sidebar_workspaces()
+    view.read_with(cx, |view, cx| {
+        view.sidebar_workspaces(cx)
             .into_iter()
             .map(|(_, id)| id)
             .collect()

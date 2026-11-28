@@ -183,6 +183,9 @@ pub(crate) enum WorkspaceMenuAction {
     GoToTeleported,
     /// Forget that this checkout's work was teleported away.
     ClearTeleported,
+    /// Forget a retained project: its row leaves Spaces until its folder is
+    /// opened again.
+    RemoveProject,
     Checkpoints,
     /// Send one prompt to several agents, or reopen their comparison.
     FanOut,
@@ -198,6 +201,9 @@ pub(crate) enum WorkspaceMenuAction {
     /// applied at once: the mute belongs to this client, never the daemon.
     Mute,
     Unmute,
+    /// Show a local workspace folder in Finder or the system file manager.
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    RevealInFileManager,
 }
 
 impl Page {
@@ -313,6 +319,7 @@ impl WorkspaceMenuAction {
             Self::Teleport | Self::GoToTeleported => "icons/teleport.svg",
             Self::TeleportBack => "icons/teleport-back.svg",
             Self::ClearTeleported => "icons/close.svg",
+            Self::RemoveProject => "icons/x.svg",
             Self::Checkpoints => "icons/refresh.svg",
             Self::FanOut => "icons/fan-out.svg",
             Self::Orchestrator => "icons/github.svg",
@@ -322,6 +329,8 @@ impl WorkspaceMenuAction {
             Self::Script(_) => "icons/play.svg",
             Self::Mute => crate::icons::MUTED,
             Self::Unmute => "icons/bell.svg",
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            Self::RevealInFileManager => "icons/file.svg",
             Self::PullRequest => return None,
         })
     }

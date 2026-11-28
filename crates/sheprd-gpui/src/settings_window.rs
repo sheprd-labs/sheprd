@@ -56,6 +56,11 @@ use crate::{
 };
 use gpui::{prelude::*, *};
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+pub(crate) fn reveal_path(path: std::path::PathBuf, cx: &mut App) {
+    pages::open_path(true, path, cx);
+}
+
 actions!(settings_window, [Close]);
 
 pub(crate) fn key_bindings() -> [KeyBinding; 2] {

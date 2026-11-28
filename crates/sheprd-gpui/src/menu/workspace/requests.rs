@@ -625,6 +625,11 @@ impl SheprdWindow {
         match result {
             Ok(submission) => {
                 self.local_error = None;
+                if matches!(submission, Submission::Queued { .. })
+                    && action == WorkspaceAction::Close
+                {
+                    self.drop_closed_rows(cx);
+                }
                 if submission.focus_changed() {
                     self.fence_focus_change(None);
                 }

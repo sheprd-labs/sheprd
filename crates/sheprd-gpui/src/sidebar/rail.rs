@@ -263,7 +263,7 @@ impl SheprdWindow {
             if multi && endpoint.collapsed {
                 continue;
             }
-            let sessions = self.sessions(endpoint_index);
+            let sessions = self.sidebar_sessions(endpoint_index, cx);
             let collapsed_repos = if endpoint_index == 0 {
                 &self.collapsed_repos
             } else {
@@ -291,6 +291,7 @@ impl SheprdWindow {
                 .collect();
             for (position, (workspace, indented, focused)) in rows.into_iter().enumerate() {
                 let id = workspace.id.clone();
+                let closed_project = self.is_closed_project_row(&endpoint_id, &id, cx);
                 let key = format!("rail-workspace-{endpoint_id}-{id}");
                 let navigate_endpoint = endpoint_id.clone();
                 let context_endpoint = endpoint_id.clone();
@@ -383,6 +384,16 @@ impl SheprdWindow {
                         MouseButton::Right,
                         cx.listener(move |this, event: &MouseDownEvent, window, cx| {
                             cx.stop_propagation();
+                            if closed_project {
+                                this.open_closed_project_menu(
+                                    &context_endpoint,
+                                    &context_id,
+                                    event.position,
+                                    window,
+                                    cx,
+                                );
+                                return;
+                            }
                             if this.navigate_endpoint(
                                 &context_endpoint,
                                 NavigationTarget::Workspace(&context_id),
@@ -395,11 +406,7 @@ impl SheprdWindow {
                         }),
                     )
                     .on_click(cx.listener(move |this, _, window, cx| {
-                        this.navigate_endpoint(
-                            &navigate_endpoint,
-                            NavigationTarget::Workspace(&id),
-                            cx,
-                        );
+                        this.activate_sidebar_workspace(&navigate_endpoint, &id, window, cx);
                         window.focus(&this.focus, cx);
                     })),
                 );
