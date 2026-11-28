@@ -46,7 +46,9 @@ const LIMIT: u64 = 4 * 1024 * 1024;
 const CLI_TIMEOUT: Duration = Duration::from_secs(10);
 /// A token is at most a few hundred bytes; the rest is room for warnings.
 const CLI_OUTPUT_LIMIT: usize = 16 * 1024;
-/// Where the GitLab CLI's environment tokens apply when `GITLAB_HOST` is unset.
+/// gitlab.com: where the GitLab CLI's environment tokens apply when
+/// `GITLAB_HOST` is unset, and the one host whose certificate is checked
+/// against Mozilla's roots rather than the machine's.
 const DEFAULT_HOST: &str = "gitlab.com";
 /// The variables the GitLab CLI reads a token from, in its order.
 const TOKEN_VARIABLES: [&str; 2] = ["GITLAB_TOKEN", "GITLAB_ACCESS_TOKEN"];
@@ -159,7 +161,7 @@ impl Config {
             .iter()
             .find(|(host, _)| saved::normalize_host(host).as_deref() == Some(instance))
             .map(|(_, application)| application.as_str())
-            .or_else(|| (instance == DEFAULT_HOST).then_some(oauth::GITLAB_COM_APPLICATION))
+            .or_else(|| is_gitlab_com(instance).then_some(oauth::GITLAB_COM_APPLICATION))
     }
 
     /// Where pasted tokens are saved.
@@ -359,7 +361,7 @@ pub fn sync(
     cancelled: &impl Fn() -> bool,
     cooldown: &mut Option<Duration>,
 ) -> super::Result<Listing> {
-    let agent = agent(TIMEOUT);
+    let agent = agent(api, TIMEOUT);
     let credential = Credential::new(api.scheme, token);
     let mut listing = full(
         source,
@@ -493,7 +495,7 @@ pub fn recent_issues(
 ) -> super::Result<Vec<Item>> {
     let url = recent_issues_url((source, api), count)?;
     let nodes: Vec<IssueNode> = get_page(
-        &agent(TIMEOUT),
+        &agent(api, TIMEOUT),
         (source, api),
         Credential::new(api.scheme, token),
         url,
@@ -596,16 +598,57 @@ fn get_page<N: Listed>(
     serde_json::from_slice(&body(&mut reply, LIMIT)?).map_err(Error::Json)
 }
 
-/// An agent for GitLab's API: bounded by `timeout`, following no redirect,
-/// so a token is never carried to another address, and returning refusals
-/// as statuses to read.
-fn agent(timeout: Duration) -> ureq::Agent {
+/// Whether `host` is gitlab.com, however it is capitalized and whether or
+/// not it names a port: a host name is case-insensitive, and a person types an
+/// instance's name themselves, port included.
+///
+/// The port must not change the answer. Should a `gitlab.com:8443` fall to the
+/// system's store, an authority a proxy installed on the machine could read
+/// the token, which Mozilla's roots alone forbid.
+fn is_gitlab_com(host: &str) -> bool {
+    let name = host.rsplit_once(':').map_or(host, |(name, _)| name);
+    name.eq_ignore_ascii_case(DEFAULT_HOST)
+}
+
+/// An agent for `api`'s requests: dialled at the host it maps to, whose
+/// certificate is the one presented, bounded by `timeout`, following no
+/// redirect, so a token is never carried to another address, and returning
+/// refusals as statuses to read.
+pub(super) fn agent(api: &Api, timeout: Duration) -> ureq::Agent {
+    agent_for(&api.host, timeout)
+}
+
+/// An agent for `instance` itself, which the sign-in names where a remote's
+/// API would be read instead.
+pub(super) fn sign_in_agent(instance: &str, timeout: Duration) -> ureq::Agent {
+    agent_for(instance, timeout)
+}
+
+fn agent_for(host: &str, timeout: Duration) -> ureq::Agent {
     ureq::Agent::config_builder()
         .timeout_global(Some(timeout))
         .max_redirects(0)
         .http_status_as_error(false)
+        .tls_config(
+            ureq::tls::TlsConfig::builder()
+                .root_certs(roots(host))
+                .build(),
+        )
         .build()
         .into()
+}
+
+/// The authorities the certificate of `host` is verified against. A
+/// self-managed instance is usually served by the organization's own
+/// authority, which only the machine's store holds, and GitLab answers an
+/// `UnknownIssuer` for it otherwise; gitlab.com keeps Mozilla's, which needs
+/// no trustworthy store on the machine, and so still reads without one.
+fn roots(host: &str) -> ureq::tls::RootCerts {
+    if is_gitlab_com(host) {
+        ureq::tls::RootCerts::WebPki
+    } else {
+        ureq::tls::RootCerts::PlatformVerifier
+    }
 }
 
 /// A reply's body, refused when it is larger than `limit`.

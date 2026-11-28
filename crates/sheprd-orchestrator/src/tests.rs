@@ -31,6 +31,7 @@ mod gitlab_recent;
 mod durable_hosts;
 #[cfg(unix)]
 mod gitlab_renewal;
+mod gitlab_roots;
 mod gitlab_saved_turns;
 mod gitlab_sign_in;
 mod incremental;

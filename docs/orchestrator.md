@@ -156,6 +156,15 @@ Mine filter. The branch-aware titlebar card remains GitHub-only. The API is reac
 own URL is `http://`; the shared source key names only the host, so the scheme
 is read from the remote each time.
 
+The certificate of the host requests go to is checked against Mozilla's bundled
+roots on gitlab.com, whatever port it names, which therefore reads without a
+trustworthy store on the machine, and against the machine's own store on every other host, since a
+self-managed instance is usually served by the organization's authority
+(`agent`, `roots` in `gitlab.rs`). A self-managed instance therefore needs the
+store its machine ships with, and a proxy that reissues certificates is
+trusted for such an instance once its authority is installed there, but not
+for gitlab.com.
+
 A remote whose host the GitLab CLI names as an instance's `ssh_host` is read
 from that instance instead: requests go to its `api_host` (the instance's own
 name when unset) over its `api_protocol` (HTTPS when unset), and its token is

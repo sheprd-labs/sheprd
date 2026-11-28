@@ -5,7 +5,7 @@
 //! is sent; it has no secret to keep. Every call blocks on the network:
 //! run it from a worker.
 
-use super::{Error, TIMEOUT, agent, body, saved::OAuth, valid};
+use super::{Error, TIMEOUT, body, saved::OAuth, sign_in_agent, valid};
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use std::time::Duration;
@@ -199,7 +199,7 @@ fn post(instance: &str, path: &str, fields: &[(&str, &str)]) -> Result<(u16, Vec
     let url = url::Url::parse(&format!("{origin}/oauth/{path}"))
         .map_err(|_| Error::Address(instance.to_owned()))?;
     // ureq owns the form's buffers; never log the fields or the reply.
-    let mut reply = agent(TIMEOUT.min(Duration::from_secs(15)))
+    let mut reply = sign_in_agent(instance, TIMEOUT.min(Duration::from_secs(15)))
         .post(url.as_str())
         .header("User-Agent", "Sheprd")
         .header("Accept", "application/json")

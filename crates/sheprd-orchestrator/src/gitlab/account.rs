@@ -118,7 +118,7 @@ pub fn whoami(api: &Api, token: &SecretString) -> Result<User, Error> {
     let origin = format!("https://{}", api.host);
     let url = url::Url::parse(&format!("{origin}/api/v4/user"))
         .map_err(|_| Error::Address(api.host.clone()))?;
-    let mut reply = agent(TIMEOUT)
+    let mut reply = agent(api, TIMEOUT)
         .get(url.as_str())
         .header("User-Agent", "Sheprd")
         .header("Accept", "application/json")
