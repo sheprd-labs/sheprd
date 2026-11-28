@@ -54,35 +54,62 @@ pub(super) struct Thread {
     /// A resumed session replays its own history, which the transcript
     /// already shows: its updates are ignored until it opens.
     replaying: bool,
+    /// Whether a loaded session brought conversation history (even if no user
+    /// entry survived truncation).
+    resumed_history: bool,
     /// What the current agent knows of the conversation while its handoff
     /// has not reached it yet; `None` once a turn carrying it was taken (or
     /// for the chat's first agent), when it has seen the whole transcript.
     undelivered: Option<Joining>,
 }
 
+fn first_user_prompt(entries: &[Entry]) -> Option<(String, Option<Guest>)> {
+    entries.iter().find_map(|entry| match &entry.kind {
+        EntryKind::User { text, guest, .. } => Some((text.clone(), guest.clone())),
+        _ => None,
+    })
+}
+
+fn has_conversation(entries: &[Entry]) -> bool {
+    entries
+        .iter()
+        .any(|entry| matches!(entry.kind, EntryKind::User { .. } | EntryKind::Agent { .. }))
+}
+
 impl Thread {
     /// The thread of a chat started with `agent`, continuing the
     /// conversation `entries` already show, if any.
     pub(super) fn new(agent: Option<Agent>, entries: &[Entry]) -> Self {
-        let (first_prompt, first_guest) = entries
-            .iter()
-            .find_map(|entry| match &entry.kind {
-                EntryKind::User { text, guest, .. } => Some((Some(text.clone()), guest.clone())),
-                _ => None,
-            })
-            .unwrap_or_default();
-        Self {
-            first_prompt,
-            first_guest,
+        let mut thread = Self {
             held: agent.into_iter().collect(),
             ..Self::default()
+        };
+        thread.seed(entries);
+        thread
+    }
+
+    /// Seeds the thread from history loaded into the transcript after
+    /// construction, such as ACP `session/load` replay or checkpoint restore.
+    pub(super) fn seed(&mut self, entries: &[Entry]) {
+        if self.first_prompt.is_none()
+            && let Some((text, guest)) = first_user_prompt(entries)
+        {
+            self.first_prompt = Some(text);
+            self.first_guest = guest;
+        }
+        if has_conversation(entries) {
+            self.resumed_history = true;
         }
     }
 
-    /// Whether a prompt has reached an agent: only then is there a
-    /// conversation to hand over.
+    pub(super) fn first_prompt(&self) -> Option<&str> {
+        self.first_prompt.as_deref()
+    }
+
+    /// Whether a prompt has reached an agent or a loaded session brought
+    /// conversation history: only then is there a conversation to hand over.
     pub(super) fn started(&self) -> bool {
-        self.first_prompt.is_some()
+        self.first_prompt.is_some() || self.resumed_history
     }
 
     /// A prompt carrying `handoff` went to the agent.

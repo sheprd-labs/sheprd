@@ -33,10 +33,8 @@ pub enum Error {
     TranscriptAgent,
     #[error("observe needs a Codex/Claude session UUID, positive PID and process start ticks")]
     ObserveIdentity,
-    #[error("`--choose` starts a built-in agent without arguments, not a command")]
+    #[error("`--choose` starts a built-in agent, not a custom command")]
     ChooseCommand,
-    #[error("`--choose` starts a new conversation and cannot continue one")]
-    ChooseLoad,
     #[error("`{0}` is not a thread id")]
     InvalidThread(String),
     #[error("`--thread` continues a built-in agent's session named by `--load` or `--resume`")]
@@ -235,8 +233,7 @@ Options:
   --acp          Use the agent's ACP adapter, not the agent itself
                  (also HERDR_ACP_ADAPTER=1)
   --choose       Let clients switch to another installed agent whenever
-                 the agent is idle (Ctrl+O here); the new agent gets the
-                 conversation; not with --load
+                 the agent is idle (default for built-in agents; Ctrl+O here)
   --cwd DIR      Run the session in DIR instead of the current directory
   --load ID      Continue the agent's session ID instead of starting a new one
   --resume ID    Continue session ID, and stop rather than start a new one
@@ -261,7 +258,7 @@ Keys:
   /              Complete the agent's commands: Tab takes one, Up/Down choose
   Up/Down        Recall earlier prompts from an empty prompt
   Shift+Tab      Next session mode
-  Ctrl+O         Settings: agent (with --choose), model, thinking level,
+  Ctrl+O         Settings: agent (built-in agents), model, thinking level,
                  mode (Left/Right change)
   PgUp/PgDn, mouse wheel  Scroll the transcript
   Ctrl+D         Quit when the prompt is empty
@@ -409,25 +406,18 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Parsed, 
     choosable(options)
 }
 
-/// `options`, unless `--choose` asks for a switch it could not make: to or
-/// from a command or extra arguments only one agent takes, or away from a
-/// conversation the agent already holds.
-fn choosable(options: Options) -> Result<Parsed, Error> {
+/// `options`, with agent switching enabled for every built-in agent and
+/// refused only for a custom command (`-- COMMAND`).
+fn choosable(mut options: Options) -> Result<Parsed, Error> {
     if options.thread.is_some()
         && (options.load.is_none() || matches!(options.agent, AgentChoice::Command { .. }))
     {
         return Err(Error::ThreadWithoutLoad);
     }
-    if options.choose {
-        let AgentChoice::Builtin { args, .. } = &options.agent else {
-            return Err(Error::ChooseCommand);
-        };
-        if !args.is_empty() {
-            return Err(Error::ChooseCommand);
-        }
-        if options.load.is_some() {
-            return Err(Error::ChooseLoad);
-        }
+    match &options.agent {
+        AgentChoice::Builtin { .. } => options.choose = true,
+        AgentChoice::Command { .. } if options.choose => return Err(Error::ChooseCommand),
+        AgentChoice::Command { .. } => options.choose = false,
     }
     Ok(Parsed::Run(options))
 }

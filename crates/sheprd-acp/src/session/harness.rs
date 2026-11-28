@@ -8,21 +8,31 @@
 //! prompt ([`super::thread`]). A switch waits for a running turn to end.
 
 use sheprd_chat_protocol::{
-    Agent, Change, Cursor, Harnesses, Rejection, ServerMessage, Transcript,
+    Agent, Change, Cursor, Harnesses, Rejection, ServerMessage, Status, Transcript,
 };
 
 use super::{HarnessId, Session, Update};
 use crate::rpc;
 
 impl<R: FnMut(Update)> Session<R> {
+    /// Whether the chat is still waiting for its initial `--load`/`--resume`
+    /// session to finish replaying its history.
+    fn loading_initial(&self) -> bool {
+        !self.ready
+            && self.transcript.status == Status::Starting
+            && self.config.load.is_some()
+            && !self.thread.replaying()
+    }
+
     pub(super) fn set_agent(&mut self, agent: Agent) -> Result<(), Rejection> {
         let harnesses = self
             .transcript
             .harnesses
             .as_ref()
             .ok_or(Rejection::AgentFixed)?;
-        // Mid-turn, the agent still holds work the user started.
-        if self.turn.is_some() {
+        // Mid-turn, or while an initial loaded session is still replaying
+        // history, wait before switching so the conversation is not lost.
+        if self.turn.is_some() || self.loading_initial() {
             return Err(Rejection::AgentFixed);
         }
         if !harnesses.available.contains(&agent) {

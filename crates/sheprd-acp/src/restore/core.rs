@@ -224,8 +224,7 @@ pub(crate) fn run(endpoint: EndpointId) -> anyhow::Result<()> {
             attach: true,
             brief_file: None,
             brief_from: None,
-            // Restoring continues a session, which no other agent could.
-            choose: false,
+            choose: true,
             cwd: Some(record.cwd),
             headless: false,
             load: Some(record.session),

@@ -361,6 +361,12 @@ impl<R: FnMut(Update)> Session<R> {
             return;
         };
         self.open_history(&id.0, loaded);
+        if loaded {
+            self.thread.seed(&self.transcript.entries);
+            if let Some(prompt) = self.thread.first_prompt().map(str::to_owned) {
+                self.keep_started(&prompt);
+            }
+        }
         self.ready = true;
         (self.report)(Update::Opened(id.0.to_string()));
         self.keep_opened(id.0.as_ref());

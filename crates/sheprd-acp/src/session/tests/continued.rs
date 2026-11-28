@@ -146,3 +146,162 @@ fn a_switch_of_agent_keeps_the_first_divider_and_places_no_other() {
         .count();
     assert_eq!(dividers, 1);
 }
+
+#[test]
+fn switching_immediately_after_acp_replay_hands_over_history_and_can_resume_back() {
+    use harnesses::{rejection, respond_second};
+    use sheprd_chat_protocol::HandedOver;
+
+    let mut harness = harness_with(Config {
+        agent: "OpenCode".to_owned(),
+        choices: Some(vec![Agent::Opencode, Agent::Claude]),
+        harness: Some(Agent::Opencode),
+        history: None,
+        load: Some("oc-1".to_owned()),
+        require_load: false,
+        ..config()
+    });
+    let client = harness.subscribe(1, false, None);
+    harness.session.start();
+    let init = harness.last_request("initialize")["id"].as_i64().unwrap();
+    harness.respond(
+        init,
+        json!({"protocolVersion": 1, "agentCapabilities": {"loadSession": true}}),
+    );
+    let load = harness.last_request("session/load")["id"].as_i64().unwrap();
+
+    // Switching while the initial load is still replaying is refused.
+    drain(&client);
+    let (flow, id) = set_agent(&mut harness, Agent::Claude);
+    assert_eq!(flow, Flow::Continue);
+    assert_eq!(rejection(&drain(&client), id), Some(Rejection::AgentFixed));
+
+    // ACP replays the existing conversation before answering session/load.
+    harness.input(Input::Agent(
+        HarnessId(0),
+        Inbound::Notification {
+            method: "session/update".to_owned(),
+            params: json!({
+                "sessionId": "oc-1",
+                "update": {
+                    "sessionUpdate": "user_message_chunk",
+                    "content": {"type": "text", "text": "Refactor the parser"}
+                }
+            }),
+        },
+    ));
+    harness.input(Input::Agent(
+        HarnessId(0),
+        Inbound::Notification {
+            method: "session/update".to_owned(),
+            params: json!({
+                "sessionId": "oc-1",
+                "update": {
+                    "sessionUpdate": "agent_message_chunk",
+                    "content": {"type": "text", "text": "Refactored parser.rs."}
+                }
+            }),
+        },
+    ));
+    harness.respond(load, json!({}));
+
+    // Switch immediately before sending another prompt.
+    drain(&client);
+    let (flow, id) = set_agent(&mut harness, Agent::Claude);
+    assert_eq!(
+        flow,
+        Flow::Launch {
+            agent: Agent::Claude,
+            harness: HarnessId(1),
+            load: None,
+        }
+    );
+    assert_eq!(rejection(&drain(&client), id), None);
+
+    let claude = launch(&mut harness);
+    answer_second(
+        &mut harness,
+        &claude,
+        "initialize",
+        json!({"protocolVersion": 1, "agentCapabilities": {}}),
+    );
+    answer_second(
+        &mut harness,
+        &claude,
+        "session/new",
+        json!({"sessionId": "cl-1"}),
+    );
+    assert_eq!(
+        harness.handoffs(),
+        [HandedOver {
+            from: Some(Agent::Opencode),
+            kept: 2,
+            omitted: 0,
+            resumed: false,
+            to: Agent::Claude,
+        }]
+    );
+
+    // The first prompt to Claude carries the replayed OpenCode conversation.
+    harness.command(
+        1,
+        Command::Prompt {
+            origin: None,
+            text: "Add tests".to_owned(),
+            attachments: Vec::new(),
+        },
+    );
+    let sent = requests(&claude);
+    assert_eq!(sent[0]["method"], "session/prompt");
+    let blocks = sent[0]["params"]["prompt"].as_array().unwrap();
+    let combined: String = blocks
+        .iter()
+        .filter_map(|block| block["text"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(combined.contains("Refactor the parser"), "{combined}");
+    assert!(combined.contains("Refactored parser.rs."), "{combined}");
+    assert!(combined.contains("Add tests"), "{combined}");
+    respond_second(
+        &mut harness,
+        sent[0]["id"].as_i64().unwrap(),
+        json!({"stopReason": "end_turn"}),
+    );
+
+    // Switching back resumes the original OpenCode session.
+    let (flow, _) = set_agent(&mut harness, Agent::Opencode);
+    assert_eq!(
+        flow,
+        Flow::Launch {
+            agent: Agent::Opencode,
+            harness: HarnessId(2),
+            load: Some("oc-1".to_owned()),
+        }
+    );
+}
+
+#[test]
+fn a_resumed_chat_can_switch_away_after_its_agent_exits() {
+    use harnesses::rejection;
+
+    let mut harness = resumed(Some(history()));
+    let client = harness.subscribe(1, false, None);
+    harness.input(Input::AgentExited {
+        code: Some(1),
+        harness: HarnessId(0),
+        stderr: vec!["crashed".to_owned()],
+    });
+    assert!(matches!(harness.transcript().status, Status::Exited { .. }));
+
+    drain(&client);
+    let (flow, id) = set_agent(&mut harness, Agent::Codex);
+    assert_eq!(
+        flow,
+        Flow::Launch {
+            agent: Agent::Codex,
+            harness: HarnessId(1),
+            load: None,
+        }
+    );
+    assert_eq!(rejection(&drain(&client), id), None);
+}

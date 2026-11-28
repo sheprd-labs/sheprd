@@ -122,6 +122,22 @@ fn without_a_brief_the_line_is_unchanged() {
     }
 }
 
+#[test]
+fn a_brief_keeps_agent_switching_when_open() {
+    let line = command_line(Agent::Codex, AgentChoice::Open, Some(&brief()));
+    if cfg!(unix) {
+        assert_eq!(
+            line,
+            r#" sh -c 'exec "$HERDR_ACP" --choose --brief-file "$SHEPRD_BRIEF_FILE" --brief-from claude codex'"#
+        );
+    } else {
+        assert_eq!(
+            line,
+            "& $env:HERDR_ACP --choose --brief-file $env:SHEPRD_BRIEF_FILE --brief-from claude codex"
+        );
+    }
+}
+
 /// An older `sheprd-acp` would refuse `--brief-file` and start nothing, so
 /// a brief is handed only to a program whose help lists the option.
 #[cfg(unix)]

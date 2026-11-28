@@ -1,8 +1,14 @@
 use super::*;
 
 #[test]
-fn choose_opens_the_choice_for_a_builtin_agent() {
-    assert!(!run(&["claude"]).choose);
+fn builtin_agents_offer_switching_by_default() {
+    assert!(run(&["claude"]).choose);
+    assert!(run(&["--brief-file", "/tmp/brief.md", "claude"]).choose);
+    assert!(run(&["--load", "s1", "claude"]).choose);
+    assert!(run(&["--resume", "s1", "claude"]).choose);
+    assert!(run(&["--resume", "s1", "claude", "--", "--model", "opus"]).choose);
+    assert!(run(&["antigravity"]).choose);
+
     let options = run(&["--choose", "--headless", "codex"]);
     assert!(options.choose);
     assert_eq!(
@@ -12,27 +18,9 @@ fn choose_opens_the_choice_for_a_builtin_agent() {
             args: Vec::new(),
         }
     );
-}
-
-#[test]
-fn choose_refuses_what_another_agent_could_not_take_over() {
-    assert_eq!(
-        parse(args(&["--choose", "--", "goose", "acp"])),
-        Err(Error::ChooseCommand)
-    );
-    assert_eq!(
-        parse(args(&["--choose", "claude", "--", "--model", "opus"])),
-        Err(Error::ChooseCommand)
-    );
-    assert_eq!(
-        parse(args(&["--choose", "--load", "s1", "claude"])),
-        Err(Error::ChooseLoad)
-    );
-    assert_eq!(
-        parse(args(&["--choose", "--resume", "s1", "claude"])),
-        Err(Error::ChooseLoad)
-    );
-    assert_eq!(parse(args(&["--choose"])), Err(Error::MissingAgent));
+    assert!(run(&["--choose", "--load", "s1", "claude"]).choose);
+    assert!(run(&["--choose", "--resume", "s1", "claude"]).choose);
+    assert!(run(&["--choose", "claude", "--", "--model", "opus"]).choose);
     let antigravity = run(&["--choose", "antigravity"]);
     assert!(antigravity.choose);
     assert_eq!(
@@ -42,4 +30,14 @@ fn choose_refuses_what_another_agent_could_not_take_over() {
             args: Vec::new(),
         }
     );
+}
+
+#[test]
+fn custom_commands_stay_fixed_and_refuse_choose() {
+    assert!(!run(&["--", "goose", "acp"]).choose);
+    assert_eq!(
+        parse(args(&["--choose", "--", "goose", "acp"])),
+        Err(Error::ChooseCommand)
+    );
+    assert_eq!(parse(args(&["--choose"])), Err(Error::MissingAgent));
 }

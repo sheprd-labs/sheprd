@@ -80,3 +80,27 @@ fn a_herdr_1_chat_has_no_core_recovery_to_hold() {
     .unwrap();
     keeper.hold_for_switch().unwrap();
 }
+
+#[test]
+fn a_switch_clears_arguments_from_the_previous_agent() {
+    let dir = tempfile::tempdir().unwrap();
+    let endpoint = ENDPOINT.parse().unwrap();
+    std::fs::create_dir_all(dir.path().join("core")).unwrap();
+    let mut keeper = Keeper::core(
+        Some(dir.path().to_owned()),
+        Some(&endpoint),
+        &builtin(vec!["--model".into(), "opus".into()]),
+        false,
+        &abs("/work"),
+        |name| match name {
+            "HC_TERMINAL_ID" => Some("t9".into()),
+            "HC_TERMINAL_SOCKET" => Some(abs("/state/core.sock").into_os_string()),
+            _ => None,
+        },
+    )
+    .unwrap();
+    assert_eq!(keeper.args, ["--model", "opus"]);
+    keeper.switched(Agent::Claude);
+    assert_eq!(keeper.agent, Agent::Claude);
+    assert!(keeper.args.is_empty());
+}

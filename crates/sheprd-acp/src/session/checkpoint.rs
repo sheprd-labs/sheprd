@@ -220,10 +220,7 @@ impl<R: FnMut(Update)> Session<R> {
                 self.emit(change.clone());
                 self.find_brief(&change);
             }
-            if !self.thread.started() {
-                self.thread =
-                    super::thread::Thread::new(self.config.harness, &self.transcript.entries);
-            }
+            self.thread.seed(&self.transcript.entries);
         }
         for pull_request in saved.pull_requests {
             self.emit(Change::PullRequest { pull_request });

@@ -418,8 +418,8 @@ pub(crate) fn run_owned(
     let agent_process = first.process.clone();
     // Stops the first agent on every early return; a switch stops it sooner.
     let owned_agent = agent_process.owned();
-    // A claimed launch continues a session, which `--choose` refuses, so
-    // its agent is never switched away from.
+    // Record the initial agent child for a claimed launch; any later switch
+    // holds recovery via `switch_keeper.hold_for_switch()` and updates the child.
     if let Some(claimed) = &claimed {
         crate::restore::core::child_started(claimed, agent_process.id())?;
     }

@@ -429,9 +429,12 @@ wheel scroll back through the transcript without changing the prompt.
 
 ## Choosing the agent
 
-`--choose` starts a built-in agent but lets any client switch the chat to
-another one installed on the same machine whenever the agent is idle. A
-switch during a turn is refused with `agent_fixed`. The transcript then carries `harnesses`: the agents installed here (and
+Every built-in agent chat (whether started interactively, by another agent, or
+continued with `--load`, `--resume`, or `restore`) lets any client switch the
+chat to another built-in agent installed on the same machine whenever the agent
+is idle. `--choose` is accepted for compatibility and refused only for a custom
+command (`-- COMMAND`). A switch during a turn is refused with `agent_fixed`.
+The transcript then carries `harnesses`: the agents installed here (and
 the one the chat started with, even when only `npx` can run it) and the one
 running now. **Ctrl+O** shows it as the first row here; a client sends
 `SetAgent`.
@@ -461,8 +464,8 @@ handed only what happened since it last took part. When it cannot continue
 that session, it starts a new one and is handed the whole conversation. The
 handoff is built by `sheprd_chat_protocol::handoff`.
 
-`--choose` refuses a custom command, extra agent arguments, `--load`, and
-`--resume`, since another agent could not take any of them over.
+A custom command (`-- COMMAND`) keeps agent switching off, and passing
+`--choose` with one is refused.
 
 ## Behaviour
 

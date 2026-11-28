@@ -196,6 +196,7 @@ impl Continuity for Keeper {
     fn switched(&mut self, agent: Agent) {
         restore::remove(&self.dir, &self.endpoint);
         self.agent = agent;
+        self.args.clear();
     }
 
     /// Holds a core chat's automatic recovery before a switch stops the

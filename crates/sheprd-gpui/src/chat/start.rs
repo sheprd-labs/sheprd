@@ -223,29 +223,34 @@ pub(crate) struct Starting {
 }
 
 impl SheprdWindow {
-    /// Looks for the program once, off the UI thread.
+    /// Looks for the program once, off the UI thread, and checks whether it
+    /// accepts `--choose` before publishing it so no early start omits it.
     pub(super) fn locate_chat_program(&mut self, cx: &mut Context<Self>) {
         if self.chats.program != Program::Unknown {
             return;
         }
         self.chats.program = Program::Looking;
         let executor = cx.background_executor().clone();
-        let found = executor.spawn(async { locate() });
+        let found = executor.spawn(async {
+            let program = locate()?;
+            let choice = AgentChoice::of(&program);
+            Some((program, choice))
+        });
         cx.spawn(async move |this, cx| {
             let found = found.await;
             let _ = this.update(cx, |this, cx| {
-                this.chats.program = found.clone().map_or(Program::Missing, Program::Found);
+                match found {
+                    Some((program, choice)) => {
+                        this.chats.program = Program::Found(program);
+                        this.chats.program_choice = choice;
+                    }
+                    None => {
+                        this.chats.program = Program::Missing;
+                    }
+                }
                 this.refresh_landing_chats();
                 cx.notify();
             });
-            // Chats start as soon as the program is found; until its help
-            // says it offers the choice, they keep the agent they start with.
-            if let Some(program) = found {
-                let choice = executor
-                    .spawn(async move { AgentChoice::of(&program) })
-                    .await;
-                let _ = this.update(cx, |this, _| this.chats.program_choice = choice);
-            }
         })
         .detach();
     }
