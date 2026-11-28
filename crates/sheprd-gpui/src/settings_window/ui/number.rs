@@ -95,7 +95,8 @@ pub(in crate::settings_window) fn parse_number(
     if text.is_empty() || !text.bytes().all(|b| b.is_ascii_digit()) {
         return None;
     }
-    let value = text.parse::<u16>().ok().map(f32::from)?;
+    // Every band is far below 2^24, so the `u32` converts to `f32` exactly.
+    let value = text.parse::<u32>().ok()? as f32;
     range.contains(&value).then_some(value)
 }
 

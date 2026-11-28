@@ -197,6 +197,112 @@ impl SettingsWindow {
                         }),
                     )),
             )
+            .child(self.long_text_controls(cx))
+    }
+
+    /// Each long-text rule's switch, then its limits, which only take edits
+    /// while the switch is on.
+    fn long_text_controls(&self, cx: &mut Context<Self>) -> Div {
+        let theme = &self.theme;
+        let chat = &self.config.chat;
+        div()
+            .child(ui::section(
+                theme,
+                &fl!("settings-chat-section-long-text"),
+                None,
+            ))
+            .child(
+                ui::row(theme, "chat-long-paste", fl!("settings-chat-long-paste"))
+                    .description(fl!("settings-chat-long-paste-description"))
+                    .switch(self.preference_toggle(
+                        "chat-long-paste-toggle",
+                        chat.long_paste_as_file,
+                        Preference::ChatLongPaste(!chat.long_paste_as_file),
+                        cx,
+                    )),
+            )
+            .child(self.long_text_limit(
+                "chat-long-paste-chars",
+                fl!("settings-chat-long-paste-chars"),
+                fl!("settings-chat-long-paste-chars-description"),
+                NumberField::LongPasteChars,
+                (chat.long_paste_chars, chat.long_paste_as_file),
+                cx,
+            ))
+            .child(self.long_text_limit(
+                "chat-long-paste-lines",
+                fl!("settings-chat-long-paste-lines"),
+                fl!("settings-chat-long-paste-lines-description"),
+                NumberField::LongPasteLines,
+                (chat.long_paste_lines, chat.long_paste_as_file),
+                cx,
+            ))
+            .child(
+                ui::row(
+                    theme,
+                    "chat-long-message",
+                    fl!("settings-chat-long-message"),
+                )
+                .description(fl!("settings-chat-long-message-description"))
+                .switch(self.preference_toggle(
+                    "chat-long-message-toggle",
+                    chat.long_message_as_file,
+                    Preference::ChatLongMessage(!chat.long_message_as_file),
+                    cx,
+                )),
+            )
+            .child(self.long_text_limit(
+                "chat-long-message-chars",
+                fl!("settings-chat-long-message-chars"),
+                fl!("settings-chat-long-message-chars-description"),
+                NumberField::LongMessageChars,
+                (chat.long_message_chars, chat.long_message_as_file),
+                cx,
+            ))
+            .child(self.long_text_limit(
+                "chat-long-message-lines",
+                fl!("settings-chat-long-message-lines"),
+                fl!("settings-chat-long-message-lines-description"),
+                NumberField::LongMessageLines,
+                (chat.long_message_lines, chat.long_message_as_file),
+                cx,
+            ))
+    }
+
+    /// A limit's row: the `saved` count, editable only while its rule is `on`.
+    fn long_text_limit(
+        &self,
+        id: &'static str,
+        title: String,
+        description: String,
+        field: NumberField,
+        (saved, on): (u32, bool),
+        cx: &mut Context<Self>,
+    ) -> ui::Row {
+        let value = self.number_value(field, saved as f32);
+        let view = cx.entity().downgrade();
+        ui::row(&self.theme, id, title)
+            .description(description)
+            .control(ui::number(
+                &self.theme,
+                ui::Number {
+                    id: field.selector(),
+                    value,
+                    range: field.range(),
+                    unit: ui::Unit::None,
+                    look: ui::Look::Steppers,
+                    enabled: on && !self.quitting && self.closing.is_none(),
+                },
+                self.number_edit_for(field),
+                on_value(cx, move |this, change, _, cx| {
+                    this.commit_number(field, change, cx)
+                }),
+                move |window, cx| {
+                    let _ = view.update(cx, |this, cx| {
+                        this.begin_number_edit(field, value, window, cx)
+                    });
+                },
+            ))
     }
 
     fn chat_width_controls(&self, cx: &mut Context<Self>) -> Div {

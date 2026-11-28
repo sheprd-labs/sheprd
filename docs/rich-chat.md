@@ -532,8 +532,21 @@ characters shows a first-line preview and a **Message.txt** button. Click the
 button to open the full text in your default text editor. Tab or Shift-Tab
 reaches the file buttons. Enter or Space opens a file, and Escape returns to
 the chat input. This applies to
-existing conversations too. In the desktop composer, a new paste of at least
-800 characters or more than 10 lines becomes a separate text attachment.
+existing conversations too. The agent receives the full text either way. In
+the desktop composer, a new paste of at least 800 characters or 11 lines
+becomes a separate text attachment, which the agent receives as a file.
+
+Settings > Chat > **Long text** turns each of these off or changes its limits:
+
+```toml
+[chat]
+long_paste_as_file = true    # off: every paste goes in as text
+long_paste_chars = 800       # 1–99999
+long_paste_lines = 11        # 1–999
+long_message_as_file = true  # off: every message shows as text
+long_message_chars = 2048    # 1–99999
+long_message_lines = 12      # 1–999
+```
 
 Write normal Markdown and TeX in user and agent messages. Rich chat supports
 headings, lists, links, aligned tables with horizontal scrolling, Mermaid,

@@ -19,6 +19,10 @@ use std::ops::RangeInclusive;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::settings_window) enum NumberField {
     ChatMaxWidth,
+    LongPasteChars,
+    LongPasteLines,
+    LongMessageChars,
+    LongMessageLines,
     EdgeLightWidth,
     EdgeLightTrail,
     Spacing(Spacing),
@@ -33,6 +37,10 @@ impl NumberField {
     pub(in crate::settings_window) fn selector(self) -> &'static str {
         match self {
             Self::ChatMaxWidth => "chat-width-control",
+            Self::LongPasteChars => "chat-long-paste-chars-control",
+            Self::LongPasteLines => "chat-long-paste-lines-control",
+            Self::LongMessageChars => "chat-long-message-chars-control",
+            Self::LongMessageLines => "chat-long-message-lines-control",
             Self::EdgeLightWidth => "edge-light-width-control",
             Self::EdgeLightTrail => "edge-light-trail-control",
             Self::Spacing(spacing) => spacing.control(),
@@ -50,6 +58,14 @@ impl NumberField {
             Self::ChatMaxWidth => {
                 let range = crate::config::chat::MAX_WIDTH_RANGE;
                 f32::from(*range.start())..=f32::from(*range.end())
+            }
+            Self::LongPasteChars | Self::LongMessageChars => {
+                let range = crate::config::chat::LONG_TEXT_CHARS;
+                *range.start() as f32..=*range.end() as f32
+            }
+            Self::LongPasteLines | Self::LongMessageLines => {
+                let range = crate::config::chat::LONG_TEXT_LINES;
+                *range.start() as f32..=*range.end() as f32
             }
             Self::EdgeLightWidth | Self::EdgeLightTrail => {
                 let range = if self == Self::EdgeLightWidth {
@@ -318,6 +334,18 @@ impl SettingsWindow {
             match field {
                 NumberField::ChatMaxWidth => {
                     self.save_preference(Preference::ChatMaxWidth(value as u16), cx);
+                }
+                NumberField::LongPasteChars => {
+                    self.save_preference(Preference::ChatLongPasteChars(value as u32), cx)
+                }
+                NumberField::LongPasteLines => {
+                    self.save_preference(Preference::ChatLongPasteLines(value as u32), cx)
+                }
+                NumberField::LongMessageChars => {
+                    self.save_preference(Preference::ChatLongMessageChars(value as u32), cx)
+                }
+                NumberField::LongMessageLines => {
+                    self.save_preference(Preference::ChatLongMessageLines(value as u32), cx)
                 }
                 NumberField::EdgeLightWidth => {
                     self.save_preference(Preference::EdgeLightWidth(value as u8), cx)

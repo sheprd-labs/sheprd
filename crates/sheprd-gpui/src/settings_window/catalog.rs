@@ -596,6 +596,42 @@ pub(super) const CATALOG: &[Entry] = &[
         "settings-chat-render-html-description",
     ),
     entry(
+        Section::Chat,
+        "chat-long-paste",
+        "settings-chat-long-paste",
+        "settings-chat-long-paste-description",
+    ),
+    entry(
+        Section::Chat,
+        "chat-long-paste-chars",
+        "settings-chat-long-paste-chars",
+        "settings-chat-long-paste-chars-description",
+    ),
+    entry(
+        Section::Chat,
+        "chat-long-paste-lines",
+        "settings-chat-long-paste-lines",
+        "settings-chat-long-paste-lines-description",
+    ),
+    entry(
+        Section::Chat,
+        "chat-long-message",
+        "settings-chat-long-message",
+        "settings-chat-long-message-description",
+    ),
+    entry(
+        Section::Chat,
+        "chat-long-message-chars",
+        "settings-chat-long-message-chars",
+        "settings-chat-long-message-chars-description",
+    ),
+    entry(
+        Section::Chat,
+        "chat-long-message-lines",
+        "settings-chat-long-message-lines",
+        "settings-chat-long-message-lines-description",
+    ),
+    entry(
         Section::Code,
         "code-mode",
         "settings-code-mode",

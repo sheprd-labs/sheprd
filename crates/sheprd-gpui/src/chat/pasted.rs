@@ -17,15 +17,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// Pasted text this long, in characters, attaches as a file.
-pub(crate) const LONG_TEXT_CHARS: usize = 800;
-/// Pasted text with more lines than this attaches as a file.
-pub(crate) const LONG_TEXT_LINES: usize = 10;
-
-/// Whether pasted `text` is long enough to attach as a `.txt` file rather
-/// than fill the composer.
-pub(crate) fn is_long_text(text: &str) -> bool {
-    text.lines().nth(LONG_TEXT_LINES).is_some() || text.chars().nth(LONG_TEXT_CHARS - 1).is_some()
+/// Whether pasted `text` meets `[chat]`'s rule for attaching as a `.txt`
+/// file rather than filling the composer.
+pub(crate) fn is_long_text(text: &str, chat: &crate::config::chat::ChatConfig) -> bool {
+    chat.long_paste().is_some_and(|rule| rule.matches(text))
 }
 
 /// What was pasted, to be saved as a file.

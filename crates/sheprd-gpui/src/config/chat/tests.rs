@@ -286,3 +286,104 @@ fn message_effects_default_on_and_the_switch_persists() {
     let saved = std::fs::read_to_string(&path).unwrap();
     assert!(Config::parse(&saved).unwrap().chat.message_effects);
 }
+
+#[test]
+fn long_text_rules_default_to_the_limits_chats_used_before_they_were_settings() {
+    let chat = ChatConfig::default();
+    // A paste attached past 10 lines or from 800 characters; a message
+    // showed as a file from 12 lines or 2048 characters.
+    let paste = chat.long_paste().unwrap();
+    assert!(!paste.matches(&"a\n".repeat(10)));
+    assert!(paste.matches(&"a\n".repeat(11)));
+    assert!(!paste.matches(&"x".repeat(799)));
+    assert!(paste.matches(&"x".repeat(800)));
+    let message = chat.long_message().unwrap();
+    assert!(!message.matches(&"line\r\n".repeat(11)));
+    assert!(message.matches(&"line\r\n".repeat(12)));
+    assert!(!message.matches(&"界".repeat(2047)));
+    assert!(message.matches(&"界".repeat(2048)));
+}
+
+#[test]
+fn a_long_text_rule_meets_either_limit_counting_characters_and_lines() {
+    let rule = LongText { chars: 5, lines: 3 };
+    assert!(!rule.matches(""));
+    assert!(!rule.matches("abcd"));
+    assert!(rule.matches("abcde"));
+    // Characters, not bytes.
+    assert!(!rule.matches("éééé"));
+    // A trailing newline ends a line rather than starting one.
+    assert!(!rule.matches("a\nb\n"));
+    assert!(rule.matches("a\nb\nc"));
+    let one = LongText { chars: 1, lines: 1 };
+    assert!(!one.matches(""));
+    assert!(one.matches("a"));
+}
+
+#[test]
+fn long_text_keys_parse_turn_off_and_refuse_limits_out_of_range() {
+    use crate::config::Config;
+    let config = Config::parse(
+        "[chat]\nlong_paste_as_file = false\nlong_paste_chars = 5\nlong_paste_lines = 2\n\
+         long_message_chars = 99999\nlong_message_lines = 1\n",
+    )
+    .unwrap();
+    assert!(config.unknown_keys.is_empty());
+    assert_eq!(config.chat.long_paste(), None);
+    assert_eq!(config.chat.long_paste_chars, 5);
+    assert_eq!(config.chat.long_paste_lines, 2);
+    assert_eq!(
+        config.chat.long_message(),
+        Some(LongText {
+            chars: 99_999,
+            lines: 1
+        })
+    );
+    for (key, value) in [
+        ("long_paste_chars", "0"),
+        ("long_paste_chars", "100000"),
+        ("long_message_chars", "-1"),
+        ("long_paste_lines", "0"),
+        ("long_message_lines", "1000"),
+        ("long_message_lines", "2.5"),
+    ] {
+        assert!(
+            Config::parse(&format!("[chat]\n{key} = {value}\n")).is_err(),
+            "{key} = {value}"
+        );
+    }
+}
+
+#[test]
+fn long_text_preferences_save_their_keys_and_refuse_limits_out_of_range() {
+    use crate::config::{Config, preferences::Preference};
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("local.toml");
+    std::fs::write(&path, "# keep\n[chat]\nglide = true\n").unwrap();
+    for edit in [
+        Preference::ChatLongPaste(false),
+        Preference::ChatLongPasteChars(30),
+        Preference::ChatLongPasteLines(4),
+        Preference::ChatLongMessage(false),
+        Preference::ChatLongMessageChars(40),
+        Preference::ChatLongMessageLines(5),
+    ] {
+        Config::save_preference_path(edit, &path).unwrap();
+    }
+    let text = std::fs::read_to_string(&path).unwrap();
+    let chat = Config::parse(&text).unwrap().chat;
+    assert!(text.starts_with("# keep"));
+    assert!(chat.glide);
+    assert!(!chat.long_paste_as_file && !chat.long_message_as_file);
+    assert_eq!((chat.long_paste_chars, chat.long_paste_lines), (30, 4));
+    assert_eq!((chat.long_message_chars, chat.long_message_lines), (40, 5));
+    for edit in [
+        Preference::ChatLongPasteChars(0),
+        Preference::ChatLongPasteLines(1_000),
+        Preference::ChatLongMessageChars(100_000),
+        Preference::ChatLongMessageLines(0),
+    ] {
+        assert!(Config::save_preference_path(edit, &path).is_err());
+    }
+    assert_eq!(std::fs::read_to_string(path).unwrap(), text);
+}

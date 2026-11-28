@@ -304,6 +304,8 @@ impl ChatPane {
         let glide = super::glide::Glide::new(&list);
         let mut prepared = Prepared::default();
         prepared.set_remote_links(!target.is_local());
+        // Until the window's poll applies `[chat]`, as the default config would.
+        prepared.set_long_message(crate::config::chat::ChatConfig::default().long_message());
         Self {
             as_sent: false,
             attachments: Vec::new(),
@@ -761,11 +763,21 @@ impl Chats {
     }
 
     /// Measures every list's rows again once a code default that changes
-    /// their height changed. Says whether it did.
+    /// their height changed, and prepares their text again once the rule
+    /// for showing a long message as a file did. Says whether it did.
     pub(crate) fn recode(&mut self, chat: &crate::config::chat::ChatConfig) -> bool {
+        let mut changed = false;
+        let rule = chat.long_message();
+        for pane in &mut self.panes {
+            if pane.prepared.set_long_message(rule) {
+                pane.refresh_text();
+                pane.list.remeasure();
+                changed = true;
+            }
+        }
         let code = (chat.wrap_code, chat.code_line_numbers, chat.render_html);
         if self.measured_code == code {
-            return false;
+            return changed;
         }
         self.measured_code = code;
         for pane in &self.panes {

@@ -311,6 +311,8 @@ pub(crate) struct Prepared {
     pub(super) pictures: Vec<Picture>,
     text: super::selection::Document,
     pub(crate) visuals: Visuals,
+    /// The rule a sent message meets to show as a file; `None` never does.
+    long_message: Option<crate::config::chat::LongText>,
 }
 
 impl Prepared {
@@ -354,6 +356,18 @@ impl Prepared {
     /// label/gist, never undisclosed source text between selected messages.
     pub(crate) fn set_expanded(&mut self, expanded: &HashSet<EntryId>) {
         self.text.set_expanded(expanded);
+    }
+
+    /// Sets the rule a sent message meets to show as a file. When it moved,
+    /// forgets the bodies so the next [`Self::update`] prepares them again,
+    /// and says so.
+    pub(crate) fn set_long_message(&mut self, rule: Option<crate::config::chat::LongText>) -> bool {
+        if self.long_message == rule {
+            return false;
+        }
+        self.long_message = rule;
+        self.forget_text();
+        true
     }
 
     /// Notes the formulas and code of a row the lazy list drew. A folded
@@ -408,7 +422,10 @@ impl Prepared {
             let visuals = &mut self.visuals;
             let body = match &entry.kind {
                 EntryKind::User { text, files, .. } => {
-                    match super::user_text_file::UserTextFile::from_prompt(text, *files) {
+                    let file = self.long_message.and_then(|rule| {
+                        super::user_text_file::UserTextFile::from_prompt(text, *files, rule)
+                    });
+                    match file {
                         Some(file) => Body::UserTextFile(file),
                         None => Body::Message(message(text, Author::User, visuals)),
                     }

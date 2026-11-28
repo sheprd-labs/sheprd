@@ -36,6 +36,8 @@ pub enum Error {
     InvalidHostColor { host: String, value: String },
     #[error("{0}.line_height must be a finite number between 1 and 2 times the font size")]
     InvalidLineHeight(&'static str),
+    #[error("chat.long_*_chars must be 1–99999, and chat.long_*_lines 1–999")]
+    InvalidLongText,
     #[error("layout.sidebar_gap must be finite and between 0 and 64 logical pixels")]
     InvalidSidebarGap,
     #[error("sidebar.{key} must be finite and between 0 and {max} logical pixels")]

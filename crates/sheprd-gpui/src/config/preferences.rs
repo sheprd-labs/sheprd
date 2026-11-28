@@ -23,6 +23,18 @@ pub(crate) enum Preference {
     ChatProgressPill(bool),
     /// `[chat] launcher`: where tab strips offer one-click chats.
     ChatLauncher(ChatLauncher),
+    /// `[chat] long_paste_as_file`: whether a long paste attaches as a file.
+    ChatLongPaste(bool),
+    /// `[chat] long_paste_chars`: characters that make a paste long.
+    ChatLongPasteChars(u32),
+    /// `[chat] long_paste_lines`: lines that make a paste long.
+    ChatLongPasteLines(u32),
+    /// `[chat] long_message_as_file`: whether a long message shows as a file.
+    ChatLongMessage(bool),
+    /// `[chat] long_message_chars`: characters that make a message long.
+    ChatLongMessageChars(u32),
+    /// `[chat] long_message_lines`: lines that make a message long.
+    ChatLongMessageLines(u32),
     /// `[chat] layout`: how chat views draw.
     ChatLayout(ChatLayoutMode),
     /// `[chat] max_width`: the reading column, or zero for full width.
@@ -182,6 +194,31 @@ impl Config {
                     (Some("chat"), "launcher", Some(launcher.name().into()))
                 }
                 Preference::ChatLayout(mode) => (Some("chat"), "layout", Some(mode.name().into())),
+                Preference::ChatLongPaste(value) => {
+                    (Some("chat"), "long_paste_as_file", Some(value.into()))
+                }
+                Preference::ChatLongMessage(value) => {
+                    (Some("chat"), "long_message_as_file", Some(value.into()))
+                }
+                Preference::ChatLongPasteChars(value)
+                | Preference::ChatLongPasteLines(value)
+                | Preference::ChatLongMessageChars(value)
+                | Preference::ChatLongMessageLines(value) => {
+                    let (key, range) = match edit {
+                        Preference::ChatLongPasteChars(_) => {
+                            ("long_paste_chars", chat::LONG_TEXT_CHARS)
+                        }
+                        Preference::ChatLongPasteLines(_) => {
+                            ("long_paste_lines", chat::LONG_TEXT_LINES)
+                        }
+                        Preference::ChatLongMessageChars(_) => {
+                            ("long_message_chars", chat::LONG_TEXT_CHARS)
+                        }
+                        _ => ("long_message_lines", chat::LONG_TEXT_LINES),
+                    };
+                    chat::check_long_text(&range, value)?;
+                    (Some("chat"), key, Some(i64::from(value).into()))
+                }
                 Preference::ChatMaxWidth(width) => {
                     chat::check_max_width(width)?;
                     (Some("chat"), "max_width", Some(i64::from(width).into()))

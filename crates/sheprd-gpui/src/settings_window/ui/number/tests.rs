@@ -21,6 +21,16 @@ fn parse_number_accepts_integers_inside_the_band_only() {
 }
 
 #[test]
+fn parse_number_accepts_values_past_a_u16() {
+    let band = 1.0..=99_999.0;
+    assert_eq!(parse_number("65536", &band), Some(65_536.));
+    assert_eq!(parse_number("80000", &band), Some(80_000.));
+    assert_eq!(parse_number("99999", &band), Some(99_999.));
+    assert_eq!(parse_number("100000", &band), None);
+    assert_eq!(parse_number("99999999999", &band), None);
+}
+
+#[test]
 fn slider_value_maps_pointer_to_the_band_and_rounds() {
     let bounds = Bounds::new(point(px(100.), px(0.)), size(px(200.), px(16.)));
     let band = 0.0..=48.0;

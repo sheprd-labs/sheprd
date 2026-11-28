@@ -22,6 +22,7 @@ error-config-invalid-font-weight = { $table }.weight must be a weight name such 
 # $host is a host's name and $value the colour the config gave it, both quoted.
 error-config-invalid-host-color = sidebar.hosts.{ $host } must be a #rgb or #rrggbb colour, not { $value }
 error-config-invalid-line-height = { $table }.line_height must be a finite number between 1 and 2 times the font size
+error-config-invalid-long-text = chat.long_*_chars must be 1–99999, and chat.long_*_lines 1–999
 error-config-invalid-sidebar-gap = layout.sidebar_gap must be finite and between 0 and 64 logical pixels
 # $key is a sidebar config key; $max is its largest value.
 error-config-invalid-sidebar-metric = sidebar.{ $key } must be finite and between 0 and { $max } logical pixels

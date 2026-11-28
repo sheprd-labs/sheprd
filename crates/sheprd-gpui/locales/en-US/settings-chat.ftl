@@ -4,6 +4,7 @@
 
 settings-chat-section-view = View
 settings-chat-section-code = Code blocks
+settings-chat-section-long-text = Long text
 
 ## What the page says while ACP chats is off.
 

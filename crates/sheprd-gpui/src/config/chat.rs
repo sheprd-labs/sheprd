@@ -12,6 +12,12 @@
 //! code_stripes = false
 //! render_html = "default" # "always", "never", or "default"
 //! wrap_code = false
+//! long_paste_as_file = true
+//! long_paste_chars = 800
+//! long_paste_lines = 11
+//! long_message_as_file = true
+//! long_message_chars = 2048
+//! long_message_lines = 12
 //!
 //! [chat.env]
 //! GH_HOST = "mycompany.ghe.com"
@@ -36,6 +42,11 @@
 //! background. `render_html` picks how an agent's HTML fence starts:
 //! `default` as a card that loads the page on a click, `always` with the
 //! page loaded, `never` as code.
+//!
+//! The long-text keys each set a [`LongText`] rule, which a text meets with
+//! at least its characters or at least its lines. `long_paste_*` attaches
+//! such a paste into the composer as a `.txt` file; `long_message_*` shows
+//! such a sent message in the transcript as a button that opens it.
 
 mod html;
 mod launcher;
@@ -54,6 +65,9 @@ pub(crate) const MAX_ENV_BYTES: usize = 16 * 1024;
 /// The centered reading column, unless the user chooses full width with zero.
 pub(crate) const DEFAULT_MAX_WIDTH: u16 = 800;
 pub(crate) const MAX_WIDTH_RANGE: std::ops::RangeInclusive<u16> = 320..=4_000;
+/// The characters and lines a [`LongText`] rule may ask for.
+pub(crate) const LONG_TEXT_CHARS: std::ops::RangeInclusive<u32> = 1..=99_999;
+pub(crate) const LONG_TEXT_LINES: std::ops::RangeInclusive<u32> = 1..=999;
 /// Names the app sets itself, which the table may not replace.
 const RESERVED: [&str; 1] = [crate::chat::PROGRAM_ENV];
 
@@ -91,6 +105,36 @@ pub struct ChatConfig {
     pub render_html: HtmlRender,
     /// Code blocks wrap long lines unless a block's own button says otherwise.
     pub wrap_code: bool,
+    /// A long paste attaches as a `.txt` file; see [`Self::long_paste`].
+    pub long_paste_as_file: bool,
+    #[serde(deserialize_with = "deserialize_long_chars")]
+    pub long_paste_chars: u32,
+    #[serde(deserialize_with = "deserialize_long_lines")]
+    pub long_paste_lines: u32,
+    /// A long sent message shows as a file; see [`Self::long_message`].
+    pub long_message_as_file: bool,
+    #[serde(deserialize_with = "deserialize_long_chars")]
+    pub long_message_chars: u32,
+    #[serde(deserialize_with = "deserialize_long_lines")]
+    pub long_message_lines: u32,
+}
+
+/// When a text counts as long: at least `chars` characters, or at least
+/// `lines` lines, as [`str::lines`] counts them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LongText {
+    pub chars: u32,
+    pub lines: u32,
+}
+
+impl LongText {
+    pub fn matches(self, text: &str) -> bool {
+        // A rule of zero, which config validation refuses, matches everything.
+        self.lines == 0
+            || text.lines().nth(self.lines as usize - 1).is_some()
+            || self.chars == 0
+            || text.chars().nth(self.chars as usize - 1).is_some()
+    }
 }
 
 impl Default for ChatConfig {
@@ -113,7 +157,60 @@ impl Default for ChatConfig {
             render_existing: false,
             render_html: HtmlRender::default(),
             wrap_code: false,
+            long_paste_as_file: true,
+            long_paste_chars: 800,
+            long_paste_lines: 11,
+            long_message_as_file: true,
+            long_message_chars: 2048,
+            long_message_lines: 12,
         }
+    }
+}
+
+impl ChatConfig {
+    /// The rule a paste into the composer must meet to attach as a file,
+    /// or `None` when pastes always go in as text.
+    pub fn long_paste(&self) -> Option<LongText> {
+        self.long_paste_as_file.then_some(LongText {
+            chars: self.long_paste_chars,
+            lines: self.long_paste_lines,
+        })
+    }
+
+    /// The rule a sent message must meet to show as a file, or `None` when
+    /// messages always show as text.
+    pub fn long_message(&self) -> Option<LongText> {
+        self.long_message_as_file.then_some(LongText {
+            chars: self.long_message_chars,
+            lines: self.long_message_lines,
+        })
+    }
+}
+
+fn deserialize_long_chars<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<u32, D::Error> {
+    let chars = u32::deserialize(deserializer)?;
+    check_long_text(&LONG_TEXT_CHARS, chars).map_err(serde::de::Error::custom)?;
+    Ok(chars)
+}
+
+fn deserialize_long_lines<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<u32, D::Error> {
+    let lines = u32::deserialize(deserializer)?;
+    check_long_text(&LONG_TEXT_LINES, lines).map_err(serde::de::Error::custom)?;
+    Ok(lines)
+}
+
+pub(super) fn check_long_text(
+    range: &std::ops::RangeInclusive<u32>,
+    value: u32,
+) -> crate::Result<()> {
+    if range.contains(&value) {
+        Ok(())
+    } else {
+        Err(super::Error::InvalidLongText.into())
     }
 }
 

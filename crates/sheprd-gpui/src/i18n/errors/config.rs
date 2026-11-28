@@ -40,6 +40,7 @@ impl Localize for Error {
             Self::InvalidLineHeight(table) => {
                 fl!("error-config-invalid-line-height", table = *table)
             }
+            Self::InvalidLongText => fl!("error-config-invalid-long-text"),
             Self::InvalidSidebarGap => fl!("error-config-invalid-sidebar-gap"),
             // `max` as Rust writes the `f32`, as the `Display` does.
             Self::InvalidSidebarMetric { key, max } => fl!(

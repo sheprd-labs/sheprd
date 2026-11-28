@@ -66,9 +66,8 @@ fn a_long_prompt_grows_the_field_and_keeps_it_in_the_pane(cx: &mut TestAppContex
     poll(&view, &program, cx);
     let single = cx.debug_bounds("chat-composer").unwrap().size.height;
     // At most as many lines as stay in the field rather than attach.
-    let lines: Vec<String> = (0..crate::chat::pasted::LONG_TEXT_LINES)
-        .map(|n| format!("line {n}"))
-        .collect();
+    let most = crate::config::chat::ChatConfig::default().long_paste_lines - 1;
+    let lines: Vec<String> = (0..most).map(|n| format!("line {n}")).collect();
     cx.write_to_clipboard(ClipboardItem::new_string(lines.join("\n")));
     cx.simulate_keystrokes(paste_key());
     poll(&view, &program, cx);
@@ -113,6 +112,27 @@ fn a_long_paste_attaches_as_a_txt_file_and_leaves_the_field(cx: &mut TestAppCont
     assert_eq!(file.extension().unwrap(), "txt");
     assert_eq!(std::fs::read_to_string(file).unwrap(), text);
     std::fs::remove_file(file).unwrap();
+}
+
+#[gpui::test]
+fn a_long_paste_stays_in_the_field_once_attaching_is_off(cx: &mut TestAppContext) {
+    let (view, _peer, cx) = open(cx, ConnectTarget::Local);
+    view.update(cx, |view, _| view.config.chat.long_paste_as_file = false);
+    let program = Program::new();
+    let _stream = attach_with(&view, &program, idle(), cx);
+    poll(&view, &program, cx);
+    let text = "log line\n".repeat(40);
+    cx.write_to_clipboard(ClipboardItem::new_string(text.clone()));
+    cx.simulate_keystrokes(paste_key());
+    cx.run_until_parked();
+    poll(&view, &program, cx);
+    let (draft, attached) = view.read_with(cx, |view, cx| {
+        let pane = view.chats.panes().next().unwrap();
+        let draft = pane.composer.as_ref().unwrap().read(cx).text().to_string();
+        (draft, pane.attachments.clone())
+    });
+    assert_eq!(draft, text);
+    assert!(attached.is_empty(), "{attached:?}");
 }
 
 #[gpui::test]

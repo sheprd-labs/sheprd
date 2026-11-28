@@ -745,7 +745,8 @@ impl SheprdWindow {
         };
         // Long text, such as a log, attaches as a file rather than flood the
         // composer, where the chat's host can take files from here.
-        if super::pasted::is_long_text(&text) && self.chat_takes_pasted_files(pane_id) {
+        let long = super::pasted::is_long_text(&text, &self.config.chat);
+        if long && self.chat_takes_pasted_files(pane_id) {
             self.attach_chat_text(pane_id, text, window, cx);
             return true;
         }

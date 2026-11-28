@@ -3,7 +3,13 @@
 //! and materialize a local text file only when the reader opens it.
 
 use super::selection::{Cell, Region};
-use crate::{SheprdWindow, config::corners, i18n::fl, notifications::safe_text, window::Flash};
+use crate::{
+    SheprdWindow,
+    config::{chat::LongText, corners},
+    i18n::fl,
+    notifications::safe_text,
+    window::Flash,
+};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use gpui::{prelude::*, *};
 use sha2::{Digest, Sha256};
@@ -15,8 +21,6 @@ use std::{
     sync::Arc,
 };
 
-const LINES: usize = 12;
-const CHARACTERS: usize = 2048;
 const FILENAME: &str = "Message.txt"; // i18n: data
 
 #[derive(Debug)]
@@ -28,9 +32,10 @@ pub(crate) struct UserTextFile {
 }
 
 impl UserTextFile {
-    pub(super) fn from_prompt(shown: &str, files: usize) -> Option<Self> {
+    /// The prompt `shown` as a file, when what was typed of it meets `rule`.
+    pub(super) fn from_prompt(shown: &str, files: usize, rule: LongText) -> Option<Self> {
         let text = typed(shown, files);
-        if text.lines().nth(LINES - 1).is_none() && text.chars().nth(CHARACTERS - 1).is_none() {
+        if !rule.matches(text) {
             return None;
         }
         let first = text.trim_start().lines().next().unwrap_or_default();
