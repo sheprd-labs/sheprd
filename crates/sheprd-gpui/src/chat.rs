@@ -218,6 +218,13 @@ pub(crate) enum Surface {
 }
 
 impl Target {
+    /// Whether the chat reaches its program over its host's multiplexer,
+    /// while the host has one up. An observed existing agent runs
+    /// `sheprd-acp observe` there on a channel of its own instead.
+    pub(crate) fn rides_multiplexer(&self, multiplexed: bool) -> bool {
+        multiplexed && self.existing.is_none()
+    }
+
     /// Whether the chat's program runs on this machine, so the paths in its
     /// conversation name files here.
     pub(crate) fn is_local(&self) -> bool {
@@ -264,11 +271,30 @@ const REMOTE_PROGRAM_DIRS: &[&str] = &[
 ];
 
 impl Route {
-    /// How many chats attach at once over this route.
+    /// Whether this route's chats reach their SSH host over its
+    /// multiplexer now.
+    pub(crate) fn multiplexed(&self) -> bool {
+        matches!(self, Self::Ssh(host) if link::multiplexed(host))
+    }
+
+    /// How many chats attach at once over this route, at most: those on
+    /// the host's multiplexer while it is up, and the direct ones.
     pub(crate) fn max_chats(&self) -> usize {
+        let multiplexed = self.multiplexed();
+        let streams = if multiplexed {
+            sheprd_chat_protocol::mux::MAX_STREAMS
+        } else {
+            0
+        };
+        streams + self.max_direct_chats(multiplexed)
+    }
+
+    /// How many chats attach at once over this route with a connection of
+    /// their own. On an SSH host each takes a channel of its shared logins,
+    /// and the multiplexer, while `multiplexed`, takes one of them too.
+    pub(crate) fn max_direct_chats(&self, multiplexed: bool) -> usize {
         match self {
-            Self::Ssh(host) if link::multiplexed(host) => sheprd_chat_protocol::mux::MAX_STREAMS,
-            Self::Ssh(_) => MAX_SSH_CHATS,
+            Self::Ssh(_) => MAX_SSH_CHATS - usize::from(multiplexed),
             Self::Remote(_) => MAX_REMOTE_CHATS,
             Self::Local => MAX_CHATS,
         }

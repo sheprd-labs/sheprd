@@ -76,14 +76,27 @@ pub(crate) fn targets(snapshot: &ClientShellSnapshot, route: Option<&Route>) -> 
         .collect()
 }
 
-/// At most [`MAX_CHATS`] of `targets`, and at most [`Route::max_chats`] on
-/// any one route, in their order, those `rank` puts lower first. The window
+/// At most [`MAX_CHATS`] of `targets`, and on any one route at most as many
+/// as it carries, in their order, those `rank` puts lower first. The window
 /// ranks the focused pane first, then the other panes on screen, then those
 /// holding files for an unsent prompt, then those seen most recently, so the
 /// chat the user is looking at, or just left, attaches however many chats
-/// run elsewhere. Each route's limit is read once. An SSH host's limit counts
-/// only that host's chats: chats on this machine never take its slots.
+/// run elsewhere. An SSH host's limit counts only that host's chats: chats
+/// on this machine never take its slots.
 pub(crate) fn bounded(targets: Vec<Target>, rank: impl Fn(&str) -> u8) -> Vec<Target> {
+    bounded_with(targets, rank, Route::multiplexed)
+}
+
+/// [`bounded`], with `multiplexed` saying, once per route, whether its host's
+/// multiplexer is up. Its chats then share that multiplexer's streams, and
+/// the chats that dial on their own, observed existing agents among them,
+/// share what channels are left ([`Route::max_direct_chats`]), so one the
+/// user focuses displaces a direct chat in the background.
+pub(in crate::chat) fn bounded_with(
+    targets: Vec<Target>,
+    rank: impl Fn(&str) -> u8,
+    multiplexed: impl Fn(&Route) -> bool,
+) -> Vec<Target> {
     let mut order: Vec<(u8, usize)> = targets
         .iter()
         .enumerate()
@@ -91,20 +104,28 @@ pub(crate) fn bounded(targets: Vec<Target>, rank: impl Fn(&str) -> u8) -> Vec<Ta
         .collect();
     order.sort_unstable();
     let mut keep = vec![false; targets.len()];
-    let mut per_route: HashMap<&Route, (usize, usize)> = HashMap::new();
+    let mut routes: HashMap<&Route, bool> = HashMap::new();
+    // Chats kept per route and lane: on its multiplexer, or direct.
+    let mut per_lane: HashMap<(&Route, bool), usize> = HashMap::new();
     let mut kept = 0;
     for (_, index) in order {
         if kept == MAX_CHATS {
             break;
         }
-        let route = &targets[index].route;
-        let (on_route, limit) = per_route
-            .entry(route)
-            .or_insert_with(|| (0, route.max_chats()));
-        if *on_route >= *limit {
+        let target = &targets[index];
+        let route = &target.route;
+        let up = *routes.entry(route).or_insert_with(|| multiplexed(route));
+        let rides = target.rides_multiplexer(up);
+        let limit = if rides {
+            sheprd_chat_protocol::mux::MAX_STREAMS
+        } else {
+            route.max_direct_chats(up)
+        };
+        let on_lane = per_lane.entry((route, rides)).or_default();
+        if *on_lane >= limit {
             continue;
         }
-        *on_route += 1;
+        *on_lane += 1;
         keep[index] = true;
         kept += 1;
     }
