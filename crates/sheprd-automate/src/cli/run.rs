@@ -456,12 +456,19 @@ fn with_store(command: &Command, paths: &Paths) -> Result<Answer> {
 
 /// A script path as the store knows it.
 fn known(store: &Store, file: &Path) -> Result<String> {
-    let canonical = std::fs::canonicalize(file).map_err(Error::io(file))?;
-    let path = canonical.to_string_lossy().into_owned();
-    match store.script(&path)? {
-        Some(_) => Ok(path),
-        None => Err(Error::NoScript(canonical)),
+    let preserved = scan::script_path(file)?;
+    let path = preserved.to_string_lossy().into_owned();
+    if store.script(&path)?.is_some() {
+        return Ok(path);
     }
+    let canonical = std::fs::canonicalize(file).map_err(Error::io(file))?;
+    if canonical != preserved {
+        let path = canonical.to_string_lossy().into_owned();
+        if store.script(&path)?.is_some() {
+            return Ok(path);
+        }
+    }
+    Err(Error::NoScript(preserved))
 }
 
 fn name(store: &Store, path: &str) -> Result<String> {

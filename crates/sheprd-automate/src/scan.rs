@@ -13,6 +13,7 @@ use sheprd_automation::{
     report::{ScriptCaps, TriggerStatus},
 };
 use std::{
+    collections::HashSet,
     fs,
     path::{Path, PathBuf},
 };
@@ -28,14 +29,20 @@ pub struct Found {
 }
 
 /// Every script in the personal folder and in each registered repository.
+///
+/// A folder that resolves to one already scanned (a repository whose
+/// automations folder links to another's, or to the personal folder) adds
+/// nothing: its scripts keep the first owner, so an approval never runs
+/// against a different repository than the one it was found in.
 pub fn find(paths: &Paths, store: &Store) -> Result<Vec<Found>> {
     let mut found = Vec::new();
-    for path in luau_files(&paths.personal()) {
+    let mut scanned = HashSet::new();
+    for path in luau_files_once(&paths.personal(), &mut scanned) {
         found.push(Found { path, repo: None });
     }
     for repo in store.repos()? {
         let repo = PathBuf::from(repo);
-        for path in luau_files(&repository_scripts(&repo)) {
+        for path in luau_files_once(&repository_scripts(&repo), &mut scanned) {
             found.push(Found {
                 path,
                 repo: Some(repo.clone()),
@@ -46,7 +53,19 @@ pub fn find(paths: &Paths, store: &Store) -> Result<Vec<Found>> {
     Ok(found)
 }
 
+fn luau_files_once(dir: &Path, scanned: &mut HashSet<PathBuf>) -> Vec<PathBuf> {
+    if let Ok(resolved) = fs::canonicalize(dir)
+        && !scanned.insert(resolved)
+    {
+        return Vec::new();
+    }
+    luau_files(dir)
+}
+
 fn luau_files(dir: &Path) -> Vec<PathBuf> {
+    let Ok(dir) = fs::canonicalize(dir) else {
+        return Vec::new();
+    };
     let Ok(entries) = fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -68,28 +87,65 @@ pub fn repository_scripts_hint(repo: &Path) -> String {
     repository_scripts(repo).to_string_lossy().into_owned()
 }
 
+/// A script's canonical path key: its parent directory canonicalized, with
+/// its final file name kept so a symlink inside an automations folder keeps
+/// its identity there.
+pub fn script_path(file: &Path) -> Result<PathBuf> {
+    fs::metadata(file).map_err(crate::Error::io(file))?;
+    let Some(name) = file.file_name() else {
+        return fs::canonicalize(file).map_err(crate::Error::io(file));
+    };
+    let parent = match file.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent,
+        _ => Path::new("."),
+    };
+    let parent = fs::canonicalize(parent).map_err(crate::Error::io(file))?;
+    Ok(parent.join(name))
+}
+
 /// Where a script file belongs: the personal folder (no repository) or a
 /// registered repository's automations folder.
 pub fn locate(paths: &Paths, store: &Store, file: &Path) -> Result<Found> {
-    let file = fs::canonicalize(file).map_err(crate::Error::io(file))?;
-    let parent = file.parent().map(Path::to_path_buf).unwrap_or_default();
+    let preserved = script_path(file)?;
     let canonical = |dir: PathBuf| fs::canonicalize(&dir).unwrap_or(dir);
-    if parent == canonical(paths.personal()) {
-        return Ok(Found {
-            path: file,
-            repo: None,
-        });
-    }
-    for repo in store.repos()? {
-        let repo = PathBuf::from(repo);
-        if parent == canonical(repository_scripts(&repo)) {
-            return Ok(Found {
-                path: file,
-                repo: Some(repo),
+    let personal = canonical(paths.personal());
+    let repos = store
+        .repos()?
+        .into_iter()
+        .map(|repo| {
+            let repo = PathBuf::from(repo);
+            let dir = canonical(repository_scripts(&repo));
+            (repo, dir)
+        })
+        .collect::<Vec<_>>();
+    let find_folder = |candidate: PathBuf| -> Option<Found> {
+        let parent = candidate.parent()?;
+        if parent == personal {
+            return Some(Found {
+                path: candidate,
+                repo: None,
             });
         }
+        for (repo, dir) in &repos {
+            if parent == dir {
+                return Some(Found {
+                    path: candidate,
+                    repo: Some(repo.clone()),
+                });
+            }
+        }
+        None
+    };
+    if let Some(found) = find_folder(preserved.clone()) {
+        return Ok(found);
     }
-    Err(crate::Error::NotAutomation(file))
+    let resolved = fs::canonicalize(file).map_err(crate::Error::io(file))?;
+    if resolved != preserved
+        && let Some(found) = find_folder(resolved)
+    {
+        return Ok(found);
+    }
+    Err(crate::Error::NotAutomation(preserved))
 }
 
 /// What a script's plan says, or why it has none.

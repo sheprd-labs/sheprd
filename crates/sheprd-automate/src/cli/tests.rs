@@ -376,3 +376,333 @@ fn commands_that_leave_scripts_to_run_start_the_daemon() {
         assert!(!run::leaves_scripts_to_run(&command), "{command:?}");
     }
 }
+
+#[cfg(unix)]
+#[test]
+fn symlinked_scripts_are_found_approved_and_controlled() {
+    use crate::{
+        approve::{self, Mode},
+        scan,
+    };
+    use std::os::unix::fs::symlink;
+
+    let fixture = crate::testing::Fixture::new();
+    let repo = fixture.repo();
+    let paths = &fixture.paths;
+    let repo_add = Command::Repo {
+        action: RepoAction::Add(repo.clone()),
+        json: false,
+    };
+    assert_eq!(output(&repo_add, paths).0, ExitCode::SUCCESS);
+
+    let external = fixture.root().join("external");
+    fs::create_dir_all(&external).unwrap();
+    let body = "herdr.caps { agents_per_run = 1, tokens_per_day = 100_000, wall_time = \"10m\" }\nherdr.manual(function() notify(\"go\") end)\n";
+    let external_personal = external.join("shared-personal.luau");
+    let external_repo = external.join("shared-repo.luau");
+    fs::write(&external_personal, body).unwrap();
+    fs::write(&external_repo, body).unwrap();
+
+    fs::create_dir_all(paths.personal()).unwrap();
+    let personal_link = paths.personal().join("personal-link.luau");
+    let repo_link = repo.join(".herdr/automations/repo-link.luau");
+    symlink(&external_personal, &personal_link).unwrap();
+    symlink(&external_repo, &repo_link).unwrap();
+
+    let store = fixture.store();
+    let found = scan::find(paths, &store).unwrap();
+    assert_eq!(
+        found,
+        vec![
+            scan::Found {
+                path: personal_link.clone(),
+                repo: None,
+            },
+            scan::Found {
+                path: repo_link.clone(),
+                repo: Some(repo.clone()),
+            },
+        ]
+    );
+    for item in &found {
+        let source = sheprd_automation::Source::read(&item.path).unwrap();
+        store
+            .put_script(&scan::plan_row(
+                &source,
+                item.path.to_string_lossy().into_owned(),
+                item.repo.as_deref(),
+                0,
+            ))
+            .unwrap();
+    }
+
+    // Approve the personal symlink directly and the repo symlink via a relative path.
+    let personal_source = sheprd_automation::Source::read(&personal_link).unwrap();
+    approve::approve(
+        paths,
+        &store,
+        &fixture.herdr,
+        &personal_link,
+        Mode::Hash(&personal_source.hash),
+        approve::Panes::default(),
+        |_| Ok(None),
+    )
+    .unwrap();
+
+    let cwd = std::env::current_dir().unwrap().canonicalize().unwrap();
+    assert_eq!(
+        scan::script_path(std::path::Path::new("Cargo.toml")).unwrap(),
+        cwd.join("Cargo.toml")
+    );
+    let mut cwd_parts = cwd.components().peekable();
+    let mut link_parts = repo_link.components().peekable();
+    while cwd_parts.peek() == link_parts.peek() && cwd_parts.peek().is_some() {
+        cwd_parts.next();
+        link_parts.next();
+    }
+    let mut relative_repo_link = PathBuf::new();
+    for _ in cwd_parts {
+        relative_repo_link.push("..");
+    }
+    relative_repo_link.extend(link_parts);
+    assert!(!relative_repo_link.is_absolute());
+
+    let repo_source = sheprd_automation::Source::read(&repo_link).unwrap();
+    approve::approve(
+        paths,
+        &store,
+        &fixture.herdr,
+        &relative_repo_link,
+        Mode::Hash(&repo_source.hash),
+        approve::Panes::default(),
+        |_| Ok(None),
+    )
+    .unwrap();
+
+    assert_eq!(store.scripts().unwrap().len(), 2);
+    let (code, text) = output(&Command::Status { json: true }, paths);
+    assert_eq!(code, ExitCode::SUCCESS);
+    let status = serde_json::from_str::<sheprd_automation::report::Status>(&text).unwrap();
+    assert_eq!(status.scripts.len(), 2);
+    assert!(
+        status
+            .scripts
+            .iter()
+            .all(|script| script.state == sheprd_automation::report::ScriptState::Active)
+    );
+
+    for script in [&personal_link, &repo_link] {
+        let (code, text) = output(
+            &Command::RunNow {
+                file: script.clone(),
+                trigger: None,
+                json: true,
+            },
+            paths,
+        );
+        assert_eq!(code, ExitCode::SUCCESS, "{text}");
+        let (code, text) = output(
+            &Command::Pause {
+                target: Target::Script(script.clone()),
+                json: true,
+            },
+            paths,
+        );
+        assert_eq!(code, ExitCode::SUCCESS, "{text}");
+        let (code, text) = output(
+            &Command::Resume {
+                target: Target::Script(script.clone()),
+                json: true,
+            },
+            paths,
+        );
+        assert_eq!(code, ExitCode::SUCCESS, "{text}");
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_automations_folder_keeps_a_single_store_row() {
+    use crate::{
+        approve::{self, Mode},
+        scan,
+    };
+    use std::os::unix::fs::symlink;
+
+    let fixture = crate::testing::Fixture::new();
+    let paths = &fixture.paths;
+    let real_personal = fixture.root().join("dotfiles-automations");
+    fs::create_dir_all(&real_personal).unwrap();
+    fs::create_dir_all(&paths.config).unwrap();
+    symlink(&real_personal, paths.personal()).unwrap();
+
+    let script = real_personal.join("nightly.luau");
+    fs::write(
+        &script,
+        "herdr.caps { agents_per_run = 1, tokens_per_day = 100_000, wall_time = \"10m\" }\nherdr.manual(function() notify(\"go\") end)\n",
+    )
+    .unwrap();
+
+    let store = fixture.store();
+    let found = scan::find(paths, &store).unwrap();
+    assert_eq!(
+        found,
+        vec![scan::Found {
+            path: script.clone(),
+            repo: None,
+        }]
+    );
+    let source = sheprd_automation::Source::read(&script).unwrap();
+    store
+        .put_script(&scan::plan_row(
+            &source,
+            found[0].path.to_string_lossy().into_owned(),
+            None,
+            0,
+        ))
+        .unwrap();
+
+    let via_symlink_dir = paths.personal().join("nightly.luau");
+    approve::approve(
+        paths,
+        &store,
+        &fixture.herdr,
+        &via_symlink_dir,
+        Mode::Hash(&source.hash),
+        approve::Panes::default(),
+        |_| Ok(None),
+    )
+    .unwrap();
+
+    let rows = store.scripts().unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].path, script.to_string_lossy());
+    let (code, text) = output(
+        &Command::RunNow {
+            file: via_symlink_dir,
+            trigger: None,
+            json: true,
+        },
+        paths,
+    );
+    assert_eq!(code, ExitCode::SUCCESS, "{text}");
+}
+
+#[cfg(unix)]
+#[test]
+fn shared_automations_folder_keeps_its_first_repository() {
+    use crate::{paths::repository_scripts, scan};
+    use std::os::unix::fs::symlink;
+
+    let fixture = crate::testing::Fixture::new();
+    let paths = &fixture.paths;
+    let repo_a = fixture.root().join("repo-a");
+    let repo_b = fixture.root().join("repo-b");
+    let folder_a = repository_scripts(&repo_a);
+    fs::create_dir_all(&folder_a).unwrap();
+    fs::create_dir_all(repository_scripts(&repo_b).parent().unwrap()).unwrap();
+    symlink(&folder_a, repository_scripts(&repo_b)).unwrap();
+    let script = folder_a.join("nightly.luau");
+    fs::write(
+        &script,
+        "herdr.caps { agents_per_run = 1, tokens_per_day = 100_000, wall_time = \"10m\" }\nherdr.manual(function() notify(\"go\") end)\n",
+    )
+    .unwrap();
+
+    let store = fixture.store();
+    let repo_a = fs::canonicalize(&repo_a).unwrap();
+    let repo_b = fs::canonicalize(&repo_b).unwrap();
+    store.add_repo(&repo_a.to_string_lossy(), 0).unwrap();
+    store.add_repo(&repo_b.to_string_lossy(), 0).unwrap();
+
+    let found = scan::find(paths, &store).unwrap();
+    assert_eq!(
+        found,
+        vec![scan::Found {
+            path: fs::canonicalize(&script).unwrap(),
+            repo: Some(repo_a),
+        }]
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn external_symlinks_and_error_paths_for_script_location() {
+    use crate::{
+        approve::{self, Mode},
+        scan,
+    };
+    use std::os::unix::fs::symlink;
+
+    let fixture = crate::testing::Fixture::new();
+    let paths = &fixture.paths;
+    let store = fixture.store();
+    fs::create_dir_all(paths.personal()).unwrap();
+
+    let body = "herdr.caps { agents_per_run = 1, tokens_per_day = 100_000, wall_time = \"10m\" }\nherdr.manual(function() notify(\"go\") end)\n";
+    let personal_script = paths.personal().join("regular.luau");
+    fs::write(&personal_script, body).unwrap();
+
+    // External symlink pointing into the automations folder resolves via canonicalize fallback.
+    let external_link = fixture.root().join("shortcut.luau");
+    symlink(&personal_script, &external_link).unwrap();
+    let source = sheprd_automation::Source::read(&personal_script).unwrap();
+    approve::approve(
+        paths,
+        &store,
+        &fixture.herdr,
+        &external_link,
+        Mode::Hash(&source.hash),
+        approve::Panes::default(),
+        |_| Ok(None),
+    )
+    .unwrap();
+    assert_eq!(store.scripts().unwrap().len(), 1);
+    let (code, text) = output(
+        &Command::Pause {
+            target: Target::Script(external_link),
+            json: true,
+        },
+        paths,
+    );
+    assert_eq!(code, ExitCode::SUCCESS, "{text}");
+
+    // Regular file outside any automations folder is rejected.
+    let outside = fixture.root().join("outside.luau");
+    fs::write(&outside, body).unwrap();
+    assert!(matches!(
+        approve::approve(
+            paths,
+            &store,
+            &fixture.herdr,
+            &outside,
+            Mode::Hash(&source.hash),
+            approve::Panes::default(),
+            |_| Ok(None),
+        ),
+        Err(crate::Error::NotAutomation(_))
+    ));
+
+    // Dangling symlink inside the automations folder is skipped by scan::find and fails with Io.
+    let dangling = paths.personal().join("dangling.luau");
+    symlink(fixture.root().join("missing.luau"), &dangling).unwrap();
+    assert_eq!(
+        scan::find(paths, &store).unwrap(),
+        vec![scan::Found {
+            path: personal_script,
+            repo: None,
+        }]
+    );
+    assert!(matches!(
+        approve::approve(
+            paths,
+            &store,
+            &fixture.herdr,
+            &dangling,
+            Mode::Hash(&source.hash),
+            approve::Panes::default(),
+            |_| Ok(None),
+        ),
+        Err(crate::Error::Io { .. })
+    ));
+}
