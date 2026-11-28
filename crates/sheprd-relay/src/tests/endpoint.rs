@@ -118,3 +118,14 @@ fn errors_nest_under_the_crate_error() {
         .into();
     assert!(matches!(error, crate::Error::Endpoint(Error::Insecure)));
 }
+
+#[test]
+fn proofs_name_the_relays_path_prefix_too() {
+    let plain = Endpoint::parse("relay.example.org").unwrap();
+    assert_eq!(plain.proof_name(), "relay.example.org");
+    let prefixed = Endpoint::parse("https://relay.example.org:8443/acme/").unwrap();
+    assert_eq!(prefixed.proof_name(), "relay.example.org:8443/acme");
+    assert_eq!(prefixed.host(), "relay.example.org:8443");
+    let other = Endpoint::parse("https://relay.example.org:8443/other").unwrap();
+    assert_ne!(prefixed.proof_name(), other.proof_name());
+}

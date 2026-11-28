@@ -51,8 +51,14 @@ Either side may use a WebSocket over HTTPS instead, when UDP is blocked.
 
 ### The relay (`crates/sheprd-relay`, built)
 
-Tokio, quinn, and axum. No GPUI, and no dependency on the client crates: it
-knows streams, routes, and limits, nothing else.
+Tokio, quinn, and axum. No GPUI, and no dependency on any other workspace
+crate: it knows streams, routes, and limits, nothing else, so it can move to
+a repository of its own and serve apps other than Sheprd. Its wire format is
+specified for outside implementers in `crates/sheprd-relay/PROTOCOL.md`,
+with vectors in `crates/sheprd-relay/vectors/`; its README lists the
+features (a WebSocket client, `client-ws`; a test relay, `testing`; and the
+server split into `websocket-server`, `quic-server`, `dashboard`, `ops`).
+The Swift client the iOS app builds on is `crates/sheprd-relay/swift`.
 
 #### QUIC (`wire`, `quic`)
 
@@ -114,7 +120,8 @@ Statuses: `0` ok, `1` offline, `2` busy, `3` timeout, `4` limited,
 #### WebSocket fallback and HTTP
 
 When a relay bans the caller’s network address, its HTTP 403 carries
-`Sheprd-Relay-Banned: 1` and `Cache-Control: no-store`. Clients use this
+`Relay-Banned: 1`, the deprecated `Sheprd-Relay-Banned: 1` beside it, and
+`Cache-Control: no-store`; clients accept either header. Clients use this
 response on `/v1/info` to identify a ban before opening a connection. It
 also says why, `Sheprd-Relay-Ban-Reason` (`bad_proof`, `bandwidth`,
 `connection_cap`, `limited`, `malformed`, `manual`, or `probe`), and, for a
@@ -156,9 +163,14 @@ frame over `max-frame` breaks it. A revoked key's session closes with
 A session may mix transports: a phone on QUIC reaches a computer that could
 only open a WebSocket, and the other way round.
 
-The relay pings idle listeners every 25 seconds, which keeps NAT mappings
-open. Inside a session, keepalives are the peers' job: they are encrypted,
-so the relay cannot tell a keepalive from data.
+The relay pings idle listeners every 25 seconds (or a third of
+`listener-silence`, 60 s by default, when that is sooner), which keeps NAT
+mappings open. Inside a session, a WebSocket ping or pong from either peer
+counts as activity for the idle timeout: the relay answers it, never
+forwards it, and charges it to no budget, so peers need no keepalive inside
+the tunnel. QUIC has no per-stream ping; its peers keep a session busy with
+bytes of their own. A listener's `dial_keys` and `pairing_key` may carry an
+`id`, echoed in the status that answers it; older relays ignore it.
 
 ### Limits
 
@@ -291,7 +303,10 @@ limit both ways for an hour sends 14 GiB a side and is never slowed.
 ### Telemetry
 
 `/metrics` listens on its own port (default `127.0.0.1:9090`; `off` turns it
-off), optionally behind `RELAY_METRICS_TOKEN`. Series:
+off), optionally behind `RELAY_METRICS_TOKEN`. Every series below is also
+served as `relay_*` (`relay_sessions` beside `sheprd_relay_sessions`); the
+`sheprd_relay_*` names are deprecated aliases, kept so existing dashboards
+and alerts work. Series:
 
 - `sheprd_relay_connections{kind}`, `sheprd_relay_listeners`,
   `sheprd_relay_sessions`, `sheprd_relay_pending_dials` (gauges)
@@ -395,7 +410,7 @@ relays = []   # none (the default): LAN and Tailscale only
   with an **Add** button, and adding one writes its endpoint, name, and
   signed `pin` into `relays`.
 - Sheprd's relays are listed at `https://sheprd.org/relays.json`
-  (`sheprd_relay::directory`, built), never in a list compiled into the app:
+  (`sheprd_relay_directory`, built), never in a list compiled into the app:
 
   ```json
   { "version": 1, "relays": [
@@ -424,8 +439,8 @@ relays = []   # none (the default): LAN and Tailscale only
   older list, so a replayed one cannot bring back a retired pin. `just relays-add` reads the pin
   from `/v1/info` and prints it, to compare with the `pin=` the relay logs
   at start before signing.
-- The list is signed (`sheprd_relay::directory::signed`, behind the
-  `signed-directory` feature), so changing sheprd.org, its host, or its
+- The list is signed (`sheprd_relay_directory::signed`), so changing
+  sheprd.org, its host, or its
   DNS cannot redirect clients. Whoever controls the list would
   otherwise learn every computer's address, route, dial keys, and online
   times, could cut everyone off, and could aim every daemon at a host of
@@ -434,7 +449,7 @@ relays = []   # none (the default): LAN and Tailscale only
   - **Fabien Penso's OpenPGP key**, `gpg@pen.so`, fingerprint
     `3103 20A8 CC1C 5BA8 6AD0 9040 C045 1BAD F764 9BBF`, published on
     pen.so so anyone can check it, compiled in from
-    `crates/sheprd-relay/keys/maintainer.asc`. The signing subkey lives on
+    `crates/sheprd-relay-directory/keys/maintainer.asc`. The signing subkey lives on
     a YubiKey; `relays.json.asc` is its detached armored signature, made by
     `just relays-sign`. Clients check the subkey's binding, its backward
     signature, its signing flag, and its expiry. "Validated by Fabien Penso
@@ -442,7 +457,7 @@ relays = []   # none (the default): LAN and Tailscale only
   - **The site workflow's Ed25519 key**, `RELAYS_SIGNING_KEY`, a secret of
     the `relays` environment (allowed on `main` only), received only by the
     `sign-relays` job of `site.yml`, which checks it against
-    `crates/sheprd-relay/keys/actions.ed25519.hex` and publishes
+    `crates/sheprd-relay-directory/keys/actions.ed25519.hex` and publishes
     `relays.json.sig`, its raw 64-byte signature over the exact bytes
     deployed. "Validated by GitHub Actions (sheprd-labs/sheprd)". Whoever
     can change that workflow on `main` can have a list signed this way;

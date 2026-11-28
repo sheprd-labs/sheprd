@@ -176,3 +176,21 @@ fn a_client_ip_header_is_a_plain_header_name() {
         assert!(parse(&["--client-ip-header", bad], &[]).is_err(), "{bad:?}");
     }
 }
+
+#[test]
+fn listener_silence_and_auto_ban_are_settings_for_tests_and_private_relays() {
+    let options = parse(&["--listener-silence", "5s", "--auto-ban", "off"], &[])
+        .unwrap()
+        .unwrap();
+    assert_eq!(options.limits.listener_silence, Duration::from_secs(5));
+    assert!(!options.limits.auto_ban);
+    let options = parse(
+        &[],
+        &[("RELAY_LISTENER_SILENCE", "2m"), ("RELAY_AUTO_BAN", "off")],
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(options.limits.listener_silence, Duration::from_secs(120));
+    assert!(!options.limits.auto_ban);
+    assert!(parse(&["--listener-silence", "0s"], &[]).is_err());
+}

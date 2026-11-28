@@ -10,7 +10,7 @@ on:
       - website/requirements.txt
       - website/netlify.toml
       - netlify.toml
-      - crates/sheprd-relay/keys/actions.ed25519.hex
+      - crates/sheprd-relay-directory/keys/actions.ed25519.hex
       - docs/automations.md
       - docs/cli.md
       - docs/mods.md
@@ -55,7 +55,7 @@ jobs:
           unset RELAYS_SIGNING_KEY
           # The key must be the one clients have compiled in.
           public="$(openssl pkey -in "$KEY_DIR/private.pem" -pubout -outform DER | tail -c 32 | od -An -tx1 | tr -d ' \n')"
-          test "$public" = "$(tr -d ' \n' < crates/sheprd-relay/keys/actions.ed25519.hex)"
+          test "$public" = "$(tr -d ' \n' < crates/sheprd-relay-directory/keys/actions.ed25519.hex)"
           mkdir -p signed
           openssl pkeyutl -sign -rawin -inkey "$KEY_DIR/private.pem" \
             -in website/site/relays.json -out signed/relays.json.sig

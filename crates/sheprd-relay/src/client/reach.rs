@@ -118,9 +118,7 @@ fn info(url: &str) -> Result<Info> {
     let status = response.status();
     let headers = response.headers();
     if status.as_u16() == 403
-        && headers
-            .get(crate::endpoint::BAN_HEADER)
-            .is_some_and(|value| value == "1")
+        && crate::endpoint::is_ban(|name| headers.get(name).and_then(|value| value.to_str().ok()))
     {
         let header = |name| {
             headers

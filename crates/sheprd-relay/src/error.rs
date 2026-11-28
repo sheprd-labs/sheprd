@@ -11,16 +11,17 @@ pub enum Error {
         #[source]
         source: io::Error,
     },
-    #[cfg(feature = "server")]
+    #[cfg(feature = "client-ws")]
     #[error(transparent)]
-    Dashboard(#[from] sheprd_dashboard::Error),
+    ClientWs(#[from] crate::client_ws::Error),
+    #[cfg(feature = "ops")]
     #[error(transparent)]
-    Directory(#[from] crate::directory::Error),
+    Dashboard(#[from] crate::ops::Error),
     #[error(transparent)]
     Endpoint(#[from] crate::endpoint::Error),
     #[error("{name} is not valid: {value:?}")]
     Invalid { name: &'static str, value: OsString },
-    #[cfg(feature = "server")]
+    #[cfg(feature = "quic-server")]
     #[error(transparent)]
     Quic(#[from] crate::quic::Error),
     #[error("could not draw random bytes")]

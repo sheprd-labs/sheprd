@@ -1,0 +1,9 @@
+{
+  "comment": "scalar = the first SHA-256(context || secret || counter byte), counter from 0, that is a valid P-256 scalar",
+  "context": "7368657072642d72656c61792f70616972696e672d6469616c2f763100",
+  "public": "03727903704a023bd64c2ebeff50f6050cbf2ad7dcbd92ad05bda59353808cc4b3",
+  "public_text": "A3J5A3BKAjvWTC6-_1D2BQy_KtfcvZKtBb2lk1OAjMSz",
+  "route": "febcd837749116d6bfb51bad3434e8758a81ce4d0aff3da652fa9bd789084609",
+  "scalar": "27dcd28445f419ed6495755ebc66296024a7e15d87d84ec749e243431d2a6c30",
+  "secret": "5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e"
+}

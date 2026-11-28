@@ -15,7 +15,7 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use sheprd_apns::{DeviceToken, Host, MAX_PAYLOAD, Outcome, Priority, Push, PushType, Sender};
-use sheprd_dashboard::labels;
+use sheprd_relay::labels;
 use std::{
     future::Future,
     net::IpAddr,

@@ -16,7 +16,7 @@ pub enum Error {
         source: io::Error,
     },
     #[error(transparent)]
-    Dashboard(#[from] sheprd_dashboard::Error),
+    Dashboard(#[from] sheprd_relay::ops::Error),
     #[error("{} has no APNs config", path.display())]
     NoApnsConfig { path: PathBuf },
     #[cfg(not(feature = "postgres"))]

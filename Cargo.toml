@@ -1,7 +1,7 @@
 [workspace]
 members = ["crates/embed-resource", "crates/sheprd-*"]
 # Plain workspace builds omit the opt-in tmux adapter.
-default-members = ["crates/embed-resource", "crates/sheprd-acp", "crates/sheprd-apns", "crates/sheprd-automate", "crates/sheprd-automation", "crates/sheprd-backend", "crates/sheprd-chat-protocol", "crates/sheprd-client", "crates/sheprd-commands", "crates/sheprd-control-protocol", "crates/sheprd-core-client", "crates/sheprd-credentials", "crates/sheprd-dashboard", "crates/sheprd-diagnostics", "crates/sheprd-fleet-ffi", "crates/sheprd-github", "crates/sheprd-gpui", "crates/sheprd-launcher", "crates/sheprd-i18n", "crates/sheprd-luau", "crates/sheprd-mcp", "crates/sheprd-memory", "crates/sheprd-mods", "crates/sheprd-nearby", "crates/sheprd-orchestrator", "crates/sheprd-protocol", "crates/sheprd-push-relay", "crates/sheprd-relay", "crates/sheprd-relay-agent", "crates/sheprd-remote", "crates/sheprd-remote-control", "crates/sheprd-session", "crates/sheprd-t3", "crates/sheprd-terminal", "crates/sheprd-traces", "crates/sheprd-tunnel", "crates/sheprd-updater", "crates/sheprd-usage", "crates/sheprd-vcs"]
+default-members = ["crates/embed-resource", "crates/sheprd-acp", "crates/sheprd-apns", "crates/sheprd-automate", "crates/sheprd-automation", "crates/sheprd-backend", "crates/sheprd-chat-protocol", "crates/sheprd-client", "crates/sheprd-commands", "crates/sheprd-control-protocol", "crates/sheprd-core-client", "crates/sheprd-credentials", "crates/sheprd-diagnostics", "crates/sheprd-fleet-ffi", "crates/sheprd-github", "crates/sheprd-gpui", "crates/sheprd-launcher", "crates/sheprd-i18n", "crates/sheprd-luau", "crates/sheprd-mcp", "crates/sheprd-memory", "crates/sheprd-mods", "crates/sheprd-nearby", "crates/sheprd-orchestrator", "crates/sheprd-protocol", "crates/sheprd-push-relay", "crates/sheprd-relay", "crates/sheprd-relay-agent", "crates/sheprd-relay-directory", "crates/sheprd-remote", "crates/sheprd-remote-control", "crates/sheprd-session", "crates/sheprd-t3", "crates/sheprd-terminal", "crates/sheprd-traces", "crates/sheprd-tunnel", "crates/sheprd-updater", "crates/sheprd-usage", "crates/sheprd-vcs"]
 resolver = "2"
 
 [workspace.package]
@@ -106,7 +106,6 @@ sheprd-commands       = { path = "crates/sheprd-commands" }
 sheprd-control-protocol = { path = "crates/sheprd-control-protocol" }
 sheprd-core-client    = { path = "crates/sheprd-core-client" }
 sheprd-credentials    = { path = "crates/sheprd-credentials" }
-sheprd-dashboard      = { path = "crates/sheprd-dashboard" }
 sheprd-diagnostics    = { path = "crates/sheprd-diagnostics" }
 sheprd-github         = { path = "crates/sheprd-github" }
 sheprd-i18n           = { path = "crates/sheprd-i18n" }
@@ -120,6 +119,7 @@ sheprd-remote         = { default-features = false, path = "crates/sheprd-remote
 sheprd-relay          = { default-features = false, path = "crates/sheprd-relay" }
 # The fleet access file and removal frames, without the agent's runtime.
 sheprd-relay-agent    = { default-features = false, path = "crates/sheprd-relay-agent" }
+sheprd-relay-directory = { path = "crates/sheprd-relay-directory" }
 sheprd-remote-control         = { default-features = false, path = "crates/sheprd-remote-control" }
 sheprd-session        = { path = "crates/sheprd-session" }
 sheprd-t3             = { path = "crates/sheprd-t3" }
@@ -230,6 +230,9 @@ tower                = { default-features = false, features = ["util"], version 
 # `ws` feature already links this version.
 tokio-tungstenite    = { default-features = false, features = ["handshake"], version = "0.30" }
 tokio-rustls         = { default-features = false, features = ["ring", "tls12"], version = "0.26" }
+# The relay's WebSocket client checks a relay's certificate as the platform
+# does; ureq already links it.
+rustls-platform-verifier = "0.7"
 # The relay's QUIC transport: streams, connection migration, TLS 1.3.
 quinn                = { default-features = false, features = ["runtime-tokio", "rustls-ring"], version = "0.11" }
 # sheprd-remote-control's APNs sender for iOS Live Activities: APNs speaks only

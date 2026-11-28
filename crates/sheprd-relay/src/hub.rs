@@ -158,8 +158,15 @@ struct Pending {
 pub struct Accepted {
     pub peer: Peer,
     pub permit: Option<Permit>,
-    pub window: Option<crate::quic::Widened>,
+    pub window: Option<Window>,
 }
+
+/// What a QUIC session holds of its connection's windows.
+#[cfg(feature = "quic-server")]
+pub type Window = crate::quic::Widened;
+/// Without QUIC no session widens a window, so none is ever held.
+#[cfg(not(feature = "quic-server"))]
+pub type Window = std::convert::Infallible;
 
 #[derive(Debug)]
 struct Live {

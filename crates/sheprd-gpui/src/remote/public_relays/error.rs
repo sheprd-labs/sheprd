@@ -8,6 +8,6 @@ pub enum Error {
     #[error("Sheprd's relay list is not published yet.")]
     Missing,
     #[error("Sheprd's relay list was refused: {0}")]
-    Refused(#[from] sheprd_relay::directory::Error),
+    Refused(#[from] sheprd_relay_directory::Error),
     // keep-sorted end
 }

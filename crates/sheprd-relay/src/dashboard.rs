@@ -3,13 +3,14 @@
 //! operator set a token, and changes nothing on the relay.
 //!
 //! The routes, the login and its lockout, and the live stream are
-//! `sheprd-dashboard`'s, shared with the push relay; this is the relay's
+//! `ops`'s, shared with the push relay; this is the relay's
 //! page and the numbers it draws.
 
 pub mod history;
 
-pub use sheprd_dashboard::{auth, live, lockout};
+pub use crate::ops::{auth, live, lockout};
 
+use crate::ops::{Page, Site};
 use crate::{
     guard::BanRow,
     hub::{Hub, SessionRow},
@@ -20,7 +21,6 @@ use auth::Account;
 use axum::{Router, http::HeaderMap};
 use history::{History, Sample};
 use serde::Serialize;
-use sheprd_dashboard::{Page, Site};
 use std::{
     net::{IpAddr, SocketAddr},
     sync::{Arc, Mutex},
@@ -29,7 +29,7 @@ use std::{
 
 const PAGE: Page = Page {
     index: include_str!("dashboard/assets/index.html"),
-    name: "Sheprd relay",
+    name: "Relay",
     script: include_str!("dashboard/assets/app.js"),
 };
 
@@ -70,7 +70,7 @@ pub fn router(shared: Shared, account: Account) -> Router {
         let totals = hub.metrics.totals();
         (totals.bytes_from_dialers, totals.bytes_from_listeners)
     }));
-    sheprd_dashboard::router(Relay { history, shared }, Arc::new(account), PAGE)
+    crate::ops::router(Relay { history, shared }, Arc::new(account), PAGE)
 }
 
 /// The numbers the page draws.

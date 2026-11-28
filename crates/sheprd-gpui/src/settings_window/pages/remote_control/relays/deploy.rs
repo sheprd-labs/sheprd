@@ -11,7 +11,7 @@ use crate::{
     i18n::fl,
 };
 use gpui::{prelude::*, *};
-use sheprd_relay::directory::DEPLOY_URL;
+use sheprd_relay_directory::DEPLOY_URL;
 
 /// The button that opens the deploy page: filled in the empty state, where
 /// it is the way to start, plain beside a list that already has a relay.

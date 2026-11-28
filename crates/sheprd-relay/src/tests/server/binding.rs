@@ -36,7 +36,7 @@ async fn a_proof_for_another_relay_is_refused_whatever_the_host_header_says() {
         &socket::dial_signed("evil.example", &nonce, &route_id),
     );
     send_json(&mut socket, &hello).await;
-    let ToPeer::Status { status } = next_control(&mut socket).await else {
+    let ToPeer::Status { status, .. } = next_control(&mut socket).await else {
         panic!("expected a status");
     };
     assert_eq!(status, Status::Offline);

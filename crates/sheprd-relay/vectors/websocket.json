@@ -1,0 +1,65 @@
+{
+  "comment": "signed = context || proof name (at most 255 bytes) || 0x00 || nonce || extra; signatures are r || s and must verify, not be reproduced",
+  "dial_context": "7368657072642d72656c61792f6469616c2f763100",
+  "dial_hello": "{\"key\":\"A9Zak5d8qj0bCBhS_1ennkZfFmBXcwS66tUF3TpIWJzz\",\"signature\":\"mTgR56bOaO9GmdSe67pZZLhkptFCVt_5XbTYWLXL_ce4-Dni9fxVAWBJu5bfqUGVecW8VCiE3OPdgMx0QkXmCA\"}",
+  "dial_signature": "993811e7a6ce68ef4699d49eebba5964b864a6d14256dff95db4d858b5cbfdc7b8f839e2f5fc55016049bb96dfa9419579c5bc542884dce3dd80cc744245e608",
+  "dial_signed": "7368657072642d72656c61792f6469616c2f76310072656c61792e6578616d706c652e6f72672f61636d65004e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4ebc609618bfe80ad8dfcc8e15df6c07c032bc8495b466674bf35b852a0159853b",
+  "dialer": {
+    "private": "2222222222222222222222222222222222222222222222222222222222222222",
+    "public": "03d65a93977caa3d1b081852ff57a79e465f1660577304baead505dd3a48589cf3",
+    "public_text": "A9Zak5d8qj0bCBhS_1ennkZfFmBXcwS66tUF3TpIWJzz",
+    "route": "52f50667e2ca598ce63152e112e1de9a7db6a22a82b3af2e4d808ab425fe48d6",
+    "route_text": "UvUGZ-LKWYzmMVLhEuHemn22oiqCs68uTYCKtCX-SNY"
+  },
+  "endpoints": [
+    {
+      "dial": "wss://relay.example.org/v1/dial/vGCWGL_oCtjfzI4V32wHwDK8hJW0ZmdL81uFKgFZhTs",
+      "endpoint": "relay.example.org",
+      "info": "https://relay.example.org/v1/info",
+      "listen": "wss://relay.example.org/v1/listen",
+      "proof_name": "relay.example.org"
+    },
+    {
+      "dial": "wss://relay.example.org/v1/dial/vGCWGL_oCtjfzI4V32wHwDK8hJW0ZmdL81uFKgFZhTs",
+      "endpoint": "https://Relay.Example.org:443/",
+      "info": "https://relay.example.org/v1/info",
+      "listen": "wss://relay.example.org/v1/listen",
+      "proof_name": "relay.example.org"
+    },
+    {
+      "dial": "wss://relay.example.org/acme/v1/dial/vGCWGL_oCtjfzI4V32wHwDK8hJW0ZmdL81uFKgFZhTs",
+      "endpoint": "wss://relay.example.org/acme/",
+      "info": "https://relay.example.org/acme/v1/info",
+      "listen": "wss://relay.example.org/acme/v1/listen",
+      "proof_name": "relay.example.org/acme"
+    },
+    {
+      "dial": "wss://relay.example.org:8443/acme/v1/dial/vGCWGL_oCtjfzI4V32wHwDK8hJW0ZmdL81uFKgFZhTs",
+      "endpoint": "https://relay.example.org:8443/acme",
+      "info": "https://relay.example.org:8443/acme/v1/info",
+      "listen": "wss://relay.example.org:8443/acme/v1/listen",
+      "proof_name": "relay.example.org:8443/acme"
+    },
+    {
+      "dial": "ws://127.0.0.1:8080/v1/dial/vGCWGL_oCtjfzI4V32wHwDK8hJW0ZmdL81uFKgFZhTs",
+      "endpoint": "http://127.0.0.1:8080",
+      "info": "http://127.0.0.1:8080/v1/info",
+      "listen": "ws://127.0.0.1:8080/v1/listen",
+      "proof_name": "127.0.0.1:8080"
+    }
+  ],
+  "listen_context": "7368657072642d72656c61792f6c697374656e2f763100",
+  "listen_hello": "{\"key\":\"AgIX5hfwtkQ5KCePlpmeaaI6TywVK99tbN9m5bgCgtTt\",\"signature\":\"u2ne08ibB_nVBDgAldVs25wqe9IF1OSqwUtkN7uwn95uPJbxPN0gmPxCT3S8eIKC1zyoFyGu0ldlLEsN2L3L3Q\",\"token\":\"a listen token\"}",
+  "listen_signature": "bb69ded3c89b07f9d504380095d56cdb9c2a7bd205d4e4aac14b6437bbb09fde6e3c96f13cdd2098fc424f74bc788282d73ca81721aed257652c4b0dd8bdcbdd",
+  "listen_signed": "7368657072642d72656c61792f6c697374656e2f76310072656c61792e6578616d706c652e6f72672f61636d65004e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e",
+  "listener": {
+    "private": "1111111111111111111111111111111111111111111111111111111111111111",
+    "public": "020217e617f0b6443928278f96999e69a23a4f2c152bdf6d6cdf66e5b80282d4ed",
+    "public_text": "AgIX5hfwtkQ5KCePlpmeaaI6TywVK99tbN9m5bgCgtTt",
+    "route": "bc609618bfe80ad8dfcc8e15df6c07c032bc8495b466674bf35b852a0159853b",
+    "route_text": "vGCWGL_oCtjfzI4V32wHwDK8hJW0ZmdL81uFKgFZhTs"
+  },
+  "nonce": "4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e",
+  "nonce_text": "Tk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk4",
+  "proof_name": "relay.example.org/acme"
+}

@@ -4,7 +4,7 @@
 //! and no file shared with the HTTPS proxy. Clients pin the certificate's
 //! SHA-256. With an identity directory (`--quic-identity-dir`) the relay
 //! keeps the same certificate across restarts, so its pin can be published
-//! in Sheprd's signed relay list and a client never has to trust a pin it
+//! in a signed relay list and a client never has to trust a pin it
 //! read over ordinary HTTPS, which a TLS-inspecting proxy or a mis-issued
 //! certificate could forge. Without one it makes a fresh certificate each
 //! start, and clients read the pin from `GET /v1/info` (or a cached copy).

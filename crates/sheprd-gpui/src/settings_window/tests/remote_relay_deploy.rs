@@ -4,7 +4,7 @@
 use super::remote_control::{click, draw, page};
 use super::*;
 use crate::config::{preferences::Preference, remote::Edit};
-use sheprd_relay::directory::DEPLOY_URL;
+use sheprd_relay_directory::DEPLOY_URL;
 
 const HOME: &str = "https://relay.example.org";
 

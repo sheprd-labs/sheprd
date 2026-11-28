@@ -1,8 +1,8 @@
 //! Reaching a relay over QUIC, as a listener (a computer) or a dialer: the
 //! client side of [`crate::wire`]. Each side proves its P-256 key over the
 //! connection's TLS exporter, so a proof cannot be replayed onto another
-//! connection. What crosses a session is the end-to-end tunnel's
-//! (`sheprd-tunnel`); this module only carries it.
+//! connection. What crosses a session is the peers' own end-to-end
+//! protocol; this module only carries it.
 
 use crate::{
     RouteId,

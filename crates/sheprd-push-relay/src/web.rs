@@ -17,7 +17,7 @@ use axum::{
     routing::{get, post},
 };
 use serde::{Serialize, de::DeserializeOwned};
-use sheprd_dashboard::auth::Account;
+use sheprd_relay::ops::auth::Account;
 use std::{
     net::{IpAddr, SocketAddr},
     sync::Arc,

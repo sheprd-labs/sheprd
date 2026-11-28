@@ -14,6 +14,8 @@
 //! 3. Relay: `{"t":"ready","route"}`, or a close code.
 //! 4. Listener, any time: `{"t":"dial_keys","keys":[…]}` or
 //!    `{"t":"pairing_key","key","seconds"}`; relay: `{"t":"status","status"}`.
+//!    Either message may carry an `"id"` ([`Id`]), which the status echoes;
+//!    a relay older than ids ignores it and echoes nothing.
 //! 5. Relay, per dial: `{"t":"incoming","session","key"}`; the listener
 //!    opens `GET /v1/accept/{session}`.
 //!
@@ -50,8 +52,37 @@ pub enum ToPeer {
     Incoming { key: String, session: String },
     /// Listening on `route`.
     Ready { route: String },
-    /// The answer to a dial or a listener's message.
-    Status { status: Status },
+    /// The answer to a dial or a listener's message, with the message's
+    /// [`Id`] when it carried one.
+    Status {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        id: Option<Id>,
+        status: Status,
+    },
+}
+
+/// A listener's name for one of its messages, echoed in the relay's status
+/// so a client with several in flight can tell the answers apart: a number,
+/// or text of at most [`MAX_ID`] bytes.
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum Id {
+    Number(u64),
+    Text(String),
+}
+
+/// The longest text [`Id`] the relay echoes.
+pub const MAX_ID: usize = 64;
+
+impl Id {
+    /// Whether the relay echoes this id: any number, or short text.
+    #[must_use]
+    pub fn is_valid(&self) -> bool {
+        match self {
+            Self::Number(_) => true,
+            Self::Text(text) => text.len() <= MAX_ID,
+        }
+    }
 }
 
 /// A peer's proof: the first thing it sends.
@@ -85,27 +116,50 @@ impl Hello {
 #[serde(rename_all = "snake_case", tag = "t")]
 pub enum FromListener {
     /// The keys allowed to dial, base64url, replacing the previous set.
-    DialKeys { keys: Vec<String> },
+    DialKeys {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        id: Option<Id>,
+        keys: Vec<String>,
+    },
     /// A key allowed one dial within `seconds`, for pairing.
-    PairingKey { key: String, seconds: u16 },
+    PairingKey {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        id: Option<Id>,
+        key: String,
+        seconds: u16,
+    },
 }
 
 impl FromListener {
-    /// The same message as `wire` carries it, when it is within bounds.
+    /// The id the status answering this message echoes, if it has one.
+    #[must_use]
+    pub fn id(&self) -> Option<&Id> {
+        match self {
+            Self::DialKeys { id, .. } | Self::PairingKey { id, .. } => id.as_ref(),
+        }
+    }
+
+    /// The same message as `wire` carries it, when it is within bounds,
+    /// its id included.
     #[must_use]
     pub fn decode(&self) -> Option<Message> {
+        if !self.id().is_none_or(Id::is_valid) {
+            return None;
+        }
         let key = |text: &str| -> Option<Key> {
             let bytes = URL_SAFE_NO_PAD.decode(text).ok()?;
             (bytes.len() == KEY_LEN).then(|| bytes.try_into().ok())?
         };
         match self {
-            Self::DialKeys { keys } if keys.len() <= MAX_DIAL_KEYS => keys
+            Self::DialKeys { keys, .. } if keys.len() <= MAX_DIAL_KEYS => keys
                 .iter()
                 .map(|text| key(text))
                 .collect::<Option<Vec<_>>>()
                 .map(Message::DialKeys),
             Self::DialKeys { .. } => None,
-            Self::PairingKey { key: text, seconds } => {
+            Self::PairingKey {
+                key: text, seconds, ..
+            } => {
                 ((1..=MAX_PAIRING_SECS).contains(seconds)).then_some(())?;
                 Some(Message::PairingKey {
                     key: key(text)?,
@@ -132,4 +186,29 @@ pub fn listen_signed(host: &str, nonce: &[u8; NONCE_LEN]) -> Vec<u8> {
 #[must_use]
 pub fn dial_signed(host: &str, nonce: &[u8; NONCE_LEN], route: &RouteId) -> Vec<u8> {
     proof(DIAL_CONTEXT, host, nonce, route.as_bytes())
+}
+
+/// WebSocket close codes a peer may see from the relay, in the private
+/// range. QUIC peers get [`crate::wire::code`] instead.
+pub mod code {
+    /// The other side closed or broke.
+    pub const PEER_GONE: u16 = 4000;
+    /// No route by that name, or no listener on it.
+    pub const OFFLINE: u16 = 4404;
+    /// Nothing crossed the session for the idle timeout.
+    pub const IDLE: u16 = 4408;
+    /// Another socket proved the same key and took over the route.
+    pub const REPLACED: u16 = 4409;
+    /// The session reached its longest allowed length.
+    pub const EXPIRED: u16 = 4410;
+    /// A text frame, or a frame larger than allowed.
+    pub const PROTOCOL: u16 = 4400;
+    /// The listener's proof or token was refused.
+    pub const REFUSED: u16 = 4401;
+    /// The relay holds as many listeners as it may.
+    pub const FULL: u16 = 4503;
+    /// The listener stopped allowing the dial key this session used.
+    pub const REVOKED: u16 = 4403;
+    /// One side's address was banned for misbehaving.
+    pub const BANNED: u16 = 4429;
 }

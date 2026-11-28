@@ -11608,26 +11608,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sheprd-dashboard"
-version = "0.1.0"
-dependencies = [
- "axum",
- "base64 0.23.1",
- "futures-util",
- "getrandom 0.4.3",
- "hmac 0.13.0",
- "http-body-util",
- "percent-encoding",
- "serde",
- "serde_json",
- "sha2 0.11.1",
- "thiserror 2.0.21",
- "tokio",
- "tower",
- "tracing",
-]
-
-[[package]]
 name = "sheprd-diagnostics"
 version = "0.1.0"
 dependencies = [
@@ -11750,6 +11730,7 @@ dependencies = [
  "sheprd-orchestrator",
  "sheprd-relay",
  "sheprd-relay-agent",
+ "sheprd-relay-directory",
  "sheprd-remote",
  "sheprd-remote-control",
  "sheprd-session",
@@ -11921,7 +11902,7 @@ dependencies = [
  "serde_json",
  "sha2 0.11.1",
  "sheprd-apns",
- "sheprd-dashboard",
+ "sheprd-relay",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
@@ -11941,23 +11922,23 @@ dependencies = [
  "anyhow",
  "axum",
  "base64 0.23.1",
- "ed25519-dalek",
  "futures-util",
  "getrandom 0.4.3",
+ "hmac 0.13.0",
  "http-body-util",
  "p256 0.14.0",
- "pgp",
+ "percent-encoding",
  "quinn",
  "rcgen",
  "rustls",
+ "rustls-platform-verifier",
  "secrecy",
  "serde",
  "serde_json",
  "sha2 0.11.1",
- "sheprd-dashboard",
- "sheprd-tunnel",
  "thiserror 2.0.21",
  "tokio",
+ "tokio-rustls",
  "tokio-tungstenite 0.30.0",
  "tower",
  "tracing",
@@ -11985,6 +11966,20 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "sheprd-relay-directory"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.23.1",
+ "ed25519-dalek",
+ "pgp",
+ "serde",
+ "serde_json",
+ "sheprd-relay",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -12029,6 +12024,7 @@ name = "sheprd-remote-control"
 version = "0.1.0"
 dependencies = [
  "aes-gcm 0.11.1",
+ "anyhow",
  "axum",
  "base64 0.23.1",
  "futures-lite",

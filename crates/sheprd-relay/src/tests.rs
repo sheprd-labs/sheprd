@@ -2,16 +2,13 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-mod directory;
 mod endpoint;
-mod ios_vectors;
-mod public_hosts;
+mod ids;
 mod route;
 #[cfg(feature = "server")]
 mod server;
-#[cfg(feature = "signed-directory")]
-mod signed_directory;
 mod socket;
+mod vectors;
 mod wire;
 
 use crate::{socket::Hello, wire::Key};

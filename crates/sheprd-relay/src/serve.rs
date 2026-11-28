@@ -3,6 +3,7 @@
 
 pub(crate) mod capped;
 
+use crate::ops::{bearer, metrics::CONTENT_TYPE};
 use crate::{
     Error, Options, Result,
     dashboard::{self, auth::Account, lockout::Lockout},
@@ -24,7 +25,6 @@ use axum::{
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use capped::Capped;
 use secrecy::ExposeSecret;
-use sheprd_dashboard::{bearer, metrics::CONTENT_TYPE};
 use std::{
     net::{IpAddr, SocketAddr},
     sync::Arc,
@@ -131,7 +131,7 @@ async fn metrics(State(state): State<MetricsState>, request: axum::extract::Requ
     }
     (
         [(header::CONTENT_TYPE, CONTENT_TYPE)],
-        hub.metrics.render() + &banned_now(&hub),
+        crate::metrics::with_neutral_names(&(hub.metrics.render() + &banned_now(&hub))),
     )
         .into_response()
 }

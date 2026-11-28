@@ -1,7 +1,7 @@
 //! Rate limits and bandwidth throttles, as token buckets in memory. A
 //! restart resets them, and their keys never reach the disk or the logs.
 
-pub use sheprd_dashboard::limit::{Limiter, Outcome, Rate, source_key};
+pub use crate::ops::limit::{Limiter, Outcome, Rate, source_key};
 use std::{sync::Mutex, time::Duration};
 use tokio::time::Instant;
 

@@ -14,7 +14,7 @@ use crate::{
 use secrecy::SecretString;
 use secrecy::{ExposeSecret, SecretSlice};
 use sheprd_apns::{Config, Host, Sender, is_private, load_secret_key};
-use sheprd_dashboard::auth::Account;
+use sheprd_relay::ops::auth::Account;
 use std::{
     fs,
     net::SocketAddr,

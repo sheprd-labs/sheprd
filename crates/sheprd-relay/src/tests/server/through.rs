@@ -1,22 +1,62 @@
-//! The whole path, as the daemon and the phone run it: a computer listens
+//! The whole path, as a computer and a phone run it: a computer listens
 //! through [`crate::client`], a phone dials through a real relay, and both
-//! run the end-to-end tunnel over the session. The relay carries only
-//! ciphertext.
+//! seal what they send with a key only they hold. The seal here is a
+//! stand-in for a real end-to-end protocol (a SHA-256 keystream), enough
+//! to show the relay carries bytes it cannot read, untouched.
 
 use super::*;
 use crate::client::{self, Listener, public};
-use sheprd_tunnel::{Initiator, Keys, Responder, stream};
-use tokio::io::{AsyncReadExt, AsyncWriteExt, join};
+use sha2::{Digest, Sha256};
+use tokio::io::AsyncWriteExt;
+
+/// One direction's keystream: SHA-256 of the secret, a direction byte, and
+/// a block counter. Applying it twice gives the bytes back.
+struct Seal {
+    block: [u8; 32],
+    counter: u64,
+    direction: u8,
+    secret: [u8; 32],
+    used: usize,
+}
+
+impl Seal {
+    fn new(secret: [u8; 32], direction: u8) -> Self {
+        Self {
+            block: [0; 32],
+            counter: 0,
+            direction,
+            secret,
+            used: 32,
+        }
+    }
+
+    fn apply(&mut self, bytes: &[u8]) -> Vec<u8> {
+        bytes
+            .iter()
+            .map(|byte| {
+                if self.used == 32 {
+                    self.block = Sha256::new()
+                        .chain_update(self.secret)
+                        .chain_update([self.direction])
+                        .chain_update(self.counter.to_be_bytes())
+                        .finalize()
+                        .into();
+                    self.counter += 1;
+                    self.used = 0;
+                }
+                self.used += 1;
+                byte ^ self.block[self.used - 1]
+            })
+            .collect()
+    }
+}
 
 #[tokio::test]
 async fn a_paired_phone_reaches_its_computer_through_the_relay_end_to_end() {
     let relay = start_both(&options(Limits::default())).await;
     let computer_relay_key = signing_key(170);
     let phone_dial_key = signing_key(171);
-    let computer_tunnel = Keys::from_secrets([0x31; 32], [0x32; 64]);
-    let phone_tunnel = Keys::from_secrets([0x41; 32], [0x42; 64]);
-    let identity = computer_tunnel.identity();
-    let paired = phone_tunnel.identity().x25519();
+    let secret = [0x31; 32];
 
     let connection = client::connect(relay.quic, relay.pin).await.unwrap();
     let mut listener = Listener::listen(connection, &computer_relay_key, b"")
@@ -29,40 +69,34 @@ async fn a_paired_phone_reaches_its_computer_through_the_relay_end_to_end() {
     let route = listener.route();
 
     let computer = tokio::spawn(async move {
-        let incoming = listener.accept().await.unwrap();
-        let responder = Responder::session(&computer_tunnel, route.as_bytes()).unwrap();
-        let mut tunnel = stream::accept(
-            join(incoming.recv, incoming.send),
-            &computer_tunnel,
-            responder,
-            |remote| *remote == paired,
-        )
-        .await
-        .unwrap();
+        let mut incoming = listener.accept().await.unwrap();
+        let (mut from_phone, mut to_phone) = (Seal::new(secret, 1), Seal::new(secret, 2));
         let mut request = [0; 13];
-        tunnel.io.read_exact(&mut request).await.unwrap();
-        assert_eq!(&request, b"GET /api/v2/\n");
-        tunnel.io.write_all(b"200 chats").await.unwrap();
-        tunnel.io.shutdown().await.unwrap();
-        (listener, tunnel)
+        incoming.recv.read_exact(&mut request).await.unwrap();
+        assert_ne!(&request, b"GET /api/v2/\n");
+        assert_eq!(from_phone.apply(&request), b"GET /api/v2/\n");
+        incoming
+            .send
+            .write_all(&to_phone.apply(b"200 chats"))
+            .await
+            .unwrap();
+        incoming.send.shutdown().await.unwrap();
+        (listener, incoming)
     });
 
     let phone = client::connect(relay.quic, relay.pin).await.unwrap();
-    let (send, recv) = client::dial(&phone, route, &phone_dial_key).await.unwrap();
-    let (initiator, first) =
-        Initiator::session(&phone_tunnel, &identity, route.as_bytes()).unwrap();
-    let mut tunnel = stream::connect(join(recv, send), initiator, &first, identity.x25519())
+    let (mut send, mut recv) = client::dial(&phone, route, &phone_dial_key).await.unwrap();
+    let (mut to_computer, mut from_computer) = (Seal::new(secret, 1), Seal::new(secret, 2));
+    send.write_all(&to_computer.apply(b"GET /api/v2/\n"))
         .await
         .unwrap();
-    tunnel.io.write_all(b"GET /api/v2/\n").await.unwrap();
-    let mut reply = Vec::new();
-    tunnel.io.read_to_end(&mut reply).await.unwrap();
-    assert_eq!(reply, b"200 chats");
+    let reply = recv.read_to_end(1024).await.unwrap();
+    assert_eq!(from_computer.apply(&reply), b"200 chats");
     let _held = computer.await.unwrap();
-    // Every byte the relay carried was ciphertext and padding: far more
-    // than the 22 bytes of plaintext.
+    // The relay carried exactly what was sent, sealed, each way.
     let totals = relay.hub.metrics.totals();
-    assert!(totals.bytes_from_dialers > 1_000, "{totals:?}");
+    assert_eq!(totals.bytes_from_dialers, 13, "{totals:?}");
+    assert_eq!(totals.bytes_from_listeners, 9, "{totals:?}");
 }
 
 #[tokio::test]

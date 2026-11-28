@@ -1,0 +1,19 @@
+{
+  "comment": "route = SHA-256(SEC1 compressed P-256 public key); route_text is base64url without padding",
+  "keys": [
+    {
+      "private": "1111111111111111111111111111111111111111111111111111111111111111",
+      "public": "020217e617f0b6443928278f96999e69a23a4f2c152bdf6d6cdf66e5b80282d4ed",
+      "public_text": "AgIX5hfwtkQ5KCePlpmeaaI6TywVK99tbN9m5bgCgtTt",
+      "route": "bc609618bfe80ad8dfcc8e15df6c07c032bc8495b466674bf35b852a0159853b",
+      "route_text": "vGCWGL_oCtjfzI4V32wHwDK8hJW0ZmdL81uFKgFZhTs"
+    },
+    {
+      "private": "2222222222222222222222222222222222222222222222222222222222222222",
+      "public": "03d65a93977caa3d1b081852ff57a79e465f1660577304baead505dd3a48589cf3",
+      "public_text": "A9Zak5d8qj0bCBhS_1ennkZfFmBXcwS66tUF3TpIWJzz",
+      "route": "52f50667e2ca598ce63152e112e1de9a7db6a22a82b3af2e4d808ab425fe48d6",
+      "route_text": "UvUGZ-LKWYzmMVLhEuHemn22oiqCs68uTYCKtCX-SNY"
+    }
+  ]
+}

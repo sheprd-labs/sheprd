@@ -473,7 +473,7 @@ per-user labels, and devices attested and active in the last day and week,
 counted in memory by credential device id and never named. `/metrics` and a
 read-only dashboard serve them behind the operator's `dashboard-token`
 (`deploy/push-relay/README.md`, Monitoring), on the dashboard the relay
-shares through `sheprd-dashboard`. Still to build: the relay key signed by
+shares through `sheprd-relay`'s `ops` module. Still to build: the relay key signed by
 the offline root, and renewal by assertion with the `devices` table (until
 then a phone attests a new key when its credential runs out). Stores and
 `RelayClient` are built; the daemon uses the client once `Delivery` lands in

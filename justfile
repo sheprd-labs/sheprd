@@ -421,7 +421,7 @@ relays-check +regions:
 relays-sign:
     python3 scripts/relays.py stamp {{relays_list}}
     gpg --local-user {{relays_key}} --armor --detach-sign --yes --output {{relays_list}}.asc {{relays_list}}
-    cargo run --quiet --locked -p sheprd-relay --no-default-features --features signed-directory --example relays -- {{relays_list}} --asc {{relays_list}}.asc
+    cargo run --quiet --locked -p sheprd-relay-directory --example relays -- {{relays_list}} --asc {{relays_list}}.asc
 
 # The relay's DigitalOcean user data picks the right domain.
 test-relay-deploy:

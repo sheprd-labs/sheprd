@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import RelayClient
 import SheprdRemoteCore
 import SheprdTunnel
 
@@ -83,19 +84,14 @@ public actor RelaySession {
         tunnel: Handshake
     ) async throws -> RelaySession {
         do {
-            guard case let .string(challengeText) = try await socket.receive(),
-                  let challenge = try? JSONDecoder().decode(Challenge.self, from: Data(challengeText.utf8)),
-                  challenge.t == "challenge", challenge.version == 1,
-                  let nonce = Base64URL.decode(challenge.nonce), nonce.count == RelayProof.nonceLength
-            else { throw Failure.protocolError }
-            let signed = RelayProof.dialSigned(name: endpoint.proofName, nonce: nonce, route: route)
-            let hello = try JSONEncoder().encode(RelayProof.hello(key: dialKey, signed: signed))
-            try await socket.send(.string(String(decoding: hello, as: UTF8.self)))
-            guard case let .string(statusText) = try await socket.receive(),
-                  let status = try? JSONDecoder().decode(StatusMessage.self, from: Data(statusText.utf8)),
-                  status.t == "status"
-            else { throw Failure.protocolError }
-            guard status.status == "ok" else { throw Failure.refused(status.status) }
+            guard case let .string(challengeText) = try await socket.receive() else { throw Failure.protocolError }
+            let hello = try relayStep {
+                try RelayDialer.hello(challenge: challengeText, proofName: endpoint.proofName, route: route, key: dialKey)
+            }
+            try await socket.send(.string(hello))
+            guard case let .string(statusText) = try await socket.receive() else { throw Failure.protocolError }
+            let status = try relayStep { try RelayDialer.statusText(statusText) }
+            guard status == "ok" else { throw Failure.refused(status) }
 
             let (initiator, first): (Tunnel.Initiator, Data)
             switch tunnel {
@@ -118,15 +114,14 @@ public actor RelaySession {
         }
     }
 
-    struct Challenge: Decodable {
-        let t: String
-        let nonce: String
-        let version: Int
-    }
-
-    struct StatusMessage: Decodable {
-        let t: String
-        let status: String
+    /// One of the relay client's dial steps, its protocol error as this
+    /// session's.
+    private static func relayStep<T>(_ step: () throws -> T) throws -> T {
+        do {
+            return try step()
+        } catch RelayDialError.protocolViolation {
+            throw Failure.protocolError
+        }
     }
 
     static func nextFrame(socket: URLSessionWebSocketTask, decoder: inout Tunnel.Frame.Decoder) async throws -> Data {

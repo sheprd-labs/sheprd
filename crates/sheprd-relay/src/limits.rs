@@ -16,12 +16,14 @@ pub struct Limits {
     pub accept_timeout: Duration,
     /// Dials one address may start per minute; a quarter of it in a burst.
     pub dials_per_minute: u32,
-    /// How long nothing may cross a session before it is closed. Peers send
-    /// their own keepalives inside the stream.
+    /// How long nothing may cross a session before it is closed. A
+    /// WebSocket ping or pong from either peer counts as crossing, so
+    /// peers keep a quiet session open with ordinary pings.
     pub idle_timeout: Duration,
     /// How long a listener may send nothing, not even a pong or keepalive,
-    /// before it is dropped with its keys. Fixed, not a setting: it matches
-    /// QUIC's idle timeout.
+    /// before it is dropped with its keys. It matches QUIC's idle timeout;
+    /// the relay pings a listener every 25 seconds, or every third of this
+    /// when that is sooner. Shorter only for tests and private relays.
     pub listener_silence: Duration,
     /// Listens one address may start per minute.
     pub listens_per_minute: u32,

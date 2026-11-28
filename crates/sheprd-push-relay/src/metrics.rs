@@ -11,10 +11,10 @@ use crate::{
 };
 use serde::Serialize;
 use sheprd_apns::PushType;
-pub use sheprd_dashboard::metrics::Login;
-use sheprd_dashboard::{
+pub use sheprd_relay::ops::metrics::Login;
+use sheprd_relay::{
     labels,
-    metrics::{family, labelled, series, single},
+    ops::metrics::{family, labelled, series, single},
 };
 use std::{
     fmt::Write as _,

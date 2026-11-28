@@ -1,0 +1,77 @@
+{
+  "challenge": "{\"t\":\"challenge\",\"nonce\":\"Tk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk4\",\"version\":1}",
+  "close_codes": {
+    "banned": 4429,
+    "expired": 4410,
+    "full": 4503,
+    "idle": 4408,
+    "offline": 4404,
+    "peer_gone": 4000,
+    "protocol": 4400,
+    "refused": 4401,
+    "replaced": 4409,
+    "revoked": 4403
+  },
+  "comment": "the relay's and listener's JSON text frames; \"id\" is optional and older relays neither read nor echo it",
+  "dial_keys": "{\"t\":\"dial_keys\",\"keys\":[\"A9Zak5d8qj0bCBhS_1ennkZfFmBXcwS66tUF3TpIWJzz\"]}",
+  "dial_keys_with_id": "{\"t\":\"dial_keys\",\"id\":\"k1\",\"keys\":[\"A9Zak5d8qj0bCBhS_1ennkZfFmBXcwS66tUF3TpIWJzz\"]}",
+  "incoming": "{\"t\":\"incoming\",\"key\":\"A9Zak5d8qj0bCBhS_1ennkZfFmBXcwS66tUF3TpIWJzz\",\"session\":\"AAAAAAAAAAAAAAAAAAAAAA\"}",
+  "pairing_key": "{\"t\":\"pairing_key\",\"key\":\"A9Zak5d8qj0bCBhS_1ennkZfFmBXcwS66tUF3TpIWJzz\",\"seconds\":300}",
+  "pairing_key_with_id": "{\"t\":\"pairing_key\",\"id\":8,\"key\":\"A9Zak5d8qj0bCBhS_1ennkZfFmBXcwS66tUF3TpIWJzz\",\"seconds\":300}",
+  "quic_codes": {
+    "banned": 8,
+    "done": 0,
+    "expired": 3,
+    "idle": 2,
+    "peer_gone": 1,
+    "protocol": 4,
+    "replaced": 5,
+    "revoked": 7,
+    "shutdown": 6
+  },
+  "ready": "{\"t\":\"ready\",\"route\":\"vGCWGL_oCtjfzI4V32wHwDK8hJW0ZmdL81uFKgFZhTs\"}",
+  "status": "{\"t\":\"status\",\"status\":\"ok\"}",
+  "status_with_id": "{\"t\":\"status\",\"id\":7,\"status\":\"too_many\"}",
+  "statuses": [
+    {
+      "byte": 0,
+      "json": "ok"
+    },
+    {
+      "byte": 1,
+      "json": "offline"
+    },
+    {
+      "byte": 2,
+      "json": "busy"
+    },
+    {
+      "byte": 3,
+      "json": "timeout"
+    },
+    {
+      "byte": 4,
+      "json": "limited"
+    },
+    {
+      "byte": 5,
+      "json": "refused"
+    },
+    {
+      "byte": 6,
+      "json": "forbidden"
+    },
+    {
+      "byte": 7,
+      "json": "full"
+    },
+    {
+      "byte": 8,
+      "json": "malformed"
+    },
+    {
+      "byte": 9,
+      "json": "too_many"
+    }
+  ]
+}

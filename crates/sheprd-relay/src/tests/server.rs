@@ -6,6 +6,7 @@ mod bans;
 mod binding;
 mod bucket;
 mod capped;
+mod compat;
 mod cross_site;
 mod dashboard;
 mod guard;
@@ -16,8 +17,10 @@ mod keys;
 mod legitimate_load;
 mod lockout;
 mod metrics;
+mod neutral_names;
 mod options;
 mod owner_dials;
+mod pings;
 #[cfg(feature = "client")]
 mod pinned;
 mod pools;
@@ -27,6 +30,7 @@ mod relay;
 mod review;
 mod review2;
 mod shared_address;
+mod status_ids;
 #[cfg(feature = "client")]
 mod through;
 mod tokens;
@@ -228,19 +232,27 @@ pub(crate) async fn listen_only(
 /// Tells the relay which keys may dial this listener.
 pub(crate) async fn allow(listener: &mut Socket, keys: &[Key]) -> Status {
     let keys = keys.iter().map(|key| URL_SAFE_NO_PAD.encode(key)).collect();
-    send_json(listener, &FromListener::DialKeys { keys }).await;
+    send_json(listener, &FromListener::DialKeys { id: None, keys }).await;
     status_of(listener).await
 }
 
 /// Adds a one-time pairing key to this listener.
 pub(crate) async fn allow_pairing(listener: &mut Socket, key: Key, seconds: u16) -> Status {
     let key = URL_SAFE_NO_PAD.encode(key);
-    send_json(listener, &FromListener::PairingKey { key, seconds }).await;
+    send_json(
+        listener,
+        &FromListener::PairingKey {
+            id: None,
+            key,
+            seconds,
+        },
+    )
+    .await;
     status_of(listener).await
 }
 
 async fn status_of(socket: &mut Socket) -> Status {
-    let ToPeer::Status { status } = next_control(socket).await else {
+    let ToPeer::Status { status, .. } = next_control(socket).await else {
         panic!("expected a status");
     };
     status

@@ -25,6 +25,7 @@ use tokio::{
 };
 
 mod dial_keys;
+mod ios_vectors;
 mod labels;
 mod nearest;
 mod shared;

@@ -21,7 +21,9 @@
 // - `SheprdNearby`: nearby pairing's exchange, framing, short code, and the
 //   Bluetooth sightings it scans; the radio itself stays in the app.
 // - `SheprdRelay`: reaching a computer through Sheprd relays: endpoints,
-//   sessions, the local proxy, racing, nearness, and the saved list.
+//   sessions, the local proxy, racing, nearness, and the saved list. The
+//   relay protocol itself (proofs, the dial's messages) comes from the
+//   relay's own Swift client, `RelayClient`, in `crates/sheprd-relay/swift`.
 // - `SheprdTerminal`: a terminal tab's input and selection: keys, echo,
 //   composition, dictation, handles, cells, and waiting.
 // - `SheprdTunnel`: the end-to-end tunnel inside a relay stream, checked
@@ -30,6 +32,9 @@
 //   follow-ups.
 
 import PackageDescription
+
+/// The relay's own Swift client; SwiftPM names a path package by its folder.
+let relayClient: Target.Dependency = .product(name: "RelayClient", package: "swift")
 
 let package = Package(
     name: "SheprdRemoteCore",
@@ -46,13 +51,16 @@ let package = Package(
         .library(name: "SheprdVoice", targets: ["SheprdVoice"]),
         // keep-sorted end
     ],
+    dependencies: [
+        .package(path: "../../crates/sheprd-relay/swift"),
+    ],
     targets: [
         // keep-sorted start
         .binaryTarget(name: "SheprdFleetFFI", path: "Frameworks/SheprdFleetFFI.xcframework"),
         .target(name: "SheprdFleetLog", dependencies: ["SheprdFleetFFI", "SheprdRemoteCore"]),
         .target(name: "SheprdGitHub", dependencies: ["SheprdRemoteCore"]),
         .target(name: "SheprdNearby", dependencies: ["SheprdRemoteCore"]),
-        .target(name: "SheprdRelay", dependencies: ["SheprdRemoteCore", "SheprdTunnel"]),
+        .target(name: "SheprdRelay", dependencies: ["SheprdRemoteCore", "SheprdTunnel", relayClient]),
         .target(name: "SheprdRemoteCore", dependencies: ["SheprdTunnel"]),
         .target(name: "SheprdTerminal", dependencies: ["SheprdRemoteCore"]),
         .target(name: "SheprdTunnel"),
