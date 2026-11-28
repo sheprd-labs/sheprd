@@ -13,6 +13,35 @@ use gpui::{prelude::*, *};
 use sheprd_chat_protocol::Command;
 
 impl SheprdWindow {
+    /// The two icon-only actions beside the composer settings.
+    pub(super) fn chat_composer_action(
+        &self,
+        id: &'static str,
+        path: &'static str,
+        ink: u32,
+    ) -> Stateful<Div> {
+        let icon_size = self.chat_small_text();
+        div()
+            .id(id)
+            .debug_selector(move || id.into())
+            .flex_none()
+            .size((icon_size + px(8.)).max(px(28.)))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded_full()
+            .cursor_pointer()
+            .hover(|button| button.bg(rgb(self.theme.active)))
+            .child(
+                svg()
+                    .debug_selector(move || format!("{id}-icon"))
+                    .path(path)
+                    .size(icon_size)
+                    .text_color(rgb(ink)),
+            )
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+    }
+
     pub(super) fn render_chat_composer(&self, chat: &ChatPane, cx: &mut Context<Self>) -> Div {
         let theme = &self.theme;
         let hues = Hues::of(theme);
@@ -76,14 +105,7 @@ impl SheprdWindow {
         };
         let attach = {
             let pane_id = pane_id.clone();
-            round("chat-attach")
-                .hover(|button| button.bg(rgb(theme.active)))
-                .child(
-                    svg()
-                        .path("icons/plus.svg")
-                        .size(px(13.))
-                        .text_color(rgb(theme.subtext())),
-                )
+            self.chat_composer_action("chat-attach", "icons/plus.svg", theme.subtext())
                 .on_click(cx.listener(move |this, _: &ClickEvent, window, cx| {
                     cx.stop_propagation();
                     this.browse_chat_files(&pane_id, window, cx);

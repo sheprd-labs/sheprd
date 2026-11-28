@@ -39,6 +39,27 @@ fn paste_key() -> &'static str {
 }
 
 #[gpui::test]
+fn composer_action_icons_follow_font_size(cx: &mut TestAppContext) {
+    let (view, _peer, cx) = open(cx, ConnectTarget::Local);
+    let program = Program::new();
+    let _stream = attach_with(&view, &program, idle(), cx);
+    for font_size in [14., 24., 48.] {
+        view.update(cx, |view, _| view.config.terminal.size = font_size);
+        poll(&view, &program, cx);
+        for (id, mark) in [
+            ("chat-attach", "chat-attach-icon"),
+            ("chat-shortcuts", "chat-shortcuts-icon"),
+        ] {
+            let button = cx.debug_bounds(id).unwrap();
+            let icon = cx.debug_bounds(mark).unwrap();
+            let side = gpui::px(font_size - 1.);
+            assert_eq!(icon.size, gpui::size(side, side));
+            assert!(button.contains(&icon.origin) && button.contains(&icon.bottom_right()));
+        }
+    }
+}
+
+#[gpui::test]
 fn a_pasted_prompt_keeps_its_lines(cx: &mut TestAppContext) {
     let (view, _peer, cx) = open(cx, ConnectTarget::Local);
     let program = Program::new();

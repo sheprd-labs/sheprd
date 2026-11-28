@@ -33,28 +33,9 @@ impl SheprdWindow {
         let pane_id = chat.target.pane_id.clone();
         let hint = SharedString::from(fl!("chat-shortcuts-button"));
         let (foreground, surface) = (theme.foreground, theme.surface);
-        div()
-            .id("chat-shortcuts")
-            .debug_selector(|| "chat-shortcuts".into())
-            .flex_none()
-            .size(px(28.))
-            .flex()
-            .items_center()
-            .justify_center()
-            .rounded_full()
-            .cursor_pointer()
+        let ink = if open { foreground } else { theme.subtext() };
+        self.chat_composer_action("chat-shortcuts", "icons/note.svg", ink)
             .when(open, |button| button.bg(rgb(theme.active)))
-            .hover(|button| button.bg(rgb(theme.active)))
-            .child(
-                svg()
-                    .path("icons/note.svg")
-                    .size(px(13.))
-                    .text_color(rgb(if open {
-                        theme.foreground
-                    } else {
-                        theme.subtext()
-                    })),
-            )
             .tooltip(move |_, cx| {
                 cx.new(|_| crate::menu::SettingsHint {
                     text: hint.clone(),
@@ -63,7 +44,6 @@ impl SheprdWindow {
                 })
                 .into()
             })
-            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_click(cx.listener(move |this, _: &ClickEvent, window, cx| {
                 cx.stop_propagation();
                 this.toggle_chat_shortcuts(&pane_id, window, cx);
