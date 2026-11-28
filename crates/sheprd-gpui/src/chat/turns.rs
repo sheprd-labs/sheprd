@@ -266,7 +266,7 @@ impl SheprdWindow {
 
     /// The ruler for a host's layout: where it goes, in the `main` region's
     /// coordinates, and the turns. Null while no chat shows, its gutter is
-    /// too narrow, or it has fewer than two prompts to move between.
+    /// too narrow, or no prompt has been sent yet.
     pub(crate) fn hosted_chat_turns(&self) -> Value {
         let Some((pane, spot, chat)) = self.turns_pane() else {
             return Value::Null;
@@ -276,7 +276,7 @@ impl SheprdWindow {
             return Value::Null;
         }
         let turns = turns(&chat.session.transcript().entries);
-        if turns.len() < 2 {
+        if turns.is_empty() {
             return Value::Null;
         }
         let selected = reading(&turns, spot.top, !chat.glide.stopped());

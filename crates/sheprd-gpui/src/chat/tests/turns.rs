@@ -3,7 +3,7 @@
 //! back to its prompt, and nothing once the chat leaves the screen.
 
 use super::{
-    overlay::{attach_with, open},
+    overlay::{attach_with, open, poll},
     *,
 };
 use crate::{SheprdWindow, sidebar::hosted::Action};
@@ -180,4 +180,33 @@ fn a_column_without_a_limit_leaves_no_gutter(cx: &mut TestAppContext) {
     view.update(cx, |view, _| view.config.chat.max_width = 0);
     redraw(&view, cx);
     assert_eq!(turns(&view, cx), Value::Null);
+}
+
+#[gpui::test]
+fn a_chat_reports_its_timeline_once_a_prompt_is_sent(cx: &mut TestAppContext) {
+    let (view, _peer, cx) = open(cx, ConnectTarget::Local);
+    let program = Program::new();
+    view.update(cx, |view, _| {
+        view.hosted = true;
+        view.config.chat.max_width = 400;
+    });
+    let mut stream = attach_with(&view, &program, snapshot(cursor(1, 0), Vec::new()), cx);
+    redraw(&view, cx);
+    redraw(&view, cx);
+    assert_eq!(turns(&view, cx), Value::Null);
+
+    send(
+        &mut stream,
+        &snapshot(cursor(2, 0), vec![user(1, "First prompt")]),
+    );
+    wait_until(|| {
+        poll(&view, &program, cx);
+        !turns(&view, cx).is_null()
+    });
+    let reported = turns(&view, cx);
+    assert_eq!(reported["pane"], PANE);
+    assert_eq!(reported["selected"], "1");
+    assert_eq!(reported["entries"].as_array().unwrap().len(), 1);
+    assert_eq!(reported["entries"][0]["label"], "First prompt");
+    assert_eq!(reported["entries"][0]["summary"], Value::Null);
 }
