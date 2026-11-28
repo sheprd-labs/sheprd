@@ -13,6 +13,8 @@
 mod mux;
 mod stderr;
 
+pub(super) use mux::multiplexed;
+
 use super::{Error, MAX_EVENTS, MAX_PENDING, Result};
 use sheprd_chat_protocol::{
     ClientKind, ClientMessage, Cursor, REVISION, ServerMessage, VERSION, read_frame, write_frame,
@@ -29,7 +31,7 @@ use std::{
         mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError},
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 /// How long connecting waits for a free pipe instance on Windows.
@@ -287,8 +289,14 @@ fn run(
         .unwrap_or_else(Error::Connect);
     }
     if let Dial::Ssh(host, script) = dial {
+        let asked = Instant::now();
         let shared =
             sheprd_client::shared_script_command(&host, &script, sheprd_client::SshLane::Stream);
+        tracing::debug!(
+            shared = matches!(shared, Ok((_, Some(_)))),
+            wait_ms = super::millis_since(asked),
+            "Chat asked for a channel on the host's shared SSH connection"
+        );
         // The channel stays open until the child below is reaped. Through a
         // relay, every login of a chat's own is a dial, which a window full
         // of chats retrying would run past the relay's rate with: such a
@@ -307,7 +315,14 @@ fn run(
         };
     }
     if let Dial::Mux(host, endpoint) = dial {
-        let Some(stream) = mux::open(&host, &endpoint) else {
+        let asked = Instant::now();
+        let stream = mux::open(&host, &endpoint);
+        tracing::debug!(
+            multiplexed = stream.is_some(),
+            open_ms = super::millis_since(asked),
+            "Chat asked for a stream on the host's multiplexer"
+        );
+        let Some(stream) = stream else {
             let script = super::remote_program_script(&format!("connect {endpoint}"));
             return run(Dial::Ssh(host, script), since, queued, events, socket);
         };
@@ -319,8 +334,12 @@ fn run(
         );
         return serve(parts, since, queued, events, socket);
     }
+    let asked = Instant::now();
     match open(dial) {
-        Ok(parts) => serve(parts, since, queued, events, socket),
+        Ok(parts) => {
+            tracing::debug!(open_ms = super::millis_since(asked), "Chat link opened");
+            serve(parts, since, queued, events, socket)
+        }
         Err(error) => Error::Connect(error),
     }
 }
@@ -357,10 +376,18 @@ fn serve(
         return Error::Spawn(error);
     }
     let mut reader = BufReader::new(reader);
+    let mut greeted = Some(Instant::now());
     let end = loop {
         match read_frame::<_, ServerMessage>(&mut reader) {
             Ok(Some(message)) => match events.try_send(message) {
-                Ok(()) => {}
+                Ok(()) => {
+                    if let Some(at) = greeted.take() {
+                        tracing::debug!(
+                            wait_ms = super::millis_since(at),
+                            "Chat program's first frame arrived"
+                        );
+                    }
+                }
                 Err(TrySendError::Full(_)) => break Error::Overflow,
                 Err(TrySendError::Disconnected(_)) => break Error::NotAttached,
             },

@@ -170,7 +170,7 @@ impl Spots {
     }
 
     /// The panes drawn last, in their order.
-    fn panes(&self) -> Vec<String> {
+    pub(crate) fn panes(&self) -> Vec<String> {
         self.spots.borrow().keys().cloned().collect()
     }
 }

@@ -1,15 +1,20 @@
 //! Explain attachment decisions once per change, including panes that never
 //! make it into the bounded set and therefore never produce a link error.
+//! Each line says how long the focused pane has waited since focus reached
+//! it, so `native_chat_available` records how long switching to a chat took.
 
 use super::Chats;
 use crate::chat::{MAX_CHATS, Route, Target};
 use sheprd_chat_protocol::TOKEN;
 use sheprd_client::protocol::ClientShellSnapshot;
+use std::time::Instant;
 
 pub(super) struct Decision {
     host_index: usize,
     pane: String,
     reason: &'static str,
+    /// When focus reached the pane.
+    since: Instant,
     transport: &'static str,
 }
 
@@ -25,23 +30,30 @@ impl Route {
 }
 
 impl Chats {
+    /// Logs why `focused`, a core tab's pane or the daemon's, does or does
+    /// not show its chat, when that changed.
     pub(in crate::chat) fn log_focused_attachment(
         &mut self,
+        focused: Option<&str>,
         known: &[Target],
         snapshot: Option<&ClientShellSnapshot>,
         host_index: usize,
         enabled: bool,
         route: Option<&Route>,
     ) {
-        let Some((snapshot, pane)) =
-            snapshot.and_then(|s| Some((s, s.focused_pane_id.as_deref()?)))
-        else {
+        let Some(pane) = focused else {
             self.diagnostic = None;
             return;
         };
+        let core = pane.starts_with("core");
+        // A core tab's chat has the route of its own host.
+        let route = (self.pane(pane).map(|chat| &chat.target))
+            .or_else(|| known.iter().find(|target| target.pane_id == pane))
+            .map(|target| &target.route)
+            .or(route.filter(|_| !core));
         let reason = if !enabled {
             "acp_chats_disabled"
-        } else if route.is_none() {
+        } else if route.is_none() && !core {
             "no_chat_route"
         } else if let Some(chat) = self.pane(pane) {
             if chat.available() {
@@ -61,7 +73,11 @@ impl Chats {
             untracked_reason(snapshot, pane, known)
         };
         let transport = route.map_or("none", Route::transport_label);
-        if self.diagnostic.as_ref().is_some_and(|last| {
+        let last = self.diagnostic.as_ref();
+        let since = last
+            .filter(|last| last.host_index == host_index && last.pane == pane)
+            .map_or_else(Instant::now, |last| last.since);
+        if last.is_some_and(|last| {
             last.host_index == host_index
                 && last.pane == pane
                 && last.reason == reason
@@ -74,7 +90,9 @@ impl Chats {
             host_index,
             reason,
             transport,
+            waited_ms = crate::chat::millis_since(since),
             targets = self.panes.len(),
+            resting = self.resting.len(),
             limit = route.map_or(MAX_CHATS, Route::max_chats),
             "Focused pane chat attachment"
         );
@@ -82,16 +100,28 @@ impl Chats {
             host_index,
             pane: pane.to_owned(),
             reason,
+            since,
             transport,
         });
     }
 }
 
-// A known target without an attached pane was excluded by the window's bound.
-fn untracked_reason(snapshot: &ClientShellSnapshot, pane: &str, known: &[Target]) -> &'static str {
+/// Why `pane` has no chat attached. A known target without an attached pane
+/// was excluded by the window's bound.
+fn untracked_reason(
+    snapshot: Option<&ClientShellSnapshot>,
+    pane: &str,
+    known: &[Target],
+) -> &'static str {
     if known.iter().any(|target| target.pane_id == pane) {
         return "chat_limit_reached";
     }
+    if pane.starts_with("core") {
+        return "no_core_chat";
+    }
+    let Some(snapshot) = snapshot else {
+        return "no_agent_report";
+    };
     let mut reason = "no_agent_report";
     for agent in snapshot.agents.iter().filter(|agent| agent.pane_id == pane) {
         if agent.tokens.iter().any(|(name, _)| name == TOKEN) {
@@ -136,7 +166,7 @@ mod tests {
         let targets = discovery::bounded(known.clone(), |_| 2);
         assert!(targets.iter().all(|target| target.pane_id != excluded));
         assert_eq!(
-            untracked_reason(&snapshot, &excluded, &known),
+            untracked_reason(Some(&snapshot), &excluded, &known),
             "chat_limit_reached"
         );
 
@@ -145,17 +175,18 @@ mod tests {
 
         snapshot.agents[MAX_CHATS].tokens[0].1.clear();
         assert_eq!(
-            untracked_reason(&snapshot, &excluded, &[]),
+            untracked_reason(Some(&snapshot), &excluded, &[]),
             "invalid_acp_endpoint"
         );
         snapshot.agents[MAX_CHATS].tokens.clear();
         assert_eq!(
-            untracked_reason(&snapshot, &excluded, &[]),
+            untracked_reason(Some(&snapshot), &excluded, &[]),
             "no_acp_endpoint"
         );
         assert_eq!(
-            untracked_reason(&snapshot, "absent", &[]),
+            untracked_reason(Some(&snapshot), "absent", &[]),
             "no_agent_report"
         );
+        assert_eq!(untracked_reason(None, "core:t1", &[]), "no_core_chat");
     }
 }

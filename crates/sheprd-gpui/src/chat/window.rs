@@ -63,29 +63,22 @@ impl SheprdWindow {
             });
         // The focused pane on screen (a core tab's, else the daemon's) comes
         // first wherever a bound applies, then the other panes on screen,
-        // then those holding files for an unsent prompt.
+        // then those holding files for an unsent prompt, then those seen last.
         let on_screen = self.on_screen_chat_panes(cx);
-        let focused = self
+        let focusing = self
             .focused_core_key(window, cx)
-            .or_else(|| self.live.snapshot.as_ref()?.focused_pane_id.clone())
-            .filter(|pane| on_screen.contains(pane));
+            .or_else(|| self.live.snapshot.as_ref()?.focused_pane_id.clone());
+        let focused = focusing.clone().filter(|pane| on_screen.contains(pane));
+        let shown = focused.iter().chain(&on_screen);
+        self.chats.seen.note(shown.map(String::as_str));
         let holding: Vec<String> = self
             .chats
             .panes()
             .filter(|pane| pane.holds_unsent_files())
             .map(|pane| pane.target.pane_id.clone())
             .collect();
-        let rank = |pane: &str| {
-            if focused.as_deref() == Some(pane) {
-                0
-            } else if on_screen.iter().any(|shown| shown == pane) {
-                1
-            } else if holding.iter().any(|held| held == pane) {
-                2
-            } else {
-                3
-            }
-        };
+        let seen = &self.chats.seen;
+        let rank = |pane: &str| seen.rank(pane, focused.as_deref(), &on_screen, &holding);
         let agents = self
             .live
             .snapshot
@@ -154,8 +147,12 @@ impl SheprdWindow {
                 changed = true;
             }
         }
-        changed |= self.chats.poll(now);
+        // Painted chats, the host layout's among them, prepare their views.
+        let painted = self.chat_turns.panes();
+        let shown = |pane: &str| on_screen.iter().chain(&painted).any(|shown| shown == pane);
+        changed |= self.chats.poll(now, shown);
         self.chats.log_focused_attachment(
+            focusing.as_deref(),
             &known,
             self.live.snapshot.as_deref(),
             self.selected_endpoint,

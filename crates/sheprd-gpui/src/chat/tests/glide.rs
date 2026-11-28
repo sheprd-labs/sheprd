@@ -293,7 +293,7 @@ fn check_burst(cx: &mut TestAppContext, full: bool) {
     // those polls between frames, as when the window has been in the background.
     view.update(cx, |view, _| {
         wait_until(|| {
-            view.chats.poll(Instant::now());
+            view.chats.poll(Instant::now(), |_| true);
             let entries = &view
                 .chats
                 .pane("w1:p1")

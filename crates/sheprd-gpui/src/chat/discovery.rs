@@ -79,8 +79,9 @@ pub(crate) fn targets(snapshot: &ClientShellSnapshot, route: Option<&Route>) -> 
 /// At most [`MAX_CHATS`] of `targets`, and at most [`Route::max_chats`] on
 /// any one route, in their order, those `rank` puts lower first. The window
 /// ranks the focused pane first, then the other panes on screen, then those
-/// holding files for an unsent prompt, so the chat the user is looking at
-/// attaches however many chats run elsewhere. An SSH host's limit counts
+/// holding files for an unsent prompt, then those seen most recently, so the
+/// chat the user is looking at, or just left, attaches however many chats
+/// run elsewhere. Each route's limit is read once. An SSH host's limit counts
 /// only that host's chats: chats on this machine never take its slots.
 pub(crate) fn bounded(targets: Vec<Target>, rank: impl Fn(&str) -> u8) -> Vec<Target> {
     let mut order: Vec<(u8, usize)> = targets
@@ -90,15 +91,17 @@ pub(crate) fn bounded(targets: Vec<Target>, rank: impl Fn(&str) -> u8) -> Vec<Ta
         .collect();
     order.sort_unstable();
     let mut keep = vec![false; targets.len()];
-    let mut per_route: HashMap<&Route, usize> = HashMap::new();
+    let mut per_route: HashMap<&Route, (usize, usize)> = HashMap::new();
     let mut kept = 0;
     for (_, index) in order {
         if kept == MAX_CHATS {
             break;
         }
         let route = &targets[index].route;
-        let on_route = per_route.entry(route).or_default();
-        if *on_route >= route.max_chats() {
+        let (on_route, limit) = per_route
+            .entry(route)
+            .or_insert_with(|| (0, route.max_chats()));
+        if *on_route >= *limit {
             continue;
         }
         *on_route += 1;

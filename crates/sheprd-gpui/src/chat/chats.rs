@@ -1,12 +1,17 @@
 //! The chats a window attaches to: one per chat pane of its daemon, each
 //! with its connection, retries, and the view state drawn from it.
 
+mod connect;
 mod diagnostics;
 mod retry;
+mod room;
+
+pub(crate) use connect::connect;
+pub(crate) use room::Seen;
 
 use super::{
     Error, MAX_FAILURES, Result, Target,
-    link::{Dial, Link},
+    link::Link,
     list::{self, Splice},
     prepared::Prepared,
     session::Session,
@@ -28,76 +33,6 @@ const OVERDRAW: f32 = 400.;
 /// Starts a connection to `target`'s program; tests connect elsewhere.
 pub(crate) type Connect<'a> =
     dyn FnMut(&Target, Option<Cursor>, Vec<ClientMessage>) -> Result<Link> + 'a;
-
-/// The connector the app uses: the program's endpoint by the id its pane
-/// reported, a socket in this user's private directory or a named pipe, or
-/// for a chat on an SSH host, a stream of the host's multiplexer, or
-/// `herdr-acp connect` run there over `ssh` where it has none. An
-/// existing agent on this machine is observed by `program`, the same
-/// `herdr-acp` new chats start with.
-pub(crate) fn connect(
-    target: &Target,
-    program: &super::Program,
-    since: Option<Cursor>,
-    resend: Vec<ClientMessage>,
-) -> Result<Link> {
-    if let Some(binding) = &target.existing {
-        let args = [
-            "observe".to_owned(),
-            binding.agent.name().to_owned(),
-            binding.session_id.clone(),
-            binding.pid.to_string(),
-            binding.started_ticks.to_string(),
-            "--pane".to_owned(),
-            target.pane_id.clone(),
-        ];
-        let command = match &target.route {
-            super::Route::Remote(host) => {
-                let args = args
-                    .iter()
-                    .map(|arg| sheprd_client::shell_quote(arg))
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                return Link::start(
-                    Dial::Remote(host.clone(), super::remote_program_script(&args)),
-                    since,
-                    resend,
-                );
-            }
-            super::Route::Local => {
-                // Unlike a missing socket directory, this is not permanent:
-                // the lookup started this tick may still be running.
-                let mut command = sheprd_client::new_command(program.found()?);
-                command.args(args);
-                command
-            }
-            super::Route::Ssh(host) => {
-                let args = args
-                    .iter()
-                    .map(|arg| sheprd_client::shell_quote(arg))
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                return Link::start(
-                    Dial::Ssh(host.clone(), super::remote_program_script(&args)),
-                    since,
-                    resend,
-                );
-            }
-        };
-        return Link::start(Dial::Process(command), since, resend);
-    }
-    let dial = match &target.route {
-        super::Route::Remote(host) => Dial::Remote(
-            host.clone(),
-            super::remote_program_script(&format!("connect {}", target.endpoint)),
-        ),
-        super::Route::Local => Dial::Socket(
-            sheprd_chat_protocol::endpoint_address(&target.endpoint).ok_or(Error::NoEndpointDir)?,
-        ),
-        super::Route::Ssh(host) => Dial::Mux(host.clone(), target.endpoint.clone()),
-    };
-    Link::start(dial, since, resend)
-}
 
 /// The menu open over a chat's header.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -148,6 +83,9 @@ pub(crate) struct ChatPane {
     /// Which slash-command completion is selected.
     pub(crate) completion: usize,
     pub(crate) composer: Option<Entity<MultilineInput>>,
+    /// When the current connection was started, and the snapshots applied
+    /// by then, until it is live: what the log times attaching by.
+    dialed: Option<(Instant, u64)>,
     /// Closes the open menu once the person types in the composer, as a
     /// click outside it would.
     pub(super) composer_typed: Option<gpui::Subscription>,
@@ -198,6 +136,9 @@ pub(crate) struct ChatPane {
     /// the composer changes, since typing does not redraw the window.
     pub(crate) send: SendButton,
     pub(crate) session: Session,
+    /// Whether the transcript changed while the chat was off screen, so its
+    /// list and prepared text catch up once it shows.
+    view_stale: bool,
     /// How much of the text shortcuts' popover shows, as it opens and
     /// closes with [`Menu::Shortcuts`].
     pub(crate) shortcuts: crate::motion::Toggle,
@@ -310,6 +251,7 @@ impl ChatPane {
             completion: 0,
             composer: None,
             composer_typed: None,
+            dialed: None,
             draft_seen: None,
             effects: Default::default(),
             error: None,
@@ -338,6 +280,7 @@ impl ChatPane {
             selection: Default::default(),
             send: SendButton::Off,
             session: Session::default(),
+            view_stale: false,
             shortcuts: Default::default(),
             steps: Default::default(),
             target,
@@ -408,7 +351,17 @@ impl ChatPane {
         self.generation += 1;
         self.session.begin();
         let resend = self.session.resend();
-        match connect(&self.target, self.session.since(), resend) {
+        let since = self.session.since();
+        self.dialed = Some((Instant::now(), self.session.snapshots()));
+        tracing::debug!(
+            pane = %self.target.pane_id,
+            transport = self.target.route.transport_label(),
+            attempt = self.generation,
+            resumes = since.is_some(),
+            shown = self.available(),
+            "Chat connecting"
+        );
+        match connect(&self.target, since, resend) {
             Ok(link) => self.link = Some((self.generation, link)),
             // The lookup has not returned yet: try again next poll. This is
             // not a failure of the observer or its transport.
@@ -424,6 +377,7 @@ impl ChatPane {
             transport = self.target.route.transport_label(),
             welcomed = self.session.welcomed(),
             had_transcript = self.session.synced(),
+            before_live_ms = self.dialed.take().map(|(at, _)| super::millis_since(at)),
             "Chat connection ended"
         );
         self.link = None;
@@ -448,13 +402,23 @@ impl ChatPane {
     }
 
     /// Applies what the link read, returning whether anything shown changed.
-    fn poll(&mut self, now: Instant) -> bool {
+    /// Off screen (`shown` false) only the transcript follows: the list and
+    /// prepared text, the costly part, catch up at once when it shows.
+    fn poll(&mut self, now: Instant, shown: bool) -> bool {
+        let caught_up = shown && std::mem::take(&mut self.view_stale);
+        if caught_up {
+            self.sync_view();
+            // What arrived meanwhile shows at once, not scrolled through.
+            if !self.glide.stopped() {
+                self.glide.reset(&self.list);
+            }
+        }
         let Some((generation, link)) = &self.link else {
-            return false;
+            return caught_up;
         };
         if *generation != self.generation {
             self.link = None;
-            return false;
+            return caught_up;
         }
         let polled = link.poll(POLL_BUDGET);
         let mut changed = false;
@@ -470,17 +434,32 @@ impl ChatPane {
         }
         if self.session.live() {
             self.failures = 0;
+            if let Some((at, snapshots)) = self.dialed.take() {
+                tracing::info!(
+                    pane = %self.target.pane_id,
+                    transport = self.target.route.transport_label(),
+                    attempt = self.generation,
+                    connect_ms = super::millis_since(at),
+                    snapshot = self.session.snapshots() > snapshots,
+                    entries = self.session.transcript().entries.len(),
+                    "Chat connection live"
+                );
+            }
         }
         if let Some(error) = end.or(polled.end) {
             self.fail(&error, now);
             changed = true;
         }
-        if changed {
+        if changed && !shown {
+            self.view_stale = true;
+        } else if changed {
             self.sync_view();
+        }
+        if changed {
             let busy = self.session.transcript().running().total() > 0;
             self.rail_folds.follow(busy, crate::motion::now());
         }
-        changed
+        changed || caught_up
     }
 
     /// Brings the list and the prepared bodies up to the transcript.
@@ -686,6 +665,11 @@ pub(crate) struct Chats {
     #[cfg(any(target_os = "macos", windows))]
     pub(crate) presented: std::rc::Rc<std::cell::RefCell<Vec<crate::browser::TabId>>>,
     panes: Vec<ChatPane>,
+    /// Chats let go only for room, kept to show again at once.
+    resting: room::Resting,
+    /// The panes on screen, most recently seen first, which the bound
+    /// keeps attached ahead of the others.
+    pub(crate) seen: Seen,
     /// The `herdr-acp` new chats run.
     pub(crate) program: super::Program,
     /// Whether that program lets a new chat switch agents.
@@ -842,23 +826,22 @@ impl Chats {
         connect: &mut Connect<'_>,
     ) -> bool {
         let before = self.panes.len();
-        let parked = &mut self.parked;
-        let released = &mut self.released;
-        #[cfg(any(target_os = "macos", windows))]
-        let closed_pages = &mut self.closed_pages;
-        self.panes.retain_mut(|pane| {
-            let keep = targets.contains(&pane.target);
-            if !keep {
-                if !pane.attachments.is_empty() && known.contains(&pane.target) {
-                    parked.insert(pane.target.clone(), std::mem::take(&mut pane.attachments));
-                }
-                pane.prepared.visuals.clear();
-                released.extend(pane.prepared.visuals.take_released());
-                #[cfg(any(target_os = "macos", windows))]
-                closed_pages.extend(pane.pages.drain(..).map(|page| page.id));
+        let mut kept = Vec::with_capacity(before);
+        for mut pane in std::mem::take(&mut self.panes) {
+            if targets.contains(&pane.target) {
+                kept.push(pane);
+                continue;
             }
-            keep
-        });
+            pane.prepared.visuals.clear();
+            self.released.extend(pane.prepared.visuals.take_released());
+            #[cfg(any(target_os = "macos", windows))]
+            self.closed_pages
+                .extend(pane.pages.drain(..).map(|page| page.id));
+            if known.contains(&pane.target) {
+                self.set_aside(pane, now);
+            }
+        }
+        self.panes = kept;
         let mut changed = self.panes.len() != before;
         let mut panes = Vec::with_capacity(targets.len());
         for target in targets {
@@ -867,15 +850,12 @@ impl Chats {
                 Some(index) => self.panes.swap_remove(index),
                 None => {
                     changed = true;
-                    let mut pane = ChatPane::new(target);
-                    if let Some(files) = self.parked.remove(&pane.target) {
-                        pane.attachments = files;
-                    }
-                    pane
+                    self.revive(target, now)
                 }
             });
         }
         self.panes = panes;
+        self.resting.retain(known);
         self.raw.retain(|target| known.contains(target));
         self.parked.retain(|target, _| known.contains(target));
         for pane in &mut self.panes {
@@ -895,10 +875,12 @@ impl Chats {
     }
 
     /// Applies what every link read; whether anything shown changed.
-    pub(crate) fn poll(&mut self, now: Instant) -> bool {
-        self.panes
-            .iter_mut()
-            .fold(false, |changed, pane| pane.poll(now) | changed)
+    /// `shown` says which panes are on screen.
+    pub(crate) fn poll(&mut self, now: Instant, shown: impl Fn(&str) -> bool) -> bool {
+        self.panes.iter_mut().fold(false, |changed, pane| {
+            let on_screen = shown(&pane.target.pane_id);
+            pane.poll(now, on_screen) | changed
+        })
     }
 
     /// Chat pages whose panes went away.

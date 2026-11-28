@@ -14,7 +14,7 @@ use sheprd_chat_protocol::{
     mux::{self, Mux, Stream},
 };
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     process::{Child, Command, Stdio},
     sync::{
         Arc, LazyLock, Mutex, PoisonError,
@@ -52,10 +52,20 @@ pub(super) fn open(host: &str, endpoint: &EndpointId) -> Option<Stream> {
     HOSTS.open(host, endpoint, generation, || start(host))
 }
 
+/// Whether `host`'s chats last reached it over its multiplexer, so as many
+/// as it carries may attach. Never waits on a multiplexer starting: the
+/// window asks every tick.
+pub(in crate::chat) fn multiplexed(host: &str) -> bool {
+    HOSTS.multiplexed(host)
+}
+
 /// Each host's multiplexer, by SSH target.
 #[derive(Default)]
 struct Registry {
     hosts: Mutex<HashMap<String, Arc<Mutex<Slot>>>>,
+    /// The hosts whose last stream opened on their multiplexer. Kept apart
+    /// from the slots, which stay locked while one starts.
+    multiplexed: Mutex<HashSet<String>>,
 }
 
 #[derive(Default)]
@@ -86,6 +96,12 @@ impl Registry {
     /// multiplexer keeps the chats it carries and ends once they close. A
     /// host's slot stays locked while it starts, so the chats attaching at
     /// once wait for one multiplexer rather than each starting their own.
+    fn multiplexed(&self, host: &str) -> bool {
+        (self.multiplexed.lock())
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains(host)
+    }
+
     fn open(
         &self,
         host: &str,
@@ -93,6 +109,25 @@ impl Registry {
         generation: u64,
         start: impl Fn() -> Result<Mux, Failed>,
     ) -> Option<Stream> {
+        let (stream, up) = self.open_on(host, endpoint, generation, start);
+        let mut multiplexed = (self.multiplexed.lock()).unwrap_or_else(PoisonError::into_inner);
+        if up {
+            multiplexed.insert(host.to_owned());
+        } else {
+            multiplexed.remove(host);
+        }
+        stream
+    }
+
+    /// [`Self::open`], and whether the host's multiplexer is up after it: a
+    /// full one still is, though this chat dials on its own.
+    fn open_on(
+        &self,
+        host: &str,
+        endpoint: &EndpointId,
+        generation: u64,
+        start: impl Fn() -> Result<Mux, Failed>,
+    ) -> (Option<Stream>, bool) {
         let slot = self
             .hosts
             .lock()
@@ -105,15 +140,15 @@ impl Registry {
         // once.
         for _ in 0..2 {
             match &*slot {
-                Slot::Direct(until) if Instant::now() < *until => return None,
+                Slot::Direct(until) if Instant::now() < *until => return (None, false),
                 Slot::Up {
                     mux,
                     generation: started,
                 } if *started == generation => match mux.open(endpoint) {
-                    Ok(stream) => return Some(stream),
+                    Ok(stream) => return (Some(stream), true),
                     Err(mux::Error::Ended) => {}
                     // Full: this chat dials on its own.
-                    Err(_) => return None,
+                    Err(_) => return (None, true),
                 },
                 Slot::Up { .. } | Slot::Direct(_) | Slot::None => {}
             }
@@ -129,18 +164,26 @@ impl Registry {
                 }
             };
         }
-        None
+        (None, false)
     }
 }
 
 /// Starts `sheprd-acp multiplex` on `host` over its stream master, and
 /// waits for its greeting.
 fn start(host: &str) -> Result<Mux, Failed> {
+    let asked = Instant::now();
     let script = super::super::remote_program_script("multiplex");
     let (command, channel) =
         sheprd_client::shared_script_command(host, &script, sheprd_client::SshLane::Stream)
             .map_err(|_| Failed::Unreachable)?;
-    spawn(command, channel)
+    let started = spawn(command, channel);
+    tracing::info!(
+        host,
+        up = started.is_ok(),
+        start_ms = super::super::millis_since(asked),
+        "Chat multiplexer start"
+    );
+    started
 }
 
 /// Runs `command` as a multiplexer's transport: its stdin and stdout carry

@@ -216,8 +216,10 @@ fn an_ssh_host_limit_counts_only_that_hosts_chats() {
     // The local chats are on screen; the host's fill the rest.
     let kept = discovery::bounded(targets, |pane| u8::from(!pane.starts_with('l')));
     let on_host = kept.iter().filter(|target| target.route == route).count();
-    assert!(on_host <= route.max_chats());
-    assert_eq!(kept.len(), MAX_CHATS);
+    // Without a multiplexer up, the host keeps to its shared logins' room.
+    assert_eq!(on_host, route.max_chats());
+    assert_eq!(on_host, 16);
+    assert_eq!(kept.len(), on_host + local.len());
     for pane in &local {
         assert!(kept.iter().any(|target| &target.pane_id == pane));
     }

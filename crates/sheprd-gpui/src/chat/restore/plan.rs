@@ -29,9 +29,9 @@ pub(in crate::chat) const CONFIRM_WITHIN: Duration = Duration::from_secs(60);
 /// an idle check that no longer says much, so it is given back instead.
 pub(in crate::chat) const CLAIM_FRESH: Duration = Duration::from_secs(10);
 /// Live chats one watch job stamps; the rest wait for the next.
-pub(in crate::chat) const MAX_STAMPS: usize = super::super::MAX_CHATS;
+pub(in crate::chat) const MAX_STAMPS: usize = 16;
 /// Panes the pass asks Herdr about in one run; the rest wait for the next.
-pub(in crate::chat) const MAX_PROBES: usize = super::super::MAX_CHATS;
+pub(in crate::chat) const MAX_PROBES: usize = 16;
 
 /// The connection and daemon boot a pass belongs to.
 #[derive(Clone, Debug, Eq, PartialEq)]

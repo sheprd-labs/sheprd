@@ -30,9 +30,9 @@ const REFRESH: Duration = Duration::from_secs(2);
 const SETTLED: Duration = Duration::from_secs(30);
 /// One unreachable probe keeps the overlays; this many in a row drop them.
 const MAX_FAILURES: u8 = 2;
-/// CLI agents one probe looks at. Well above the chats a window attaches,
-/// so moving between agents does not drop one from the probe and forget
-/// what the user chose for it; the window puts those on screen first.
+/// CLI agents one probe looks at. Enough that moving between agents does
+/// not drop one from the probe and forget what the user chose for it; the
+/// window puts those on screen first.
 pub(crate) const MAX_OBSERVED: usize = 64;
 mod batch;
 mod error;

@@ -50,7 +50,10 @@ fn chats_on_one_host_share_one_multiplexer() {
         starts.fetch_add(1, Ordering::SeqCst);
         Ok(echoing())
     };
+    assert!(!registry.multiplexed("host"));
     let first = registry.open("host", &endpoint(), 0, start).unwrap();
+    // Its chats may now attach as many as it carries.
+    assert!(registry.multiplexed("host"));
     let second = registry.open("host", &endpoint(), 0, start).unwrap();
     assert_eq!(starts.load(Ordering::SeqCst), 1);
     assert_ne!(first.id(), second.id());
@@ -74,6 +77,7 @@ fn a_host_that_refuses_falls_back_without_asking_again() {
     assert!(registry.open("old", &endpoint(), 0, refuse).is_none());
     assert!(registry.open("old", &endpoint(), 0, refuse).is_none());
     assert_eq!(starts.load(Ordering::SeqCst), 1);
+    assert!(!registry.multiplexed("old"));
 }
 
 #[test]

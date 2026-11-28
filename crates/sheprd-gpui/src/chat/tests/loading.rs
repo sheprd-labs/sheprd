@@ -48,7 +48,7 @@ fn poll(view: &Entity<SheprdWindow>, program: &Program, cx: &mut VisualTestConte
                 .reconcile(vec![target()], now, &mut |_, since, resend| {
                     Link::start(path.clone(), since, resend)
                 });
-            view.chats.poll(now);
+            view.chats.poll(now, |_| true);
         });
         full_draw(window, cx).clear(cx);
     });
