@@ -750,6 +750,7 @@ pub(crate) fn fixture_window(window: &mut Window, cx: &mut Context<SheprdWindow>
         arrival: None,
         strip_navigation_fits: true,
         pending_toast: None,
+        plugin_actions: Default::default(),
         toast_motion: Default::default(),
         toasts_hidden: false,
         traces: Default::default(),

@@ -10,6 +10,9 @@ mod en_xa;
 mod moves;
 mod mute;
 mod naming;
+// Plugin actions run through POSIX host scripts.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod plugins;
 // Windows has no move for this machine's own agents, so never the row.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod to_chat;

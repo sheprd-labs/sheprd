@@ -58,6 +58,7 @@ mod pairing_link;
 mod palette;
 mod pane_carry;
 mod pane_move;
+mod plugin_actions;
 mod port_forward;
 mod processes;
 mod protocol;

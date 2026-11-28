@@ -11,6 +11,7 @@ use sheprd_client::{Method, protocol::ClientShellSnapshot};
 
 pub(crate) mod carry;
 mod moves;
+mod plugins;
 mod processes;
 // The Ports section shows its processes' usage the same way.
 pub(crate) use processes::{PaneProcesses, cpu_text, memory_text};
@@ -243,6 +244,14 @@ pub(super) struct PaneMenu {
     /// The move picker's panel scroll, so a row the keyboard selects in a
     /// long list of destinations scrolls into view.
     scroll: ScrollHandle,
+    /// The rows' own panel scroll, apart from the picker's, so a row the
+    /// keyboard selects below a window's height scrolls into view.
+    actions_scroll: ScrollHandle,
+    /// The plugin actions listed below this menu's own rows.
+    plugins: Vec<crate::plugin_actions::Row>,
+    /// The pane's highlighted text when the menu opened, which actions that
+    /// take a selection run on.
+    selection: Option<sheprd_client::scrollback::SelectionReadParams>,
 }
 
 impl SheprdWindow {
@@ -289,6 +298,10 @@ impl SheprdWindow {
         };
         target.devices = self.carry_devices(target.repository.as_ref());
         target.favorite = self.pane_favorite(&target.pane);
+        // Only the focused pane's highlight counts, as in the palette.
+        let selection = self
+            .plugin_selection()
+            .filter(|selection| selection.pane_id == target.pane);
         if !self.open_menu(window, cx) {
             return;
         }
@@ -309,7 +322,12 @@ impl SheprdWindow {
             movable,
             moving: None,
             scroll: ScrollHandle::new(),
+            actions_scroll: ScrollHandle::new(),
+            plugins: Vec::new(),
+            selection,
         });
+        self.sync_pane_plugin_rows();
+        self.refresh_plugin_actions(window, cx);
     }
 
     /// Opens the focused pane's rename dialog, as its menu's "Rename" row
@@ -678,17 +696,23 @@ impl SheprdWindow {
                 {
                     pane.scroll.scroll_to_item(selected + 1);
                 }
+                if self.menu.page == Some(Page::Pane)
+                    && let Some(selected) = pane.selected
+                {
+                    pane.actions_scroll
+                        .scroll_to_item(pane.child_index(selected));
+                }
                 cx.notify();
             }
             "enter" if self.menu.page == Some(Page::MovePane) => {
                 self.submit_move_picker(window, cx)
             }
             "enter" => {
-                if let Some(action) = pane
-                    .selected
-                    .and_then(|index| pane.actions().get(index).copied())
-                {
-                    self.activate_pane_menu(action, window, cx);
+                let Some(index) = pane.selected else { return };
+                let actions = pane.actions();
+                match actions.get(index) {
+                    Some(&action) => self.activate_pane_menu(action, window, cx),
+                    None => self.activate_pane_plugin(index - actions.len(), window, cx),
                 }
             }
             _ => {}
@@ -715,41 +739,6 @@ impl SheprdWindow {
         let mut body = div().flex().flex_col();
         if pane.moving.is_some() {
             body = self.render_pane_move_pending();
-        } else if self.menu.page == Some(Page::Pane) {
-            for (index, action) in pane.actions().into_iter().enumerate() {
-                body = body.child(
-                    div()
-                        .id(("pane-menu-action", index))
-                        .debug_selector(move || format!("pane-menu-{index}"))
-                        .min_h(px(self.config.ui.line_height() + 12.))
-                        .px(px(8.))
-                        .row()
-                        .items_center()
-                        .cursor_pointer()
-                        .when(pane.selected == Some(index), |row| {
-                            row.bg(rgb(self.theme.active))
-                        })
-                        .hover(|row| row.bg(rgb(self.theme.active)))
-                        .child(
-                            // One line: the panel widens to fit it, and a
-                            // window too narrow for that ends it with "…".
-                            div()
-                                .debug_selector(move || format!("pane-menu-label-{index}"))
-                                .min_w_0()
-                                .truncate()
-                                .child(action.label(&pane.target)),
-                        )
-                        .on_hover(cx.listener(move |this, hovered, _, cx| {
-                            if *hovered && let Some(pane) = &mut this.menu.pane {
-                                pane.selected = Some(index);
-                                cx.notify();
-                            }
-                        }))
-                        .on_click(cx.listener(move |this, _, window, cx| {
-                            this.activate_pane_menu(action, window, cx)
-                        })),
-                );
-            }
         } else {
             body =
                 body.p(px(8.))

@@ -349,6 +349,7 @@ impl SheprdWindow {
                         (Some(index), false) => (index + 1) % actions.len(),
                     };
                     self.menu.workspace_selected = Some(actions[index]);
+                    self.reveal_workspace_selection();
                 }
                 cx.notify();
             }
