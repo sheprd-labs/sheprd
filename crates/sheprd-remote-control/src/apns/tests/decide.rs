@@ -32,6 +32,7 @@ fn running() -> Transcript {
     transcript.entries.push(Entry {
         id: EntryId(1),
         kind: EntryKind::User {
+            guest: None,
             text: "split the tests".to_owned(),
             files: 0,
             note: None,
@@ -72,6 +73,7 @@ fn push(id: u64, kind: EntryKind) -> Change {
 
 fn permission(id: u64, title: &str) -> Permission {
     Permission {
+        guest: None,
         call_id: None,
         id: PermissionId(id),
         options: Vec::new(),
@@ -340,6 +342,7 @@ fn current_step_prefers_the_running_call_then_the_plan_then_the_last_call() {
     transcript.entries.push(Entry {
         id: EntryId(4),
         kind: EntryKind::User {
+            guest: None,
             text: "next".to_owned(),
             files: 0,
             note: None,

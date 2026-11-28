@@ -22,6 +22,7 @@ fn sample_transcript() -> Transcript {
             Entry {
                 id: EntryId(1),
                 kind: EntryKind::User {
+                    guest: None,
                     text: "Can you fix the reconnect bug?".into(),
                     files: 0,
                     note: None,
@@ -195,3 +196,5 @@ async fn service_creates_lists_streams_and_revokes_over_real_loopback_relay() {
     assert!(service.list().is_empty());
     assert!(peer.read(Some(pub_cursor)).await.is_err());
 }
+
+mod browser;

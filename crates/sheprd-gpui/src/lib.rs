@@ -8,6 +8,7 @@ mod accessibility;
 mod actions;
 mod agent_favorites;
 mod agent_guidance;
+mod agent_interactions;
 mod agent_notes;
 mod agent_read;
 mod agent_skill;

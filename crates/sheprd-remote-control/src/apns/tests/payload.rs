@@ -92,6 +92,7 @@ fn question_update_matches_the_swift_fixture() {
                 icon: Some(Icon::Test),
                 previous_activities: vec!["Reading lib.rs".to_owned(), "Editing lib.rs".to_owned()],
                 steps: Some(3),
+                ..Detail::default()
             },
             options: vec![
                 option("allow", PermissionKind::AllowOnce, "Allow once"),

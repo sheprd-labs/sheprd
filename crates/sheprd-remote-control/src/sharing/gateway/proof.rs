@@ -3,10 +3,8 @@
 use crate::sharing::{Capability, Error, GrantId, Result, ShareId};
 use p256::ecdsa::{Signature, SigningKey, signature::Signer};
 use serde::Deserialize;
-use sheprd_relay::{client, route};
-
-const JOIN: &[u8] = b"sheprd-shared-session/join/v0\0";
-const RESUME: &[u8] = b"sheprd-shared-session/resume/v0\0";
+use sheprd_chat_protocol::sharing::admission::{self, JOIN, RESUME, message};
+use sheprd_relay::route;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -55,10 +53,6 @@ impl Resume {
     }
 }
 
-fn message(domain: &[u8], share: ShareId, grant: GrantId, hash: &[u8; 32]) -> Vec<u8> {
-    [domain, share.0.as_bytes(), grant.0.as_bytes(), hash].concat()
-}
-
 fn verifies(key: &[u8], proof: &[u8], message: &[u8]) -> Result<()> {
     if key.len() != 33 || proof.len() != 64 {
         return Err(Error::Denied);
@@ -67,7 +61,7 @@ fn verifies(key: &[u8], proof: &[u8], message: &[u8]) -> Result<()> {
     Ok(())
 }
 
-/// Sensitive bytes, for the bootstrap tunnel only. Do not log this request.
+/// Sign the shared wire format with the per-viewer dial key.
 pub fn join(
     share: ShareId,
     grant: GrantId,
@@ -75,12 +69,14 @@ pub fn join(
     key: &SigningKey,
     hash: &[u8; 32],
 ) -> Result<Vec<u8>> {
-    let signature: Signature = key.sign(&message(JOIN, share, grant, hash));
-    Ok(serde_json::to_vec(&serde_json::json!({
-        "version": 0, "share": share, "grant": grant,
-        "capability": capability.expose(), "key": client::public(key).as_slice(),
-        "proof": signature.to_bytes().as_slice(),
-    }))?)
+    Ok(admission::join(
+        share,
+        grant,
+        capability.expose(),
+        key.verifying_key().to_sec1_point(true).as_bytes(),
+        |msg| signature(key, msg),
+        hash,
+    )?)
 }
 
 pub fn resume(
@@ -89,8 +85,15 @@ pub fn resume(
     key: &SigningKey,
     hash: &[u8; 32],
 ) -> Result<Vec<u8>> {
-    let signature: Signature = key.sign(&message(RESUME, share, grant, hash));
-    Ok(serde_json::to_vec(
-        &serde_json::json!({ "version": 0, "proof": signature.to_bytes().as_slice() }),
+    Ok(admission::resume(
+        share,
+        grant,
+        |msg| signature(key, msg),
+        hash,
     )?)
+}
+
+fn signature(key: &SigningKey, message: &[u8]) -> [u8; 64] {
+    let signature: Signature = key.sign(message);
+    signature.to_bytes().into()
 }

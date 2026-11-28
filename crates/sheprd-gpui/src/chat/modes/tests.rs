@@ -106,6 +106,7 @@ fn a_chat_under_way_or_only_watched_is_not_fresh() {
     prompted.entries.push(Entry {
         id: EntryId(1),
         kind: EntryKind::User {
+            guest: None,
             text: "hi".to_owned(),
             files: 0,
             note: None,
@@ -117,6 +118,7 @@ fn a_chat_under_way_or_only_watched_is_not_fresh() {
     assert!(!fresh(&running));
     let mut queued = claude("default");
     queued.queued.push(Queued {
+        guest: None,
         attachments: Vec::new(),
         id: CommandId(uuid::Uuid::nil()),
         held: false,
@@ -220,6 +222,7 @@ fn a_chat_already_under_way_is_settled_without_switching() {
     restored.entries.push(Entry {
         id: EntryId(1),
         kind: EntryKind::User {
+            guest: None,
             text: "hi".to_owned(),
             files: 0,
             note: None,

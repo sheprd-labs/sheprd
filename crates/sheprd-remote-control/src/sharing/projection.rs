@@ -200,6 +200,7 @@ fn filter(kind: &EntryKind, content: Content) -> Option<EntryKind> {
                 body = rest;
             }
             Some(EntryKind::User {
+                guest: None,
                 text: text(body, MAX_TEXT),
                 files: 0,
                 note: None,

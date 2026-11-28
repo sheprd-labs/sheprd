@@ -32,6 +32,7 @@ fn working() -> ServerMessage {
         Entry {
             id: EntryId(1),
             kind: EntryKind::User {
+                guest: None,
                 text: PROMPT.into(),
                 files: 0,
                 note: None,

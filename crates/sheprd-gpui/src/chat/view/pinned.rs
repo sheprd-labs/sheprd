@@ -68,6 +68,7 @@ impl SheprdWindow {
             Row {
                 entry,
                 previous: None,
+                previous_guest: None,
                 next: Some(Side::Agent),
                 agent: chat.session.agent(),
                 live: false,

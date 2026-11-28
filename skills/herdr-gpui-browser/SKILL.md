@@ -526,11 +526,13 @@ what Sheprd shows or keeps.
 | Check that iPhone notifications arrive: send each paired phone a test alert through the push relay | `sheprd remote test-push --json` |
 | See the user's fleet of computers and phones and which hosts each reaches, ask to remove one, invite the computers this Sheprd reaches, or join another computer's fleet (the user confirms in Settings > Fleet) | `sheprd fleet status --json`, `sheprd fleet remove MEMBER`, `sheprd fleet invite --all`, `sheprd fleet join [MACHINE]` |
 | Bring the user to a screen in the Sheprd phone app (your chat, a terminal, a workspace or its changes, a tab), read which screen it shows, or put a note in front of them there; only while the app is open and they allowed agents on this computer | `sheprd phone open`, `sheprd phone open changes`, `sheprd phone state --json`, `sheprd phone show TEXT` |
+| Change a Luau screen of the phone app while it runs and check it landed (a debug build of the app only) | `sheprd phone luau ios/Luau/pull-requests --watch`, `sheprd phone luau DIR --reset`, `sheprd phone snapshot --out /tmp/phone.jpg` then read the picture |
 | Add another computer running Sheprd on any network from its pairing link (piped on stdin, never an argument); the user clicks Pair | `sheprd remote add-link < FILE` |
 | Keep this computer's listen token for a private relay (piped on stdin, never an argument), or forget it | `sheprd remote relays token ENDPOINT < FILE`, `sheprd remote relays token ENDPOINT --clear` |
 | List active read-only shared sessions, or open the Share this session dialog for the user to preview and confirm | `sheprd remote shares --json`, `sheprd remote share [--pane ID]` |
 | Open speaking voice settings to connect or preview a provider | `sheprd ui settings voice`, `sheprd phone open settings voice --device ID` |
 | Point out a Settings control with a persistent explanation on desktop or phone | `sheprd ui settings --json`, `sheprd ui guide TEXT --highlight ROW_ID`, `sheprd phone targets --json`, `sheprd phone guide TEXT --highlight TARGET --device ID` |
+| Trigger a persistent window modal, global always-on-top YubiKey/urgent HUD, secret-safe vault prompt, floating progress pill, runbook, drop-zone, mini-diff, spotlight, or semantic cue | `sheprd modal show\|urgent --title "..."`, `sheprd modal secret --key K --dest env-file:.env.local`, `sheprd modal progress --title "..." --percent 68`, `sheprd modal clear` |
 | Keep the machine awake during a long job | `sheprd caffeine on --for 2h` |
 | Check whether the app runs, and which windows and hosts it has | `sheprd status` |
 

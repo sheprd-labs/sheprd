@@ -100,6 +100,7 @@ impl SheprdWindow {
             Row {
                 entry: &rule,
                 previous: None,
+                previous_guest: None,
                 next: Some(Side::User),
                 agent: &agent,
                 live: false,

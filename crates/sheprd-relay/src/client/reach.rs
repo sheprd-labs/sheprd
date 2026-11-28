@@ -34,7 +34,20 @@ pub async fn reach(endpoint: &Endpoint) -> Result<Connection> {
 /// mis-issued certificate could forge, fails with [`Error::PinMismatch`]
 /// and nothing is dialed.
 pub async fn reach_pinned(endpoint: &Endpoint, expected: Option<Pin>) -> Result<Connection> {
-    let (addresses, reported) = quic(endpoint).await?;
+    connect_endpoint(endpoint, expected, false).await
+}
+
+/// Connect an owner only when the selected HTTPS relay also hosts the browser guest.
+pub async fn reach_share(endpoint: &Endpoint, expected: Option<Pin>) -> Result<Connection> {
+    connect_endpoint(endpoint, expected, true).await
+}
+
+async fn connect_endpoint(
+    endpoint: &Endpoint,
+    expected: Option<Pin>,
+    require_viewer: bool,
+) -> Result<Connection> {
+    let (addresses, reported) = quic(endpoint, require_viewer).await?;
     let pin = trusted(reported, expected)?;
     first_reachable(&addresses, ATTEMPT, |address| connect(address, pin)).await
 }
@@ -74,11 +87,14 @@ where
 
 /// Where the relay's QUIC listens (every address its name resolves to, up
 /// to [`MAX_ADDRESSES`]), and its certificate's pin, from its `/v1/info`.
-async fn quic(endpoint: &Endpoint) -> Result<(Vec<SocketAddr>, Pin)> {
+async fn quic(endpoint: &Endpoint, require_viewer: bool) -> Result<(Vec<SocketAddr>, Pin)> {
     let url = endpoint.info().to_string();
     let info = tokio::task::spawn_blocking(move || info(&url))
         .await
         .map_err(|_| Error::InfoFormat)??;
+    if require_viewer && !(info.websocket && info.share_viewer) {
+        return Err(Error::NoShareViewer);
+    }
     let quic = info.quic.ok_or(Error::NoQuic)?;
     let pin = pin(&quic)?;
     let host = endpoint.hostname();

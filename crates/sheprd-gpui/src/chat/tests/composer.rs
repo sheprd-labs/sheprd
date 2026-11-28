@@ -169,6 +169,7 @@ fn a_long_queue_keeps_the_composer_in_the_pane(cx: &mut TestAppContext) {
     transcript.status = Status::Working;
     transcript.queued = (0..20)
         .map(|n| sheprd_chat_protocol::Queued {
+            guest: None,
             attachments: Vec::new(),
             id: sheprd_chat_protocol::CommandId::random(),
             held: false,
@@ -205,6 +206,7 @@ fn a_steered_prompt_cannot_be_withdrawn_or_sent_now(cx: &mut TestAppContext) {
     transcript.queued = [true, false]
         .into_iter()
         .map(|steered| sheprd_chat_protocol::Queued {
+            guest: None,
             attachments: Vec::new(),
             id: sheprd_chat_protocol::CommandId::random(),
             held: false,

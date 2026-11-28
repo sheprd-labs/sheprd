@@ -88,6 +88,15 @@ impl<R: FnMut(Update)> Session<R> {
         for queued in &mut transcript.queued {
             queued.steered = false;
         }
+        // Guest prompts still wait for the person, who answers them on the
+        // new transcript.
+        transcript.permissions = self
+            .transcript
+            .permissions
+            .iter()
+            .filter(|permission| self.guests.waits(permission.id))
+            .cloned()
+            .collect();
         transcript.harnesses = Some(Harnesses {
             available,
             current: Some(agent),

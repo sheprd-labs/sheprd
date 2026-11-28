@@ -10,6 +10,7 @@ fn a_prompt_without_a_note_reads_and_writes_as_before() {
     assert_eq!(
         kind,
         EntryKind::User {
+            guest: None,
             text: "hi".to_owned(),
             files: 0,
             note: None,
@@ -21,6 +22,7 @@ fn a_prompt_without_a_note_reads_and_writes_as_before() {
 #[test]
 fn a_prompt_keeps_its_note_apart_from_its_words() {
     let kind = EntryKind::User {
+        guest: None,
         text: "hi".to_owned(),
         files: 0,
         note: Some("<sheprd sum=\"0\">\nBe brief.\n</sheprd>".to_owned()),

@@ -93,7 +93,7 @@ struct DiffBlock: View {
     @State private var expanded = false
 
     var body: some View {
-        let lines = lines
+        let counts = counts
         VStack(alignment: .leading, spacing: 0) {
             Button {
                 withAnimation(.snappy) { expanded.toggle() }
@@ -103,10 +103,8 @@ struct DiffBlock: View {
                     Text((path as NSString).lastPathComponent).font(.caption.monospaced().weight(.semibold))
                         .lineLimit(1).truncationMode(.middle)
                     Spacer(minLength: 4)
-                    let added = lines.count { $0.mark == "+" }
-                    let removed = lines.count - added
-                    if added > 0 { Text("+\(added)").foregroundStyle(.green) }
-                    if removed > 0 { Text("−\(removed)").foregroundStyle(.red) }
+                    if counts.added > 0 { Text("+\(counts.added)").foregroundStyle(.green) }
+                    if counts.removed > 0 { Text("−\(counts.removed)").foregroundStyle(.red) }
                     Image(systemName: "chevron.right").foregroundStyle(.secondary)
                         .rotationEffect(.degrees(expanded ? 90 : 0))
                 }
@@ -119,6 +117,17 @@ struct DiffBlock: View {
             if expanded { changes(lines) }
         }
         .background(.fill.quinary, in: .rect(cornerRadius: 12))
+    }
+
+    /// Added and removed line counts without allocating line tuples while folded.
+    private var counts: (added: Int, removed: Int) {
+        let before = (old ?? "").split(separator: "\n", omittingEmptySubsequences: false)
+        let after = new.split(separator: "\n", omittingEmptySubsequences: false)
+        let common = Set(before).intersection(after)
+        return (
+            added: after.count { !common.contains($0) },
+            removed: before.count { !common.contains($0) }
+        )
     }
 
     @ViewBuilder

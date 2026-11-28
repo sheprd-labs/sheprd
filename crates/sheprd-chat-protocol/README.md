@@ -57,6 +57,14 @@ when the person switches phones, and tells the agent to use `--device`.
 These notes belong to the new turn, never to a rewritten system prompt or
 an earlier message, so the conversation's cacheable prefix stays intact.
 
+A **guest** prompt (`Command::GuestPrompt`, revision 6) is one an external
+tool relays for someone other than the person, named by `Guest`. It waits
+as a permission request carrying the `GuestPrompt` until the person allows
+or declines it, its `Ack` comes only then, and the connection that sent it
+may send nothing else. Allowed, it reaches the agent with a note saying who
+wrote it and that it is untrusted, and its `user` entry and queue entry
+carry the `guest`. `docs/chat-guests.md` is the contract for such tools.
+
 Sub-agents and background shells the agent started are `Activity` records
 in `activities`, keyed by the tool call that started them: a label (the
 sub-agent's description or the shell's command), when it started and ended,

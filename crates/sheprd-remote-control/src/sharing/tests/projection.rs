@@ -81,6 +81,7 @@ fn only_explicit_text_crosses_the_boundary() {
     f.push(
         1,
         EntryKind::User {
+            guest: None,
             text: "question\n📎 private-file".into(),
             files: 1,
             note: Some("private-context".into()),
@@ -247,6 +248,7 @@ fn malformed_attachment_metadata_is_not_projected() {
     f.push(
         1,
         EntryKind::User {
+            guest: None,
             text: "private-file".into(),
             files: 1,
             note: None,

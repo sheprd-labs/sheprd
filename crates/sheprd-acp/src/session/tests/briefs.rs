@@ -82,6 +82,7 @@ fn a_continued_session_marks_the_brief_its_log_replays() {
             id: EntryId(1),
             // As Claude's log holds it: in the envelope pasted text gets.
             kind: EntryKind::User {
+                guest: None,
                 text: format!("<pasted_content id=\"0e15\">\n{BRIEF}\n</pasted_content>"),
                 files: 0,
                 note: None,
@@ -90,6 +91,7 @@ fn a_continued_session_marks_the_brief_its_log_replays() {
         Entry {
             id: EntryId(2),
             kind: EntryKind::User {
+                guest: None,
                 text: "carry on".to_owned(),
                 files: 0,
                 note: None,

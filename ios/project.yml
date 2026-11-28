@@ -23,6 +23,11 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"
 
 packages:
+  # MoonKit draws screens written in Luau (SheprdRemote/Luau, Luau/). The
+  # app links MoonKit and MoonUI only, never MoonLive: tools/luau_store_audit.sh.
+  MoonKit:
+    url: https://github.com/moonframehq/moonswift
+    revision: 66bbde39e8ef4a07dbdf074cd027fd9d0650961d
   SheprdRemoteCore:
     path: SheprdRemoteCore
 
@@ -33,7 +38,14 @@ targets:
     sources:
       - SheprdRemote
       - Shared
+      # Bundled as is, folders kept: Luau/pull-requests/main.luau.
+      - path: Luau
+        type: folder
     dependencies:
+      - package: MoonKit
+        product: MoonKit
+      - package: MoonKit
+        product: MoonUI
       - package: SheprdRemoteCore
       # The modules only the app links: the fleet log, GitHub, nearby
       # pairing, relays, terminal input, and voice commands. The extensions

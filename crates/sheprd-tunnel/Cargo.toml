@@ -27,3 +27,11 @@ tokio               = { features = ["io-util", "rt"], optional = true, workspace
 [dev-dependencies]
 serde_json.workspace = true
 tokio                = { features = ["io-util", "macros", "rt"], workspace = true }
+
+[target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
+snow = { workspace = true, features = ["std"] }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { workspace = true, features = ["wasm_js"] }
+snow-getrandom = { workspace = true, features = ["wasm_js"] }
+web-time.workspace = true

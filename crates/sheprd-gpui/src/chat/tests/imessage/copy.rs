@@ -26,6 +26,7 @@ fn structured_message_copy_stays_below_the_last_table_cell_and_copies_exact_text
                 Entry {
                     id: EntryId(1),
                     kind: EntryKind::User {
+                        guest: None,
                         text: text.into(),
                         files: 0,
                         note: None,

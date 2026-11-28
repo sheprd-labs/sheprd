@@ -106,11 +106,35 @@ public struct AgentMessage: Hashable, Sendable {
     public enum Part: Hashable, Sendable {
         case markdown([MarkdownBlock])
         case bubble(BubbleEffect, [MarkdownBlock])
+        case interaction(AgentInteraction)
+        case cue(InteractionCue)
     }
 
     public var parts: [Part]
     /// The first screen effect the message asks for; later ones are dropped.
     public var screen: ScreenEffect?
+
+    /// All persistent interactions parsed from this message, in order.
+    public var interactions: [AgentInteraction] {
+        parts.compactMap { if case let .interaction(item) = $0 { item } else { nil } }
+    }
+
+    /// All semantic cues parsed from this message, in order.
+    public var cues: [InteractionCue] {
+        parts.compactMap { if case let .cue(item) = $0 { item } else { nil } }
+    }
+
+    /// All playable semantic cues in this message: explicit `::cue` lines plus
+    /// each interaction block's cue, in order of appearance.
+    public var allCues: [InteractionCue] {
+        parts.compactMap { part in
+            switch part {
+            case let .cue(item): item
+            case let .interaction(interaction): interaction.cue
+            case .markdown, .bubble: nil
+            }
+        }
+    }
 
     /// Bubbles per message; later ones show their Markdown without effect.
     public static let maxBubbles = 8
@@ -136,6 +160,7 @@ public struct AgentMessage: Hashable, Sendable {
         let paragraph = parts.lazy.flatMap { part -> [MarkdownBlock] in
             switch part {
             case let .markdown(blocks), let .bubble(_, blocks): blocks
+            case .interaction, .cue: []
             }
         }
         .compactMap { block -> String? in if case let .paragraph(text) = block { text } else { nil } }
@@ -152,7 +177,12 @@ public struct AgentMessage: Hashable, Sendable {
     /// and `:::` are dropped, and size spans keep only their words.
     public static func rowLine(_ line: String) -> String {
         let words = line.split(separator: " ", omittingEmptySubsequences: true).filter { word in
-            word != ":::" && BubbleEffect(opening: String(word)) == nil && ScreenEffect(line: String(word)) == nil
+            let token = String(word)
+            return token != ":::"
+                && token != "::cue"
+                && BubbleEffect(opening: token) == nil
+                && ScreenEffect(line: token) == nil
+                && AgentInteraction.opening(token) == nil
         }
         return String(InlineMarkdown.plainSized(words.joined(separator: " ")).characters)
     }
@@ -185,6 +215,31 @@ public struct AgentMessage: Hashable, Sendable {
                 markdown.append(line)
             } else if let effect = ScreenEffect(line: line) {
                 message.screen = message.screen ?? effect
+            } else if let cue = InteractionCue(line: line) {
+                flush()
+                message.parts.append(.cue(cue))
+            } else if let (directive, title) = AgentInteraction.opening(line) {
+                flush()
+                var inner: [String] = []
+                var code: OpenFence?
+                while index < lines.count {
+                    let line = lines[index]
+                    index += 1
+                    if let open = code {
+                        if open.closes(line) { code = nil }
+                    } else if BubbleEffect.closes(line) {
+                        break
+                    } else {
+                        code = OpenFence(opening: line)
+                    }
+                    inner.append(line)
+                }
+                let interaction = AgentInteraction.parse(
+                    directive: directive,
+                    title: title,
+                    inner: inner.joined(separator: "\n")
+                )
+                message.parts.append(.interaction(interaction))
             } else if let effect = BubbleEffect(opening: line) {
                 flush()
                 var inner: [String] = []

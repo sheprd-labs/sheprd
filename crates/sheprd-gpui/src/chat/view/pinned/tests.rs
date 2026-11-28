@@ -6,6 +6,7 @@ fn entries() -> Vec<Entry> {
     let user = |id, text: &str| Entry {
         id: EntryId(id),
         kind: EntryKind::User {
+            guest: None,
             text: text.into(),
             files: 0,
             note: None,

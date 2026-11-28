@@ -14,6 +14,7 @@ fn blocked() -> ServerMessage {
     let mut transcript = Transcript::new("Claude");
     transcript.status = Status::Working;
     transcript.permissions = vec![Permission {
+        guest: None,
         call_id: None,
         id: PermissionId(1),
         options: vec![PermissionOption {

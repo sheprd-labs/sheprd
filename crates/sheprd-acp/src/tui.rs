@@ -17,8 +17,9 @@ use std::{
 use crossbeam_channel::{Receiver, Sender, bounded, never, select};
 use crossterm::{
     event::{
-        DisableBracketedPaste, EnableBracketedPaste, Event, KeyboardEnhancementFlags,
-        PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+        DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+        Event, KeyboardEnhancementFlags, MouseEventKind, PopKeyboardEnhancementFlags,
+        PushKeyboardEnhancementFlags,
     },
     execute,
 };
@@ -80,6 +81,7 @@ pub(crate) fn run(inputs: &Sender<Input>) -> anyhow::Result<()> {
     let mut terminal = ratatui::try_init()?;
     let mut out = stdout();
     let _ = execute!(out, EnableBracketedPaste);
+    let _ = execute!(out, EnableMouseCapture);
     let keyboard = matches!(
         crossterm::terminal::supports_keyboard_enhancement(),
         Ok(true)
@@ -94,6 +96,7 @@ pub(crate) fn run(inputs: &Sender<Input>) -> anyhow::Result<()> {
     if keyboard {
         let _ = execute!(out, PopKeyboardEnhancementFlags);
     }
+    let _ = execute!(out, DisableMouseCapture);
     let _ = execute!(out, DisableBracketedPaste);
     let _ = write!(out, "\x1b]7501;state=clear\x1b\\");
     ratatui::restore();
@@ -124,12 +127,30 @@ fn terminal_events() -> std::io::Result<Receiver<std::io::Result<Event>>> {
             loop {
                 let event = crossterm::event::read();
                 let failed = event.is_err();
+                if event
+                    .as_ref()
+                    .is_ok_and(|event| !terminal_event_is_relevant(event))
+                {
+                    continue;
+                }
                 if sender.send(event).is_err() || failed {
                     return;
                 }
             }
         })?;
     Ok(receiver)
+}
+
+/// Only wheel events affect the view; forwarding pointer movement would make
+/// the main loop redraw the transcript for input it does not use.
+fn terminal_event_is_relevant(event: &Event) -> bool {
+    match event {
+        Event::Mouse(mouse) => matches!(
+            mouse.kind,
+            MouseEventKind::ScrollUp | MouseEventKind::ScrollDown
+        ),
+        _ => true,
+    }
 }
 
 /// A terminal event, or why there will be none. Losing the terminal is a
@@ -198,6 +219,7 @@ fn event_loop(
                     None => {}
                 },
                 Event::Paste(text) => view.paste(&text),
+                Event::Mouse(mouse) => view.mouse(mouse.kind),
                 _ => {}
             },
             recv(timer) -> _ => tick = tick.wrapping_add(1),

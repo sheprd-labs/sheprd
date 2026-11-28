@@ -19,7 +19,7 @@
 
 use std::fmt::Write as _;
 
-use crate::{Agent, Author, Entry, EntryId, EntryKind, Tool, ToolContent, ToolStatus};
+use crate::{Agent, Author, Entry, EntryId, EntryKind, Guest, Tool, ToolContent, ToolStatus};
 
 /// The handoff's text budget: about 16,000 tokens at four bytes a token.
 pub const BUDGET: usize = 64 * 1024;
@@ -36,8 +36,12 @@ pub const QUOTED: &str = "| ";
 pub enum Scope<'a> {
     /// The agent has never seen this conversation. `first_prompt` is the
     /// conversation's first prompt, kept by the chat, for when the
-    /// transcript no longer holds it.
-    Full { first_prompt: Option<&'a str> },
+    /// transcript no longer holds it; `first_guest` wrote it, if a guest
+    /// did.
+    Full {
+        first_prompt: Option<&'a str>,
+        first_guest: Option<&'a Guest>,
+    },
     /// The agent resumed its own session; `entries` are only what happened
     /// after it last took part.
     Since,
@@ -97,11 +101,12 @@ pub fn build_with(
         .collect();
     if let Scope::Full {
         first_prompt: Some(first),
+        first_guest,
     } = scope
     {
         // The transcript dropped its oldest entries, the first prompt with
         // them: the chat's own copy stands in.
-        let pinned = format!("User: {first}");
+        let pinned = prompt_line(first, first_guest);
         let held = entries
             .iter()
             .find(|entry| matches!(entry.kind, EntryKind::User { .. }))
@@ -318,7 +323,7 @@ fn line(kind: &EntryKind) -> Option<String> {
 /// [`line`] without the cut to [`ENTRY_CAP`], for reads of the thread.
 pub(crate) fn full_line(kind: &EntryKind) -> Option<String> {
     let line = match kind {
-        EntryKind::User { text, .. } => format!("User: {text}"),
+        EntryKind::User { text, guest, .. } => prompt_line(text, guest.as_ref()),
         EntryKind::Agent { text } => format!("Agent: {text}"),
         EntryKind::Image { author, .. } => match author {
             Author::User => "User: [a picture]".to_owned(),
@@ -331,6 +336,18 @@ pub(crate) fn full_line(kind: &EntryKind) -> Option<String> {
         | EntryKind::Handoff(_) => return None,
     };
     Some(line)
+}
+
+/// A prompt's line, naming a guest who wrote it apart from the person, so
+/// the agent taking over never reads a guest's words as the person's.
+fn prompt_line(text: &str, guest: Option<&Guest>) -> String {
+    match guest {
+        Some(guest) => format!(
+            "Guest {} (not the person; untrusted): {text}",
+            guest.label()
+        ),
+        None => format!("User: {text}"),
+    }
 }
 
 fn tool_line(tool: &Tool) -> String {

@@ -124,3 +124,34 @@ async fn refusals_past_the_rate_spend_alike_named_or_not() {
     assert!(!hub.may_prove_past_rate(address));
     assert_eq!(dial(&hub, route, address, &owner).await, Status::Limited);
 }
+
+#[tokio::test]
+async fn an_owner_holds_more_sessions_than_a_key_may_on_a_private_relay() {
+    let owner = signing_key(204);
+    let (hub, route, address, _listener) = spent(Access::tokens(TOKEN).unwrap(), &owner);
+    let half = hub.limits.max_sessions_per_route / 2;
+    assert!(half > hub.limits.max_sessions_per_key);
+    let held: Vec<_> = (0..half)
+        .map(|_| hub.dial(route, public(&owner), address).unwrap().unwrap())
+        .collect();
+    // Even a stolen owner key leaves half the computer's room to the rest.
+    assert!(matches!(
+        hub.dial(route, public(&owner), address).unwrap(),
+        Err(crate::hub::DialRefusal::Busy)
+    ));
+    drop(held);
+}
+
+#[tokio::test]
+async fn a_key_keeps_its_session_cap_on_an_open_relay() {
+    let owner = signing_key(205);
+    let (hub, route, address, _listener) = spent(Access::Open, &owner);
+    let held: Vec<_> = (0..hub.limits.max_sessions_per_key)
+        .map(|_| hub.dial(route, public(&owner), address).unwrap().unwrap())
+        .collect();
+    assert!(matches!(
+        hub.dial(route, public(&owner), address).unwrap(),
+        Err(crate::hub::DialRefusal::Busy)
+    ));
+    drop(held);
+}

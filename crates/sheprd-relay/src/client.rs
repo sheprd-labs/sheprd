@@ -14,7 +14,7 @@ use quinn::{ClientConfig, Connection, Endpoint, RecvStream, SendStream};
 use std::{net::SocketAddr, sync::Arc};
 
 mod reach;
-pub use reach::{first_reachable, reach, reach_pinned};
+pub use reach::{first_reachable, reach, reach_pinned, reach_share};
 
 /// Why reaching a relay, or a step on it, failed.
 #[derive(Debug, thiserror::Error)]
@@ -41,6 +41,8 @@ pub enum Error {
     Malformed,
     #[error("the relay offers no QUIC")]
     NoQuic,
+    #[error("the relay needs the session viewer and WebSocket support to share in a browser")]
+    NoShareViewer,
     #[error("could not trust the relay's certificate")]
     Pin(#[from] pin::Error),
     #[error("the relay's QUIC certificate is not the one its pin names")]

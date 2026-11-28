@@ -13,6 +13,7 @@ fn state(phase: Phase) -> ContentState {
             icon: Some(crate::apns::payload::Icon::Edit),
             previous_activities: vec!["Reading secret.rs".to_owned()],
             steps: Some(9),
+            ..Detail::default()
         },
         options: vec![PermissionOption {
             id: "allow".to_owned(),

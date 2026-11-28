@@ -13,10 +13,11 @@ pub const VERSION: u32 = 1;
 /// Additions to [`VERSION`] a client declares it reads in its greeting:
 /// 1 is `Change::Activity`, 2 is `Change::Harnesses`, 3 is
 /// `Change::PullRequest`, 4 is `Change::Brief`, 5 is threads:
-/// `Change::Thread`, `Transcript::thread`, and `EntryKind::Handoff`. A
-/// program sends a client of an earlier revision only what that client can
-/// decode.
-pub const REVISION: u32 = 5;
+/// `Change::Thread`, `Transcript::thread`, and `EntryKind::Handoff`, 6 is
+/// guests: `Permission::guest`, `EntryKind::User::guest`, and
+/// `Queued::guest`. A program sends a client of an earlier revision only
+/// what that client can decode; it names a guest's words in their text.
+pub const REVISION: u32 = 6;
 
 /// The longest prompt a client may send, in bytes.
 pub const MAX_PROMPT_SIZE: usize = 256 * 1024;
@@ -99,6 +100,17 @@ pub enum Command {
         /// Where it was typed; none from clients that predate origins.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         origin: Option<Origin>,
+    },
+    /// Relays a guest's prompt: someone other than the person, named by
+    /// the tool that relays it. It waits as a permission request until the
+    /// person allows or denies it, and its `Ack` comes only then: none, or
+    /// [`Rejection::Denied`]. A connection that sends one may from then on
+    /// send only these; any other command is refused with
+    /// [`Rejection::GuestOnly`]. Programs before guests refuse it with
+    /// [`Rejection::Unsupported`]. See `docs/chat-guests.md`.
+    GuestPrompt {
+        text: String,
+        guest: crate::Guest,
     },
     /// Ends the running turn and declines its pending permission requests.
     /// Queued prompts stay, held until sent now or withdrawn.
@@ -227,6 +239,17 @@ pub enum Rejection {
     InvalidPullRequest,
     #[error("the chat already lists {} pull requests", crate::MAX_PULL_REQUESTS)]
     TooManyPullRequests,
+    /// The person declined the guest's prompt.
+    #[error("the person declined the guest's prompt")]
+    Denied,
+    /// A connection that relays guest prompts sends nothing else.
+    #[error("a connection that relays guest prompts can send only guest prompts")]
+    GuestOnly,
+    #[error("the guest's name or tool is empty, too long, or holds control characters or quotes")]
+    InvalidGuest,
+    /// A guest's prompt holds characters that do not show as themselves.
+    #[error("the guest's prompt holds control, invisible, or direction-changing characters")]
+    HiddenText,
     /// A command this program's version does not know, from a newer client.
     #[error("this chat program is older than Sheprd; start a new chat to use that")]
     Unsupported,

@@ -3,6 +3,7 @@
 use crate::context::*;
 
 mod device;
+mod guest;
 mod launch;
 mod memory;
 mod phone_app;
@@ -12,8 +13,8 @@ fn describe(origin: Origin) -> String {
     Prompts::default().render(Kind::of(origin.clone()), &Facts::default(), Some(origin))
 }
 
-const PHONE: Origin = Origin::new(Device::PhoneApp, Via::Relay);
-const DESKTOP: Origin = Origin::new(Device::Desktop, Via::Local);
+pub(super) const PHONE: Origin = Origin::new(Device::PhoneApp, Via::Relay);
+pub(super) const DESKTOP: Origin = Origin::new(Device::Desktop, Via::Local);
 
 #[test]
 fn direct_context_never_adds_sheprd_text_to_a_persons_prompt() {
@@ -236,7 +237,7 @@ fn instructions_cannot_end_the_note_early() {
 
 #[test]
 fn only_a_note_sheprd_wrote_is_split_off() {
-    let real = note::wrap(Some(LOCAL_DESKTOP), "x\n");
+    let real = note::wrap(Some(LOCAL_DESKTOP), None, "x\n");
     assert_eq!(
         split(&format!("\n{real}\nhello")),
         Some((real.as_str(), "hello"))
@@ -257,14 +258,15 @@ fn hiding_notes_keeps_them_apart_from_the_persons_words_and_drops_empty_messages
     let user = |id, text: &str, files, note: Option<&str>| Entry {
         id: EntryId(id),
         kind: EntryKind::User {
+            guest: None,
             text: text.to_owned(),
             files,
             note: note.map(str::to_owned),
         },
     };
     let desktop = note_with("Be brief.", DESKTOP);
-    let phone = note::wrap(Some(PHONE.into()), "y\n");
-    let bare = note::wrap(None, "z\n");
+    let phone = note::wrap(Some(PHONE.into()), None, "y\n");
+    let bare = note::wrap(None, None, "z\n");
     let typed = "<sheprd>example</sheprd> what is this?";
     let mut transcript = Transcript::new("Claude".to_owned());
     transcript.entries = vec![
@@ -299,13 +301,14 @@ fn a_note_kept_as_its_own_message_goes_to_the_words_right_after_it() {
     let user = |id, text: &str, note: Option<&str>| Entry {
         id: EntryId(id),
         kind: EntryKind::User {
+            guest: None,
             text: text.to_owned(),
             files: 0,
             note: note.map(str::to_owned),
         },
     };
-    let first = note::wrap(None, "x\n");
-    let second = note::wrap(None, "y\n");
+    let first = note::wrap(None, None, "x\n");
+    let second = note::wrap(None, None, "y\n");
     let mut transcript = Transcript::new("Claude".to_owned());
     transcript.entries = vec![
         user(1, &first, None),

@@ -13,6 +13,7 @@ fn history() -> Transcript {
         Entry {
             id: EntryId(4096),
             kind: EntryKind::User {
+                guest: None,
                 files: 0,
                 note: None,
                 text: "Fix the build".to_owned(),

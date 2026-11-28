@@ -14,6 +14,9 @@ use sheprd_chat_protocol::{Change, Entry, EntryKind, REVISION, ServerMessage, Tr
 /// The revision that added threads: `Change::Thread`, `Transcript::thread`,
 /// and `EntryKind::Handoff`.
 const THREADS: u32 = 5;
+/// The revision that added guests: `Permission::guest`,
+/// `EntryKind::User::guest`, and `Queued::guest`.
+const GUESTS: u32 = 6;
 
 #[derive(Debug)]
 pub(crate) struct Downgrade {
@@ -51,6 +54,9 @@ impl Downgrade {
                 if self.revision < THREADS {
                     before_threads(&mut transcript);
                 }
+                if self.revision < GUESTS {
+                    before_guests(&mut transcript);
+                }
                 Some(ServerMessage::Snapshot { cursor, transcript })
             }
             ServerMessage::Change { change, cursor } => {
@@ -69,6 +75,11 @@ impl Downgrade {
                         entry: entry_before_threads(entry),
                     },
                     change => change,
+                };
+                let change = if self.revision < GUESTS {
+                    change_before_guests(change)
+                } else {
+                    change
                 };
                 Some(ServerMessage::Change { change, cursor })
             }
@@ -106,6 +117,49 @@ fn entry_before_threads(entry: Entry) -> Entry {
             kind: handoff.as_notice(),
         },
         _ => entry,
+    }
+}
+
+/// `transcript` as a client before guests reads it: a guest's words are
+/// named in their text, so they never pass for the person's.
+fn before_guests(transcript: &mut Transcript) {
+    for entry in &mut transcript.entries {
+        name_guest(&mut entry.kind);
+    }
+    for queued in &mut transcript.queued {
+        name_queued(queued);
+    }
+}
+
+fn change_before_guests(change: Change) -> Change {
+    match change {
+        Change::Push { mut entry } => {
+            name_guest(&mut entry.kind);
+            Change::Push { entry }
+        }
+        Change::Replace { mut entry } => {
+            name_guest(&mut entry.kind);
+            Change::Replace { entry }
+        }
+        Change::Queue { mut queued } => {
+            queued.iter_mut().for_each(name_queued);
+            Change::Queue { queued }
+        }
+        change => change,
+    }
+}
+
+fn name_guest(kind: &mut EntryKind) {
+    if let EntryKind::User { guest, text, .. } = kind
+        && let Some(guest) = guest.take()
+    {
+        *text = format!("{}: {text}", guest.label());
+    }
+}
+
+fn name_queued(queued: &mut sheprd_chat_protocol::Queued) {
+    if let Some(guest) = queued.guest.take() {
+        queued.text = format!("{}: {}", guest.label(), queued.text);
     }
 }
 

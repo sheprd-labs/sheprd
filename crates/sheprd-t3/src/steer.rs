@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use sheprd_chat_protocol::{
     Choice, Command, CommandId, ConfigOption, MAX_ATTACHMENTS, MAX_PROMPT_SIZE, OptionCategory,
-    OptionKind, OptionValue, PermissionId, Rejection,
+    OptionKind, OptionValue, Origin, PermissionId, Rejection,
 };
 
 use crate::thread::{InputQuestion, ModelSelection, Thread, TurnKind};
@@ -224,6 +224,13 @@ pub fn dispatch(
     command: &Command,
 ) -> Result<Dispatch, Rejection> {
     let action = match command {
+        // T3 has no person to ask, so a guest's words never reach its
+        // agent, however they are sent.
+        Command::Prompt {
+            origin: Some(Origin { guest: Some(_), .. }),
+            ..
+        }
+        | Command::GuestPrompt { .. } => return Err(Rejection::Unsupported),
         Command::Prompt {
             text, attachments, ..
         } => {

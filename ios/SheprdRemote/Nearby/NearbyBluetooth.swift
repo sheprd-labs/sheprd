@@ -225,6 +225,7 @@ extension NearbyBluetooth: @preconcurrency CBCentralManagerDelegate, @preconcurr
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+        fail(peripheral.identifier, error ?? Failure.gone)
         drop(peripheral.identifier)
     }
 
@@ -242,19 +243,35 @@ extension NearbyBluetooth: @preconcurrency CBCentralManagerDelegate, @preconcurr
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-        guard let service = peripheral.services?.first(where: { $0.uuid == Self.service }) else { return }
+        if let error {
+            fail(peripheral.identifier, error)
+            return
+        }
+        guard let service = peripheral.services?.first(where: { $0.uuid == Self.service }) else {
+            fail(peripheral.identifier, Failure.gone)
+            return
+        }
         peripheral.discoverCharacteristics([Self.info, Self.pair], for: service)
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         let id = peripheral.identifier
+        if let error {
+            fail(id, error)
+            return
+        }
+        var foundPair = false
         for characteristic in service.characteristics ?? [] {
             if characteristic.uuid == Self.info, probing.contains(id) {
                 peripheral.readValue(for: characteristic)
             } else if characteristic.uuid == Self.pair, let exchange = exchanges[id] {
+                foundPair = true
                 exchange.characteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
             }
+        }
+        if !foundPair, let exchange = exchanges[id], exchange.characteristic == nil {
+            fail(id, Failure.gone)
         }
     }
 

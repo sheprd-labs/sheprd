@@ -14,6 +14,7 @@ const CHAT: Chat<'static> = Chat {
 
 fn permission(id: u64, title: &str) -> Permission {
     Permission {
+        guest: None,
         call_id: None,
         id: PermissionId(id),
         options: Vec::new(),

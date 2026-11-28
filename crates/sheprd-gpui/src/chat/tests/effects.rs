@@ -54,6 +54,7 @@ fn a_user_message_never_plays_an_effect() {
     transcript.entries = vec![Entry {
         id: EntryId(1),
         kind: EntryKind::User {
+            guest: None,
             text: "::confetti\n:::slam\nme\n:::".into(),
             files: 0,
             note: None,

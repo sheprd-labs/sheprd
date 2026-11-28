@@ -59,6 +59,7 @@ fn an_unanswered_prompt_reads_delivered(cx: &mut TestAppContext) {
         Entry {
             id: EntryId(2),
             kind: EntryKind::User {
+                guest: None,
                 text: "Fix it".into(),
                 files: 0,
                 note: None,
@@ -101,6 +102,7 @@ fn typing_shows_while_the_agent_works(cx: &mut TestAppContext) {
     transcript.entries = vec![Entry {
         id: EntryId(1),
         kind: EntryKind::User {
+            guest: None,
             text: "Fix it".into(),
             files: 0,
             note: None,
@@ -140,6 +142,7 @@ fn a_streaming_reply_takes_the_whole_width_until_it_ends(cx: &mut TestAppContext
         Entry {
             id: EntryId(1),
             kind: EntryKind::User {
+                guest: None,
                 text: "Fix it".into(),
                 files: 0,
                 note: None,

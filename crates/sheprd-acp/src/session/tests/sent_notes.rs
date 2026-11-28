@@ -112,6 +112,7 @@ fn noted(id: u64, size: usize) -> Entry {
     Entry {
         id: EntryId(id),
         kind: EntryKind::User {
+            guest: None,
             text: "hi".to_owned(),
             files: 0,
             note: Some("n".repeat(size)),

@@ -71,6 +71,7 @@ fn bodies_are_prepared_once_per_revision() {
         Entry {
             id: EntryId(3),
             kind: EntryKind::User {
+                guest: None,
                 text: "hi".into(),
                 files: 0,
                 note: None,

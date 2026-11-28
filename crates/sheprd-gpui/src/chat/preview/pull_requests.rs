@@ -36,7 +36,7 @@ pub(super) fn apply(transcript: &mut Transcript, listed: bool) {
     transcript.entries = vec![
         Entry {
             id: EntryId(1),
-            kind: EntryKind::User {
+            kind: EntryKind::User { guest: None,
                 text: "Ship the rail section, merge the follow-up once CI passes, and answer the review on the docs PR.".into(), // i18n: data
                 files: 0,
                 note: None,

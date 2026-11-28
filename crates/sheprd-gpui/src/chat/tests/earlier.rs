@@ -14,6 +14,7 @@ fn user(id: u64, text: &str) -> Entry {
     Entry {
         id: EntryId(id),
         kind: EntryKind::User {
+            guest: None,
             files: 0,
             note: None,
             text: text.into(),

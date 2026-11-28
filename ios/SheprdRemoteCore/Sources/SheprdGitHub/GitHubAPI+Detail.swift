@@ -22,6 +22,29 @@ extension GitHubAPI {
         }
     }
 
+    /// Adds or removes an emoji reaction on `subjectId` and returns the
+    /// subject's updated reaction groups.
+    public func setReaction(
+        host: GitHubHost,
+        subjectId: String,
+        content: PullRequestDetail.ReactionContent,
+        add: Bool,
+        token: GitHubToken
+    ) async throws -> [PullRequestDetail.ReactionGroup] {
+        guard !PullRequestDetailAnswer.nodeID(subjectId).isEmpty else { throw GitHubError.malformed }
+        var request = GitHubHTTP.request(host.graphQL, token: token, method: "POST")
+        request.httpBody = try PullRequestReactionMutation(subjectId: subjectId, content: content, add: add).body
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let response = try await send(request, host: host, limit: .whole(max: Self.graphQLLimit))
+        guard response.status == 200 else { throw GitHubHTTP.failure(response, now: now()) }
+        do {
+            return try PullRequestReactionAnswer.parse(response, add: add, now: now())
+        } catch {
+            if case let .rateLimited(until) = error { paused[host] = until }
+            throw error
+        }
+    }
+
     /// The files a pull request changes, page by page up to
     /// `PullRequestFiles.pageLimit`, each page sent with the ETag of the
     /// answer last seen for it.

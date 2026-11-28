@@ -41,6 +41,9 @@ async fn a_phones_new_workspace_is_kept_in_the_document_with_its_first_tab() {
     let hub = hub_on(&source);
     let created = hub
         .create_workspace(NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent: Agent::Claude,
             branch: None,
             cwd: "/code/new",
@@ -77,6 +80,9 @@ async fn a_new_workspace_in_a_kept_folder_joins_that_workspace() {
     let hub = hub_on(&source);
     let created = hub
         .create_workspace(NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent: Agent::Claude,
             branch: None,
             cwd: "/code/app",
@@ -101,6 +107,9 @@ async fn a_new_workspace_waits_for_sheprd_while_the_document_was_never_written()
     let hub = hub_on(&source);
     let created = hub
         .create_workspace(NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent: Agent::Claude,
             branch: None,
             cwd: "/code/new",
@@ -135,6 +144,9 @@ async fn a_phones_new_worktree_is_kept_in_its_new_checkout() {
     hub.worktrees = Some(root.clone());
     let created = hub
         .create_workspace(NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent: Agent::Claude,
             branch: Some("topic"),
             cwd: repository.to_str().unwrap(),

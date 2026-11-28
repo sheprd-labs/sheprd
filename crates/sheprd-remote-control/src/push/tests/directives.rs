@@ -33,6 +33,15 @@ fn directives_leave_the_text_a_notification_shows() {
     // In code, and in prose, they stay as written.
     assert_eq!(without_directives("```\n::wizz\n```"), "```\n::wizz\n```");
     assert_eq!(without_directives("a ::wizz b"), "a ::wizz b");
+    assert_eq!(
+        without_directives(":::urgent Tap your YubiKey\nWaiting on git push\n:::\n::cue yubikey"),
+        "Tap your YubiKey\nWaiting on git push"
+    );
+    assert!(wizzes(":::urgent Tap your YubiKey\nBlocked\n:::"));
+    assert!(wizzes(
+        ":::secret Provide STRIPE_TEST_KEY\nkey: STRIPE_TEST_KEY\n:::"
+    ));
+    assert!(!wizzes(":::modal Review diff\nReady\n:::"));
 }
 
 const CHAT: Chat<'static> = Chat {
@@ -84,6 +93,7 @@ fn an_earlier_turns_wizz_does_not_nudge_again() {
                 text: "Need you\n::wizz".to_owned(),
             },
             EntryKind::User {
+                guest: None,
                 text: "on it".to_owned(),
                 files: 0,
                 note: None,

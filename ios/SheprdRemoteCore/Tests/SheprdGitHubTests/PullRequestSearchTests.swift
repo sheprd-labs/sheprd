@@ -30,11 +30,12 @@ struct PullRequestSearchTests {
     }
 
     @Test func theSearchesTravelAsVariables() throws {
-        let body = try #require(try JSONSerialization.jsonObject(with: PullRequestSearchQuery.body) as? [String: Any])
+        let body = try #require(try JSONSerialization.jsonObject(with: PullRequestSearchQuery().body) as? [String: Any])
         let variables = try #require(body["variables"] as? [String: String])
         #expect(variables["mine"]?.contains("author:@me") == true)
         #expect(variables["review"]?.contains("review-requested:@me") == true)
         #expect(variables.values.allSatisfy { $0.contains("is:pr") && $0.contains("is:open") })
+        #expect(variables.count == 2)
         let text = try #require(body["query"] as? String)
         #expect(text.contains("first: \(PullRequestSearchQuery.limit)"))
         #expect(!text.contains("@me"))

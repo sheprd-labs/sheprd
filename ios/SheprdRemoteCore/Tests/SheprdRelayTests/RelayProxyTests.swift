@@ -116,4 +116,12 @@ struct RelayProxyTests {
         for app in apps { app.cancel() }
         #expect(await eventually { await proxy.sessions() == 0 })
     }
+
+    @Test func stoppingBeforeStartCompletesThrowsCancellation() async throws {
+        let proxy = try RelayProxy(carrying: { WaitingSession() })
+        proxy.stop()
+        await #expect(throws: CancellationError.self) {
+            _ = try await proxy.start()
+        }
+    }
 }

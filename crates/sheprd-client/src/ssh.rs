@@ -593,6 +593,14 @@ pub fn powershell_command(target: &str, script: &str) -> Result<Command> {
     Ok(command)
 }
 
+/// Whether `target`'s `lane` commands ride a master of the user's own
+/// (their `ControlPath`), so a command [`shared_script_command`] handed out
+/// with no channel still opens no new login.
+#[must_use]
+pub fn rides_own_master(target: &str, lane: mux::Lane) -> bool {
+    mux::rides_user_master(target, lane)
+}
+
 fn shared_command(
     target: &str,
     remote_command: &str,
@@ -607,6 +615,14 @@ fn shared_command(
         || false,
     );
     Ok((command, channel.map(SshChannel)))
+}
+
+/// The generation of `target`'s shared connections: it changes when they
+/// are given up for new ones, on a reconnect (whose path may now reach
+/// another machine) or a host key change. A caller keeping a long-lived
+/// stream to the host opens new work on a fresh one once it changes.
+pub fn shared_generation(target: &str) -> u64 {
+    mux::generation(target)
 }
 
 /// How long [`shared_script_command`] waits for a host's shared connection

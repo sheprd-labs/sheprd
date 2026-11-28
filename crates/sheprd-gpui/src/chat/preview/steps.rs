@@ -25,6 +25,7 @@ pub(super) fn entries(now_ms: u64) -> Vec<Entry> {
         Entry {
             id: EntryId(1),
             kind: EntryKind::User {
+                guest: None,
                 text: "Keep the purpose type private.".into(), // i18n: data
                 files: 0,
                 note: None,

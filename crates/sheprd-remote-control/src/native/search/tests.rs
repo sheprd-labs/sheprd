@@ -28,6 +28,7 @@ fn transcript(entries: Vec<EntryKind>) -> Transcript {
 
 fn user(text: &str) -> EntryKind {
     EntryKind::User {
+        guest: None,
         text: text.into(),
         files: 0,
         note: None,

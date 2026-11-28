@@ -16,6 +16,11 @@ push=${3:-}
 case $arch in amd64 | arm64) ;; *) echo "unknown architecture: $arch" >&2; exit 2 ;; esac
 
 build=(--platform "linux/$arch" -f crates/sheprd-relay/Dockerfile --provenance=false)
+# The commit the relay names to its operator, from this checkout unless set.
+commit=${RELAY_COMMIT:-$(git rev-parse --short=12 HEAD 2>/dev/null || true)}
+if [[ -n $commit ]]; then
+  build+=(--build-arg "RELAY_COMMIT=$commit")
+fi
 # A mirror of the Rust base image, when Docker Hub is out of reach.
 if [[ -n ${RUST_IMAGE:-} ]]; then
   build+=(--build-arg "RUST_IMAGE=$RUST_IMAGE")
@@ -34,7 +39,7 @@ docker buildx build "${build[@]}" --load -t "$check" . >&2
 # The image runs as the deploy files run it: read-only, no capabilities.
 docker run --rm "$check" --help >/dev/null
 container=$(docker run -d --read-only --cap-drop ALL \
-  -e RELAY_PUBLIC_HOST=relay.test -p 127.0.0.1::8080 "$check")
+  -e RELAY_PUBLIC_HOST=relay.test -p 127.0.0.1::8080 -p 127.0.0.1::9090 "$check")
 trap 'docker rm -f "$container" >/dev/null' EXIT
 port=$(docker port "$container" 8080/tcp | head -n 1 | sed 's/.*://')
 for _ in $(seq 1 30); do
@@ -43,6 +48,11 @@ for _ in $(seq 1 30); do
 done
 curl -fsS "http://127.0.0.1:$port/v1/info" \
   | jq -e '.protocol == 1 and .websocket and .quic.port > 0' >/dev/null
+if [[ -n $commit ]]; then
+  metrics=$(docker port "$container" 9090/tcp | head -n 1 | sed 's/.*://')
+  curl -fsS "http://127.0.0.1:$metrics/metrics" | grep -qF "commit=\"$commit\"" \
+    || { echo "the $arch image does not name commit $commit" >&2; exit 1; }
+fi
 echo "$arch image starts and answers" >&2
 
 if [[ $push == --push ]]; then

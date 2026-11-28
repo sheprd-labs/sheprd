@@ -56,6 +56,9 @@ pub(crate) enum Parsed {
     Run(Options),
     /// Carry a client connection to a running chat over stdin and stdout.
     Connect(sheprd_chat_protocol::EndpointId),
+    /// Carry many client connections to this host's chats over stdin and
+    /// stdout at once.
+    Multiplex,
     /// Continue the exact chat belonging to this kept core terminal.
     Restore(sheprd_chat_protocol::EndpointId),
     /// Watch an existing CLI transcript without starting or driving an agent.
@@ -164,6 +167,8 @@ Usage:
   sheprd-acp [OPTIONS] -- COMMAND [ARGS...]
   sheprd-acp connect ID   Attach stdin and stdout to the running chat ID
                          (Sheprd runs this over SSH for remote chats)
+  sheprd-acp multiplex    Carry many chats' connections over stdin and stdout
+                         at once (Sheprd runs this over one SSH channel)
   sheprd-acp agents       List the agents installed here, one per line
   sheprd-acp restore ID   Resume this kept Herdr 2 terminal's exact chat
                          (run at its shell prompt after unexpected loss)
@@ -258,7 +263,7 @@ Keys:
   Shift+Tab      Next session mode
   Ctrl+O         Settings: agent (with --choose), model, thinking level,
                  mode (Left/Right change)
-  PgUp/PgDn      Scroll
+  PgUp/PgDn, mouse wheel  Scroll the transcript
   Ctrl+D         Quit when the prompt is empty
 ";
 
@@ -274,6 +279,13 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Parsed, 
             return match args.next() {
                 Some(extra) => Err(Error::UnknownOption(extra)),
                 None => Ok(Parsed::Agents),
+            };
+        }
+        Some("multiplex") => {
+            args.next();
+            return match args.next() {
+                Some(extra) => Err(Error::UnknownOption(extra)),
+                None => Ok(Parsed::Multiplex),
             };
         }
         Some("connect" | "restore") => {

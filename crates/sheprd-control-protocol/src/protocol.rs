@@ -9,6 +9,7 @@ pub mod events;
 pub mod fleet;
 pub mod hosts;
 pub mod lend;
+pub mod modal;
 pub mod mods;
 pub mod phone;
 pub mod remote;
@@ -41,7 +42,9 @@ pub enum Placement {
 /// 18: `fleet`. 19: `chat` `new` `prompt`. 20: `phone`. 21: Settings navigation and agent guidance.
 /// 22: `machine` `start` and `on` (a virtual Mac on another computer),
 /// `via` `lend`, and `lending`.
-pub const PROTOCOL_VERSION: u32 = 22;
+/// 23: `modal` (persistent window/global modals, secret vault, progress pill,
+/// runbooks, drop-zones, mini-diffs, spotlights, and semantic cues).
+pub const PROTOCOL_VERSION: u32 = 23;
 
 /// Older apps and clients know only tabs, so a tab is left off the wire.
 fn is_tab(placement: &Placement) -> bool {
@@ -79,6 +82,7 @@ macro_rules! relay {
             Request::Fleet(call) => $($borrow)+ call.caller.via,
             Request::Phone(call) => $($borrow)+ call.caller.via,
             Request::Mod(call) => $($borrow)+ call.caller.via,
+            Request::Modal(call) => $($borrow)+ call.caller.via,
         }
     };
 }
@@ -124,6 +128,8 @@ pub enum Request {
     Remote(Call<remote::RemoteOp>),
     #[serde(rename = "mod")]
     Mod(Call<mods::ModOp>),
+    #[serde(rename = "modal")]
+    Modal(Call<modal::ModalOp>),
     #[serde(rename = "fleet")]
     Fleet(Call<fleet::FleetOp>),
     #[serde(rename = "phone")]
@@ -396,6 +402,9 @@ pub enum Response {
     },
     Mod {
         reply: mods::Reply,
+    },
+    Modal {
+        reply: modal::Reply,
     },
     Fleet {
         reply: fleet::Reply,

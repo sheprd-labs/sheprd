@@ -2,6 +2,7 @@
 //!
 //! ```toml
 //! [chat]
+//! auto_accept = false # opt in to allow permission requests in attached chats
 //! auto_convert = false
 //! glide = true
 //! launcher = "plus"
@@ -59,6 +60,9 @@ const RESERVED: [&str; 1] = [crate::chat::PROGRAM_ENV];
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(default, deny_unknown_fields)]
 pub struct ChatConfig {
+    /// Show persistent in-window modals, runbooks, diffs, and spotlights triggered by agents.
+    pub agent_modals: bool,
+    pub auto_accept: bool,
     /// Newly started terminal agents move into chats once settled.
     pub auto_convert: bool,
     /// Code blocks number their lines unless a block's own button says otherwise.
@@ -67,6 +71,8 @@ pub struct ChatConfig {
     pub code_stripes: bool,
     pub env: BTreeMap<String, String>,
     pub glide: bool,
+    /// Allow urgent agent alerts (such as YubiKey prompts) to float above all apps and Spaces.
+    pub global_modals: bool,
     /// Play message effects and offer replay controls in desktop chats.
     pub message_effects: bool,
     pub launcher: ChatLauncher,
@@ -76,6 +82,8 @@ pub struct ChatConfig {
     pub max_width: u16,
     /// Explicit transcript sidecars. Never starts or replaces the pane's agent.
     pub mirrors: Vec<TranscriptMirror>,
+    /// Show the floating always-on-top Dynamic Progress Pill during long agent runs.
+    pub progress_pill: bool,
     /// Show running Codex/Claude conversations over their existing terminal.
     /// Discovery is opt-in and never starts or resumes an agent.
     pub render_existing: bool,
@@ -88,16 +96,20 @@ pub struct ChatConfig {
 impl Default for ChatConfig {
     fn default() -> Self {
         Self {
+            agent_modals: true,
+            auto_accept: false,
             auto_convert: false,
             code_line_numbers: false,
             code_stripes: false,
             env: BTreeMap::new(),
             glide: false,
+            global_modals: true,
             message_effects: true,
             launcher: ChatLauncher::default(),
             layout: ChatLayoutMode::default(),
             max_width: DEFAULT_MAX_WIDTH,
             mirrors: Vec::new(),
+            progress_pill: true,
             render_existing: false,
             render_html: HtmlRender::default(),
             wrap_code: false,

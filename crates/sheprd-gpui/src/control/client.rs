@@ -10,6 +10,7 @@ mod help;
 mod hosts;
 mod labels;
 mod local;
+mod modal;
 mod mods;
 mod open;
 mod phone;
@@ -96,6 +97,11 @@ impl Output {
             bytes: Some(bytes),
             stderr: String::new(),
         })
+    }
+
+    /// The text a person reads.
+    pub(crate) fn text(&self) -> &str {
+        &self.text
     }
 
     /// Done, but with nothing to report: exits [`exit::NOTHING`].
@@ -593,6 +599,7 @@ pub(crate) fn dispatch(command: ControlCommand, context: &Context) -> crate::Res
         ControlCommand::Fleet(command) => fleet::fleet(command, context),
         ControlCommand::Phone(command) => phone::phone(command, context),
         ControlCommand::Mod(command) => mods::run(command, context),
+        ControlCommand::Modal(command) => modal::run(command, context),
         ControlCommand::Search {
             files,
             query,

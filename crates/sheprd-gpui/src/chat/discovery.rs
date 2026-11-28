@@ -4,7 +4,7 @@ use super::{MAX_CHATS, Route, Surface, Target};
 use crate::state::LiveState;
 use sheprd_chat_protocol::{EndpointId, TOKEN};
 use sheprd_client::{ConnectTarget, protocol::ClientShellSnapshot};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Whether the daemon behind `target` runs on this machine as this user, so
 /// its panes' chat endpoints are this user's own: the trust boundary local Git
@@ -76,12 +76,42 @@ pub(crate) fn targets(snapshot: &ClientShellSnapshot, route: Option<&Route>) -> 
         .collect()
 }
 
-/// At most [`MAX_CHATS`] of `targets`, in their order, those `rank`
-/// puts lower first. The window ranks the panes on screen before those
-/// holding files for an unsent prompt, and both before the rest, so a chat
-/// the user is looking at attaches however many chats run elsewhere.
+/// At most [`MAX_CHATS`] of `targets`, and at most [`Route::max_chats`] on
+/// any one route, in their order, those `rank` puts lower first. The window
+/// ranks the focused pane first, then the other panes on screen, then those
+/// holding files for an unsent prompt, so the chat the user is looking at
+/// attaches however many chats run elsewhere. An SSH host's limit counts
+/// only that host's chats: chats on this machine never take its slots.
 pub(crate) fn bounded(targets: Vec<Target>, rank: impl Fn(&str) -> u8) -> Vec<Target> {
-    bound_by(targets, MAX_CHATS, |target| rank(&target.pane_id))
+    let mut order: Vec<(u8, usize)> = targets
+        .iter()
+        .enumerate()
+        .map(|(index, target)| (rank(&target.pane_id), index))
+        .collect();
+    order.sort_unstable();
+    let mut keep = vec![false; targets.len()];
+    let mut per_route: HashMap<&Route, usize> = HashMap::new();
+    let mut kept = 0;
+    for (_, index) in order {
+        if kept == MAX_CHATS {
+            break;
+        }
+        let route = &targets[index].route;
+        let on_route = per_route.entry(route).or_default();
+        if *on_route >= route.max_chats() {
+            continue;
+        }
+        *on_route += 1;
+        keep[index] = true;
+        kept += 1;
+    }
+    let mut index = 0;
+    let mut targets = targets;
+    targets.retain(|_| {
+        index += 1;
+        keep[index - 1]
+    });
+    targets
 }
 
 /// At most `limit` of `items`, in their order, those `rank` puts lower

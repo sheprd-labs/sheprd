@@ -16,6 +16,7 @@ impl Localize for Error {
             Self::AgentContext { operation, .. } => {
                 fl!("error-agent-context", operation = *operation)
             }
+            Self::AgentInteractions(error) => error.to_string(),
             Self::Automations(error) => error.localize(),
             Self::Backdrop(error) => error.localize(),
             Self::Bonjour(error) => fl!("error-bonjour", error = error.to_string()),

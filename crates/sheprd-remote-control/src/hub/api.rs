@@ -43,6 +43,7 @@ pub(crate) enum ApiMethod {
     WorkspaceCreate,
     WorkspaceRename,
     WorktreeCreate,
+    WorktreeOpen,
     WorktreeRemove,
     // keep-sorted end
 }
@@ -75,6 +76,7 @@ impl ApiMethod {
             Self::WorkspaceCreate => "workspace.create",
             Self::WorkspaceRename => "workspace.rename",
             Self::WorktreeCreate => "worktree.create",
+            Self::WorktreeOpen => "worktree.open",
             Self::WorktreeRemove => "worktree.remove",
         }
     }

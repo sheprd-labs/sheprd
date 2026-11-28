@@ -90,6 +90,7 @@ pub(super) fn offline(dir: &std::path::Path, layout: Layout) -> Shared {
 pub(super) fn permission(id: u64) -> sheprd_chat_protocol::Permission {
     use sheprd_chat_protocol::{PermissionKind, PermissionOption};
     sheprd_chat_protocol::Permission {
+        guest: None,
         call_id: Some("call-1".into()),
         id: PermissionId(id),
         options: vec![

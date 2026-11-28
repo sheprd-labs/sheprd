@@ -135,6 +135,9 @@ async fn a_core_failure_is_reported_and_not_retried_on_herdr_one() {
     let hub = hub_on(&source, Layout::default());
     let error = hub
         .create_workspace(NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent: Agent::Claude,
             branch: None,
             cwd: "/refused",
@@ -160,6 +163,9 @@ async fn a_worktree_chat_starts_on_the_core_in_its_new_checkout() {
     hub.worktrees = Some(root.clone());
     let created = hub
         .create_workspace(NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent: Agent::Claude,
             branch: Some("topic"),
             cwd: repository.to_str().unwrap(),
@@ -197,6 +203,9 @@ async fn a_worktree_whose_chat_fails_leaves_the_branch_free_to_retry() {
     // The fake core refuses a folder of this name.
     let error = hub
         .create_workspace(NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent: Agent::Claude,
             branch: Some("refused"),
             cwd: repository.to_str().unwrap(),
@@ -244,6 +253,9 @@ async fn a_worktree_git_refuses_starts_no_chat() {
     hub.worktrees = Some(dir.path().join("worktrees"));
     let error = hub
         .create_workspace(NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent: Agent::Claude,
             branch: Some("topic"),
             cwd: dir.path().to_str().unwrap(),
@@ -438,6 +450,9 @@ async fn a_named_herdr_1_session_is_refused_rather_than_ignored() {
     );
     let refused = hub
         .create_workspace(NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent: Agent::Claude,
             branch: None,
             cwd: "/code/one",
@@ -453,6 +468,41 @@ async fn a_named_herdr_1_session_is_refused_rather_than_ignored() {
         fake.inputs.try_recv().is_err(),
         "nothing started on Herdr 2"
     );
+    drop((hub, source));
+    fake.server.join().unwrap();
+}
+
+#[tokio::test]
+async fn a_terminal_needs_no_chat_program() {
+    let dir = tempfile::tempdir().unwrap();
+    let repository = committed_repository(dir.path());
+    let root = dir.path().join("worktrees");
+    let (source, fake) = fake_with_chat(&EndpointId::random());
+    source.poll().unwrap();
+    let mut hub = hub_on(&source, Layout::default());
+    hub.program = None;
+    hub.worktrees = Some(root.clone());
+    hub.create_workspace(NewWorkspace {
+        base: None,
+        checkout: None,
+        shell: true,
+        agent: Agent::Claude,
+        branch: Some("topic"),
+        cwd: repository.to_str().unwrap(),
+        session: None,
+        title: None,
+    })
+    .await
+    .unwrap();
+    let checkout = root.join("project").join("topic");
+    let params = &request(&fake)["params"];
+    assert_eq!(params["cwd"], checkout.to_str().unwrap());
+    // The checkout's shell: no program, no chat endpoint.
+    assert!(
+        params["argv"].as_array().is_none_or(Vec::is_empty),
+        "{params}"
+    );
+    assert!(params["labels"].get(TOKEN).is_none(), "{params}");
     drop((hub, source));
     fake.server.join().unwrap();
 }

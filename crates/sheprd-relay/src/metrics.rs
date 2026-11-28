@@ -284,12 +284,13 @@ impl Metrics {
             &mut out,
             "sheprd_relay_build_info",
             "gauge",
-            "The relay's version.",
+            "The relay's version, and the commit it was built from.",
         );
         let _ = writeln!(
             out,
-            "sheprd_relay_build_info{{version=\"{}\"}} 1",
-            env!("CARGO_PKG_VERSION")
+            "sheprd_relay_build_info{{version=\"{}\",commit=\"{}\"}} 1",
+            env!("CARGO_PKG_VERSION"),
+            crate::commit().unwrap_or("unknown")
         );
         family(
             &mut out,

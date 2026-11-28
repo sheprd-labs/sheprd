@@ -12,6 +12,7 @@ mod display;
 mod endpoint;
 mod excerpt;
 mod frame;
+mod guests;
 mod harnesses;
 mod media;
 mod naming;
@@ -40,6 +41,7 @@ fn user(id: u64, value: &str) -> Entry {
     text(
         id,
         |text| EntryKind::User {
+            guest: None,
             text,
             files: 0,
             note: None,
@@ -66,6 +68,7 @@ fn tool(id: u64, status: ToolStatus) -> Entry {
 
 fn permission(id: u64) -> Permission {
     Permission {
+        guest: None,
         call_id: Some("call-1".to_owned()),
         id: PermissionId(id),
         options: vec![PermissionOption {

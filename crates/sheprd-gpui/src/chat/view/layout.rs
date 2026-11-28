@@ -22,7 +22,15 @@ use crate::{
     config::{ChatLayoutMode, FontConfig, Theme},
 };
 use gpui::{prelude::*, *};
-use sheprd_chat_protocol::{Author, Entry, EntryKind};
+use sheprd_chat_protocol::{Author, Entry, EntryKind, Guest, MAX_GUEST_NAME, MAX_GUEST_TOOL};
+
+/// The guest who wrote `kind`, when it is a prompt a guest wrote.
+pub(super) fn guest_of(kind: &EntryKind) -> Option<&Guest> {
+    match kind {
+        EntryKind::User { guest, .. } => guest.as_ref(),
+        _ => None,
+    }
+}
 
 /// Who an entry speaks for; a turn's summary speaks for neither.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -56,6 +64,9 @@ pub(super) fn side(kind: &EntryKind) -> Option<Side> {
 pub(super) struct Row<'a> {
     pub(super) entry: &'a Entry,
     pub(super) previous: Option<Side>,
+    /// The guest who wrote the entry before, when a guest did: a guest
+    /// after the person, or the person after a guest, speaks anew.
+    pub(super) previous_guest: Option<&'a Guest>,
     pub(super) next: Option<Side>,
     /// The agent's display name, as the program reports it.
     pub(super) agent: &'a str,
@@ -77,7 +88,29 @@ impl Row<'_> {
 
     /// Whether this entry starts what its speaker says.
     pub(super) fn speaker(&self) -> bool {
-        self.side().is_some() && self.previous != self.side()
+        self.side().is_some()
+            && (self.previous != self.side() || self.previous_guest != guest_of(&self.entry.kind))
+    }
+
+    /// What tests find the speaker's name by: the guest's own for a guest.
+    pub(super) fn speaker_selector(&self) -> String {
+        match guest_of(&self.entry.kind) {
+            Some(_) => format!("chat-guest-{}", self.entry.id.0),
+            None => "chat-speaker".into(),
+        }
+    }
+
+    /// Who said the entry, for layouts that name the person's side: the
+    /// person, or the guest who wrote it.
+    pub(super) fn user_name(&self) -> String {
+        match guest_of(&self.entry.kind) {
+            Some(guest) => crate::i18n::fl!(
+                "chat-guest-label",
+                name = crate::notifications::safe_text(&guest.name, MAX_GUEST_NAME),
+                tool = crate::notifications::safe_text(&guest.tool, MAX_GUEST_TOOL)
+            ),
+            None => crate::i18n::fl!("chat-you"),
+        }
     }
 }
 

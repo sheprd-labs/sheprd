@@ -136,25 +136,37 @@ public actor GitHubSignIn {
     /// reason other than GitHub refusing the refresh token, a token not yet
     /// expired is still used.
     public func token() async throws -> GitHubToken {
+        try await tokenWithLogin().token
+    }
+
+    /// `token()` paired with the GitHub login that owns it.
+    func tokenWithLogin() async throws -> (token: GitHubToken, login: String) {
         let credential = try credential()
         saveUnsaved()
         let now = flow.now()
-        guard credential.renewalDue(at: now) else { return credential.accessToken }
+        guard credential.renewalDue(at: now) else { return (credential.accessToken, credential.login) }
         do {
-            return try await renew(credential).accessToken
+            let renewed = try await renew(credential)
+            return (renewed.accessToken, renewed.login)
         } catch let error as GitHubSignInError where error != .refreshRejected {
             guard let expires = credential.expiresAt, expires > flow.now() else { throw error }
-            return credential.accessToken
+            return (credential.accessToken, credential.login)
         }
     }
 
     /// GitHub refused `token` (401): answers a renewed one, or the current
     /// one when another read already renewed it.
     func renew(rejected token: GitHubToken) async throws -> GitHubToken {
+        try await renewWithLogin(rejected: token).token
+    }
+
+    /// `renew(rejected:)` paired with the GitHub login that owns it.
+    func renewWithLogin(rejected token: GitHubToken) async throws -> (token: GitHubToken, login: String) {
         let credential = try credential()
-        guard credential.accessToken == token else { return credential.accessToken }
+        guard credential.accessToken == token else { return (credential.accessToken, credential.login) }
         guard credential.refreshToken != nil else { throw GitHubSignInError.unauthorized }
-        return try await renew(credential).accessToken
+        let renewed = try await renew(credential)
+        return (renewed.accessToken, renewed.login)
     }
 
     private func credential() throws -> GitHubSignInCredential {

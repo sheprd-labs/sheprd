@@ -16,7 +16,7 @@ use super::{
     Hues,
     copy::CopyPlacement,
     disclosure::{HeaderText, chevron},
-    layout::{Row, Side, ToolFold, Voice, layout_for, side},
+    layout::{Row, Side, ToolFold, Voice, guest_of, layout_for, side},
     visuals::Frame,
 };
 use crate::chat::code_block::scroll_sideways;
@@ -281,6 +281,10 @@ impl SheprdWindow {
         let row = Row {
             entry,
             previous: near(index.checked_sub(1)),
+            previous_guest: index
+                .checked_sub(1)
+                .and_then(|index| entries.get(index))
+                .and_then(|entry| guest_of(&entry.kind)),
             next: near(index.checked_add(1)),
             agent: chat.session.agent(),
             live: index + 1 == entries.len()
@@ -299,6 +303,7 @@ impl SheprdWindow {
             content,
         };
         let row = layout_for(self.config.chat.layout).row(row, &self.chat_look());
+        let row = self.with_chat_guest(entry, row);
         self.with_chat_sent_note(chat, entry, row, cx)
     }
 

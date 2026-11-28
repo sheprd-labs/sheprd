@@ -5,17 +5,21 @@ import UIKit
 /// Settings > Chats.
 struct ChatSettingsView: View {
     @Environment(AppModel.self) private var model
-    @AppStorage(RowLines.key) private var rowLines = RowLines.choices.lowerBound
+    @AppStorage(RowLines.key) private var rowLines = RowLines.detailDefault
+    @AppStorage(RowLines.titleKey) private var titleLines = RowLines.titleDefault
 
     var body: some View {
         List {
             Section {
+                Picker("Title Lines", selection: $titleLines) {
+                    ForEach(RowLines.choices, id: \.self) { Text($0, format: .number).tag($0) }
+                }
                 Picker("Lines per Row", selection: $rowLines) {
                     ForEach(RowLines.choices, id: \.self) { Text($0, format: .number).tag($0) }
                 }
                 .agentHighlight(.chatRows)
             } footer: {
-                Text("How much of a chat's latest reply or summary its row shows in the lists.")
+                Text("How much of a chat's title, and of its latest reply or summary, its row shows in the lists.")
             }
             Section {
                 NavigationLink(value: AgentSettingsPage.textShortcuts) {

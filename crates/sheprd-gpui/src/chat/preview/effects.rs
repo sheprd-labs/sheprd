@@ -34,6 +34,7 @@ pub(super) fn entries() -> Vec<Entry> {
         Entry {
             id: EntryId(1),
             kind: EntryKind::User {
+                guest: None,
                 text: "Show me every effect.".into(), // i18n: data
                 files: 0,
                 note: None,

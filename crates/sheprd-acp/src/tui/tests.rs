@@ -1,5 +1,7 @@
 use super::*;
 
+mod mouse;
+
 #[test]
 fn a_terminal_read_failure_is_an_error_not_a_quit() {
     let failed = terminal_event(Ok(Err(std::io::Error::other("tty gone"))));

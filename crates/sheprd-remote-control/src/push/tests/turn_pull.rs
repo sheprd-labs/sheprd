@@ -23,6 +23,7 @@ fn push(kind: EntryKind) -> Change {
 
 fn user_kind() -> EntryKind {
     EntryKind::User {
+        guest: None,
         text: "go".to_owned(),
         files: 0,
         note: None,

@@ -42,6 +42,7 @@ impl Live {
         state.question = None;
         state.permission = None;
         state.options.clear();
+        state.detail.blocker_title = None;
         if state.phase == Phase::Failed {
             state.summary = None;
         }

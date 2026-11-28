@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 
 use sheprd_chat_protocol::{
-    Agent, Entry, EntryId, EntryKind,
+    Agent, Entry, EntryId, EntryKind, Guest,
     handoff::{self, Handoff, Scope},
     thread::file::Trimmed,
 };
@@ -38,6 +38,8 @@ pub(super) struct Thread {
     /// The conversation's first prompt, kept for handoffs once the
     /// transcript drops its oldest entries.
     first_prompt: Option<String>,
+    /// The guest who wrote the first prompt, if the person did not.
+    first_guest: Option<Guest>,
     /// The text sent ahead of the next prompt, for the agent that took over.
     handoff: Option<String>,
     /// The handoff the turn under way carried, until the agent answers: one
@@ -62,12 +64,16 @@ impl Thread {
     /// The thread of a chat started with `agent`, continuing the
     /// conversation `entries` already show, if any.
     pub(super) fn new(agent: Option<Agent>, entries: &[Entry]) -> Self {
-        let first_prompt = entries.iter().find_map(|entry| match &entry.kind {
-            EntryKind::User { text, .. } => Some(text.clone()),
-            _ => None,
-        });
+        let (first_prompt, first_guest) = entries
+            .iter()
+            .find_map(|entry| match &entry.kind {
+                EntryKind::User { text, guest, .. } => Some((Some(text.clone()), guest.clone())),
+                _ => None,
+            })
+            .unwrap_or_default();
         Self {
             first_prompt,
+            first_guest,
             held: agent.into_iter().collect(),
             ..Self::default()
         }
@@ -80,10 +86,11 @@ impl Thread {
     }
 
     /// A prompt carrying `handoff` went to the agent.
-    pub(super) fn prompted(&mut self, shown: &str, handoff: Option<String>) {
+    pub(super) fn prompted(&mut self, shown: &str, guest: Option<&Guest>, handoff: Option<String>) {
         self.in_flight = handoff;
         if self.first_prompt.is_none() {
             self.first_prompt = Some(shown.to_owned());
+            self.first_guest = guest.cloned();
         }
     }
 
@@ -185,6 +192,7 @@ impl Thread {
                 entries,
                 Scope::Full {
                     first_prompt: self.first_prompt.as_deref(),
+                    first_guest: self.first_guest.as_ref(),
                 },
                 &others,
                 handoff::BUDGET,

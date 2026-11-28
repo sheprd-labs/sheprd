@@ -248,10 +248,19 @@ impl SheprdWindow {
         // workspace hides the daemon's focus. Never light for a background agent.
         let sessions = self.sessions(self.selected_endpoint);
         let kept = self.kept_in_front();
-        if let Some(workspace) = sessions.keyed().find_map(|(keeper, session)| {
+        // Active semantic interaction cue temporarily overrides Edge Light tint.
+        let cue_override = crate::agent_interactions::InteractionStore::try_global(cx)
+            .and_then(|store| store.read(cx).active_edge_cue(std::time::Instant::now()));
+        let rounded = cfg!(target_os = "macos") && !window.is_fullscreen();
+        if let Some(cue) = cue_override {
+            root.extend([super::edge_light::frame_for_cue(
+                cue,
+                self.config.edge_light,
+                rounded,
+            )]);
+        } else if let Some(workspace) = sessions.keyed().find_map(|(keeper, session)| {
             session.workspace(Sessions::front_of(keeper, session, kept)?)
         }) {
-            let rounded = cfg!(target_os = "macos") && !window.is_fullscreen();
             root.extend([super::edge_light::frame(
                 workspace.status,
                 self.config.edge_light,
@@ -261,6 +270,7 @@ impl SheprdWindow {
         root.extend(self.render_tab_ghost(cx));
         root.extend(self.render_core_note(cx).map(IntoElement::into_any_element));
         root.extend(self.render_toasts(window, cx));
+        root.extend(self.render_agent_interactions(window, cx));
         root.extend(self.render_file_transfer(window, cx));
         root.extend(self.render_menu_leaving(window, cx));
         // A custom Luau picker handles the sheet it opened.

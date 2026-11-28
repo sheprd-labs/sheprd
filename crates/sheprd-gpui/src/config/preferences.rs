@@ -5,6 +5,8 @@ use sheprd_client::protocol::ToastHerdrPosition;
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Preference {
     AgentsPlacement(AgentsPlacement),
+    /// `[chat] agent_modals`: whether agents can trigger persistent window modals.
+    ChatAgentModals(bool),
     /// `[chat] auto_convert`: whether new terminal agents move into chats.
     ChatAutoConvert(bool),
     /// `[chat] code_line_numbers`: whether code blocks number their lines.
@@ -13,8 +15,12 @@ pub(crate) enum Preference {
     ChatCodeStripes(bool),
     /// `[chat] glide`: whether chats scroll smoothly to new output.
     ChatGlide(bool),
+    /// `[chat] global_modals`: whether urgent agent modals float over all apps.
+    ChatGlobalModals(bool),
     /// Whether desktop chats show message effects.
     ChatMessageEffects(bool),
+    /// `[chat] progress_pill`: whether long agent runs show the floating progress pill.
+    ChatProgressPill(bool),
     /// `[chat] launcher`: where tab strips offer one-click chats.
     ChatLauncher(ChatLauncher),
     /// `[chat] layout`: how chat views draw.
@@ -149,6 +155,9 @@ impl Config {
                 Preference::AgentsPlacement(placement) => {
                     (None, "agents_placement", Some(placement.as_str().into()))
                 }
+                Preference::ChatAgentModals(value) => {
+                    (Some("chat"), "agent_modals", Some(value.into()))
+                }
                 Preference::ChatAutoConvert(value) => {
                     (Some("chat"), "auto_convert", Some(value.into()))
                 }
@@ -158,8 +167,14 @@ impl Config {
                 Preference::ChatCodeStripes(value) => {
                     (Some("chat"), "code_stripes", Some(value.into()))
                 }
+                Preference::ChatGlobalModals(value) => {
+                    (Some("chat"), "global_modals", Some(value.into()))
+                }
                 Preference::ChatMessageEffects(value) => {
                     (Some("chat"), "message_effects", Some(value.into()))
+                }
+                Preference::ChatProgressPill(value) => {
+                    (Some("chat"), "progress_pill", Some(value.into()))
                 }
                 Preference::ChatGlide(value) => (Some("chat"), "glide", Some(value.into())),
                 Preference::ChatLauncher(launcher) => {

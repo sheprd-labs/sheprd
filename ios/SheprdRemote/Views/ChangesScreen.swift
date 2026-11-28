@@ -142,7 +142,7 @@ struct ChangesScreen: View {
             }
         }
         .onAppear { GitHubDirect.shared.watchSignIn() }
-        .sheet(item: $sending) { check in SendLogSheet(key: key, check: check) }
+        .sheet(item: $sending) { check in SendLogSheet(key: key, check: check).environment(model) }
         #if DEBUG
         .navigationDestination(item: $debugFile) { FileDiffScreen(key: key, scope: scope, file: $0).makesRoomForConnectionToast() }
         .onChange(of: debugFiles) { _, files in

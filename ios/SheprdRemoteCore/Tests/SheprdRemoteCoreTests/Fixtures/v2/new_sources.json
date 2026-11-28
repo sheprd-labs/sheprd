@@ -1,0 +1,21 @@
+{
+  "branches": [
+    "fix-menus",
+    "release/2"
+  ],
+  "checkouts": [
+    {
+      "path": "/Users/me/.herdr/worktrees/app/side",
+      "branch": "side"
+    },
+    {
+      "path": "/Users/me/.herdr/worktrees/app/bisect",
+      "branch": null
+    }
+  ],
+  "repository": {
+    "host": "github.com",
+    "owner": "acme",
+    "repo": "app"
+  }
+}

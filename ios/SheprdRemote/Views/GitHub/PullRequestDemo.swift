@@ -26,6 +26,15 @@ enum PullRequestDemo {
         return PullRequestReading(detail: detail, files: files)
     }
 
+    static func toggledReactions(
+        _ detail: PullRequestDetail,
+        content: PullRequestDetail.ReactionContent,
+        target: PullRequestTarget
+    ) -> [PullRequestDetail.ReactionGroup]? {
+        guard mode?.hasPrefix("detail") == true, target == Self.target else { return nil }
+        return detail.togglingReaction(content).reactions
+    }
+
     static func pullRequest() async -> GitHubPullRequest? {
         let api = GitHubAPI(transport: transport)
         let found = try? await api.pullRequests(
@@ -118,8 +127,13 @@ enum PullRequestDemo {
         """
         let user = { (login: String) in ["__typename": "User", "login": login] }
         return ["data": ["repository": ["nameWithOwner": "sheprd-labs/sheprd", "pullRequest": [
-            "number": 1342, "title": title, "url": "https://github.com/sheprd-labs/sheprd/pull/1342", "state": "OPEN",
+            "id": "PR_kwDOdemo1342", "number": 1342, "title": title, "url": "https://github.com/sheprd-labs/sheprd/pull/1342", "state": "OPEN",
             "isDraft": false, "reviewDecision": "CHANGES_REQUESTED", "body": body, "createdAt": ago(5 * 3600),
+            "viewerCanReact": true,
+            "reactionGroups": [
+                ["content": "THUMBS_UP", "viewerHasReacted": true, "reactors": ["totalCount": 2]],
+                ["content": "ROCKET", "viewerHasReacted": false, "reactors": ["totalCount": 1]],
+            ],
             "additions": 619, "deletions": 50, "changedFiles": 5, "baseRefName": "main", "headRefName": "phone-github-reads",
             "author": ["login": "octocat"],
             "reviewRequests": ["nodes": [["requestedReviewer": ["__typename": "Team", "slug": "ios", "organization": ["login": "sheprd-labs"]]]]],

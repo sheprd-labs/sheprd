@@ -192,6 +192,38 @@ fn chats_on_screen_alone_still_respect_the_bound() {
 }
 
 #[test]
+fn the_focused_chat_attaches_among_more_on_screen_than_fit() {
+    // Studio's 30 chats, every one on screen, the focused one last.
+    let panes: Vec<String> = (0..30).map(|n| format!("p{n}")).collect();
+    let agents: Vec<_> = panes.iter().map(|pane| (pane.as_str(), ID)).collect();
+    let route = Route::Ssh("penso@r-c83c5296e5b87858.sheprd.invalid".into());
+    let targets = discovery::targets(&snapshot(&agents), Some(&route));
+    let focused = panes[29].clone();
+    let kept = discovery::bounded(targets, |pane| u8::from(pane != focused));
+    assert_eq!(kept.len(), route.max_chats().min(MAX_CHATS));
+    assert!(kept.iter().any(|target| target.pane_id == focused));
+}
+
+#[test]
+fn an_ssh_host_limit_counts_only_that_hosts_chats() {
+    let route = Route::Ssh("devbox".into());
+    let remote: Vec<String> = (0..30).map(|n| format!("r{n}")).collect();
+    let agents: Vec<_> = remote.iter().map(|pane| (pane.as_str(), ID)).collect();
+    let mut targets = discovery::targets(&snapshot(&agents), Some(&route));
+    let local: Vec<String> = (0..4).map(|n| format!("l{n}")).collect();
+    let agents: Vec<_> = local.iter().map(|pane| (pane.as_str(), ID)).collect();
+    targets.extend(discovery::targets(&snapshot(&agents), Some(&Route::Local)));
+    // The local chats are on screen; the host's fill the rest.
+    let kept = discovery::bounded(targets, |pane| u8::from(!pane.starts_with('l')));
+    let on_host = kept.iter().filter(|target| target.route == route).count();
+    assert!(on_host <= route.max_chats());
+    assert_eq!(kept.len(), MAX_CHATS);
+    for pane in &local {
+        assert!(kept.iter().any(|target| &target.pane_id == pane));
+    }
+}
+
+#[test]
 fn saved_remote_daemons_have_host_side_routes_but_arbitrary_sockets_do_not() {
     assert!(discovery::targets(&snapshot(&[("p1", ID)]), None).is_empty());
     let live = connected(true);

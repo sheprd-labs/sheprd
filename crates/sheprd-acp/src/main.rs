@@ -16,6 +16,7 @@ mod herdr;
 mod history;
 mod known;
 mod mirror;
+mod multiplex;
 mod observe;
 mod pi;
 mod pictures;
@@ -58,6 +59,13 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Ok(cli::Parsed::Connect(id)) => match relay::run(&id) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => {
+                eprintln!("sheprd-acp: {error:#}");
+                ExitCode::FAILURE
+            }
+        },
+        Ok(cli::Parsed::Multiplex) => match multiplex::run() {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => {
                 eprintln!("sheprd-acp: {error:#}");

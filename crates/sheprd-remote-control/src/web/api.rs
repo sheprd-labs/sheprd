@@ -406,6 +406,21 @@ pub(super) async fn upload(
     Ok(Json(json!({ "id": id })))
 }
 
+/// A picture of the phone's window, which an agent asked for with `sheprd
+/// phone snapshot`; the phone's answer to that drive names it by this id.
+pub(super) async fn snapshot(
+    State(state): State<Shared>,
+    _device: Device,
+    bytes: axum::body::Bytes,
+) -> Result<Json<Value>, ApiError> {
+    let id = crate::auth::random_id()?;
+    let stored = state.clone();
+    let id = tokio::task::spawn_blocking(move || stored.uploads.store(id, &bytes, now_ms()))
+        .await
+        .map_err(|_| ApiError::Invalid("the upload was interrupted"))??;
+    Ok(Json(json!({ "id": id })))
+}
+
 #[derive(Deserialize)]
 pub(super) struct NewWorkspace {
     cwd: String,
@@ -424,6 +439,9 @@ pub(super) async fn create_workspace(
     state
         .hub
         .create_workspace(crate::hub::NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent,
             branch: branch.as_deref(),
             cwd: &request.cwd,

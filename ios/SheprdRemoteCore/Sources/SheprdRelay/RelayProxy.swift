@@ -48,20 +48,32 @@ public final class RelayProxy: @unchecked Sendable {
     public func start() async throws -> UInt16 {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<UInt16, Error>) in
             let once = Once()
-            listener.stateUpdateHandler = { [listener] state in
-                switch state {
-                case .ready:
-                    if once.claim(), let port = listener.port?.rawValue { continuation.resume(returning: port) }
-                case let .failed(error):
-                    if once.claim() { continuation.resume(throwing: error) }
-                default:
-                    break
+            queue.async { [weak self] in
+                guard let self, !self.stopped else {
+                    if once.claim() { continuation.resume(throwing: CancellationError()) }
+                    return
                 }
+                self.listener.stateUpdateHandler = { [listener = self.listener] state in
+                    switch state {
+                    case .ready:
+                        guard let port = listener.port?.rawValue else {
+                            if once.claim() { continuation.resume(throwing: CancellationError()) }
+                            return
+                        }
+                        if once.claim() { continuation.resume(returning: port) }
+                    case let .failed(error):
+                        if once.claim() { continuation.resume(throwing: error) }
+                    case .cancelled:
+                        if once.claim() { continuation.resume(throwing: CancellationError()) }
+                    default:
+                        break
+                    }
+                }
+                self.listener.newConnectionHandler = { [weak self] connection in
+                    self?.serve(connection)
+                }
+                self.listener.start(queue: self.queue)
             }
-            listener.newConnectionHandler = { [weak self] connection in
-                self?.serve(connection)
-            }
-            listener.start(queue: queue)
         }
     }
 

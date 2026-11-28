@@ -42,6 +42,7 @@ struct Mockup: View {
         case ("new", "A"): NewWorkspaceForm()
         case ("new", "B"): NewWorkspacePicker()
         case ("new", "C"): NewWorkspacePrompt()
+        case ("newfrom", _): NewWorkspaceFrom(variant: variant, state: state)
         case ("session", "A"): SessionList()
         case ("session", "B"): SessionPanel()
         case ("session", "C"): SessionCards()
@@ -107,6 +108,7 @@ struct Mockup: View {
         case ("prdetail", "C"): PRDetailTimeline(state: state)
         case ("prdetail", "D"): PRDetailGrid(state: state)
         case ("prlist", "A"): PRListSwitch(state: state)
+        case ("prfilter", "A"): PRFilterMenu(state: state)
         case ("prlist", "B"): PRListSection(state: state)
         case ("prlist", "C"): PRListRepos(state: state)
         case ("prlist", "D"): PRListCards(state: state)
@@ -139,6 +141,10 @@ struct Mockup: View {
         case ("csettings", "B"): ComputersSettingsGrouped(state: state)
         case ("csettings", "C"): ComputersSettingsHealth()
         case ("csettings", "D"): ComputersSettingsConnection()
+        case ("trees", "A"): WorktreesByComputer()
+        case ("trees", "B"): WorktreesActivity()
+        case ("trees", "C"): WorktreesTree()
+        case ("trees", "D"): WorktreesSheet()
         default: Text("No mockup \(screen) \(variant)")
         }
     }
@@ -173,6 +179,7 @@ struct Catalog: View {
         ("prhead", "C", 0), ("prhead", "C", 1), ("prhead", "D", 0), ("prhead", "D", 1),
         ("prdetail", "A", 0), ("prdetail", "A", 1), ("prdetail", "B", 0), ("prdetail", "B", 1),
         ("prdetail", "C", 0), ("prdetail", "C", 1), ("prdetail", "D", 0), ("prdetail", "D", 1),
+        ("prfilter", "A", 0), ("prfilter", "A", 1),
         ("prlist", "A", 0), ("prlist", "A", 1), ("prlist", "B", 0), ("prlist", "B", 1),
         ("prlist", "C", 0), ("prlist", "C", 1), ("prlist", "D", 0), ("prlist", "D", 1),
         ("ghsettings", "A", 0), ("ghsettings", "A", 1), ("ghsettings", "A", 2), ("ghsettings", "A", 3),

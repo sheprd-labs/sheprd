@@ -427,7 +427,12 @@ impl Builder {
                 Part::Text(lines) => self.lines(region, lines),
                 // Source owned by a preview/card is not visible transcript
                 // text. A range across it must never reveal the hidden payload.
-                Part::Diagram(_, _) | Part::Html { .. } | Part::Widget(_) | Part::Screen(_) => {}
+                Part::Diagram(_, _)
+                | Part::Html { .. }
+                | Part::Widget(_)
+                | Part::Screen(_)
+                | Part::Interaction(_)
+                | Part::Cue(_) => {}
                 Part::Picture { alt } | Part::Remote { alt, .. } => {
                     self.plain(region, Cell::default(), alt.clone())
                 }

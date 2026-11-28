@@ -6,8 +6,8 @@ over live `Hub` chats and trusted `Relays`), the native **Share this session**
 dialog with live guest preview, chat header Share/Sharing control, and
 `sheprd remote share` / `sheprd remote shares` CLI commands are implemented.
 No share route starts on daemon boot; shares are created only after explicit
-owner confirmation in the dialog. The browser viewer bundle and native
-"Shared with me" recipient view remain follow-up work. The
+owner confirmation in the dialog. A relay with the browser viewer enabled serves the browser viewer from its own origin. The native
+"Shared with me" recipient view remains follow-up work. The
 [plan](../session-sharing-plan.md) remains the roadmap;
 [gateway v0](gateway.md) records the implemented wire flow.
 
@@ -71,29 +71,36 @@ content; individual text blocks are capped at 16 KiB on UTF-8 boundaries. Older
 content is marked truncated. Revoked grants count toward the grant limit until
 that share ends. No replay archive or transcript is written to disk.
 
-## Remaining work before a usable link
+## Opening a browser link
 
-1. Connect the implemented sharing worker and gateway to the daemon's real chat
-   snapshot feed and explicit owner enablement. Add listener orchestration,
-   multi-relay reconnect/status and host-wide route limits. The native reference
-   path has timers, proof-bound admission, queue/bandwidth limits and cancellation;
-   it is not started automatically or exposed through the paired-phone API.
-2. Complete the browser portability changes proved in Phase 0, relay key binding,
-   browser invitation handling and the same-origin viewer profile. The source archive remains
-   experimental and must not be deployed.
-3. Add explicit, immutable artifact inclusion with its own bounded object store,
-   audit retention and policy-change handling. Current code refuses artifact access
-   and requires stopping/creating a share to change its content policy.
-4. Connect owner confirmations, previews, typed guest closure reasons,
-   state/error presentation and the matching CLI commands. Add restricted browser/native renderers that never resolve local
-   paths, execute HTML or fetch external images from shared Markdown automatically.
-5. Run the plan's real relay, browser, native and cross-platform acceptance gates.
-   People, teams and supervised collaboration follow the read-only product.
+The dialog and CLI call the same host service. It selects a trusted HTTPS relay,
+checks the advertised viewer capability and configured QUIC pin, subscribes to
+the chat feed and starts a dedicated listener with the host's listen token.
+It returns the link after the relay acknowledges the grant's dial key.
 
-No service was installed, identity account created, real agent session shared,
-or relay deployed by this change.
+The relay embeds the landing page and worker bundle. The fragment stays in
+memory until Join. A dedicated WASM entry point, `sheprd-share-viewer`, keeps
+the daemon and native networking out of the browser build. It shares the
+invitation envelope, admission proof encoding, relay challenge, hybrid tunnel,
+read schema and transcript reducer with the native implementation. The browser
+renders user, agent and opt-in tool text with an inert Markdown subset.
 
-## Verification of this change
+For local acceptance, install Python Playwright and its Chromium browser, then
+run `python scripts/test-share-viewer.py` from the repository root. Set
+`CHROMIUM` to use an existing Chromium executable. The fixture uses temporary
+loopback TCP/UDP ports, a temporary TLS certificate, synthetic source data and
+a private temporary store. Add `--screenshots DIR` to capture the viewer states.
+
+## Remaining work
+
+The host has one route and one selected relay per share. Replacing a failed
+host route across multiple relays, explicit artifact inclusion, the native
+recipient UI, independent security review and the wider browser/platform/load
+matrix remain open. The host and relay keep the existing quotas and expiry
+checks; there is no offline archive. See [gateway v0](gateway.md) for browser
+failure semantics, packaging and operator instructions.
+
+## Historical host-only verification
 
 - `cargo test --locked -p sheprd-remote-control --lib sharing::tests`: 24 passed.
   These exercise the real store, private files, capability checks and projection
@@ -106,8 +113,7 @@ or relay deployed by this change.
   only enumerate tracked files.
 - Retained HTML relative links and the source ZIP's integrity: checked.
 
-Full workspace and cross-platform gates are deferred to CI. Native application/browser product flows have not been tested because their
-adapters are not implemented. Subsequent native gateway tests exercise real relay
+At that stage the native application and browser adapters had not been tested. Subsequent native gateway tests exercise real relay
 admission as recorded below; Phase 0 browser evidence remains separate.
 
 ## Relay gateway verification
@@ -128,9 +134,7 @@ native `gateway::peer` reference client. See [the draft profile](gateway.md).
 - Workspace formatting, size/sorted checks, direct added-file checks and
   `git diff --check`: passed.
 
-No production daemon or relay configuration changed. No new dependency was added.
-Browser/WSS and native application UI acceptance tests remain pending, along with
-cross-platform/full-workspace CI and independent security review.
+Those checks covered the native gateway.
 
 ## Invitation verification
 

@@ -87,10 +87,14 @@ struct Host {
     phase: Phase,
     /// Failed starts in a row, which lengthen the backoff.
     failures: u32,
+    /// The last start found a master of the user's own, which commands
+    /// connecting directly ride without another login.
+    user_master: bool,
     /// Bumped when the host's masters are retired, so a master that was
     /// starting at the time is not handed out once it is ready.
     generation: u64,
-    /// At most one that is not retired; retired ones only drain.
+    /// At most [`Lane::masters`] that are not retired; retired ones only
+    /// drain.
     masters: Vec<Master>,
 }
 
@@ -214,9 +218,10 @@ impl Registry {
         self.hosts.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// A channel on `target`'s `lane` master, starting one if there is none.
-    /// `None` means connect directly: the master is full, failed recently, or
-    /// was not ready by `deadline` or before `cancelled`.
+    /// A channel on one of `target`'s `lane` masters, starting one when
+    /// every master is full and the lane may have another. `None` means
+    /// connect directly: every master the lane may have is full, one failed
+    /// recently, or none was ready by `deadline` or before `cancelled`.
     pub(crate) fn open(
         self: &Arc<Self>,
         target: &str,
@@ -230,10 +235,12 @@ impl Registry {
             let now = Instant::now();
             sweep(&mut hosts, now, self.idle);
             let host = hosts.entry(key.clone()).or_default();
-            if let Some(master) = host.masters.iter_mut().find(|m| !m.retired) {
-                if master.channels >= lane.channels() {
-                    return None;
-                }
+            let live = host.masters.iter().filter(|m| !m.retired).count();
+            if let Some(master) = host
+                .masters
+                .iter_mut()
+                .find(|m| !m.retired && m.channels < lane.channels())
+            {
                 master.channels += 1;
                 master.last_used = now;
                 return Some(Channel {
@@ -242,6 +249,9 @@ impl Registry {
                     socket: master.socket.clone(),
                     key,
                 });
+            }
+            if live >= lane.masters() {
+                return None;
             }
             match host.phase {
                 Phase::Direct { until } if now < until => return None,
@@ -267,8 +277,26 @@ impl Registry {
         }
     }
 
-    /// See `super::bridge_connecting`.
-    pub(crate) fn bridge_connecting(&self, target: &str, session: &str) {
+    /// Whether `target`'s `lane` commands ride a master of the user's own:
+    /// the last attempt to start one of this process's found one, and it
+    /// still answers. One that has since closed is forgotten, so a command
+    /// counting on it never opens a login of its own instead. Asks `ssh`,
+    /// locally: call it off the UI thread.
+    pub(crate) fn rides_user_master(&self, target: &str, lane: Lane) -> bool {
+        let key = (target.to_owned(), lane);
+        let found = self.lock().get(&key).is_some_and(|host| host.user_master);
+        if !found || user_master_alive(&self.program, target) {
+            return found;
+        }
+        if let Some(host) = self.lock().get_mut(&key) {
+            host.user_master = false;
+        }
+        false
+    }
+
+    /// See `super::bridge_connecting`. True when it is a reconnect, which
+    /// retired the host's masters.
+    pub(crate) fn bridge_connecting(&self, target: &str, session: &str) -> bool {
         let first = self
             .bridges
             .lock()
@@ -277,6 +305,7 @@ impl Registry {
         if !first {
             self.retire(target);
         }
+        !first
     }
 
     /// Retire `target`'s masters in every lane: no new channels, and each
@@ -319,6 +348,7 @@ impl Registry {
                         host.masters.push(master);
                         host.phase = Phase::Free;
                         host.failures = 0;
+                        host.user_master = false;
                         registry.watch_idle();
                     }
                     Err(error) => {
@@ -330,7 +360,8 @@ impl Registry {
                         );
                         // The user's own master is no failed login: look
                         // again at the base interval.
-                        if !matches!(error, StartError::UserMaster) {
+                        host.user_master = matches!(error, StartError::UserMaster);
+                        if !host.user_master {
                             host.failures = host.failures.saturating_add(1);
                         }
                         host.phase = Phase::Direct {
@@ -417,15 +448,21 @@ fn backoff(failures: u32) -> Duration {
 /// How long asking for the user's own master may take; it is local.
 const CHECK_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// Whether a master of the user's own (their `ControlPath`) serves
+/// `target` now. The question is local: `ssh -O check` asks the socket.
+fn user_master_alive(program: &OsString, target: &str) -> bool {
+    let mut check = crate::environment::command(&program.to_string_lossy());
+    check.args(["-O", "check", "--", target]);
+    let checked = crate::ssh::run(&mut check, CHECK_TIMEOUT, || false);
+    matches!(checked, Ok((status, _)) if status.success())
+}
+
 /// Starts a master and waits until it has authenticated, which is when it
 /// creates its control socket. A host with a live master from the user's own
 /// config gets none: commands connecting directly ride that one, which may
 /// have been authenticated interactively where this master cannot be.
 fn launch(program: &OsString, target: &str, lane: Lane, id: u64) -> Result<Master, StartError> {
-    let mut check = crate::environment::command(&program.to_string_lossy());
-    check.args(["-O", "check", "--", target]);
-    let checked = crate::ssh::run(&mut check, CHECK_TIMEOUT, || false);
-    if matches!(checked, Ok((status, _)) if status.success()) {
+    if user_master_alive(program, target) {
         return Err(StartError::UserMaster);
     }
     let dir = ControlDir::create("herdr-mux").map_err(StartError::Directory)?;

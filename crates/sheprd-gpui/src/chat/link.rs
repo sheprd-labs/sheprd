@@ -4,16 +4,21 @@
 //! The endpoint is `sheprd_client::private_endpoint`: a socket on Unix, and on
 //! Windows a pipe checked to be this user's before anything is sent. A chat
 //! on an SSH host is reached through a child process instead, `ssh` running
-//! `herdr-acp connect` there, whose standard streams carry the same frames.
+//! `herdr-acp connect` there, whose standard streams carry the same frames,
+//! or a stream of the host's one multiplexer ([`mux`]) where it has one.
 //! A reader that gets ahead of the window by [`MAX_EVENTS`] messages gives the
 //! connection up rather than buffering more, and the window reconnects from
 //! its cursor.
+
+mod mux;
+mod stderr;
 
 use super::{Error, MAX_EVENTS, MAX_PENDING, Result};
 use sheprd_chat_protocol::{
     ClientKind, ClientMessage, Cursor, REVISION, ServerMessage, VERSION, read_frame, write_frame,
 };
 use sheprd_client::private_endpoint::Connection;
+
 use std::{
     io::{BufReader, BufWriter, Read, Write},
     path::PathBuf,
@@ -56,6 +61,10 @@ pub(crate) enum Dial {
     /// the relay counts, and a dozen chats reconnecting would use up its
     /// rate limit. Resolved on the reader thread: it may wait for the master.
     Ssh(String, String),
+    /// The chat with this endpoint id on an SSH host, over the host's
+    /// multiplexer, so all its chats share one channel; or, when the host
+    /// has none, over [`Self::Ssh`] running `connect`.
+    Mux(String, sheprd_chat_protocol::EndpointId),
 }
 
 impl From<PathBuf> for Dial {
@@ -69,6 +78,7 @@ impl From<PathBuf> for Dial {
 enum Closer {
     Socket(sheprd_client::private_endpoint::Closer),
     Process(Arc<Mutex<Child>>),
+    Stream(sheprd_chat_protocol::mux::Stream),
 }
 
 impl Closer {
@@ -76,12 +86,14 @@ impl Closer {
         Ok(match self {
             Self::Socket(closer) => Self::Socket(closer.try_clone()?),
             Self::Process(child) => Self::Process(child.clone()),
+            Self::Stream(stream) => Self::Stream(stream.clone()),
         })
     }
 
     fn close(&self) {
         match self {
             Self::Socket(closer) => closer.close(),
+            Self::Stream(stream) => stream.close(),
             // Held only while the reader reaps a child already killed.
             Self::Process(child) => {
                 if let Ok(mut child) = child.try_lock() {
@@ -101,21 +113,32 @@ impl Closer {
     }
 }
 
-type Parts = (Box<dyn Read + Send>, Box<dyn Write + Send>, Closer);
+type Parts = (
+    Box<dyn Read + Send>,
+    Box<dyn Write + Send>,
+    Closer,
+    Option<stderr::Tail>,
+);
 
 /// Connects as `dial` says, into a reader, a writer, and their closer.
 fn open(dial: Dial) -> std::io::Result<Parts> {
     match dial {
         Dial::Socket(path) => {
             let (reader, writer, closer) = Connection::connect(&path, CONNECT_TIMEOUT)?.split()?;
-            Ok((Box::new(reader), Box::new(writer), Closer::Socket(closer)))
+            Ok((
+                Box::new(reader),
+                Box::new(writer),
+                Closer::Socket(closer),
+                None,
+            ))
         }
         Dial::Process(mut command) => {
             let mut child = command
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
-                .stderr(Stdio::null())
+                .stderr(Stdio::piped())
                 .spawn()?;
+            let tail = child.stderr.take().and_then(stderr::Tail::watch);
             let streams = child.stdout.take().zip(child.stdin.take());
             let closer = Closer::Process(Arc::new(Mutex::new(child)));
             let Some((stdout, stdin)) = streams else {
@@ -123,9 +146,11 @@ fn open(dial: Dial) -> std::io::Result<Parts> {
                 closer.reap();
                 return Err(std::io::ErrorKind::BrokenPipe.into());
             };
-            Ok((Box::new(stdout), Box::new(stdin), closer))
+            Ok((Box::new(stdout), Box::new(stdin), closer, tail))
         }
-        Dial::Remote(..) | Dial::Ssh(..) => Err(std::io::ErrorKind::Unsupported.into()),
+        Dial::Remote(..) | Dial::Ssh(..) | Dial::Mux(..) => {
+            Err(std::io::ErrorKind::Unsupported.into())
+        }
     }
 }
 
@@ -264,19 +289,58 @@ fn run(
     if let Dial::Ssh(host, script) = dial {
         let shared =
             sheprd_client::shared_script_command(&host, &script, sheprd_client::SshLane::Stream);
-        // The channel stays open until the child below is reaped.
+        // The channel stays open until the child below is reaped. Through a
+        // relay, every login of a chat's own is a dial, which a window full
+        // of chats retrying would run past the relay's rate with: such a
+        // chat waits for room on the shared connection instead.
         return match shared {
+            Ok((_, None))
+                if waits_for_shared(
+                    &host,
+                    sheprd_client::rides_own_master(&host, sheprd_client::SshLane::Stream),
+                ) =>
+            {
+                Error::NoSharedLogin
+            }
             Ok((command, _channel)) => run(Dial::Process(command), since, queued, events, socket),
             Err(error) => Error::Remote(error),
         };
     }
-    let parts = open(dial).and_then(|(reader, writer, closer)| {
-        let writer_closer = closer.try_clone()?;
-        Ok((reader, writer, closer, writer_closer))
-    });
-    let (reader, writer, closer, writer_closer) = match parts {
-        Ok(parts) => parts,
-        Err(error) => return Error::Connect(error),
+    if let Dial::Mux(host, endpoint) = dial {
+        let Some(stream) = mux::open(&host, &endpoint) else {
+            let script = super::remote_program_script(&format!("connect {endpoint}"));
+            return run(Dial::Ssh(host, script), since, queued, events, socket);
+        };
+        let parts: Parts = (
+            Box::new(stream.clone()),
+            Box::new(stream.clone()),
+            Closer::Stream(stream),
+            None,
+        );
+        return serve(parts, since, queued, events, socket);
+    }
+    match open(dial) {
+        Ok(parts) => serve(parts, since, queued, events, socket),
+        Err(error) => Error::Connect(error),
+    }
+}
+
+/// Greets over `parts` through a writer thread, and reads until the
+/// connection ends, returning why.
+fn serve(
+    (reader, writer, closer, tail): Parts,
+    since: Option<Cursor>,
+    queued: Receiver<ClientMessage>,
+    events: &SyncSender<ServerMessage>,
+    socket: &Socket,
+) -> Error {
+    let writer_closer = match closer.try_clone() {
+        Ok(writer_closer) => writer_closer,
+        Err(error) => {
+            closer.close();
+            closer.reap();
+            return Error::Connect(error);
+        }
     };
     socket.attach(&closer);
     let hello = ClientMessage::Hello {
@@ -306,7 +370,19 @@ fn run(
     };
     closer.close();
     closer.reap();
+    // `ssh` says why a remote chat's connection failed only here.
+    if let Some(said) = tail.and_then(stderr::Tail::said) {
+        tracing::debug!(error = %end, said, "Chat connection's transport said");
+    }
     end
+}
+
+/// Whether a chat on `host` that got no channel on the host's shared
+/// connection waits rather than logging in on its own: a relay host's
+/// every login is a dial its rate counts. A master of the user's own, which
+/// the direct command rides without another login, carries it instead.
+fn waits_for_shared(host: &str, rides_own_master: bool) -> bool {
+    sheprd_client::relay_host::is_relay_target(host) && !rides_own_master
 }
 
 /// The writer thread: the greeting, then each queued command in order,
@@ -326,4 +402,16 @@ fn write(
         }
     }
     closer.close();
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn only_a_relay_hosts_chats_wait_for_its_shared_connection() {
+        let relay = "penso@r-c83c5296e5b87858.sheprd.invalid";
+        assert!(super::waits_for_shared(relay, false));
+        // A master of the user's own carries it without another dial.
+        assert!(!super::waits_for_shared(relay, true));
+        assert!(!super::waits_for_shared("penso@studio.local", false));
+    }
 }

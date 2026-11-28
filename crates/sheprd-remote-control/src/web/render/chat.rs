@@ -358,8 +358,20 @@ fn sheet(row: &ChatRow, transcript: &Transcript) -> Markup {
         div id="chat-sheet" {
             div class="sheet" role="dialog" aria-label="The agent asks" {
                 div class="w-10 h-1.5 rounded-full bg-line self-center mb-1.5" {}
-                small class="uppercase tracking-wider font-bold text-amber" { (row.agent.as_deref().unwrap_or("The agent")) " asks" }
-                p class="text-[15px] font-semibold" { (permission.title) }
+                @match &permission.guest {
+                    // A guest's prompt shows whole, scrolling within the
+                    // sheet, so the person reads every word they may send.
+                    Some(prompt) => {
+                        small class="uppercase tracking-wider font-bold text-amber" { (prompt.guest.label()) " asks to send" }
+                        div class="text-[15px] whitespace-pre-wrap" data-guest-ask
+                            data-keep-scroll={ "guest-" (permission.id.0) }
+                            style="max-height:45vh;overflow-y:auto;overflow-wrap:anywhere" { (prompt.text) }
+                    }
+                    None => {
+                        small class="uppercase tracking-wider font-bold text-amber" { (row.agent.as_deref().unwrap_or("The agent")) " asks" }
+                        p class="text-[15px] font-semibold" { (permission.title) }
+                    }
+                }
                 @for option in primary(permission) { (answer(row, permission, option.0, option.1)) }
                 @for option in permission.options.iter().filter(|option| matches!(option.kind, PermissionKind::AllowAlways | PermissionKind::RejectAlways)) {
                     button type="button" class="btn-subtle" data-pane=(row.pane) data-command=(answer_json(permission, &option.id)) { (option.name) }

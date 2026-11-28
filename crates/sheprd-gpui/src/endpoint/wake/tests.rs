@@ -191,6 +191,41 @@ fn a_path_change_is_weaker_than_the_network_coming_back() {
 }
 
 #[test]
+fn a_flapping_path_probes_live_links_only_now_and_then() {
+    let start = Instant::now();
+    let wall = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000);
+    let mut clock = WakeClock::new(start, wall, NetworkChanges::default());
+    let changed = |changed: u64, restored: u64| NetworkChanges { restored, changed };
+    let at = |secs: u64| {
+        (
+            start + Duration::from_secs(secs),
+            wall + Duration::from_secs(secs),
+        )
+    };
+    let (instant, wall_now) = at(1);
+    assert_eq!(
+        clock.due(instant, wall_now, changed(1, 0)),
+        Some(Trigger::PathChanged)
+    );
+    // Hotel Wi-Fi under Tailscale: a new path every five seconds.
+    for (n, secs) in [5, 10, 15, 20].into_iter().enumerate() {
+        let (instant, wall_now) = at(secs);
+        assert_eq!(clock.due(instant, wall_now, changed(n as u64 + 2, 0)), None);
+    }
+    let (instant, wall_now) = at(21);
+    assert_eq!(
+        clock.due(instant, wall_now, changed(5, 0)),
+        Some(Trigger::PathChanged)
+    );
+    // The network coming back is not held back by the path's gap.
+    let (instant, wall_now) = at(23);
+    assert_eq!(
+        clock.due(instant, wall_now, changed(5, 1)),
+        Some(Trigger::NetworkRestored)
+    );
+}
+
+#[test]
 fn only_a_sleep_asks_a_live_link_to_answer_within_seconds() {
     use sheprd_client::Suspicion;
     assert_eq!(Trigger::Sleep.suspicion(), Suspicion::Slept);

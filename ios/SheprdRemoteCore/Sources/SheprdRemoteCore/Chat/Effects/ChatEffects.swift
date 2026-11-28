@@ -32,12 +32,28 @@ public struct ChatEffects: Hashable, Sendable {
         public var bubbles: Int
         /// Whether its screen effect was met.
         public var screen: Bool
+        /// Its interaction cues met, as a reply may stream more blocks in later.
+        public var interactionCues: Int
 
-        public init(epoch: UUID?, entry: EntryId, bubbles: Int, screen: Bool) {
+        public init(epoch: UUID?, entry: EntryId, bubbles: Int, screen: Bool, interactionCues: Int = 0) {
             self.epoch = epoch
             self.entry = entry
             self.bubbles = bubbles
             self.screen = screen
+            self.interactionCues = interactionCues
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case epoch, entry, bubbles, screen, interactionCues
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            epoch = try c.decodeIfPresent(UUID.self, forKey: .epoch)
+            entry = try c.decode(EntryId.self, forKey: .entry)
+            bubbles = try c.decode(Int.self, forKey: .bubbles)
+            screen = try c.decode(Bool.self, forKey: .screen)
+            interactionCues = try c.decodeIfPresent(Int.self, forKey: .interactionCues) ?? 0
         }
     }
 
@@ -73,6 +89,8 @@ public struct ChatEffects: Hashable, Sendable {
         /// More of the letters zap shoots down streamed in, `at` seconds
         /// after it began: their shots are still to come.
         case letters(Range<Int>, at: Double)
+        /// A semantic interaction cue (`::cue yubikey` or an interaction's default cue).
+        case interactionCue(InteractionCue)
 
         /// Where its sound and taps play: a bubble's beside anything else,
         /// a screen effect's in place of the one before.
@@ -87,7 +105,7 @@ public struct ChatEffects: Hashable, Sendable {
 
         public var lane: Lane {
             switch self {
-            case .bubble: .bubble
+            case .bubble, .interactionCue: .bubble
             case .screen: .newScreen
             case .letters: .screen
             }
@@ -98,12 +116,15 @@ public struct ChatEffects: Hashable, Sendable {
             case let .bubble(effect): effect.cue
             case let .screen(effect, text): effect.cue(letters: EffectScene.letters(in: text))
             case let .letters(letters, at): ScreenEffect.zap(letters).after(at)
+            case let .interactionCue(cue): cue.cue
             }
         }
     }
 
     /// Bubbles met in each message, so only a new one plays.
     private var bubbles: [EntryId: Int] = [:]
+    /// Semantic interaction cues met in each message, so streaming never repeats them.
+    private var interactionCues: [EntryId: Int] = [:]
     /// Messages whose screen effect was met.
     private var screens: Set<EntryId> = []
     /// When each bubble last began to play.
@@ -142,6 +163,8 @@ public struct ChatEffects: Hashable, Sendable {
             let met = min(mark.bubbles, message.bubbles)
             if met > 0 { bubbles[mark.entry] = met }
             if mark.screen, message.screen != nil { screens.insert(mark.entry) }
+            let metCues = min(mark.interactionCues, message.allCues.count)
+            if metCues > 0 { interactionCues[mark.entry] = metCues }
         }
         self.mark = mark
     }
@@ -191,6 +214,14 @@ public struct ChatEffects: Hashable, Sendable {
                 playing = Playing(entry: id, effect: effect, since: now, text: message.gist())
                 began.append(.screen(effect, text: message.gist()))
             }
+            let metCues = interactionCues[id] ?? 0
+            let allCues = message.allCues
+            if allCues.count > metCues {
+                interactionCues[id] = allCues.count
+                for cue in allCues[metCues..<allCues.count] where !began.contains(.interactionCue(cue)) {
+                    began.append(.interactionCue(cue))
+                }
+            }
         }
         if let newest = seen.max() { advance(to: newest) }
         expire(now: now)
@@ -237,7 +268,13 @@ public struct ChatEffects: Hashable, Sendable {
     /// Moves the mark to `entry`, as met now, unless it is already past it.
     private mutating func advance(to entry: EntryId) {
         if let mark, mark.entry > entry { return }
-        mark = Mark(epoch: epoch, entry: entry, bubbles: bubbles[entry] ?? 0, screen: screens.contains(entry))
+        mark = Mark(
+            epoch: epoch,
+            entry: entry,
+            bubbles: bubbles[entry] ?? 0,
+            screen: screens.contains(entry),
+            interactionCues: interactionCues[entry] ?? 0
+        )
     }
 
     /// Notes the effects of the entries `noted` picks without playing them.
@@ -247,6 +284,8 @@ public struct ChatEffects: Hashable, Sendable {
             let count = message.bubbles
             if count > bubbles[entry.id] ?? 0 { bubbles[entry.id] = count }
             if message.screen != nil { screens.insert(entry.id) }
+            let cueCount = message.allCues.count
+            if cueCount > interactionCues[entry.id] ?? 0 { interactionCues[entry.id] = cueCount }
         }
     }
 

@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sheprd · Agent Persistent Modals — Mockups</title>
+  <link rel="stylesheet" href="/.herdr/kit.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="/.herdr/kit.js"></script>
+</head>
+<body class="hk">
+<main class="hk-page modal-page">
+
+  <!-- ───────────── Header ───────────── -->
+  <header class="page-head">
+    <div class="page-eyebrow">DESIGN MOCKUPS · AGENT CHAT DIRECTIVES &amp; PERSISTENT MODALS</div>
+    <div class="page-title-row">
+      <h1>Beyond effects: persistent modals for agents</h1>
+      <div class="head-actions">
+        <button class="hk-button" id="theme-toggle" type="button">Light / dark</button>
+      </div>
+    </div>
+    <p class="lede">
+      Today agents can only play transient chat effects (<code>:::slam</code>, <code>::confetti</code>, <code>::wizz</code>)
+      that vanish in a few seconds. Here are visual mockups for two persistent tiers:
+      <strong>Window modals</strong> (pinned to the agent's Sheprd window) and
+      <strong>Global "can't miss" modals</strong> (always-on-top across every app, Space, and display — e.g. blocked waiting for a YubiKey touch).
+    </p>
+    <div class="review-tip">
+      <span class="tip-icon">✎</span>
+      <div>
+        <strong>Interactive mockups:</strong>
+        Pick a variant in each section, click <b>Simulate YubiKey tap</b> or <b>Fire live overlay</b> to feel the lifecycle,
+        or use <b>Annotate</b> in Sheprd's toolbar to pin notes anywhere on this page.
+      </div>
+    </div>
+  </header>
+
+  <!-- ───────────── Quick Comparison Strip ───────────── -->
+  <section class="tiers-bar" aria-label="Escalation ladder">
+    <div class="tier-card muted-tier">
+      <div class="tier-tag">EXISTING · 1–4s</div>
+      <h3>Chat effects &amp; <code>::wizz</code></h3>
+      <p>Stays inside the chat pane. Shakes once or animates briefly, then disappears.</p>
+    </div>
+    <div class="tier-arrow" aria-hidden="true">→</div>
+    <div class="tier-card window-tier">
+      <div class="tier-tag">NEW · SAME WINDOW · PERSISTENT</div>
+      <h3>Window modal</h3>
+      <p>Stays visible over the Sheprd window even when you switch tabs or workspaces, until dismissed or resolved.</p>
+    </div>
+    <div class="tier-arrow" aria-hidden="true">→</div>
+    <div class="tier-card global-tier">
+      <div class="tier-tag">NEW · ALL APPS &amp; SPACES · UNMISSABLE</div>
+      <h3>Global "can't miss" modal</h3>
+      <p>Floats above Safari, Slack, fullscreen apps, and all Sheprd windows until you act (e.g. tap YubiKey) or dismiss.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION 1: PERSISTENT MODAL WITHIN THE SAME WINDOW
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="window-modals">
+    <div class="section-head">
+      <div>
+        <span class="section-num">01</span>
+        <h2>Persistent modal — same Sheprd window</h2>
+      </div>
+      <p class="section-sub">
+        You are in another tab (e.g. Neovim or a different worktree) inside the same Sheprd window when Claude hits a blocker or needs a decision.
+        Pick how intrusive this tier should feel.
+      </p>
+    </div>
+
+    <div class="variants-grid" data-group="window_modal">
+
+      <!-- ── W1: Centered Scrimmed Sheet ── -->
+      <article class="variant-card" data-variant="W1">
+        <div class="variant-head">
+          <div>
+            <h3>W1 · Centered modal with backdrop</h3>
+            <p>True modal dialog over the Sheprd window (matching <code>close_modal.rs</code>). Dimmed scrim stops accidental typing until you jump or dismiss.</p>
+          </div>
+          <button class="pick-btn" type="button" data-pick="W1">Pick W1</button>
+        </div>
+
+        <div class="desktop-frame sheprd-win" data-demo="w1">
+          <div class="win-titlebar">
+            <div class="traffic"><i></i><i></i><i></i></div>
+            <div class="win-tabs">
+              <span class="wtab active">nvim · render.rs</span>
+              <span class="wtab has-alert"><span class="dot amber pulse"></span>Claude · release</span>
+              <span class="wtab">zsh</span>
+            </div>
+            <div class="win-host">Local</div>
+          </div>
+          <div class="win-body">
+            <aside class="win-sidebar">
+              <div class="sb-ws">
+                <div class="sb-title">herdr-gpui</div>
+                <div class="sb-row active"><span class="dot green"></span>nvim</div>
+                <div class="sb-row alert"><span class="dot amber pulse"></span>Claude · release</div>
+                <div class="sb-row"><span class="dot gray"></span>Codex · tests</div>
+              </div>
+              <div class="sb-ws">
+                <div class="sb-title">site</div>
+                <div class="sb-row"><span class="dot gray"></span>zsh</div>
+              </div>
+            </aside>
+            <div class="win-pane">
+              <pre class="fake-code"> 142  pub(super) fn append_overlays(
+ 143      &amp;mut self,
+ 144      root: &amp;mut impl ParentElement,
+ 145      window: &amp;mut Window,
+ 146      cx: &amp;mut Context&lt;Self&gt;,
+ 147  ) {
+ 148      root.extend(self.render_toasts(window, cx));</pre>
+            </div>
+
+            <!-- W1 Overlay -->
+            <div class="w-scrim" data-modal-el>
+              <div class="m-card m-card-center">
+                <div class="m-source">
+                  <span class="agent-badge claude">✳</span>
+                  <span class="m-who"><strong>Claude</strong> · herdr-gpui / release</span>
+                  <span class="m-timer">1m 14s</span>
+                </div>
+                <h4 class="m-title">Confirm force-push to <code>feat/chat-modals</code>?</h4>
+                <p class="m-body">
+                  Rebased 4 commits onto <code>main</code> cleanly. Waiting for your go-ahead before pushing — this rewrites the remote branch.
+                </p>
+                <div class="m-directive-pill">from <code>:::modal</code> in chat</div>
+                <div class="m-actions">
+                  <button class="m-btn ghost" type="button" data-action="dismiss">Dismiss <kbd>Esc</kbd></button>
+                  <button class="m-btn primary" type="button" data-action="jump">Go to chat <kbd>↵</kbd></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="demo-bar">
+          <button class="mini-btn" type="button" data-reset="w1">Replay modal</button>
+          <span class="demo-note">Titlebar stays visible; clicking backdrop or Esc dismisses, Enter jumps to Claude.</span>
+        </div>
+      </article>
+
+      <!-- ── W2: Floating Non-Blocking Top Sheet ── -->
+      <article class="variant-card" data-variant="W2">
+        <div class="variant-head">
+          <div>
+            <h3>W2 · Floating persistent sheet (non-blocking)</h3>
+            <p>Pinned top-center below the tab strip with amber edge-light, no dark scrim. Lets you check code in your current tab before answering.</p>
+          </div>
+          <button class="pick-btn" type="button" data-pick="W2">Pick W2</button>
+        </div>
+
+        <div class="desktop-frame sheprd-win edge-amber" data-demo="w2">
+          <div class="win-titlebar">
+            <div class="traffic"><i></i><i></i><i></i></div>
+            <div class="win-tabs">
+              <span class="wtab active">nvim · render.rs</span>
+              <span class="wtab has-alert"><span class="dot amber pulse"></span>Claude · release</span>
+              <span class="wtab">zsh</span>
+            </div>
+            <div class="win-host">Local</div>
+          </div>
+          <div class="win-body">
+            <aside class="win-sidebar">
+              <div class="sb-ws">
+                <div class="sb-title">herdr-gpui</div>
+                <div class="sb-row active"><span class="dot green"></span>nvim</div>
+                <div class="sb-row alert"><span class="dot amber pulse"></span>Claude · release</div>
+                <div class="sb-row"><span class="dot gray"></span>Codex · tests</div>
+              </div>
+              <div class="sb-ws">
+                <div class="sb-title">site</div>
+                <div class="sb-row"><span class="dot gray"></span>zsh</div>
+              </div>
+            </aside>
+            <div class="win-pane">
+              <pre class="fake-code"> 142  pub(super) fn append_overlays(
+ 143      &amp;mut self,
+ 144      root: &amp;mut impl ParentElement,
+ 145      window: &amp;mut Window,
+ 146      cx: &amp;mut Context&lt;Self&gt;,
+ 147  ) {
+ 148      root.extend(self.render_toasts(window, cx));
+ 149      root.extend(self.render_agent_modals(cx));</pre>
+
+              <!-- W2 Floating top-center card -->
+              <div class="w-float-top" data-modal-el>
+                <div class="m-card m-card-float">
+                  <div class="m-accent-bar amber"></div>
+                  <div class="m-float-inner">
+                    <div class="m-source">
+                      <span class="agent-badge claude">✳</span>
+                      <span class="m-who"><strong>Claude</strong> · release</span>
+                      <span class="m-pill-persist">Pinned</span>
+                      <span class="m-timer">1m 14s</span>
+                    </div>
+                    <h4 class="m-title">Confirm force-push to <code>feat/chat-modals</code>?</h4>
+                    <p class="m-body">Rebased 4 commits onto <code>main</code>. Waiting for your go-ahead before pushing.</p>
+                    <div class="m-actions compact">
+                      <button class="m-btn ghost" type="button" data-action="dismiss">Dismiss</button>
+                      <button class="m-btn primary" type="button" data-action="jump">Go to chat</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="demo-bar">
+          <button class="mini-btn" type="button" data-reset="w2">Replay sheet</button>
+          <span class="demo-note">Terminal underneath remains scrollable &amp; readable; window edge glows amber.</span>
+        </div>
+      </article>
+
+      <!-- ── W3: Scrimmed Modal + Quick Reply ── -->
+      <article class="variant-card" data-variant="W3">
+        <div class="variant-head">
+          <div>
+            <h3>W3 · Centered modal with inline quick-reply</h3>
+            <p>Like W1, plus a compact reply input right inside the modal so you can answer without leaving your current tab or editor.</p>
+          </div>
+          <button class="pick-btn" type="button" data-pick="W3">Pick W3</button>
+        </div>
+
+        <div class="desktop-frame sheprd-win" data-demo="w3">
+          <div class="win-titlebar">
+            <div class="traffic"><i></i><i></i><i></i></div>
+            <div class="win-tabs">
+              <span class="wtab active">nvim · render.rs</span>
+              <span class="wtab has-alert"><span class="dot amber pulse"></span>Claude · release</span>
+              <span class="wtab">zsh</span>
+            </div>
+            <div class="win-host">Local</div>
+          </div>
+          <div class="win-body">
+            <aside class="win-sidebar">
+              <div class="sb-ws">
+                <div class="sb-title">herdr-gpui</div>
+                <div class="sb-row active"><span class="dot green"></span>nvim</div>
+                <div class="sb-row alert"><span class="dot amber pulse"></span>Claude · release</div>
+                <div class="sb-row"><span class="dot gray"></span>Codex · tests</div>
+              </div>
+            </aside>
+            <div class="win-pane">
+              <pre class="fake-code"> 142  pub(super) fn append_overlays(
+ 143      &amp;mut self,
+ 144      root: &amp;mut impl ParentElement,
+ 145      window: &amp;mut Window,</pre>
+            </div>
+
+            <!-- W3 Overlay -->
+            <div class="w-scrim" data-modal-el>
+              <div class="m-card m-card-center">
+                <div class="m-source">
+                  <span class="agent-badge claude">✳</span>
+                  <span class="m-who"><strong>Claude</strong> · herdr-gpui / release</span>
+                  <span class="m-timer">1m 14s</span>
+                </div>
+                <h4 class="m-title">Confirm force-push to <code>feat/chat-modals</code>?</h4>
+                <p class="m-body">
+                  Rebased 4 commits onto <code>main</code> cleanly. Reply here or jump to chat.
+                </p>
+                <div class="m-quick-reply">
+                  <input type="text" placeholder="Reply to Claude…" value="Yes, go ahead and push">
+                  <button class="m-btn primary sm" type="button" data-action="reply">Send</button>
+                </div>
+                <div class="m-actions split">
+                  <button class="m-btn link" type="button" data-action="jump">Open chat tab ↗</button>
+                  <button class="m-btn ghost" type="button" data-action="dismiss">Dismiss</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="demo-bar">
+          <button class="mini-btn" type="button" data-reset="w3">Replay modal</button>
+          <span class="demo-note">Sending a quick reply dismisses the modal and keeps you in Neovim.</span>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION 2: PERSISTENT GLOBAL / "CAN'T MISS" MODAL (YUBIKEY SCENARIO)
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="global-modals">
+    <div class="section-head">
+      <div>
+        <span class="section-num">02</span>
+        <h2>Persistent modal — global / "can't miss" (all apps &amp; Spaces)</h2>
+      </div>
+      <p class="section-sub">
+        You are in <strong>Safari</strong> (or Slack / Xcode / another macOS Space) while Sheprd is buried behind other windows.
+        Claude runs <code>git push</code> and is hard-blocked waiting for your <strong>YubiKey touch</strong>.
+        Try <b>Simulate YubiKey tap</b> to see auto-dismissal on unblock!
+      </p>
+    </div>
+
+    <div class="variants-grid" data-group="global_modal">
+
+      <!-- ── G1: Floating Desktop HUD Panel (Top-Center, Non-Focus-Stealing) ── -->
+      <article class="variant-card" data-variant="G1">
+        <div class="variant-head">
+          <div>
+            <h3>G1 · Always-on-top HUD panel (top-center, keeps focus)</h3>
+            <p>A macOS floating <code>NSPanel</code> (<code>CanJoinAllSpaces</code>) hovering below the menu bar across every app and fullscreen Space. Unmissable amber pulse, never eats your keystrokes.</p>
+          </div>
+          <button class="pick-btn" type="button" data-pick="G1">Pick G1</button>
+        </div>
+
+        <div class="desktop-frame mac-desktop" data-demo="g1">
+          <div class="mac-menubar">
+            <span> &nbsp;<b>Safari</b> &nbsp; File &nbsp; Edit &nbsp; View &nbsp; History</span>
+            <span>Wi-Fi &nbsp; 100% &nbsp; Thu 10:34 PM</span>
+          </div>
+          <div class="other-app safari-app">
+            <div class="safari-bar">
+              <div class="traffic"><i></i><i></i><i></i></div>
+              <div class="safari-url">github.com/sheprd-labs/sheprd/pull/1428</div>
+            </div>
+            <div class="safari-content">
+              <div class="fake-pr-title">feat(chat): support persistent agent modals #1428</div>
+              <div class="fake-pr-meta"><span class="pr-pill">Open</span> penso wants to merge 3 commits into main</div>
+              <div class="fake-pr-lines">
+                <div></div><div class="short"></div><div></div><div class="med"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- G1 Floating Always-on-Top HUD -->
+          <div class="g-hud-wrap" data-modal-el>
+            <div class="g-hud-card">
+              <div class="yubi-icon-box" aria-hidden="true">
+                <span class="yubi-ring"></span>
+                <span class="yubi-glyph">🔑</span>
+              </div>
+              <div class="g-hud-copy">
+                <div class="g-hud-meta">
+                  <span class="sheprd-chip">Sheprd</span>
+                  <span>Claude · <b>herdr-gpui</b></span>
+                  <span class="blocked-tag">BLOCKED · 0:42</span>
+                </div>
+                <div class="g-hud-title">Tap your YubiKey to sign &amp; push</div>
+                <div class="g-hud-sub">Waiting on <code>git push origin feat/chat-modals</code> (SSH FIDO2 key)</div>
+              </div>
+              <div class="g-hud-actions">
+                <button class="m-btn primary sm" type="button" data-action="jump">Open chat</button>
+                <button class="m-btn ghost sm" type="button" data-action="dismiss">Dismiss</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mac-dock">
+            <span class="dock-ic">🧭</span>
+            <span class="dock-ic">💬</span>
+            <span class="dock-ic sheprd-dock bouncing">S<i class="dock-badge">1</i></span>
+            <span class="dock-ic">⚙️</span>
+          </div>
+        </div>
+
+        <div class="demo-bar">
+          <button class="mini-btn ok-btn" type="button" data-yubikey="g1">✦ Simulate YubiKey tap</button>
+          <button class="mini-btn" type="button" data-reset="g1">Replay</button>
+          <span class="demo-note">Tapping YubiKey auto-clears the HUD with a brief green confirmation.</span>
+        </div>
+      </article>
+
+      <!-- ── G2: Center-Screen Unmissable Interruption Modal ── -->
+      <article class="variant-card" data-variant="G2">
+        <div class="variant-head">
+          <div>
+            <h3>G2 · Center-screen unmissable floating dialog</h3>
+            <p>Dead-center on the active display with a subtle edge vignette and large tactile icon. Built for moments where you genuinely want to be interrupted.</p>
+          </div>
+          <button class="pick-btn" type="button" data-pick="G2">Pick G2</button>
+        </div>
+
+        <div class="desktop-frame mac-desktop" data-demo="g2">
+          <div class="mac-menubar">
+            <span> &nbsp;<b>Safari</b> &nbsp; File &nbsp; Edit &nbsp; View &nbsp; History</span>
+            <span>Wi-Fi &nbsp; 100% &nbsp; Thu 10:34 PM</span>
+          </div>
+          <div class="other-app safari-app">
+            <div class="safari-bar">
+              <div class="traffic"><i></i><i></i><i></i></div>
+              <div class="safari-url">github.com/sheprd-labs/sheprd/pull/1428</div>
+            </div>
+            <div class="safari-content">
+              <div class="fake-pr-title">feat(chat): support persistent agent modals #1428</div>
+              <div class="fake-pr-meta"><span class="pr-pill">Open</span> penso wants to merge 3 commits into main</div>
+              <div class="fake-pr-lines">
+                <div></div><div class="short"></div><div></div><div class="med"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- G2 Center Screen Modal -->
+          <div class="g-center-wrap" data-modal-el>
+            <div class="g-center-card">
+              <div class="g-center-top">
+                <span class="sheprd-chip">Sheprd · Urgent</span>
+                <span class="blocked-tag">BLOCKED · 0:42</span>
+              </div>
+              <div class="g-center-hero">
+                <div class="yubi-icon-box lg" aria-hidden="true">
+                  <span class="yubi-ring"></span>
+                  <span class="yubi-glyph">🔑</span>
+                </div>
+                <h4>Tap your YubiKey now</h4>
+                <p><strong>Claude</strong> in <code>herdr-gpui</code> is blocked waiting for hardware key touch on <code>git push origin feat/chat-modals</code>.</p>
+              </div>
+              <div class="g-center-foot">
+                <button class="m-btn ghost" type="button" data-action="snooze">Snooze 2m</button>
+                <button class="m-btn ghost" type="button" data-action="dismiss">Dismiss</button>
+                <button class="m-btn primary" type="button" data-action="jump">Jump to Sheprd</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mac-dock">
+            <span class="dock-ic">🧭</span>
+            <span class="dock-ic">💬</span>
+            <span class="dock-ic sheprd-dock bouncing">S<i class="dock-badge">1</i></span>
+            <span class="dock-ic">⚙️</span>
+          </div>
+        </div>
+
+        <div class="demo-bar">
+          <button class="mini-btn ok-btn" type="button" data-yubikey="g2">✦ Simulate YubiKey tap</button>
+          <button class="mini-btn" type="button" data-reset="g2">Replay</button>
+          <span class="demo-note">Impossible to miss even on a 5K / ultrawide monitor.</span>
+        </div>
+      </article>
+
+      <!-- ── G3: Synchronized System Pill + All-Windows Edge Glow + Phone ── -->
+      <article class="variant-card" data-variant="G3">
+        <div class="variant-head">
+          <div>
+            <h3>G3 · Multi-surface: floating card + all Sheprd windows + iPhone</h3>
+            <p>One persistent floating panel above other apps, synchronized amber banner &amp; Edge Light in every Sheprd window, plus optional time-sensitive iPhone alert if you stepped away.</p>
+          </div>
+          <button class="pick-btn" type="button" data-pick="G3">Pick G3</button>
+        </div>
+
+        <div class="desktop-frame multi-surface" data-demo="g3">
+          <div class="ms-col ms-desktop">
+            <div class="ms-label">Active display (over Slack)</div>
+            <div class="ms-canvas">
+              <div class="ms-bg-app">
+                <div class="ms-slack-bar">#engineering · Slack</div>
+                <div class="ms-slack-msg"><b>maya:</b> Did the release tag push go through?</div>
+                <div class="ms-slack-msg"><b>you:</b> Checking now—</div>
+              </div>
+              <div class="g-hud-card compact" data-modal-el>
+                <div class="yubi-icon-box sm"><span class="yubi-ring"></span><span class="yubi-glyph">🔑</span></div>
+                <div class="g-hud-copy">
+                  <div class="g-hud-meta"><span class="sheprd-chip">Sheprd</span><span class="blocked-tag">0:42</span></div>
+                  <div class="g-hud-title">Tap your YubiKey</div>
+                  <div class="g-hud-sub">Claude · <code>git push</code></div>
+                </div>
+                <div class="g-hud-actions col">
+                  <button class="m-btn primary xs" type="button" data-action="jump">Open</button>
+                  <button class="m-btn ghost xs" type="button" data-action="dismiss">×</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ms-col ms-win2">
+            <div class="ms-label">Other Sheprd window (mirrored)</div>
+            <div class="ms-canvas edge-amber-mini">
+              <div class="ms-win-bar">Window 2 · studio</div>
+              <div class="ms-banner" data-modal-el-mirror>
+                <span class="dot amber pulse"></span>
+                <span><strong>Tap YubiKey</strong> · Claude (Local)</span>
+                <span class="ms-jump">Switch ↗</span>
+              </div>
+              <div class="ms-term">$ cargo test -p sheprd-gpui<br>running 412 tests...</div>
+            </div>
+          </div>
+
+          <div class="ms-col ms-phone">
+            <div class="ms-label">Paired iPhone (if idle &gt; 15s)</div>
+            <div class="ms-phone-shell">
+              <div class="ms-island" data-modal-el-mirror>
+                <span class="dot amber pulse"></span>
+                <span>Tap YubiKey at Mac</span>
+              </div>
+              <div class="ms-lock-time">10:34</div>
+              <div class="ms-push" data-modal-el-mirror>
+                <div class="ms-push-h"><b>Sheprd</b> · TIME SENSITIVE</div>
+                <div class="ms-push-t">Tap your YubiKey</div>
+                <div class="ms-push-b">Claude · herdr-gpui blocked on git push (at MacBook Pro)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-bar">
+          <button class="mini-btn ok-btn" type="button" data-yubikey="g3">✦ Simulate YubiKey tap</button>
+          <button class="mini-btn" type="button" data-reset="g3">Replay</button>
+          <span class="demo-note">Dismissing or tapping YubiKey clears all three surfaces at once.</span>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION 3: LIVE FULL-VIEWPORT TRY-IT + STACKING + CHAT INLINE STATE
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="details">
+    <div class="section-head">
+      <div>
+        <span class="section-num">03</span>
+        <h2>In-chat appearance, stacking &amp; live feel</h2>
+      </div>
+      <p class="section-sub">
+        How the directive appears inside the chat transcript itself, what happens when two agents block at once, and a real full-viewport preview you can fire right now.
+      </p>
+    </div>
+
+    <div class="details-grid">
+      <!-- Chat transcript representation -->
+      <div class="detail-box">
+        <h4>Inside the chat transcript (like effect replay links)</h4>
+        <div class="chat-sim">
+          <div class="chat-msg">
+            <div class="chat-msg-head"><span class="agent-badge claude sm">✳</span> <strong>Claude</strong> <span class="muted">10:33 PM</span></div>
+            <p>Rebased cleanly onto <code>main</code>. Pushing now — this requires your hardware key.</p>
+            <div class="chat-modal-chip active" id="chat-inline-chip">
+              <span class="chip-icon">🔑</span>
+              <div class="chip-text">
+                <strong>Global modal active · Tap your YubiKey</strong>
+                <span>Waiting on <code>git push origin feat/chat-modals</code></span>
+              </div>
+              <button class="m-btn ghost xs" type="button" id="toggle-chip-state">Dismiss</button>
+            </div>
+            <div class="chat-tool-row">
+              <span class="spinner"></span>
+              <code>git push origin feat/chat-modals</code>
+              <span class="muted">running 42s</span>
+            </div>
+          </div>
+        </div>
+        <p class="detail-caption">
+          In terminal views or the phone web app, <code>:::urgent</code> / <code>:::modal</code> strips its fence lines (just like <code>:::slam</code>) so the message still reads cleanly as prose.
+        </p>
+      </div>
+
+      <!-- Multiple stacked modals -->
+      <div class="detail-box">
+        <h4>When 2+ agents trigger persistent modals at once</h4>
+        <div class="stack-demo" id="stack-demo">
+          <div class="stack-back" aria-hidden="true"></div>
+          <div class="m-card m-card-stack">
+            <div class="m-source">
+              <span class="agent-badge claude" id="stack-badge">✳</span>
+              <span class="m-who" id="stack-who"><strong>Claude</strong> · herdr-gpui</span>
+              <span class="stack-pager">
+                <button type="button" id="stack-prev" aria-label="Previous modal">‹</button>
+                <span id="stack-count">1 of 2</span>
+                <button type="button" id="stack-next" aria-label="Next modal">›</button>
+              </span>
+            </div>
+            <h4 class="m-title" id="stack-title">Tap your YubiKey to sign &amp; push</h4>
+            <p class="m-body" id="stack-body">Waiting on <code>git push origin feat/chat-modals</code> · blocked 42s</p>
+            <div class="m-actions compact">
+              <button class="m-btn ghost sm" type="button" id="stack-dismiss-all">Dismiss all</button>
+              <button class="m-btn primary sm" type="button" id="stack-jump">Go to chat</button>
+            </div>
+          </div>
+        </div>
+        <p class="detail-caption">
+          At most 1 active modal per chat (a newer one replaces the older one for that chat). Different chats queue into a single compact deck so agents can never flood your screen.
+        </p>
+      </div>
+
+      <!-- Live full-viewport preview triggers -->
+      <div class="detail-box full-span">
+        <div class="live-row">
+          <div>
+            <h4>Try it at real scale over this page</h4>
+            <p class="detail-caption" style="margin:4px 0 0">Fire a real-sized overlay over this viewport to judge proportions, contrast, and dismissal ergonomics.</p>
+          </div>
+          <div class="live-btns">
+            <button class="hk-button" type="button" id="fire-live-window">Fire Window Modal</button>
+            <button class="hk-button accent" type="button" id="fire-live-global">Fire Global YubiKey HUD</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION 4: SYNTAX & PRODUCT DECISIONS
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="decisions">
+    <div class="section-head">
+      <div>
+        <span class="section-num">04</span>
+        <h2>Syntax, triggers &amp; design decisions</h2>
+      </div>
+      <p class="section-sub">
+        How agents invoke and clear these modals, plus guardrails so they stay genuinely useful instead of noisy. Click your preference on each decision.
+      </p>
+    </div>
+
+    <!-- Syntax preview -->
+    <div class="syntax-grid">
+      <div class="syntax-card">
+        <div class="syntax-head">Same-window persistent modal</div>
+        <pre><code>:::modal Confirm force-push
+Rebased 4 commits onto `main` cleanly.
+Waiting for your go-ahead before pushing.
+:::</code></pre>
+        <p>First line after <code>:::modal</code> is the optional title; body supports normal Markdown &amp; inline code.</p>
+      </div>
+      <div class="syntax-card urgent">
+        <div class="syntax-head">Global "can't miss" persistent modal</div>
+        <pre><code>:::urgent Tap your YubiKey
+Waiting on `git push origin feat/chat-modals`
+(hardware key touch required).
+:::</code></pre>
+        <p>Triggers the always-on-top global panel (plus Dock bounce &amp; optional phone escalation). Auto-clears when unblocked.</p>
+      </div>
+      <div class="syntax-card cli">
+        <div class="syntax-head">Optional CLI companion (hooks &amp; scripts)</div>
+        <pre><code>sheprd modal show --scope all \
+  --title "Tap your YubiKey" \
+  "Waiting on git push"
+
+sheprd modal clear</code></pre>
+        <p>Lets an agent mid-tool-call, an <code>SSH_ASKPASS</code> hook, or a subagent open &amp; clear a modal explicitly.</p>
+      </div>
+    </div>
+
+    <!-- Decision cards -->
+    <div class="decisions-grid" id="decisions-grid">
+      <article class="dec-card" data-decision="trigger">
+        <div class="dec-num">D1 · Trigger surface</div>
+        <h4>Chat directives only, or directives + CLI?</h4>
+        <p>Directives (<code>:::modal</code> / <code>:::urgent</code>) work from any chat agent (even remote SSH). Adding <code>sheprd modal show|clear</code> also lets scripts &amp; blocked tool calls trigger and clear deterministically.</p>
+        <div class="dec-choices">
+          <button type="button" data-val="both" class="selected">Both directives + CLI (Rec.)</button>
+          <button type="button" data-val="directives">Chat directives only</button>
+        </div>
+      </article>
+
+      <article class="dec-card" data-decision="focus">
+        <div class="dec-num">D2 · Keyboard focus (global modal)</div>
+        <h4>Should the global modal steal keyboard focus?</h4>
+        <p>Keeping focus lets you finish a word in Slack/browser without accidentally dismissing the modal with Space/Enter; taking focus makes <code>Esc</code>/<code>Enter</code> work immediately.</p>
+        <div class="dec-choices">
+          <button type="button" data-val="no_steal" class="selected">Float without stealing focus (Rec.)</button>
+          <button type="button" data-val="steal">Take focus immediately</button>
+        </div>
+      </article>
+
+      <article class="dec-card" data-decision="autoclear">
+        <div class="dec-num">D3 · Auto-clear lifecycle</div>
+        <h4>Clear automatically when the blocker ends?</h4>
+        <p>For a YubiKey touch on <code>git push</code>, the command finishes as soon as you tap. Auto-clearing when the agent resumes/completes (with a brief green "Done" fade) avoids stale modals.</p>
+        <div class="dec-choices">
+          <button type="button" data-val="auto" class="selected">Auto-clear on next reply / tool done (Rec.)</button>
+          <button type="button" data-val="manual">Manual dismiss only</button>
+        </div>
+      </article>
+
+      <article class="dec-card" data-decision="settings">
+        <div class="dec-num">D4 · Settings &amp; safety guardrails</div>
+        <h4>How should users control or silence modals?</h4>
+        <p>Independent of <b>Message effects</b> (you may hate confetti but still need YubiKey modals). Respects worktree/host mute for window modals; global modals get a dedicated toggle in Settings &gt; Chat.</p>
+        <div class="dec-choices">
+          <button type="button" data-val="separate" class="selected">Separate toggles in Settings &gt; Chat (Rec.)</button>
+          <button type="button" data-val="bundled">Under Message effects</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ───────────── Summary & Send Picks Bar ───────────── -->
+  <footer class="picks-footer">
+    <div class="picks-summary" id="picks-summary">
+      Select your preferred variants above (Window: <strong>—</strong> · Global: <strong>—</strong>)
+    </div>
+    <button class="hk-button accent" type="button" id="send-picks">Send picks to agent</button>
+  </footer>
+
+</main>
+
+<!-- Full-viewport live preview host -->
+<div class="live-overlay-host" id="live-overlay-host" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

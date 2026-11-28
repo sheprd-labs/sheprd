@@ -3,9 +3,8 @@
 //! and a quiet rule under how the turn ended closes it. The composer is
 //! one plain box with its settings along the foot.
 
-use super::{ChatLayout, ComposerParts, Look, Row, Side, summary_row};
+use super::{ChatLayout, ComposerParts, Look, Row, Side, guest_of, summary_row};
 use crate::config::{corners, mix};
-use crate::i18n::fl;
 use gpui::{prelude::*, *};
 use sheprd_chat_protocol::EntryKind;
 
@@ -30,10 +29,16 @@ impl ChatLayout for Document {
                 .text_size(px(look.text))
                 .child(
                     div()
-                        .debug_selector(|| "chat-user-label".into())
+                        .debug_selector({
+                            let selector = match guest_of(&row.entry.kind) {
+                                Some(_) => format!("chat-guest-{id}"),
+                                None => "chat-user-label".into(),
+                            };
+                            move || selector.clone()
+                        })
                         .font_weight(FontWeight::SEMIBOLD)
                         .mb(px(6.))
-                        .child(fl!("chat-you")),
+                        .child(row.user_name()),
                 )
                 .child(row.content),
             (Side::User, _) => div()

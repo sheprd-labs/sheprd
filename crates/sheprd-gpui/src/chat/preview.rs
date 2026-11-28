@@ -29,6 +29,7 @@ use crate::{SheprdWindow, config::ChatLayoutMode};
 mod attachments;
 mod continued;
 mod effects;
+mod guests;
 mod input_resize;
 mod progress;
 mod pull_requests;
@@ -123,6 +124,7 @@ impl Options {
                 | "activity-open"
                 | "attachments"
                 | "files"
+                | "guests"
                 | "questions"
                 | "selection"
                 | "user"
@@ -154,7 +156,7 @@ impl Options {
                 | "all"
         ) {
             bail!(
-                "HERDR_TEST_RICH_CHAT expects math, code, diagram, effects, empty, activity, activity-open, running-rail, attachments, files, questions, selection, user, widgets, widgets-end, jump, conversation, continued, continued-before, continued-open, existing, loading, input-resize, tools, turns, progress, progress-before, pull-requests, pull-requests-before, running, running-open, steps, steps-open, state-completed, state-failed, state-stopped, state-waiting, or all"
+                "HERDR_TEST_RICH_CHAT expects math, code, diagram, effects, empty, activity, activity-open, running-rail, attachments, files, guests, questions, selection, user, widgets, widgets-end, jump, conversation, continued, continued-before, continued-open, existing, loading, input-resize, tools, turns, progress, progress-before, pull-requests, pull-requests-before, running, running-open, steps, steps-open, state-completed, state-failed, state-stopped, state-waiting, or all"
             );
         }
         let hold = std::env::var("HERDR_TEST_RICH_CHAT_HOLD_MS")
@@ -455,7 +457,7 @@ fn install(
         },
         read_only: options.read_only || existing, // i18n: data
         entries: vec![
-            Entry { id: EntryId(1), kind: EntryKind::User { text: "Show the result with equations, clear formatting, and controls I can explore.".into(), files: 0, note: None} }, // i18n: data
+            Entry { id: EntryId(1), kind: EntryKind::User { guest: None, text: "Show the result with equations, clear formatting, and controls I can explore.".into(), files: 0, note: None} }, // i18n: data
             Entry { id: EntryId(2), kind: EntryKind::Agent { text: content } },
         ],
         ..Transcript::default()
@@ -472,6 +474,7 @@ fn install(
     }
     if options.case == "files" {
         transcript.entries[0].kind = EntryKind::User {
+            guest: None,
             text: "Attach the video walkthrough and the PDF report to this session.".into(), // i18n: data
             files: 0,
             note: None,
@@ -485,6 +488,9 @@ fn install(
     }
     if options.case == "questions" {
         transcript.entries = question_entries();
+    }
+    if options.case == "guests" {
+        guests::apply(&mut transcript);
     }
     if options.working {
         transcript.turn = Some(sheprd_chat_protocol::Turn {
@@ -555,6 +561,7 @@ fn install(
         transcript.entries = vec![Entry {
             id: EntryId(1),
             kind: EntryKind::User {
+                guest: None,
                 text: USER.into(),
                 files: 0,
                 note: None,
@@ -810,6 +817,7 @@ fn earlier_turns() -> Vec<Entry> {
     let user = |id, text: &str| Entry {
         id: EntryId(id),
         kind: EntryKind::User {
+            guest: None,
             text: text.into(),
             files: 0,
             note: None,
@@ -857,7 +865,7 @@ fn tool_entries() -> Vec<Entry> {
     vec![
         Entry {
             id: EntryId(1),
-            kind: EntryKind::User {
+            kind: EntryKind::User { guest: None,
                 text: "Why does the send button stay pink when the box is empty?".into(), // i18n: data
                 files: 0,
                 note: None,

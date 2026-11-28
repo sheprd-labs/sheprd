@@ -129,7 +129,8 @@ private struct AgentLabels: View {
 }
 
 struct ChatRowLabel: View {
-    @AppStorage(RowLines.key) private var lines = RowLines.choices.lowerBound
+    @AppStorage(RowLines.key) private var lines = RowLines.detailDefault
+    @AppStorage(RowLines.titleKey) private var titleLines = RowLines.titleDefault
     var item: ChatItem
     var showsComputer = true
     /// Off on the workspace's own screen, which names it already.
@@ -147,7 +148,7 @@ struct ChatRowLabel: View {
                 .statusBadge(StatusMark(status: item.chat.status, asking: item.question != nil))
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(title).lineLimit(1)
+                    Text(title).lineLimit(RowLines.clamped(titleLines))
                         .fontWeight(item.unread ? .semibold : nil)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     if item.drafted {
@@ -258,7 +259,8 @@ enum RowPlace {
 /// detail line, so it reads apart from a chat, and what its screen last
 /// showed follows where it runs.
 struct AgentTerminalRowLabel: View {
-    @AppStorage(RowLines.key) private var lines = RowLines.choices.lowerBound
+    @AppStorage(RowLines.key) private var lines = RowLines.detailDefault
+    @AppStorage(RowLines.titleKey) private var titleLines = RowLines.titleDefault
     var item: TerminalItem
     var showsComputer = true
     /// Off on the workspace's own screen, which shows the tab's name
@@ -275,7 +277,7 @@ struct AgentTerminalRowLabel: View {
                 .statusBadge(StatusMark(status: item.agent?.status ?? .unknown))
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(item.title).lineLimit(1)
+                    Text(item.title).lineLimit(RowLines.clamped(titleLines))
                         .fontWeight(item.unread ? .semibold : nil)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     if !item.needsYou, !item.working, let date = item.changed { LastAnswer(date: date, unread: item.unread) }

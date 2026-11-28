@@ -14,9 +14,10 @@ def http_error(code):
 
 
 class FakeApi:
-    def __init__(self, builds, groups):
+    def __init__(self, builds, groups, states=("READY_FOR_BETA_SUBMISSION",)):
         self.builds = list(builds)
         self.groups = groups
+        self.states = list(states)
         self.sent = []
 
     def get(self, path, query, bearer):
@@ -25,6 +26,12 @@ class FakeApi:
             if isinstance(result, BaseException):
                 raise result
             return {"data": result}
+        if path == "builds/build/buildBetaDetail":
+            state = self.states.pop(0) if len(self.states) > 1 else self.states[0]
+            if isinstance(state, BaseException):
+                raise state
+            return {"data": {"attributes": {"externalBuildState": state}}}
+        raise AssertionError(f"unexpected GET {path}")
 
     def get_all(self, path, query, bearer):
         self.group_query = (path, query)
@@ -90,7 +97,7 @@ class DistributionTests(unittest.TestCase):
         slept = self.run_distribution(api)
 
         self.assertEqual(slept, distribution.POLL_SECONDS)
-        self.assertEqual(len(api.sent), 1)
+        self.assertEqual(len(api.sent), 2)
         method, path, body = api.sent[0]
         self.assertEqual(
             (method, path), ("POST", "builds/build/relationships/betaGroups")
@@ -114,6 +121,70 @@ class DistributionTests(unittest.TestCase):
                 },
             ),
         )
+
+    def test_submits_build_for_beta_review_after_assigning_groups(self):
+        api = FakeApi(
+            [[{"id": "build", "attributes": {"version": "42", "processingState": "VALID"}}]],
+            {"data": [{"id": "external", "attributes": {"isInternalGroup": False}}]},
+            states=["PROCESSING", "READY_FOR_BETA_SUBMISSION"],
+        )
+
+        self.assertEqual(self.run_distribution(api), distribution.POLL_SECONDS)
+        self.assertEqual(
+            [(method, path) for method, path, _ in api.sent],
+            [
+                ("POST", "builds/build/relationships/betaGroups"),
+                ("POST", "betaAppReviewSubmissions"),
+            ],
+        )
+        self.assertEqual(
+            api.sent[1][2],
+            {
+                "data": {
+                    "type": "betaAppReviewSubmissions",
+                    "relationships": {"build": {"data": {"type": "builds", "id": "build"}}},
+                }
+            },
+        )
+
+    def test_already_submitted_build_is_not_submitted_again(self):
+        for state in distribution.SUBMITTED_STATES:
+            with self.subTest(state=state):
+                api = FakeApi(
+                    [[{"id": "build", "attributes": {"version": "42", "processingState": "VALID"}}]],
+                    {"data": [{"id": "external", "attributes": {"isInternalGroup": False}}]},
+                    states=[state],
+                )
+
+                self.run_distribution(api)
+
+                self.assertEqual(
+                    [path for _, path, _ in api.sent],
+                    ["builds/build/relationships/betaGroups"],
+                )
+
+    def test_unsubmittable_build_fails_loudly(self):
+        api = FakeApi(
+            [[{"id": "build", "attributes": {"version": "42", "processingState": "VALID"}}]],
+            {"data": [{"id": "external", "attributes": {"isInternalGroup": False}}]},
+            states=["MISSING_EXPORT_COMPLIANCE"],
+        )
+
+        with self.assertRaises(SystemExit) as stopped:
+            self.run_distribution(api)
+
+        self.assertIn("MISSING_EXPORT_COMPLIANCE", str(stopped.exception))
+        self.assertNotIn("betaAppReviewSubmissions", [path for _, path, _ in api.sent])
+
+    def test_review_wait_retries_service_errors(self):
+        api = FakeApi(
+            [[{"id": "build", "attributes": {"version": "42", "processingState": "VALID"}}]],
+            {"data": [{"id": "external", "attributes": {"isInternalGroup": False}}]},
+            states=[http_error(503), "READY_FOR_BETA_SUBMISSION"],
+        )
+
+        self.assertEqual(self.run_distribution(api), distribution.POLL_SECONDS)
+        self.assertEqual(api.sent[-1][1], "betaAppReviewSubmissions")
 
     def test_assigns_groups_after_initial_token_expires(self):
         processing = [{"id": "build", "attributes": {"version": "42", "processingState": "PROCESSING"}}]

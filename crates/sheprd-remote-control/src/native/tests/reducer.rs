@@ -117,6 +117,7 @@ fn entries() -> Vector {
             entry: entry(
                 1,
                 EntryKind::User {
+                    guest: None,
                     text: "Look at this\n\u{1f4ce} shot.png".into(),
                     files: 1,
                     note: None,
@@ -290,6 +291,7 @@ fn session() -> Vector {
         },
         Change::Queue {
             queued: vec![Queued {
+                guest: None,
                 attachments: vec![sheprd_chat_protocol::Attachment {
                     path: "/tmp/shot.png".into(),
                 }],

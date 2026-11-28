@@ -28,6 +28,7 @@ fn serve_chat(listener: UnixListener, next: mpsc::Receiver<()>) {
             Entry {
                 id: EntryId(1),
                 kind: EntryKind::User {
+                    guest: None,
                     text: "question".into(),
                     files: 0,
                     note: None,

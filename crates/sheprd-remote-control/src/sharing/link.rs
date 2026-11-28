@@ -1,30 +1,13 @@
 //! Anonymous read-only invitation links for a single configured relay.
 //! Parsing is offline. The caller supplies the relay it already trusts.
 
-use crate::sharing::{Capability, Error, GrantId, Invitation, Result, ShareId, gateway::Offer};
+use crate::sharing::{Capability, Error, Invitation, Result, gateway::Offer};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use p256::ecdsa::SigningKey;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
-use serde::{Deserialize, Serialize};
+use sheprd_chat_protocol::sharing::admission::{Envelope, MAX_LINK_BYTES, VIEWER_PATH};
 use sheprd_relay::{Endpoint, RouteId};
 use sheprd_tunnel::Identity;
-
-const MAX_LINK_BYTES: usize = 8192;
-const VIEWER_PATH: &str = "/share/";
-
-#[derive(Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct Envelope {
-    version: u32,
-    relay: String,
-    share: ShareId,
-    grant: GrantId,
-    expires_ms: u64,
-    route: String,
-    identity: String,
-    bootstrap: String,
-    capability: String,
-}
 
 /// Make a copyable link after the relay acknowledges the grant's offer.
 pub fn encode(relay: &Endpoint, invite: &Invitation, offer: &Offer) -> Result<SecretString> {

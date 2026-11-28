@@ -44,12 +44,16 @@ const MIN_TOKEN: usize = 16;
 pub fn app(options: &Options, quic: Option<QuicInfo>) -> Result<(Router, Arc<Hub>)> {
     let hub = Arc::new(Hub::new(options.limits, access(options)?));
     let shared = Shared {
+        share_viewer: options.share_viewer && options.public_host.is_some() && quic.is_some(),
         hub: Arc::clone(&hub),
         public_host: options.public_host.as_deref().map(Arc::from),
         quic,
         source: source(options),
     };
     let mut router = web::router(shared.clone());
+    if shared.share_viewer {
+        router = router.merge(crate::viewer::router());
+    }
     if let Some(token) = &options.dashboard_token {
         let account = Account::new(token.expose_secret())?;
         router = router.merge(dashboard::router(shared.clone(), account));
@@ -261,6 +265,11 @@ pub async fn serve(options: Options) -> Result<()> {
     if let Some(file) = options.listen_token_file.clone() {
         tokio::spawn(watch_token_file(Arc::clone(&hub), file));
     }
+    tracing::info!(
+        version = env!("CARGO_PKG_VERSION"),
+        commit = crate::commit().unwrap_or("unknown"),
+        "starting the relay"
+    );
     if !options.limits.auto_ban {
         tracing::info!("automatic bans are off");
     }

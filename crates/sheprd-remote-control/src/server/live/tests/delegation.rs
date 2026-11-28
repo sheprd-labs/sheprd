@@ -60,6 +60,7 @@ fn a_child_in_another_space_updates_only_its_parent() {
         entry: Entry {
             id: EntryId(1),
             kind: EntryKind::User {
+                guest: None,
                 text: "iOS tests".into(),
                 files: 0,
                 note: None,
@@ -169,6 +170,7 @@ fn a_reserved_worker_and_its_native_calls_outlive_the_coordinator_turn() {
         entry: Entry {
             id: EntryId(1),
             kind: EntryKind::User {
+                guest: None,
                 text: "Review".into(),
                 files: 0,
                 note: None,
@@ -193,6 +195,7 @@ fn a_reserved_worker_and_its_native_calls_outlive_the_coordinator_turn() {
         entry: Entry {
             id: EntryId(3),
             kind: EntryKind::User {
+                guest: None,
                 text: "New task".into(),
                 files: 0,
                 note: None,

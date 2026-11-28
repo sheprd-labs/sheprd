@@ -5,6 +5,7 @@ use crate::config::ChatLayoutMode;
 fn user_and_agent_messages_render_at_the_configured_terminal_size(cx: &mut TestAppContext) {
     for kind in [
         EntryKind::User {
+            guest: None,
             text: "A short message.".into(),
             files: 0,
             note: None,

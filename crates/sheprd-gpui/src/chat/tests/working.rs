@@ -18,6 +18,7 @@ fn running() -> ServerMessage {
     transcript.entries = vec![Entry {
         id: EntryId(1),
         kind: EntryKind::User {
+            guest: None,
             text: "Fix it".into(),
             files: 0,
             note: None,

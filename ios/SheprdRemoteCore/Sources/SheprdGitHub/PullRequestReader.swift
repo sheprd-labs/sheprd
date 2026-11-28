@@ -146,6 +146,18 @@ public actor PullRequestReader {
         source: Lenders,
         _ read: @Sendable (GitHubAPI, GitHubToken) async throws -> Value
     ) async -> Value? {
+        await attemptWithLogin(host: host, source: source) { api, token, _ in
+            try await read(api, token)
+        }
+    }
+
+    /// Like `attempt`, also passing the GitHub login of the token that runs
+    /// `read`, so callers can attach the viewer's identity to the answer.
+    func attemptWithLogin<Value: Sendable>(
+        host: GitHubHost,
+        source: Lenders,
+        _ read: @Sendable (GitHubAPI, GitHubToken, String) async throws -> Value
+    ) async -> Value? {
         if let ownSignIn, host == Self.signInHost, let value = await own(ownSignIn, read) { return value }
         for _ in 0..<2 {
             // A host GitHub asked to wait for is not read, nor a lease
@@ -154,7 +166,7 @@ public actor PullRequestReader {
                   let lease = try? await leases.lease(for: host, lenders: source.lenders, fetch: source.fetch)
             else { return nil }
             do {
-                return try await read(api, lease.token)
+                return try await read(api, lease.token, lease.login)
             } catch GitHubError.unauthorized {
                 await leases.rejected(lease)
             } catch {
@@ -162,6 +174,95 @@ public actor PullRequestReader {
             }
         }
         return nil
+    }
+
+    /// Runs a GraphQL mutation bound to `asLogin` (the GitHub login whose
+    /// `viewerHasReacted` state the action was decided from). Tries the phone's
+    /// own sign-in on github.com when its login matches, and falls back to a
+    /// lent token only when that lease belongs to the same GitHub login and
+    /// the first token failed before acting (401/403/404/SSO).
+    func mutate<Value: Sendable>(
+        host: GitHubHost,
+        asLogin: String? = nil,
+        source: Lenders,
+        _ run: @Sendable (GitHubAPI, GitHubToken) async throws -> Value
+    ) async -> Result<Value, GitHubError> {
+        var requiredLogin = asLogin.flatMap { $0.isEmpty ? nil : $0 }
+        var firstError: GitHubError?
+        if let ownSignIn, host == Self.signInHost {
+            if let attempt = await ownResult(ownSignIn, matching: requiredLogin, run) {
+                switch attempt.result {
+                case let .success(value): return .success(value)
+                case let .failure(error):
+                    // Never fall back to a different account's lent token.
+                    if requiredLogin == nil, !attempt.login.isEmpty {
+                        requiredLogin = attempt.login
+                    }
+                    switch error {
+                    case .unauthorized, .forbidden, .notFound, .ssoRequired:
+                        firstError = error
+                    default:
+                        return .failure(error)
+                    }
+                }
+            }
+        }
+        var lastError = firstError
+        for _ in 0..<2 {
+            guard !Task.isCancelled else { return .failure(.status(0)) }
+            if await api.isPaused(host) { return .failure(.rateLimited(until: Date.distantFuture)) }
+            guard let lease = try? await leases.lease(for: host, lenders: source.lenders, fetch: source.fetch) else {
+                return .failure(lastError ?? .unauthorized)
+            }
+            if let requiredLogin, !Self.sameLogin(lease.login, requiredLogin) {
+                return .failure(lastError ?? .forbidden)
+            }
+            do {
+                return .success(try await run(api, lease.token))
+            } catch GitHubError.unauthorized {
+                lastError = .unauthorized
+                await leases.rejected(lease)
+            } catch let error as GitHubError {
+                return .failure(error)
+            } catch {
+                return .failure(.status(0))
+            }
+        }
+        return .failure(lastError ?? .unauthorized)
+    }
+
+    /// `run` with the own sign-in when signed in and matching `expectedLogin`;
+    /// nil when signed out or signed in as a different account.
+    private func ownResult<Value: Sendable>(
+        _ signIn: GitHubSignIn,
+        matching expectedLogin: String?,
+        _ run: @Sendable (GitHubAPI, GitHubToken) async throws -> Value
+    ) async -> (login: String, result: Result<Value, GitHubError>)? {
+        guard !Task.isCancelled, var (token, login) = try? await signIn.tokenWithLogin() else { return nil }
+        if let expectedLogin, !Self.sameLogin(login, expectedLogin) { return nil }
+        for renewed in [false, true] {
+            do {
+                return (login, .success(try await run(api, token)))
+            } catch GitHubError.unauthorized where !renewed {
+                guard let next = try? await signIn.renewWithLogin(rejected: token) else {
+                    return (login, .failure(.unauthorized))
+                }
+                if let expectedLogin, !Self.sameLogin(next.login, expectedLogin) {
+                    return (login, .failure(.unauthorized))
+                }
+                token = next.token
+                login = next.login
+            } catch let error as GitHubError {
+                return (login, .failure(error))
+            } catch {
+                return (login, .failure(.status(0)))
+            }
+        }
+        return (login, .failure(.unauthorized))
+    }
+
+    static func sameLogin(_ lhs: String, _ rhs: String) -> Bool {
+        !lhs.isEmpty && !rhs.isEmpty && lhs.caseInsensitiveCompare(rhs) == .orderedSame
     }
 
     /// The host the phone signs in to itself: Sheprd's GitHub App exists on
@@ -173,15 +274,16 @@ public actor PullRequestReader {
     /// the repository), for a lent token to try.
     private func own<Value: Sendable>(
         _ signIn: GitHubSignIn,
-        _ read: @Sendable (GitHubAPI, GitHubToken) async throws -> Value
+        _ read: @Sendable (GitHubAPI, GitHubToken, String) async throws -> Value
     ) async -> Value? {
-        guard !Task.isCancelled, var token = try? await signIn.token() else { return nil }
+        guard !Task.isCancelled, var (token, login) = try? await signIn.tokenWithLogin() else { return nil }
         for renewed in [false, true] {
             do {
-                return try await read(api, token)
+                return try await read(api, token, login)
             } catch GitHubError.unauthorized where !renewed {
-                guard let next = try? await signIn.renew(rejected: token) else { return nil }
-                token = next
+                guard let next = try? await signIn.renewWithLogin(rejected: token) else { return nil }
+                token = next.token
+                login = next.login
             } catch {
                 return nil
             }

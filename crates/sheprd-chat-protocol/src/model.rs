@@ -209,6 +209,10 @@ pub enum EntryKind {
         /// to see what the agent was told; ones that predate it skip it.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         note: Option<String>,
+        /// Who wrote it, when the person allowed a guest's prompt rather
+        /// than typing it (revision 6).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        guest: Option<crate::Guest>,
     },
     /// The agent's answer, streamed in chunks.
     Agent {
@@ -433,6 +437,11 @@ pub struct Permission {
     /// choices; answered with [`Command::AnswerQuestion`](crate::Command::AnswerQuestion).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub question: Option<Question>,
+    /// A guest's prompt waiting for the person, rather than a question
+    /// from the agent; answered with its [`GUEST_ALLOW`](crate::GUEST_ALLOW)
+    /// or [`GUEST_DENY`](crate::GUEST_DENY) option (revision 6).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guest: Option<Box<crate::GuestPrompt>>,
     pub title: String,
 }
 
@@ -525,6 +534,9 @@ pub struct Mode {
 pub struct Queued {
     #[serde(default)]
     pub attachments: Vec<Attachment>,
+    /// Who wrote it, for a guest's prompt the person allowed (revision 6).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guest: Option<crate::Guest>,
     /// Kept when the turn was stopped: it waits until sent now or
     /// withdrawn, and no later turn's end sends it.
     #[serde(default, skip_serializing_if = "is_false")]

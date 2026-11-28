@@ -37,7 +37,7 @@ pub(super) fn entries() -> Result<Vec<Entry>> {
         },
         Entry {
             id: EntryId(4),
-            kind: EntryKind::User {
+            kind: EntryKind::User { guest: None,
                 text: "Can you explain this image and link the notes?".into(), // i18n: data
                 files: 0,
                 note: None,

@@ -46,6 +46,7 @@ fn nothing_shows_unless_a_turn_runs() {
 #[core::prelude::v1::test]
 fn it_says_what_the_agent_is_doing() {
     let prompt = EntryKind::User {
+        guest: None,
         text: "Fix it".into(),
         files: 0,
         note: None,
@@ -118,6 +119,7 @@ fn tool(kind: ToolKind, title: &str, status: ToolStatus) -> Tool {
 
 fn prompt() -> EntryKind {
     EntryKind::User {
+        guest: None,
         text: "Fix it".into(),
         files: 0,
         note: None,

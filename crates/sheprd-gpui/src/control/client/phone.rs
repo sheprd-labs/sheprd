@@ -13,8 +13,18 @@ use crate::{
 };
 use sheprd_remote_control::control::phone::{Command, Outcome, Phone, PhoneState, Refusal, Screen};
 
+mod luau;
+
 pub(super) fn phone(command: PhoneCommand, context: &Context) -> crate::Result<Output> {
     let (ask, asked) = match command {
+        PhoneCommand::Luau {
+            device,
+            dir,
+            screen,
+            watch,
+            reset,
+        } => return luau::luau(device, &dir, screen, watch, reset, context),
+        PhoneCommand::Snapshot { device, out } => return luau::snapshot(device, out, context),
         PhoneCommand::Targets => {
             return Output::data(
                 format!(
@@ -164,6 +174,10 @@ pub(super) fn output(answer: &Answer, asked: Asked) -> crate::Result<Output> {
     match outcome {
         Outcome::Done { state } => Output::data(done(phone, state, asked), answer),
         Outcome::Refused { reason } => Ok(Output::data(refused(phone, *reason), answer)?.failed()),
+        // Answers to `luau` and `snapshot`, which word them themselves.
+        Outcome::Luau { .. } | Outcome::Snapshot { .. } => {
+            Output::data(format!("Done on {}", phone.name), answer)
+        }
     }
 }
 

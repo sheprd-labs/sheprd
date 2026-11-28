@@ -104,8 +104,16 @@ pub(crate) fn entry(entry: &Entry, width: usize) -> Vec<Line<'static>> {
     }
     let mut lines = Vec::new();
     match &entry.kind {
-        EntryKind::User { text, .. } => {
-            // The timeline's rail and header say who wrote it.
+        EntryKind::User { text, guest, .. } => {
+            // The timeline's rail and header say who wrote it; a guest is
+            // named, as the person did not.
+            if let Some(guest) = guest {
+                // The program took only names without control characters.
+                lines.push(Line::styled(
+                    format!("{} · guest", guest.label()),
+                    Style::default().fg(Color::Magenta),
+                ));
+            }
             for line in wrap(text, width) {
                 lines.push(Line::raw(line));
             }
@@ -177,9 +185,24 @@ pub(crate) fn entry(entry: &Entry, width: usize) -> Vec<Line<'static>> {
 }
 
 /// The effects Sheprd's chat plays around a message (`:::slam` … `:::`)
-/// or over its pane (`::confetti`). A terminal plays none, so their lines
-/// are left out and the text they wrap reads as any other.
+/// or over its pane (`::confetti`), plus persistent agent interaction blocks
+/// (`:::modal`, `:::urgent`, `:::secret`, `:::progress`, etc.) and `::cue`.
+/// A terminal plays none, so their fence lines are left out while their title
+/// and text read as ordinary prose.
 const BUBBLE_EFFECTS: [&str; 4] = ["gentle", "ink", "loud", "slam"];
+const INTERACTION_BLOCKS: [&str; 11] = [
+    "countdown",
+    "diff",
+    "drop",
+    "modal",
+    "oauth",
+    "otp",
+    "progress",
+    "runbook",
+    "secret",
+    "spotlight",
+    "urgent",
+];
 const PANE_EFFECTS: [&str; 10] = [
     "balloons",
     "celebration",
@@ -193,24 +216,50 @@ const PANE_EFFECTS: [&str; 10] = [
     "zap",
 ];
 
-/// Whether `line` only asks Sheprd's chat for an effect.
-fn effect_line(line: &str) -> bool {
-    let line = line.trim();
-    if line == ":::" {
-        return true;
+/// What `line` becomes in a terminal view when it is a chat directive:
+/// `None` keeps the line as ordinary prose, `Some(None)` drops the directive
+/// line, and `Some(Some(title))` shows the title of an interaction block.
+fn directive_fallback(line: &str) -> Option<Option<&str>> {
+    let trimmed = line.trim();
+    if trimmed == ":::" {
+        return Some(None);
     }
-    if let Some(name) = line.strip_prefix(":::") {
-        return BUBBLE_EFFECTS.contains(&name);
+    if let Some(rest) = trimmed.strip_prefix(":::") {
+        let mut parts = rest.splitn(2, char::is_whitespace);
+        let name = parts.next().unwrap_or("");
+        let title = parts
+            .next()
+            .map(str::trim)
+            .filter(|title| !title.is_empty());
+        if title.is_none() && BUBBLE_EFFECTS.contains(&name) {
+            return Some(None);
+        }
+        if INTERACTION_BLOCKS.contains(&name) {
+            return Some(title);
+        }
+        return None;
     }
-    line.strip_prefix("::")
-        .is_some_and(|name| PANE_EFFECTS.contains(&name))
+    if let Some(rest) = trimmed.strip_prefix("::") {
+        if PANE_EFFECTS.contains(&rest) {
+            return Some(None);
+        }
+        if let Some(cue) = rest.strip_prefix("cue").and_then(|s| s.strip_prefix(' '))
+            && !cue.trim().is_empty()
+        {
+            return Some(None);
+        }
+    }
+    None
 }
 
 /// Agent text with fenced code set apart and the rest drawn as prose.
 fn agent_text(lines: &mut Vec<Line<'static>>, text: &str, width: usize) {
     let mut code = false;
     for raw in text.trim_end().split('\n') {
-        if !code && effect_line(raw) {
+        if !code && let Some(fallback) = directive_fallback(raw) {
+            if let Some(title) = fallback {
+                prose::prose(lines, title, width);
+            }
             continue;
         }
         // A bar down the left sets code apart; the fences themselves go.

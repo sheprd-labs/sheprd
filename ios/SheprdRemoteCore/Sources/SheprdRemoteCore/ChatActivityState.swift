@@ -63,6 +63,12 @@ public struct ChatActivityState: Codable, Hashable, Sendable {
     public var previousActivities: [String]
     public var steps: Int?
     public var files: Int?
+    /// Explicit 0...100 progress percent emitted by `:::progress` / `sheprd modal progress`.
+    public var progressPercent: Int?
+    /// Active urgent blocker title (e.g. "Tap YubiKey at MacBook Pro") for Dynamic Island / Lock Screen.
+    public var blockerTitle: String?
+    /// Optional blocker kind (`yubikey`, `otp`, `secret`, `countdown`, `oauth`).
+    public var blockerKind: String?
 
     /// An answer the lock screen offers as a button.
     public struct Option: Codable, Hashable, Sendable {
@@ -119,6 +125,7 @@ public struct ChatActivityState: Codable, Hashable, Sendable {
         case phase, step, startedAt, question, summary, planDone, planTotal, working, waiting
         case permission, options, previous
         case activity, icon, previousActivities, steps, files, agents, focus
+        case progressPercent, blockerTitle, blockerKind
     }
 
     public init(from decoder: Decoder) throws {
@@ -144,6 +151,9 @@ public struct ChatActivityState: Codable, Hashable, Sendable {
         previousActivities = try container.decodeIfPresent([String].self, forKey: .previousActivities) ?? []
         steps = try container.decodeIfPresent(Int.self, forKey: .steps)
         files = try container.decodeIfPresent(Int.self, forKey: .files)
+        progressPercent = try container.decodeIfPresent(Int.self, forKey: .progressPercent)
+        blockerTitle = try container.decodeIfPresent(String.self, forKey: .blockerTitle)
+        blockerKind = try container.decodeIfPresent(String.self, forKey: .blockerKind)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -167,6 +177,9 @@ public struct ChatActivityState: Codable, Hashable, Sendable {
         if !previousActivities.isEmpty { try container.encode(previousActivities, forKey: .previousActivities) }
         try container.encodeIfPresent(steps, forKey: .steps)
         try container.encodeIfPresent(files, forKey: .files)
+        try container.encodeIfPresent(progressPercent, forKey: .progressPercent)
+        try container.encodeIfPresent(blockerTitle, forKey: .blockerTitle)
+        try container.encodeIfPresent(blockerKind, forKey: .blockerKind)
     }
 
     /// The step in plain words: `activity`, or `step` from a computer that

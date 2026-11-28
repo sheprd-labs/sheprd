@@ -252,7 +252,7 @@ fn permission_height(view: &View, width: usize) -> (usize, Bottom) {
     };
     let title = lines::wrap(&permission.title, width.saturating_sub(2))
         .len()
-        .min(3);
+        .min(title_lines(permission));
     (title + permission.options.len() + 2, Bottom::Permission)
 }
 
@@ -272,9 +272,24 @@ fn draw_permission(frame: &mut Frame<'_>, view: &View, area: Rect) {
         .border_style(Style::default().fg(Color::Magenta));
     let inner = block.inner(area);
     frame.render_widget(block, area);
-    let mut text: Vec<Line<'_>> = lines::wrap(&permission.title, usize::from(inner.width))
+    // A guest's prompt is shown whole or not sent from here: the room left
+    // above the options decides, and the view checks before allowing it.
+    let room = usize::from(inner.height)
+        .saturating_sub(permission.options.len())
+        .min(title_lines(permission));
+    let wrapped = lines::wrap(&permission.title, usize::from(inner.width));
+    let whole = wrapped.len() <= room;
+    view.guest_shown
+        .set((permission.guest.is_some() && whole).then_some(permission.id));
+    let mut wrapped: Vec<String> = wrapped.into_iter().take(room).collect();
+    if permission.guest.is_some()
+        && !whole
+        && let Some(last) = wrapped.last_mut()
+    {
+        "… too long to show here: read and send it from Sheprd".clone_into(last);
+    }
+    let mut text: Vec<Line<'_>> = wrapped
         .into_iter()
-        .take(3)
         .map(|line| Line::styled(line, Style::default().add_modifier(Modifier::BOLD)))
         .collect();
     for (index, option) in permission.options.iter().enumerate() {
@@ -293,6 +308,12 @@ fn draw_permission(frame: &mut Frame<'_>, view: &View, area: Rect) {
         ]));
     }
     frame.render_widget(Paragraph::new(text), inner);
+}
+
+/// Title lines a permission request shows: a guest's prompt gets room to
+/// be read whole.
+fn title_lines(permission: &sheprd_chat_protocol::Permission) -> usize {
+    if permission.guest.is_some() { 16 } else { 3 }
 }
 
 #[cfg(test)]

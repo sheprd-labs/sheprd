@@ -228,3 +228,61 @@ head -c 300000 /dev/zero | tr '\\0' y >&2
     .unwrap();
     assert!(checkout.join(".git").exists());
 }
+
+#[test]
+fn an_existing_branch_is_checked_out_as_it_is() {
+    let dir = tempdir().unwrap();
+    let repository = committed_repository(dir.path());
+    run_git(&repository, &["branch", "feature/kept"]);
+    run_git(
+        &repository,
+        &["commit", "--quiet", "--allow-empty", "-m", "later"],
+    );
+    let root = dir.path().join("worktrees");
+    let added = add_or_checkout(&repository, "feature/kept", "HEAD", &root, never).unwrap();
+    assert!(!added.new_branch);
+    let log = git(
+        &never,
+        &added.checkout,
+        [OsStr::new("log"), OsStr::new("--format=%s")],
+    )
+    .unwrap();
+    // The branch kept its own commit, not the base's newer one.
+    assert_eq!(log.trim(), "start");
+}
+
+#[test]
+fn a_missing_branch_is_made_from_the_base() {
+    let dir = tempdir().unwrap();
+    let repository = committed_repository(dir.path());
+    let root = dir.path().join("worktrees");
+    let added = add_or_checkout(&repository, "fresh", "HEAD", &root, never).unwrap();
+    assert!(added.new_branch);
+    assert_eq!(added.checkout, root.join("project").join("fresh"));
+}
+
+#[test]
+fn a_fetch_brings_a_remote_ref_without_prompting() {
+    let dir = tempdir().unwrap();
+    let upstream = committed_repository(dir.path());
+    run_git(&upstream, &["branch", "pr-head"]);
+    let clone = dir.path().join("clone");
+    run_git(
+        dir.path(),
+        &[
+            "clone",
+            "--quiet",
+            upstream.to_str().unwrap(),
+            clone.to_str().unwrap(),
+        ],
+    );
+    fetch(
+        &clone,
+        "origin",
+        "+refs/heads/pr-head:refs/remotes/origin/pr-head",
+        never,
+    )
+    .unwrap();
+    let refused = fetch(&clone, "origin", "refs/heads/missing:refs/x", never);
+    assert!(matches!(refused, Err(Error::Fetch(_))), "{refused:?}");
+}

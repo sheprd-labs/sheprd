@@ -14,6 +14,10 @@ pub struct Origin {
     /// Older clients omit it. Never a bearer token or a device name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub phone: Option<String>,
+    /// Someone other than the person wrote it, relayed by a tool: set only
+    /// by the chat program, for a guest prompt the person allowed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guest: Option<crate::Guest>,
 }
 
 impl Origin {
@@ -22,13 +26,25 @@ impl Origin {
             device,
             via,
             phone: None,
+            guest: None,
+        }
+    }
+
+    /// A prompt `guest` wrote, relayed into the chat by a tool.
+    pub fn guest(guest: crate::Guest) -> Self {
+        Self {
+            guest: Some(guest),
+            ..Self::new(Device::Other, Via::Other)
         }
     }
 
     /// Whether the person can open a path on the agent's machine where they
     /// typed: only on that machine, in the desktop app or its terminal.
+    /// Never for a guest.
     pub fn opens_paths(&self) -> bool {
-        self.via == Via::Local && matches!(self.device, Device::Desktop | Device::Terminal)
+        self.guest.is_none()
+            && self.via == Via::Local
+            && matches!(self.device, Device::Desktop | Device::Terminal)
     }
 }
 

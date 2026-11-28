@@ -549,6 +549,24 @@ pub(super) const CATALOG: &[Entry] = &[
     ),
     entry(
         Section::Chat,
+        "chat-agent-modals",
+        "settings-chat-agent-modals",
+        "settings-chat-agent-modals-description",
+    ),
+    entry(
+        Section::Chat,
+        "chat-global-modals",
+        "settings-chat-global-modals",
+        "settings-chat-global-modals-description",
+    ),
+    entry(
+        Section::Chat,
+        "chat-progress-pill",
+        "settings-chat-progress-pill",
+        "settings-chat-progress-pill-description",
+    ),
+    entry(
+        Section::Chat,
         "chat-wrap-code",
         "settings-chat-wrap-code",
         "settings-chat-wrap-code-description",

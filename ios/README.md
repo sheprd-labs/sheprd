@@ -42,6 +42,7 @@ The native app for Sheprd's remote control (`docs/ios-app-plan.md`).
 | `SheprdRemoteWidgets/` | The lock screen and Dynamic Island layouts |
 | `Shared/` | The Live Activity's attributes, compiled into both targets |
 | `Mockups/` | The SwiftUI mockups the screens were picked from (`just ios-mockups`); the `effects` round draws text sizes and message effects with the app's own `Views/Effects` |
+| `SheprdRemote/Luau/`, `Luau/` | Screens moving to Luau, drawn by [MoonKit](https://github.com/moonframehq/moonswift) (pinned in `project.yml`): the Swift seam and providers, and the bundled Luau. See [Screens in Luau](#screens-in-luau) |
 | `Spikes/` | Phase 0 spikes (`docs/ios-spikes.md`) |
 | `tools/` | The simulator loop's control client and the TestFlight upload scripts |
 
@@ -166,6 +167,35 @@ and nothing goes through your phone.
    - Avoid `simctl openurl`: its confirmation alert needs a tap, and it
      keeps the app inactive until the simulator restarts.
 
+## Screens in Luau
+
+The Pull Requests tab also exists in Luau (`Luau/pull-requests`), drawn by
+MoonKit from the same model: `PullRequestsProvider` publishes the lists,
+searched and sorted by the same Swift, as `app.pulls`, and opens what a
+row asks for. Luau has no network and opens nothing itself. Settings ›
+Developer › PRs Tab switches between SwiftUI (the default) and Luau at once.
+Everything Luau is behind `PullRequestsTab`, `SheprdRemote/Luau/`, and
+`Luau/`, so dropping it is one revert.
+
+- **Live from the computer:** in a debug build, `sheprd phone luau
+  ios/Luau/pull-requests --watch` lays the folder's files over the bundled
+  ones on each save (`LuauLive`, kept in Application Support/LuauLive) and
+  prints what loading them found; `sheprd phone snapshot --out shot.jpg`
+  brings back a picture of the app, so an agent sees its change land.
+  `--reset` goes back to the bundle. In the simulator loop,
+  `tools/remote_control.py STATE phone '{"command":"snapshot"}'` asks the
+  sandbox daemon directly.
+- **Store builds:** the app links MoonKit and MoonUI, never MoonLive, so only
+  the bundled Luau runs. `tools/luau_store_audit.sh` (in CI) builds Release
+  and fails on any trace of live editing.
+- **Measuring:** `tools/prs_bench.sh SIMULATOR_UDID [RUNS]` builds optimized,
+  then launches with `-gitHubDemo bench` (50 pull requests in each section)
+  and `-prsBench YES`, once per engine and run. Each run opens the tab, times
+  its first frame with rows, scrolls it end to end at a steady speed, and
+  times every frame and the memory (`PullRequestsBench.swift`). On a device,
+  pass the same arguments and read `Documents/prs-bench.json` or the
+  `PRS_BENCH` log line.
+
 ## Speaking voices and dictation
 
 In Settings > Voice, tap Change to open the provider sheet. The active provider is marked In use. Choose Apple on-device speech or connect a personal ElevenLabs, OpenAI, Deepgram or OpenRouter account. Preview uses a sample sentence and the provider bills your account. Cloud voices play as MP3 packets arrive. Stop preview cancels the download and clears queued audio. OpenRouter sign-in opens the browser, then asks for the authorization code using PKCE. ElevenLabs can load the first 100 account voices, or accept a voice ID. Use This Voice saves the active account.
@@ -258,10 +288,11 @@ app, once the repository's `testflight` environment holds these secrets:
   build stays uploaded; the next build's notes then cover both.
 - **External groups:** after App Store Connect finishes processing a build,
   the upload automatically adds it to every existing external beta group for
-  the app. Internal-only groups are left alone; create groups and invite
-  testers in App Store Connect as usual. Apple may still require Beta App
-  Review before external testers can install a build; this workflow does not
-  submit the build for review.
+  the app and submits it for Beta App Review, which external testers need
+  before they can install it (`ios/tools/testflight_distribution.py`).
+  Internal-only groups are left alone; create groups and invite testers in
+  App Store Connect as usual. A build already in review or approved is left
+  as it is.
 - **Running it locally:** `just ios-testflight` does the same with the same
   variables. Any it does not find set come from `pass`: the issuer ID from
   `apple/app-store-connect-issuer-id` and the key from

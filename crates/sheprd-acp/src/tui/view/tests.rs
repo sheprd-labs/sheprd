@@ -10,6 +10,7 @@ use super::*;
 
 mod attachments;
 mod harnesses;
+mod mouse;
 
 fn key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
     KeyEvent {
@@ -49,6 +50,7 @@ fn snapshot(view: &mut View, transcript: Transcript) -> Cursor {
 fn asking() -> Transcript {
     Transcript {
         permissions: vec![Permission {
+            guest: None,
             call_id: None,
             id: PermissionId(3),
             options: ["allow", "deny"]

@@ -78,6 +78,7 @@ pub(super) fn question() -> Notification {
         kind: Kind::Question,
         pane: "w1:p2".to_owned(),
         permission: Some(Permission {
+            guest: None,
             call_id: None,
             id: PermissionId(7),
             options: vec![

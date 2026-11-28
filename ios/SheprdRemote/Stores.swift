@@ -29,6 +29,9 @@ final class ChatStore {
     /// The message effects of this chat: a transcript from the cache or a
     /// snapshot only notes them, and live changes play the new ones.
     let effects = ChatEffectsModel()
+    /// Caches flattened `LazyVStack` rows and parsed agent replies across
+    /// scroll and filter updates.
+    @ObservationIgnored let rowCache = ChatRowCache()
 
     init(key: PaneKey, cached: Cache.CachedChat?) {
         self.key = key

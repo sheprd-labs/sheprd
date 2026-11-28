@@ -14,6 +14,7 @@ fn the_latest_turn_is_in_focus_and_earlier_ones_fold() {
         entry(
             1,
             EntryKind::User {
+                guest: None,
                 text: "first".into(),
                 files: 0,
                 note: None,
@@ -28,6 +29,7 @@ fn the_latest_turn_is_in_focus_and_earlier_ones_fold() {
         entry(
             3,
             EntryKind::User {
+                guest: None,
                 text: "second prompt".into(),
                 files: 0,
                 note: None,
@@ -63,6 +65,28 @@ fn a_question_is_a_sheet_with_allowing_first_and_always_apart() {
     assert!(sheet.contains("btn-subtle"));
     assert!(sheet.contains("1 more waiting"));
     assert!(sheet.contains(r#"&quot;permission&quot;:7"#));
+}
+
+#[test]
+fn a_guest_prompt_shows_whole_in_a_sheet_that_scrolls() {
+    let words = "line one\n".repeat(2_000);
+    let mut permission = question(&format!("Bob via tma asks to send:\n{words}"));
+    permission.guest = Some(Box::new(sheprd_chat_protocol::GuestPrompt {
+        guest: sheprd_chat_protocol::Guest::new("Bob", "tma"),
+        text: words.clone(),
+    }));
+    let mut transcript = Transcript::new("Claude");
+    transcript.permissions = vec![permission];
+    let html = chat(&workspace(vec![]), &row("p1"), &view(transcript), 0).into_string();
+    let sheet = &html[html.find("chat-sheet").unwrap()..];
+    assert!(sheet.contains("Bob via tma asks to send"));
+    assert!(!sheet.contains("claude asks"));
+    let ask = &sheet[sheet.find("data-guest-ask").unwrap()..];
+    assert!(ask.contains("overflow-y:auto"));
+    // app.js keeps where it was read to across live redraws.
+    assert!(ask.contains(r#"data-keep-scroll="guest-7""#));
+    assert!(ask.contains("whitespace-pre-wrap") || sheet.contains("whitespace-pre-wrap"));
+    assert_eq!(ask.matches("line one").count(), 2_000, "every word shows");
 }
 
 #[test]

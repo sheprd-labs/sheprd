@@ -27,6 +27,7 @@ fn auto_accepting_is_part_of_the_transcript() {
 #[test]
 fn the_allow_option_prefers_once_and_may_be_missing() {
     let mut permission = Permission {
+        guest: None,
         call_id: None,
         id: PermissionId(1),
         options: vec![

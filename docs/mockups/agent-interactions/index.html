@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sheprd · Agent Interaction Suite — Mockups</title>
+  <link rel="stylesheet" href="/.herdr/kit.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="ios.css">
+  <script src="/.herdr/kit.js"></script>
+</head>
+<body class="hk view-both">
+<div class="studio-layout">
+
+  <!-- ───────────── Sticky Left TOC ───────────── -->
+  <aside class="studio-nav">
+    <div class="nav-brand">sheprd <span>/ interactions</span></div>
+    <div class="nav-sub">8 capabilities · Desktop + iOS</div>
+    <nav class="nav-links">
+      <a href="#s1"><span>01</span> Smart escalation</a>
+      <a href="#s2"><span>02</span> Action &amp; typed modals</a>
+      <a href="#s3" class="star"><span>03</span> Secret-safe vault ★</a>
+      <a href="#s4" class="star"><span>04</span> Dynamic progress pill ★</a>
+      <a href="#s5"><span>05</span> Shared runbook</a>
+      <a href="#s6"><span>06</span> Drop-zone &amp; voice</a>
+      <a href="#s7"><span>07</span> Spotlight &amp; mini-diff</a>
+      <a href="#s8"><span>08</span> Audio, haptics &amp; edge</a>
+    </nav>
+    <div class="platform-switcher">
+      <div class="platform-switcher-label">Preview surface</div>
+      <div class="seg-group sm" id="platform-view">
+        <button type="button" data-view="both" class="active">Both</button>
+        <button type="button" data-view="desktop">Mac</button>
+        <button type="button" data-view="ios">iOS</button>
+      </div>
+    </div>
+    <div class="nav-foot">
+      <button class="hk-button full" id="theme-toggle" type="button">Toggle light / dark</button>
+      <p>All 8 capabilities set to <b>Phase 1</b> with Desktop + iOS Remote parity.</p>
+    </div>
+  </aside>
+
+  <!-- ───────────── Main Content ───────────── -->
+  <main class="studio-main">
+
+    <header class="hero">
+      <div class="eyebrow">SHEPRD AGENT INTERACTIONS · PHASE 1 FULL SUITE (DESKTOP + IOS)</div>
+      <h1>A complete interaction vocabulary across Desktop &amp; iOS</h1>
+      <p class="lede">
+        Every capability below is scheduled for <strong>Phase 1</strong> across both <strong>Sheprd Desktop</strong> (GPUI + macOS floating HUD)
+        and <strong>Sheprd Remote on iPhone &amp; iPad</strong> (<code>SheprdRemoteCore</code> parser, <code>AgentBannerWindows</code> Liquid Glass, Dynamic Island Live Activities, Face ID Keychain, and CoreHaptics).
+      </p>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         01 · SMART ESCALATION LADDER
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="card-section" id="s1" data-cap="escalation">
+      <div class="sec-top">
+        <div>
+          <span class="badge-num">01</span>
+          <h2>Smart Escalation Ladder</h2>
+        </div>
+        <div class="phase-pills" data-phase-group="escalation">
+          <button type="button" data-phase="p1" class="active">Phase 1</button>
+          <button type="button" data-phase="p2">Phase 2</button>
+          <button type="button" data-phase="later">Later</button>
+        </div>
+      </div>
+      <p class="sec-desc">
+        The agent emits one urgent signal — Sheprd picks the right surface based on where your eyes and hands actually are, escalating automatically if you don't respond.
+      </p>
+
+      <div class="cap-body-split">
+        <div class="cap-desktop-col desktop-only-block">
+          <div class="esc-controls">
+            <div class="seg-group" id="esc-steps" role="group" aria-label="User presence state">
+              <button type="button" data-step="0" class="active">0s · In that chat</button>
+              <button type="button" data-step="1">0s · Another tab in Sheprd</button>
+              <button type="button" data-step="2">+5s · In Safari / other Space</button>
+              <button type="button" data-step="3">+20s · Idle / away from Mac</button>
+            </div>
+            <button class="mini-btn accent-btn" type="button" id="esc-autoplay">▶ Auto-play escalation</button>
+          </div>
+
+          <div class="esc-stage" id="esc-stage">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+
+        <aside class="ios-panel">
+          <div class="ios-panel-head">
+            <span class="ios-chip">iOS · Sheprd Remote</span>
+            <span class="ios-subtag">Live Activity + Banner</span>
+          </div>
+          <div class="iphone-shell">
+            <div class="iphone-screen lockscreen" id="ios-esc-screen"></div>
+          </div>
+          <p class="ios-note">Follows desktop presence switcher; respects Face ID App Lock (<code>LockState</code>).</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         02 · ACTION-CAPABLE & TYPED MODALS
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="card-section" id="s2" data-cap="typed_modals">
+      <div class="sec-top">
+        <div>
+          <span class="badge-num">02</span>
+          <h2>Action-Capable &amp; Typed Modals</h2>
+        </div>
+        <div class="phase-pills" data-phase-group="typed_modals">
+          <button type="button" data-phase="p1" class="active">Phase 1</button>
+          <button type="button" data-phase="p2">Phase 2</button>
+          <button type="button" data-phase="later">Later</button>
+        </div>
+      </div>
+      <p class="sec-desc">
+        Go beyond "Dismiss / Open chat": typed presets for structured approvals, timed countdown brake pedals, 6-digit 2FA codes, and OAuth handoffs — rendered natively on Mac and iPhone.
+      </p>
+
+      <div class="seg-group" id="preset-tabs">
+        <button type="button" data-preset="choices" class="active">Structured choices</button>
+        <button type="button" data-preset="countdown">Countdown brake pedal</button>
+        <button type="button" data-preset="otp">2FA / OTP gate</button>
+        <button type="button" data-preset="oauth">Browser OAuth / Touch ID</button>
+      </div>
+
+      <div class="cap-body-split" style="margin-top:14px">
+        <div class="cap-desktop-col desktop-only-block">
+          <div class="preset-stage" id="preset-stage" style="margin-top:0">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+
+        <aside class="ios-panel">
+          <div class="ios-panel-head">
+            <span class="ios-chip">iOS · Sheprd Remote</span>
+            <span class="ios-subtag">Sheet / AppIntent</span>
+          </div>
+          <div class="iphone-shell">
+            <div class="iphone-screen" id="ios-typed-screen"></div>
+          </div>
+          <p class="ios-note">Switches with the preset tabs above; OTP uses iOS <code>.oneTimeCode</code> AutoFill.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         03 · SECRET-SAFE PROMPT MODAL (STARRED)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="card-section featured" id="s3" data-cap="secret_modal">
+      <div class="sec-top">
+        <div>
+          <span class="badge-num star">03 ★</span>
+          <h2>Secret-Safe Prompt Modal (Zero-Leak Vault)</h2>
+        </div>
+        <div class="phase-pills" data-phase-group="secret_modal">
+          <button type="button" data-phase="p1" class="active">Phase 1</button>
+          <button type="button" data-phase="p2">Phase 2</button>
+          <button type="button" data-phase="later">Later</button>
+        </div>
+      </div>
+      <p class="sec-desc">
+        An agent needs an API token, passphrase, or <code>.env</code> secret — but you never want plaintext secrets in chat history or LLM context.
+        Sheprd captures it in a native masked modal and injects it straight into the target env, file (<code>0600</code>), or OS Keychain.
+      </p>
+
+      <div class="cap-body-split">
+        <div class="cap-desktop-col desktop-only-block">
+          <div class="secret-split">
+            <!-- Left: The Native Vault Modal -->
+            <div class="vault-frame">
+              <div class="vault-card" id="vault-card">
+                <div class="vault-head">
+                  <span class="lock-badge">🔒</span>
+                  <div>
+                    <div class="vault-kicker">SECURE INJECTION · NEVER SENT TO LLM</div>
+                    <h4>Provide <code>STRIPE_TEST_KEY</code></h4>
+                  </div>
+                  <span class="agent-pill claude">✳ Claude</span>
+                </div>
+
+                <p class="vault-why">
+                  Needed to run <code>cargo test --test stripe_webhook</code> in <code>billing-api</code>.
+                </p>
+
+                <div class="vault-dest">
+                  <span class="dest-label">Destination</span>
+                  <span class="dest-val"><code>.env.test.local</code> (mode <code>0600</code>, gitignored)</span>
+                </div>
+
+                <div class="vault-input-row">
+                  <input id="vault-input" type="password" value="sk_test_51N9xQ2_demo_secret_9821" autocomplete="off" aria-label="Secret value">
+                  <button class="mini-btn" type="button" id="vault-reveal">Show</button>
+                  <button class="mini-btn" type="button" id="vault-keychain">🔑 Keychain</button>
+                </div>
+
+                <label class="vault-check">
+                  <input type="checkbox" id="vault-save-kc" checked>
+                  <span>Also save in macOS Keychain for this repo</span>
+                </label>
+
+                <div class="vault-actions">
+                  <button class="m-btn ghost" type="button" id="vault-cancel">Deny</button>
+                  <button class="m-btn vault-primary" type="button" id="vault-submit">Inject securely</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Live Zero-Leak Guarantee Preview -->
+            <div class="leak-shield">
+              <div class="shield-box">
+                <div class="shield-title">What Sheprd writes locally</div>
+                <pre class="shield-code" id="shield-local">Waiting for your approval…
+Target: ~/code/billing-api/.env.test.local (0600)
+Key:    STRIPE_TEST_KEY</pre>
+              </div>
+              <div class="shield-box safe">
+                <div class="shield-title">What Claude &amp; the transcript see</div>
+                <pre class="shield-code" id="shield-llm">[sheprd-vault] Waiting on user for STRIPE_TEST_KEY…
+(No secret bytes cross the ACP pipe or disk log)</pre>
+              </div>
+              <div class="shield-cli">
+                <code>sheprd modal secret --key STRIPE_TEST_KEY --dest env-file:.env.test.local --reason "Run webhook tests"</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="ios-panel">
+          <div class="ios-panel-head">
+            <span class="ios-chip">iOS · Face ID Vault</span>
+            <span class="ios-subtag">E2E Tunnel</span>
+          </div>
+          <div class="iphone-shell">
+            <div class="iphone-screen">
+              <div class="iphone-status"><span>10:52</span><span>5G ▮</span></div>
+              <div class="di-pill">🔒 Vault Request</div>
+              <div class="ios-glass violet" style="margin-top:8px">
+                <div class="ios-kicker" style="color:#c6b6ff">NEVER IN TRANSCRIPT OR CACHE</div>
+                <div class="ios-title">Provide <code>STRIPE_TEST_KEY</code></div>
+                <div class="ios-copy">Target: <code>MacBook Pro · .env.test.local</code>. Sent over Noise + ML-KEM tunnel straight to host vault.</div>
+                <div style="padding:7px 9px;border-radius:9px;background:#12141e;border:1px solid #494170;font:11px/1 var(--hk-mono);color:#d7d0ff;margin-bottom:8px">••••••••••••••••••••••</div>
+                <div class="ios-btn-row">
+                  <button class="ios-btn subtle" type="button">🔑 Passwords</button>
+                  <button class="ios-btn violet" type="button" id="ios-vault-send">Face ID &amp; Send</button>
+                </div>
+                <div id="ios-vault-fb"></div>
+              </div>
+              <div class="ios-haptic-pill" style="margin:auto auto 0">🛡️ Zero-cache · Biometric gated</div>
+            </div>
+          </div>
+          <p class="ios-note">Autofills from iOS Passwords / 1Password and injects on Mac without touching chat.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         04 · ALWAYS-ON-TOP MINI PROGRESS PILL (DYNAMIC ISLAND — STARRED)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="card-section featured" id="s4" data-cap="progress_pill">
+      <div class="sec-top">
+        <div>
+          <span class="badge-num star">04 ★</span>
+          <h2>Always-on-Top Mini Progress Pill ("Dynamic Island")</h2>
+        </div>
+        <div class="phase-pills" data-phase-group="progress_pill">
+          <button type="button" data-phase="p1" class="active">Phase 1</button>
+          <button type="button" data-phase="p2">Phase 2</button>
+          <button type="button" data-phase="later">Later</button>
+        </div>
+      </div>
+      <p class="sec-desc">
+        A quiet, draggable floating pill over all apps on macOS — and a real <strong>Dynamic Island + Lock Screen Live Activity</strong> on iPhone — that morphs into the amber Urgent HUD the moment a blocker hits.
+      </p>
+
+      <div class="island-toolbar">
+        <div class="seg-group" id="island-states">
+          <button type="button" data-island="compact" class="active">1. Compact pill</button>
+          <button type="button" data-island="expanded">2. Hover / expanded</button>
+          <button type="button" data-island="multi">3. Multi-agent (3)</button>
+          <button type="button" data-island="blocked">4. Morph → YubiKey blocker!</button>
+          <button type="button" data-island="done">5. Done flash</button>
+        </div>
+        <div class="island-right-tools">
+          <div class="seg-group sm" id="island-pos">
+            <button type="button" data-pos="top" class="active">Top-center</button>
+            <button type="button" data-pos="corner">Bottom-right</button>
+          </div>
+          <button class="mini-btn accent-btn" type="button" id="island-play">▶ Play lifecycle</button>
+        </div>
+      </div>
+
+      <div class="cap-body-split">
+        <div class="cap-desktop-col desktop-only-block">
+          <div class="island-desktop pos-top" id="island-desktop">
+            <div class="mac-menubar">
+              <span> &nbsp;<b>Figma</b> &nbsp; File &nbsp; Edit &nbsp; Object &nbsp; Vector</span>
+              <span>Wi-Fi &nbsp; 98% &nbsp; Thu 10:52 PM</span>
+            </div>
+            <div class="figma-mock">
+              <div class="figma-side"></div>
+              <div class="figma-canvas">
+                <div class="figma-artboard">
+                  <div class="ab-title">Landing Hero · v3</div>
+                  <div class="ab-blocks"><div></div><div></div></div>
+                </div>
+              </div>
+              <div class="figma-props"></div>
+            </div>
+
+            <!-- The Morphing Dynamic Pill Host -->
+            <div class="island-anchor" id="island-anchor">
+              <!-- Rendered by app.js -->
+            </div>
+          </div>
+        </div>
+
+        <aside class="ios-panel">
+          <div class="ios-panel-head">
+            <span class="ios-chip">iOS · Dynamic Island</span>
+            <span class="ios-subtag">ActivityKit</span>
+          </div>
+          <div class="iphone-shell">
+            <div class="iphone-screen lockscreen" id="ios-island-screen"></div>
+          </div>
+          <p class="ios-note">Synced live with the state buttons above via <code>ChatLiveActivity</code>.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         05 · SHARED HUMAN + AGENT RUNBOOK CHECKLIST
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="card-section" id="s5" data-cap="runbook">
+      <div class="sec-top">
+        <div>
+          <span class="badge-num">05</span>
+          <h2>Shared Human + Agent Runbook Card</h2>
+        </div>
+        <div class="phase-pills" data-phase-group="runbook">
+          <button type="button" data-phase="p1" class="active">Phase 1</button>
+          <button type="button" data-phase="p2">Phase 2</button>
+          <button type="button" data-phase="later">Later</button>
+        </div>
+      </div>
+      <p class="sec-desc">
+        Pinned to a workspace across tabs on Mac and mirrored as a live checklist card on iPhone. Checking off your step on either device immediately resumes Claude.
+      </p>
+
+      <div class="cap-body-split">
+        <div class="cap-desktop-col desktop-only-block">
+          <div class="runbook-wrap">
+            <div class="runbook-card" id="runbook-card">
+              <div class="rb-head">
+                <div>
+                  <div class="rb-kicker">WORKSPACE RUNBOOK · HERDR-GPUI</div>
+                  <h4>Ship v0.18.0 Release</h4>
+                </div>
+                <div class="rb-progress-wrap">
+                  <span id="rb-count">2 of 5</span>
+                  <div class="rb-bar"><div id="rb-fill" style="width:40%"></div></div>
+                </div>
+              </div>
+              <ul class="rb-list" id="rb-list">
+                <li class="rb-item done">
+                  <span class="rb-check checked">✓</span>
+                  <span class="rb-label">Run <code>just ci</code> &amp; changelog check</span>
+                  <span class="rb-owner agent">Claude</span>
+                </li>
+                <li class="rb-item done">
+                  <span class="rb-check checked">✓</span>
+                  <span class="rb-label">Bump version to <code>0.18.0</code> &amp; prepare tag</span>
+                  <span class="rb-owner agent">Claude</span>
+                </li>
+                <li class="rb-item human waiting" data-rb-step="yubi">
+                  <button class="rb-check-btn" type="button" aria-label="Complete YubiKey step"></button>
+                  <span class="rb-label"><strong>Tap YubiKey</strong> to sign tag <code>v0.18.0</code> &amp; push</span>
+                  <span class="rb-owner you">You · click to complete</span>
+                </li>
+                <li class="rb-item locked" data-rb-step="ci-watch">
+                  <span class="rb-check">○</span>
+                  <span class="rb-label">Watch GitHub release build &amp; verify DMG signature</span>
+                  <span class="rb-owner agent">Claude · waiting</span>
+                </li>
+                <li class="rb-item human locked" data-rb-step="publish">
+                  <button class="rb-check-btn" type="button" disabled aria-label="Approve release"></button>
+                  <span class="rb-label">Approve final Homebrew cask PR &amp; publish</span>
+                  <span class="rb-owner you">You</span>
+                </li>
+              </ul>
+              <div class="rb-foot">
+                <span id="rb-status">Waiting on your step: <b>Tap YubiKey</b></span>
+                <button class="mini-btn" type="button" id="rb-reset">Reset runbook</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="ios-panel">
+          <div class="ios-panel-head">
+            <span class="ios-chip">iOS · Runbook Sheet</span>
+            <span class="ios-subtag">Live Sync</span>
+          </div>
+          <div class="iphone-shell">
+            <div class="iphone-screen">
+              <div class="iphone-status"><span>10:52</span><span>5G ▮</span></div>
+              <div class="di-pill">✓ 2/5 · Release</div>
+              <div class="ios-glass" style="margin-top:6px">
+                <div class="ios-kicker">SHIP V0.18.0 · HERDR-GPUI</div>
+                <div class="ios-check-item"><span style="color:var(--green)">✓</span><span>just ci &amp; changelog</span></div>
+                <div class="ios-check-item"><span style="color:var(--green)">✓</span><span>Prepare tag v0.18.0</span></div>
+                <div class="ios-check-item active"><span>🔑</span><span><b>Verify TestFlight build</b></span></div>
+                <div class="ios-check-item" style="opacity:.55"><span>○</span><span>Publish release notes</span></div>
+                <button class="ios-btn amber" style="width:100%;margin-top:6px" type="button" id="ios-rb-check">Mark my step done</button>
+                <div id="ios-rb-fb"></div>
+              </div>
+            </div>
+          </div>
+          <p class="ios-note">Checking off from iPhone notifies the agent on Mac immediately.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         06 · FLOATING DROP-ZONE & VOICE QUICK-REPLY
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="card-section" id="s6" data-cap="drop_voice">
+      <div class="sec-top">
+        <div>
+          <span class="badge-num">06</span>
+          <h2>Floating Drop-Zone &amp; Voice Quick-Reply HUDs</h2>
+        </div>
+        <div class="phase-pills" data-phase-group="drop_voice">
+          <button type="button" data-phase="p1" class="active">Phase 1</button>
+          <button type="button" data-phase="p2">Phase 2</button>
+          <button type="button" data-phase="later">Later</button>
+        </div>
+      </div>
+      <p class="sec-desc">
+        Low-friction ways to hand files, photos, or short spoken answers back to a waiting agent — floating HUD on Mac, native Camera/Photos/Files + Dictation sheet on iPhone.
+      </p>
+
+      <div class="cap-body-split">
+        <div class="cap-desktop-col desktop-only-block">
+          <div class="two-col">
+            <!-- 6A: Drop Zone -->
+            <div class="sub-card">
+              <h4>A · Floating Drop-Zone HUD (over Finder / Browser)</h4>
+              <div class="drop-target" id="drop-target">
+                <div class="drop-source">
+                  <span class="agent-pill claude">✳ Claude</span>
+                  <span>asks for a file · <b>herdr-gpui</b></span>
+                </div>
+                <div class="drop-well" id="drop-well">
+                  <div class="drop-icon">⬇</div>
+                  <div class="drop-title" id="drop-title">Drop crash log or screenshot here</div>
+                  <div class="drop-sub" id="drop-sub">Drag any real file onto this box, or simulate one below</div>
+                </div>
+                <div class="drop-actions">
+                  <button class="mini-btn accent-btn" type="button" id="sim-drop">✦ Simulate file drop</button>
+                  <button class="mini-btn" type="button" id="reset-drop">Reset</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 6B: Voice Quick-Reply -->
+            <div class="sub-card">
+              <h4>B · Push-to-Talk Voice Reply on Global HUD</h4>
+              <div class="voice-hud" id="voice-hud">
+                <div class="g-hud-meta">
+                  <span class="sheprd-chip">Sheprd · Global HUD</span>
+                  <span>Claude · <b>herdr-gpui</b></span>
+                </div>
+                <div class="voice-q">Linux CI hit a flaky Vulkan timeout — retry or skip for now?</div>
+                <div class="voice-transcript" id="voice-transcript">
+                  Hold the mic button (or press <kbd>⌥Space</kbd>) to answer without leaving Safari…
+                </div>
+                <div class="voice-bars" id="voice-bars" aria-hidden="true">
+                  <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                </div>
+                <div class="voice-controls">
+                  <button class="m-btn voice-mic" type="button" id="voice-btn">🎙 Tap to simulate speaking</button>
+                  <button class="m-btn primary sm" type="button" id="voice-send" disabled>Send reply</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="ios-panel">
+          <div class="ios-panel-head">
+            <span class="ios-chip">iOS · Capture &amp; Voice</span>
+            <span class="ios-subtag">Photos / Dictation</span>
+          </div>
+          <div class="iphone-shell">
+            <div class="iphone-screen">
+              <div class="iphone-status"><span>10:52</span><span>5G ▮</span></div>
+              <div class="di-pill">✳ Claude asks</div>
+              <div class="ios-sheet">
+                <div class="ios-grabber"></div>
+                <div class="ios-kicker">CAPTURE OR SPEAK</div>
+                <div class="ios-title">Send screenshot or voice answer</div>
+                <div class="ios-copy">Agent asked for a crash screenshot — attach straight from iPhone or dictate a quick reply.</div>
+                <div class="ios-btn-row" style="margin-bottom:6px">
+                  <button class="ios-btn subtle" type="button" data-ios-cap="Opened Camera / PhotosPicker">📷 Photo</button>
+                  <button class="ios-btn subtle" type="button" data-ios-cap="Opened Files picker">📄 Files</button>
+                </div>
+                <button class="ios-btn amber" style="width:100%" type="button" data-ios-cap="Dictated & sent voice reply via Dictation.swift">🎙 Hold to reply by voice</button>
+                <div id="ios-cap-fb"></div>
+              </div>
+            </div>
+          </div>
+          <p class="ios-note">Reuses iOS <code>PhotosPicker</code>, Share/Files, and <code>Dictation.swift</code>.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         07 · CROSS-PANE SPOTLIGHT & FOCUSED MINI-DIFF
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="card-section" id="s7" data-cap="spotlight_diff">
+      <div class="sec-top">
+        <div>
+          <span class="badge-num">07</span>
+          <h2>Cross-Pane Spotlight &amp; Focused Mini-Diff Sheet</h2>
+        </div>
+        <div class="phase-pills" data-phase-group="spotlight_diff">
+          <button type="button" data-phase="p1" class="active">Phase 1</button>
+          <button type="button" data-phase="p2">Phase 2</button>
+          <button type="button" data-phase="later">Later</button>
+        </div>
+      </div>
+      <p class="sec-desc">
+        Extend <code>sheprd ui guide</code> &amp; iOS <code>AgentHighlight</code> beyond Settings to point directly at a pane, line, or workspace row — plus a lightweight single-change approval sheet.
+      </p>
+
+      <div class="cap-body-split">
+        <div class="cap-desktop-col desktop-only-block">
+          <div class="two-col">
+            <!-- 7A: Spotlight Walkthrough -->
+            <div class="sub-card">
+              <h4>A · Guided Spotlight over Panes &amp; Sidebar</h4>
+              <div class="spot-win" id="spot-win" data-spot-step="0">
+                <div class="spot-side">
+                  <div class="spot-row">herdr-gpui</div>
+                  <div class="spot-row" id="spot-target-1">↳ feat/chat-modals</div>
+                  <div class="spot-row">↳ main</div>
+                </div>
+                <div class="spot-term">
+                  <div class="code-ln">146  let guard = self.inbox.lock();</div>
+                  <div class="code-ln" id="spot-target-0">147  self.notify_all_windows(cx);  // ← deadlock</div>
+                  <div class="code-ln">148  drop(guard);</div>
+                </div>
+                <div class="spot-popover" id="spot-popover">
+                  <div class="spot-kicker" id="spot-kicker">CLAUDE · STEP 1 OF 2</div>
+                  <div class="spot-text" id="spot-text">Line 147 notifies windows while still holding the inbox mutex — moving <code>drop(guard)</code> above it fixes the hang.</div>
+                  <div class="spot-btns">
+                    <button class="m-btn ghost xs" type="button" id="spot-done">Done</button>
+                    <button class="m-btn primary xs" type="button" id="spot-next">Next →</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 7B: Mini-Diff Approval Sheet -->
+            <div class="sub-card">
+              <h4>B · One-Item Approval Sheet (SQL / Config / Command)</h4>
+              <div class="minidiff-card" id="minidiff-card">
+                <div class="md-head">
+                  <span class="agent-pill codex">◎ Codex</span>
+                  <span><strong>Approve migration before applying?</strong></span>
+                  <span class="md-file">migrations/014_modals.sql</span>
+                </div>
+                <pre class="md-diff"><span class="diff-ctx">  CREATE TABLE IF NOT EXISTS alerts (</span>
+<span class="diff-del">-   scope TEXT NOT NULL,</span>
+<span class="diff-add">+   scope TEXT NOT NULL CHECK (scope IN ('window', 'global')),</span>
+<span class="diff-add">+   auto_clear BOOLEAN NOT NULL DEFAULT 1,</span>
+<span class="diff-ctx">    created_at INTEGER NOT NULL</span>
+<span class="diff-ctx">  );</span></pre>
+                <div class="md-foot" id="md-foot">
+                  <button class="m-btn ghost sm" type="button" data-md="reject">Reject</button>
+                  <button class="m-btn ghost sm" type="button" data-md="edit">Edit in chat</button>
+                  <button class="m-btn primary sm" type="button" data-md="approve">Approve &amp; run</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="ios-panel">
+          <div class="ios-panel-head">
+            <span class="ios-chip">iOS · Highlight &amp; Diff</span>
+            <span class="ios-subtag">Liquid Glass Sheet</span>
+          </div>
+          <div class="iphone-shell">
+            <div class="iphone-screen">
+              <div class="iphone-status"><span>10:52</span><span>5G ▮</span></div>
+              <div class="di-pill">◎ Codex · Diff</div>
+              <div class="ios-bg-list">
+                <div class="ios-bg-row lit"><span>★ feat/chat-modals</span><span>Highlighted</span></div>
+              </div>
+              <div class="ios-sheet">
+                <div class="ios-grabber"></div>
+                <div class="ios-kicker">014_MODALS.SQL</div>
+                <pre class="md-diff" style="font-size:9.5px;padding:6px;margin-bottom:8px"><span class="diff-del">- scope TEXT NOT NULL,</span>
+<span class="diff-add">+ scope TEXT CHECK ('window','global'),</span>
+<span class="diff-add">+ auto_clear BOOLEAN DEFAULT 1,</span></pre>
+                <div class="ios-btn-row">
+                  <button class="ios-btn danger" type="button" data-ios-md="Rejected on iPhone">Reject</button>
+                  <button class="ios-btn primary" type="button" data-ios-md="Approved on iPhone ✓">Approve</button>
+                </div>
+                <div id="ios-md-fb"></div>
+              </div>
+            </div>
+          </div>
+          <p class="ios-note">Swipe-friendly diff approval &amp; spotlighted workspace rows.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         08 · SEMANTIC AUDIO, HAPTICS & EDGE-LIGHT CUES
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="card-section" id="s8" data-cap="audio_edge">
+      <div class="sec-top">
+        <div>
+          <span class="badge-num">08</span>
+          <h2>Semantic Audio, CoreHaptics &amp; Edge-Light Cues</h2>
+        </div>
+        <div class="phase-pills" data-phase-group="audio_edge">
+          <button type="button" data-phase="p1" class="active">Phase 1</button>
+          <button type="button" data-phase="p2">Phase 2</button>
+          <button type="button" data-phase="later">Later</button>
+        </div>
+      </div>
+      <p class="sec-desc">
+        Click any cue below to hear a synthesized preview and watch both the Mac window Edge Light and iPhone screen glow + <code>Cue.swift</code> CoreHaptics tap pattern.
+      </p>
+
+      <div class="cap-body-split">
+        <div class="cap-desktop-col desktop-only-block">
+          <div class="cue-studio">
+            <div class="cue-buttons" id="cue-buttons">
+              <button type="button" class="cue-btn" data-cue="yubikey">
+                <span class="cue-dot amber"></span>
+                <div><strong>YubiKey / Hardware Touch</strong><small>Soft double-knock · amber double-heartbeat</small></div>
+              </button>
+              <button type="button" class="cue-btn" data-cue="decision">
+                <span class="cue-dot blue"></span>
+                <div><strong>Needs Decision</strong><small>Gentle two-note chime · calm blue glow</small></div>
+              </button>
+              <button type="button" class="cue-btn" data-cue="secret">
+                <span class="cue-dot violet"></span>
+                <div><strong>Secret Requested</strong><small>Crystalline lock tone · indigo shimmer</small></div>
+              </button>
+              <button type="button" class="cue-btn" data-cue="countdown">
+                <span class="cue-dot red"></span>
+                <div><strong>Countdown Warning</strong><small>Crisp woodblock tick · pulsing coral edge</small></div>
+              </button>
+              <button type="button" class="cue-btn" data-cue="done">
+                <span class="cue-dot green"></span>
+                <div><strong>Unblocked / Milestone</strong><small>Warm major triad · emerald sweep</small></div>
+              </button>
+            </div>
+
+            <div class="edge-preview-win" id="edge-preview-win">
+              <div class="ep-bar"><span>Sheprd · herdr-gpui</span><span id="ep-tag">Click a cue to preview</span></div>
+              <div class="ep-body">
+                <div class="ep-center" id="ep-center">Edge Light + Audio Preview</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="ios-panel">
+          <div class="ios-panel-head">
+            <span class="ios-chip">iOS · Cue.swift</span>
+            <span class="ios-subtag">Synth + CoreHaptics</span>
+          </div>
+          <div class="iphone-shell">
+            <div class="iphone-screen ios-cue-yubikey" id="ios-cue-screen">
+              <div class="iphone-status"><span>10:52</span><span>5G ▮</span></div>
+              <div class="di-pill amber">♪ Audio + Haptic</div>
+              <div style="margin:auto 0;text-align:center">
+                <div class="ios-title" id="ios-cue-label">Amber double-heartbeat</div>
+                <div class="ios-haptic-pill" id="ios-cue-haptic">📳 Cue.Tap: 2× crisp knock (0.0s, 0.14s)</div>
+              </div>
+              <div class="ios-note" style="color:#9ea7ba;margin-top:auto">Muted by Ring/Silent switch &amp; Dictation session</div>
+            </div>
+          </div>
+          <p class="ios-note">Click any cue button on the left to preview both Mac Edge Light &amp; iOS haptics.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ───────────── Sticky Roadmap Footer ───────────── -->
+    <footer class="roadmap-footer">
+      <div class="rf-text" id="rf-summary">Phase 1: 8 · Phase 2: 0 (Desktop + iOS)</div>
+      <button class="hk-button accent" type="button" id="send-roadmap">Send roadmap picks to agent</button>
+    </footer>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+<script src="extras.js"></script>
+<script src="ios-previews.js"></script>
+</body>
+</html>

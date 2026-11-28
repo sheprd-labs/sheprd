@@ -13,9 +13,10 @@ use crate::{
     search_input::SearchInput,
 };
 use gpui::{prelude::*, *};
-use sheprd_chat_protocol::{Attachment, Command, MAX_ATTACHMENTS, MAX_PROMPT_SIZE, Status};
+use sheprd_chat_protocol::{Attachment, Command, MAX_PROMPT_SIZE, Status};
 use std::time::Instant;
 
+mod attachments;
 pub(super) mod visuals;
 
 impl SheprdWindow {
@@ -61,9 +62,14 @@ impl SheprdWindow {
                         connection: endpoint.generation,
                     })
             });
-        // The panes on screen come first wherever a bound applies, then
-        // those holding files for an unsent prompt.
+        // The focused pane on screen (a core tab's, else the daemon's) comes
+        // first wherever a bound applies, then the other panes on screen,
+        // then those holding files for an unsent prompt.
         let on_screen = self.on_screen_chat_panes(cx);
+        let focused = self
+            .focused_core_key(window, cx)
+            .or_else(|| self.live.snapshot.as_ref()?.focused_pane_id.clone())
+            .filter(|pane| on_screen.contains(pane));
         let holding: Vec<String> = self
             .chats
             .panes()
@@ -71,12 +77,14 @@ impl SheprdWindow {
             .map(|pane| pane.target.pane_id.clone())
             .collect();
         let rank = |pane: &str| {
-            if on_screen.iter().any(|shown| shown == pane) {
+            if focused.as_deref() == Some(pane) {
                 0
-            } else if holding.iter().any(|held| held == pane) {
+            } else if on_screen.iter().any(|shown| shown == pane) {
                 1
-            } else {
+            } else if holding.iter().any(|held| held == pane) {
                 2
+            } else {
+                3
             }
         };
         let agents = self
@@ -86,7 +94,7 @@ impl SheprdWindow {
             .map(super::existing::candidates)
             .map(|agents| {
                 discovery::bound_by(agents, super::existing::MAX_OBSERVED, |agent| {
-                    rank(&agent.pane_id).min(1)
+                    rank(&agent.pane_id).min(2)
                 })
             })
             .unwrap_or_default();
@@ -148,6 +156,7 @@ impl SheprdWindow {
             }
         }
         changed |= self.chats.poll(now);
+        self.sync_chat_interactions(window, cx);
         self.chats.log_focused_attachment(
             &known,
             self.live.snapshot.as_deref(),
@@ -156,6 +165,7 @@ impl SheprdWindow {
             route.as_ref(),
         );
         self.settle_chat_modes(cx);
+        changed |= self.chats.auto_accept(self.config.chat.auto_accept);
         // Observed panes, whether a discovered agent or a `[chat.mirrors]`
         // entry, take their status from the daemon; live chats ignore it.
         for pane in self.chats.panes_mut() {
@@ -806,104 +816,6 @@ impl SheprdWindow {
         let focus = input.read(cx).focus.clone();
         window.focus(&focus, cx);
         cx.notify();
-    }
-
-    /// Adds files to the next prompt of the chat over `pane_id`. A chat on
-    /// an SSH host takes copies made there, since this machine's paths name
-    /// nothing on that host.
-    pub(crate) fn attach_chat_files(
-        &mut self,
-        pane_id: &str,
-        paths: Vec<std::path::PathBuf>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        if self
-            .chats
-            .pane(pane_id)
-            .is_some_and(|pane| pane.input() != ChatInput::Composer)
-        {
-            return;
-        }
-        let host = match self.chats.pane(pane_id).map(|pane| &pane.target.route) {
-            Some(super::Route::Remote(target)) => target.clone(),
-            Some(super::Route::Ssh(host)) => sheprd_client::ConnectTarget::Ssh {
-                target: host.clone(),
-                session: String::new(),
-            },
-            Some(super::Route::Local) => return self.add_chat_files(pane_id, paths, window, cx),
-            None => return,
-        };
-        self.upload_chat_files(pane_id, host, paths, window, cx);
-    }
-
-    /// Adds paths, as the program will read them, to the next prompt,
-    /// skipping ones already there and any past [`MAX_ATTACHMENTS`]. Whether
-    /// each exists is checked by the program when the prompt goes out.
-    pub(super) fn add_chat_files(
-        &mut self,
-        pane_id: &str,
-        paths: Vec<std::path::PathBuf>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(pane) = self.chats.pane_mut(pane_id) else {
-            return;
-        };
-        if pane.input() != ChatInput::Composer {
-            return;
-        }
-        for path in paths {
-            if pane.attachments.len() >= MAX_ATTACHMENTS {
-                pane.error = Some(fl!("chat-files-too-many", count = MAX_ATTACHMENTS));
-                break;
-            }
-            if !pane.attachments.contains(&path) {
-                pane.attachments.push(path);
-            }
-        }
-        if let Some(input) = pane.composer.clone() {
-            let focus = input.read(cx).focus.clone();
-            window.focus(&focus, cx);
-        }
-        self.redraw_terminal(cx);
-        cx.notify();
-    }
-
-    /// The system file dialog; the chosen files join the next prompt.
-    pub(super) fn browse_chat_files(
-        &mut self,
-        pane_id: &str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let paths = cx.prompt_for_paths(PathPromptOptions {
-            files: true,
-            directories: false,
-            multiple: true,
-            prompt: Some(fl!("chat-files-attach").into()),
-        });
-        let pane_id = pane_id.to_owned();
-        cx.spawn_in(window, async move |this, cx| {
-            let Ok(Ok(Some(paths))) = paths.await else {
-                return;
-            };
-            let _ = this.update_in(cx, |this, window, cx| {
-                this.attach_chat_files(&pane_id, paths, window, cx);
-            });
-        })
-        .detach();
-    }
-
-    /// Takes a file back off the next prompt.
-    pub(super) fn detach_chat_file(&mut self, pane_id: &str, index: usize, cx: &mut Context<Self>) {
-        if let Some(pane) = self.chats.pane_mut(pane_id)
-            && index < pane.attachments.len()
-        {
-            pane.attachments.remove(index);
-            self.redraw_terminal(cx);
-            cx.notify();
-        }
     }
 
     /// Sends what the composer holds, as Enter does.

@@ -4,6 +4,10 @@
 //! name the mode and auto-accepting a chat starts with; those go first, so
 //! the first prompt never runs in a mode the person did not pick.
 
+pub(super) mod sources;
+
+pub(crate) use sources::{Error as SourceError, new_sources};
+
 use crate::hub;
 use crate::web::{
     ApiError, Device, NEW_CHAT_WAIT, Shared, TypedFrom, check_new_workspace, folders, parse_agent,
@@ -89,11 +93,28 @@ pub(crate) struct NewWorkspace {
     /// primary when absent or not followed.
     #[serde(default)]
     session: Option<String>,
+    /// Where the worktree comes from instead of a new `branch`.
+    #[serde(default)]
+    source: Option<sources::Source>,
     #[serde(default)]
     start: Option<Start>,
+    /// What the first pane runs.
+    #[serde(default)]
+    opens: Opens,
     /// The workspace's name; empty names it for its folder or branch.
     #[serde(default)]
     title: String,
+}
+
+/// What a new workspace's first pane runs, as the desktop's "Opens in".
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum Opens {
+    /// A chat with the request's agent.
+    #[default]
+    Chat,
+    /// The checkout's shell, alone.
+    Shell,
 }
 
 #[derive(Debug, Deserialize)]
@@ -258,18 +279,56 @@ pub(crate) async fn create_workspace(
 ) -> Result<Json<CreatedWorkspace>, ApiError> {
     check_prompt(&request.prompt)?;
     let title = check_title(&request.title)?;
-    let (agent, branch) =
+    let (agent, mut branch) =
         check_new_workspace(&state, &request.cwd, &request.branch, &request.agent).await?;
+    let (mut base, mut checkout) = (None, None);
+    if let Some(source) = request.source.clone() {
+        let cwd = std::path::PathBuf::from(&request.cwd);
+        match source {
+            sources::Source::Pull {
+                number,
+                head,
+                head_owner,
+            } => {
+                let fetched = tokio::task::spawn_blocking(move || {
+                    sources::fetch_pull(&cwd, number, &head, head_owner.as_deref())
+                })
+                .await
+                .map_err(|_| ApiError::Folder)??;
+                branch = Some(fetched.branch);
+                base = Some(fetched.base);
+            }
+            sources::Source::Checkout { path } => {
+                let found = tokio::task::spawn_blocking(move || sources::checkout_of(&cwd, &path))
+                    .await
+                    .map_err(|_| ApiError::Folder)??;
+                branch = None;
+                checkout = Some(found);
+            }
+        }
+    }
+    let shell = request.opens == Opens::Shell;
     let created = state
         .hub
         .create_workspace(hub::NewWorkspace {
             agent,
+            base: base.as_deref(),
             branch: branch.as_deref(),
+            checkout: checkout.as_deref(),
             cwd: &request.cwd,
             session: request.session.as_deref(),
+            shell,
             title,
         })
         .await?;
+    if shell {
+        return Ok(Json(CreatedWorkspace {
+            pane: Some(created.pane),
+            prompted: false,
+            started: true,
+            workspace: created.workspace,
+        }));
+    }
     let opened = open(
         &state,
         created.pane,

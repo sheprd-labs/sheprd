@@ -556,9 +556,19 @@ impl Hub {
         let incoming = listener.incoming.clone();
         let listener_address = listener.address;
         let on_route = state.routes.get(&route).copied().unwrap_or(0);
+        // The per-key cap keeps a stolen key from taking every slot of its
+        // computer. On a private relay a device the computer named is its
+        // owner's, whose desktop holds a terminal, reads, and chats at once:
+        // it may hold half the computer's room, so even a stolen one leaves
+        // the rest to the owner's other devices.
+        let per_key = if self.access.requires_token() && !pairing {
+            (self.limits.max_sessions_per_route / 2).max(self.limits.max_sessions_per_key)
+        } else {
+            self.limits.max_sessions_per_key
+        };
         if on_route >= self.limits.max_sessions_per_route
             || state.slots >= self.limits.max_sessions
-            || state.keys.get(&key) >= self.limits.max_sessions_per_key
+            || state.keys.get(&key) >= per_key
         {
             return Ok(Err(DialRefusal::Busy));
         }

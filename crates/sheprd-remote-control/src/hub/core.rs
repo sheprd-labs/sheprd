@@ -7,9 +7,9 @@ mod chats;
 mod checkouts;
 mod convert;
 mod create;
-pub(super) use create::Place;
 #[cfg(feature = "tmux")]
 pub(super) use create::place_labels;
+pub(super) use create::{NewCheckout, Place};
 pub(crate) use saved::TabRef;
 mod error;
 mod hold;

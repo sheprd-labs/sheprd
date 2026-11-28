@@ -20,10 +20,10 @@ use super::{
     activity::{self, Described},
     payload::{MAX_BUTTONS, MAX_PREVIOUS},
 };
-use crate::push::{Chat, excerpt};
+use crate::push::{Chat, directives, excerpt};
 use sheprd_chat_protocol::{
-    Change, EntryKind, Permission, PlanEntry, PlanStatus, Status, Tool, ToolKind, ToolStatus,
-    Transcript, TurnEnd, TurnSummary,
+    Change, EntryId, EntryKind, Permission, PlanEntry, PlanStatus, Status, Tool, ToolKind,
+    ToolStatus, Transcript, TurnEnd, TurnSummary,
 };
 
 /// How long a finished activity stays on the lock screen.
@@ -80,12 +80,29 @@ pub(crate) fn decide(
         Change::Push { entry } if running => match &entry.kind {
             EntryKind::Turn(summary) => Some(turn_ended(chat, before, summary, now_s)),
             EntryKind::Tool(tool) => tool_step(chat, before, tool),
+            EntryKind::Agent { text } => agent_interaction_update(chat, before, entry.id, text),
             _ => None,
         },
         Change::Replace { entry } if running => match &entry.kind {
             EntryKind::Tool(tool) => tool_step(chat, before, tool),
+            EntryKind::Agent { text } => agent_interaction_update(chat, before, entry.id, text),
             _ => None,
         },
+        Change::Append { id, text } if running => {
+            let existing = before
+                .entries
+                .iter()
+                .rev()
+                .find(|entry| entry.id == *id)
+                .and_then(|entry| match &entry.kind {
+                    EntryKind::Agent { text } => Some(text.as_str()),
+                    _ => None,
+                })?;
+            let mut combined = String::with_capacity(existing.len() + text.len());
+            combined.push_str(existing);
+            combined.push_str(text);
+            agent_interaction_update(chat, before, *id, &combined)
+        }
         Change::Plan { plan } if running => {
             let mut state = state(before, phase(before), now(before, plan));
             (state.plan_done, state.plan_total) = plan_counts(plan);
@@ -160,6 +177,91 @@ fn tool_step(chat: &Chat<'_>, before: &Transcript, tool: &Tool) -> Option<Live> 
     Some(update(chat, state, None))
 }
 
+/// Emits a Live Activity update when an agent message introduces, updates, or
+/// clears a `:::progress` percent or urgent blocker (`:::urgent`, `:::otp`,
+/// `:::oauth`, `:::secret`, `:::countdown`).
+fn agent_interaction_update(
+    chat: &Chat<'_>,
+    before: &Transcript,
+    entry_id: EntryId,
+    text: &str,
+) -> Option<Live> {
+    let prev = turn_interaction_fields(before, None);
+    let next = turn_interaction_fields(before, Some((entry_id, text)));
+    if next == prev {
+        return None;
+    }
+    let mut content = state(before, phase(before), now(before, &before.plan));
+    content.detail.progress_percent = next.0;
+    content.detail.blocker_title = next.1.clone();
+    content.detail.blocker_kind = next.2;
+    let alert = next
+        .1
+        .filter(|title| prev.1.as_deref() != Some(title.as_str()))
+        .map(|title| Alert {
+            body: place(chat),
+            title: excerpt(&title),
+        });
+    Some(update(chat, content, alert))
+}
+
+/// Computes `(progress_percent, blocker_title, blocker_kind)` across the
+/// current turn's agent entries (optionally overlaying a new/updated entry).
+fn turn_interaction_fields(
+    transcript: &Transcript,
+    overlay: Option<(EntryId, &str)>,
+) -> (Option<u8>, Option<String>, Option<String>) {
+    let turn_start = transcript
+        .entries
+        .iter()
+        .rposition(|entry| matches!(entry.kind, EntryKind::User { .. }))
+        .map_or(0, |idx| idx + 1);
+    let mut progress_percent: Option<u8> = None;
+    let mut blocker_title: Option<String> = None;
+    let mut blocker_kind: Option<String> = None;
+    let mut blocker_auto_clear = false;
+    let mut blocker_entry: Option<EntryId> = None;
+
+    let mut apply = |id: EntryId, text: &str| {
+        if blocker_auto_clear && blocker_entry.is_some_and(|prev| prev < id) {
+            blocker_title = None;
+            blocker_kind = None;
+            blocker_auto_clear = false;
+            blocker_entry = None;
+        }
+        let parsed = directives::extract_live_interaction(text);
+        if parsed.progress_done {
+            progress_percent = None;
+        } else if let Some(percent) = parsed.progress_percent {
+            progress_percent = Some(percent);
+        }
+        if let Some(title) = parsed.blocker_title {
+            blocker_title = Some(excerpt(&title));
+            blocker_kind = parsed.blocker_kind;
+            blocker_auto_clear = parsed.blocker_auto_clear;
+            blocker_entry = Some(id);
+        }
+    };
+
+    let mut overlaid = false;
+    for entry in &transcript.entries[turn_start..] {
+        if let Some((oid, otext)) = overlay
+            && entry.id == oid
+        {
+            apply(oid, otext);
+            overlaid = true;
+            continue;
+        }
+        if let EntryKind::Agent { text } = &entry.kind {
+            apply(entry.id, text);
+        }
+    }
+    if !overlaid && let Some((oid, otext)) = overlay {
+        apply(oid, otext);
+    }
+    (progress_percent, blocker_title, blocker_kind)
+}
+
 /// The step an activity shows: the tool call's title with a shell wrapper
 /// taken off, or a plan step, and, for the phone's styles, it in words.
 struct Step {
@@ -226,6 +328,10 @@ fn state(before: &Transcript, phase: Phase, step: Step) -> ContentState {
         .collect();
     edited.sort_unstable();
     edited.dedup();
+    let (progress_percent, blocker_title, blocker_kind) = match phase {
+        Phase::Working | Phase::Question => turn_interaction_fields(before, None),
+        Phase::Finished | Phase::Failed => (None, None, None),
+    };
     let detail = Detail {
         focus: None,
         question_revision: None,
@@ -241,6 +347,9 @@ fn state(before: &Transcript, phase: Phase, step: Step) -> ContentState {
             .map(|tool| activity::describe(tool).activity)
             .collect(),
         steps: count(turn_tools(before).count()),
+        progress_percent,
+        blocker_title,
+        blocker_kind,
     };
     let mut state = ContentState {
         detail,

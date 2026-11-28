@@ -16,6 +16,10 @@ FROM ${RUST_IMAGE} AS build
 RUN apk add --no-cache musl-dev
 WORKDIR /src
 COPY . .
+# The commit the image is built from, which the relay names to its operator
+# (metrics, dashboard, startup log); scripts/relay-image.sh passes it.
+ARG RELAY_COMMIT=
+ENV RELAY_COMMIT=${RELAY_COMMIT}
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
     cargo build --release --locked -p sheprd-relay \

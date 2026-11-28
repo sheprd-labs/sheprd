@@ -6,6 +6,7 @@ mod api_socket;
 mod chat_link;
 mod convert_offer;
 mod first_prompt;
+mod guests;
 mod herdr_2_choice;
 mod herdr_installed;
 mod new_chat;

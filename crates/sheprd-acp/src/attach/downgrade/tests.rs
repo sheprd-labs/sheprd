@@ -201,3 +201,54 @@ fn a_client_of_threads_gets_handoffs_as_they_are() {
     );
     assert_eq!(downgrade.message(push.clone()), Some(push));
 }
+
+#[test]
+fn an_older_client_reads_a_guests_words_named_in_their_text() {
+    let guest = sheprd_chat_protocol::Guest::new("Bob", "tma");
+    let entry = Entry {
+        id: sheprd_chat_protocol::EntryId(4),
+        kind: EntryKind::User {
+            guest: Some(guest.clone()),
+            text: "hi".to_owned(),
+            files: 0,
+            note: None,
+        },
+    };
+    let mut transcript = Transcript::new("Claude");
+    transcript.entries.push(entry.clone());
+    let epoch = Cursor::new_epoch();
+    let mut downgrade = Downgrade::new(5);
+    let Some(ServerMessage::Snapshot { transcript, .. }) =
+        downgrade.message(ServerMessage::Snapshot {
+            cursor: epoch,
+            transcript: Box::new(transcript),
+        })
+    else {
+        panic!("no snapshot");
+    };
+    let named = EntryKind::User {
+        guest: None,
+        text: "Bob via tma: hi".to_owned(),
+        files: 0,
+        note: None,
+    };
+    assert_eq!(transcript.entries[0].kind, named);
+    let Some(ServerMessage::Change {
+        change: Change::Push { entry: pushed },
+        ..
+    }) = downgrade.message(change(
+        Change::Push {
+            entry: entry.clone(),
+        },
+        1,
+        epoch,
+    ))
+    else {
+        panic!("no push");
+    };
+    assert_eq!(pushed.kind, named);
+    // A current client gets the guest as it is.
+    let mut current = Downgrade::new(REVISION);
+    let push = change(Change::Push { entry }, 1, epoch);
+    assert_eq!(current.message(push.clone()), Some(push));
+}

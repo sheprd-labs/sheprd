@@ -40,6 +40,7 @@ struct SheprdRemoteApp: App {
                     }
                 }
         }
+        .environment(model)
         // A chat or terminal in a window of its own (iPad, Stage Manager).
         WindowGroup("Chat", for: Route.self) { $route in
             RouteWindow(route: route)
@@ -48,6 +49,7 @@ struct SheprdRemoteApp: App {
             .modifier(Appearance())
             .browsesLinks(othersToSystem: true)
         }
+        .environment(model)
     }
 }
 

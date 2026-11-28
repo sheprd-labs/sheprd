@@ -24,9 +24,16 @@ extension Repository {
     /// Its own checkout, where a new worktree of it branches from, in that
     /// checkout's Herdr session whether or not a header names it.
     public var ownCheckout: Home.Workspace? {
+        workspaces.first(where: \.isOwnCheckout)
+    }
+}
+
+extension Home.Workspace {
+    /// A repository's own checkout rather than a linked worktree of it.
+    public var isOwnCheckout: Bool {
         // The catch-all group can inherit a terminal's cwd and a custom
         // display name, but has no checkout of its own.
-        workspaces.first { $0.id != "core:terminals" && !$0.cwd.isEmpty && $0.worktree?.linked != true }
+        id != "core:terminals" && !cwd.isEmpty && worktree?.linked != true
     }
 }
 

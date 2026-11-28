@@ -34,6 +34,7 @@ pub(super) fn apply(case: &str, transcript: &mut Transcript, now_ms: u64) {
                 started_ms: now_ms.saturating_sub(12_000),
             });
             transcript.permissions = vec![Permission {
+                guest: None,
                 call_id: None,
                 id: PermissionId(1),
                 options: vec![PermissionOption {

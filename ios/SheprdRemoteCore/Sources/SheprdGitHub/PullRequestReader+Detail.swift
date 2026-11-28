@@ -38,15 +38,27 @@ public struct PullRequestTarget: Hashable, Sendable {
     }
 }
 
-/// What a detail read found: the pull request, and its files unless that
-/// second read failed.
+/// What a detail read found: the pull request, its files unless that second
+/// read failed, and the GitHub login whose token read it (so viewer-scoped
+/// actions like toggling reactions stay bound to that same account).
 public struct PullRequestReading: Hashable, Sendable {
     public var detail: PullRequestDetail
     public var files: PullRequestFiles?
+    public var viewerLogin: String?
 
-    public init(detail: PullRequestDetail, files: PullRequestFiles?) {
+    public init(detail: PullRequestDetail, files: PullRequestFiles?, viewerLogin: String? = nil) {
         self.detail = detail
         self.files = files
+        self.viewerLogin = viewerLogin
+    }
+
+    /// Whether `other` was read by the same GitHub account (case-insensitive).
+    public func sameViewer(as other: PullRequestReading) -> Bool {
+        switch (viewerLogin, other.viewerLogin) {
+        case (nil, nil): true
+        case let (a?, b?): a.caseInsensitiveCompare(b) == .orderedSame
+        default: false
+        }
     }
 }
 
@@ -71,7 +83,7 @@ extension PullRequestReader {
     /// token reads it. The computer has no conversation to fall back on,
     /// so the screen then offers GitHub's page instead.
     public func detail(_ target: PullRequestTarget, source: Lenders) async -> PullRequestReading? {
-        await attempt(host: target.host, source: source) { api, token in
+        await attemptWithLogin(host: target.host, source: source) { api, token, login in
             let detail = try await api.pullRequestDetail(
                 host: target.host, owner: target.owner, repo: target.repo, number: target.number, token: token
             )
@@ -87,7 +99,24 @@ extension PullRequestReader {
             } catch {
                 files = nil
             }
-            return PullRequestReading(detail: detail, files: files)
+            return PullRequestReading(detail: detail, files: files, viewerLogin: login.isEmpty ? nil : login)
         }
+    }
+
+    /// Adds or removes an emoji reaction on `subjectId` and returns the
+    /// updated reaction groups, bound to `asLogin` so fallback never mutates
+    /// a different GitHub account's reaction.
+    public func setReaction(
+        _ content: PullRequestDetail.ReactionContent,
+        add: Bool,
+        on subjectId: String,
+        host: GitHubHost,
+        asLogin: String? = nil,
+        source: Lenders
+    ) async -> Result<[PullRequestDetail.ReactionGroup], PullRequestReactionError> {
+        let result = await mutate(host: host, asLogin: asLogin, source: source) { api, token in
+            try await api.setReaction(host: host, subjectId: subjectId, content: content, add: add, token: token)
+        }
+        return result.mapError(PullRequestReactionError.init)
     }
 }

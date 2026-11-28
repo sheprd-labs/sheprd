@@ -384,7 +384,20 @@ app learns the pane it should open:
   blank, names the new workspace (at most 200 characters, no control
   characters). `session`, as home names it, opens it in that Herdr 1
   session; absent, or naming none the daemon follows, it opens where new
-  workspaces go.
+  workspaces go. A `branch` that exists locally is checked out as it is.
+  `source` starts the worktree elsewhere, as the desktop's new worktree
+  dialog does: `{"kind": "pull", "number", "head", "head_owner"?}` fetches
+  that pull request's head first (a fork's into `refs/herdr/pull/N/head`
+  on branch `pr/N`), and `{"kind": "checkout", "path"}` opens a checkout
+  `new/sources` listed. `"opens": "shell"` lands in the checkout's shell
+  instead of a chat; `prompt` and `start` are then ignored.
+- `GET /api/v2/new/sources?cwd=` answers what a worktree of that offered
+  folder's repository may start from: `{"branches": ["fix-1"],
+  "checkouts": [{"path", "branch"?}], "repository": {"host", "owner",
+  "repo"}?}`, the local branches and linked checkouts no workspace has
+  open, and the `upstream` (else `origin`) repository whose pull requests
+  and issues the phone lists from GitHub itself. An older computer answers
+  404, and the phone offers only a new branch and a chat.
 - `POST /api/v2/workspaces/{workspace}/chats` takes `{"agent", "prompt"?,
   "start"?}` and answers `{"pane": "p7", "prompted": true, "started":
   true}`.

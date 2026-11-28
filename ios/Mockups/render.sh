@@ -39,6 +39,8 @@ case "$round" in
      ipad="" ;;
   ghsignin) phone="ghsettings-A-0 ghsettings-A-1 ghsettings-A-2 ghsettings-A-3 ghsettings-B-0 ghsettings-B-1 ghsettings-C-0 ghsettings-C-1 ghsettings-D-0 ghsettings-D-1 ghsignin-A-0 ghsignin-A-1 ghsignin-A-2 ghsignin-A-3 ghsignin-A-4 ghsignin-B-0 ghsignin-B-1 ghsignin-B-2 ghsignin-B-3 ghsignin-B-4 ghsignin-C-0 ghsignin-C-1 ghsignin-C-2 ghsignin-C-3 ghsignin-C-4"
      ipad="" ;;
+  prfilter) phone="prfilter-A-0 prfilter-A-1"
+     ipad="" ;;
   pushpr) phone="pushpr-A-0 pushpr-A-1 pushpr-B-0 pushpr-B-1 pushpr-C-0 pushpr-C-1 pushpr-D-0 pushpr-D-1"
      ipad="" ;;
   agentpr) phone="agentpr-A-0 agentpr-B-0 agentpr-C-0"
@@ -52,6 +54,10 @@ case "$round" in
   effects) phone="effects-Sizes-0 effects-Bubbles-0 effects-Bubbles-1 effects-Screen-0 effects-Screen-1 effects-Screen-2 effects-Screen-3"
      ipad="" ;;
   live) phone="live-Now-0 live-A-0 live-B-0 live-C-0 live-D-0 live-Now-1 live-A-1 live-B-1 live-C-1 live-D-1 live-Pick-0"
+     ipad="" ;;
+  trees) phone="trees-A-0 trees-B-0 trees-C-0 trees-D-0"
+     ipad="" ;;
+  newfrom) phone="newfrom-Pull-0 newfrom-Pull-1 newfrom-Shell-0 newfrom-Menu-0"
      ipad="" ;;
   csettings) phone="csettings-A-0 csettings-B-0 csettings-B-1 csettings-C-0 csettings-D-0"
      ipad="" ;;

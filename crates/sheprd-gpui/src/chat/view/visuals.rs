@@ -106,6 +106,10 @@ impl SheprdWindow {
                     Part::Screen(effect) => self
                         .render_chat_screen_replay(pane_id, entry, *effect, cx)
                         .into_any_element(),
+                    Part::Interaction(parsed) => self
+                        .render_chat_interaction_chip(pane_id, entry, parsed, cx)
+                        .into_any_element(),
+                    Part::Cue(_) => return None,
                     Part::Widget(document) => self
                         .render_chat_widget(pane_id, entry, index, document, cx)
                         .into_any_element(),

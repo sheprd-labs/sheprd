@@ -16,15 +16,17 @@ extension PullRequestReader {
     /// phone's own sign-in, exist on github.com alone.
     static let listHost = GitHubHost("github.com")!
 
-    /// The signed-in account's open pull requests and those asking for its
-    /// review, with the phone's own sign-in first, then a lent token. There
-    /// is no computer to fall back to: a search spans repositories no
-    /// computer has.
-    public func pullRequestLists(source: Lenders) async -> PullRequestListRead {
+    /// The signed-in account's pull requests in `states` and those asking
+    /// for its review, with the phone's own sign-in first, then a lent
+    /// token. There is no computer to fall back to: a search spans
+    /// repositories no computer has.
+    public func pullRequestLists(
+        source: Lenders, states: Set<PullRequestFilter.State> = PullRequestFilter.openStates
+    ) async -> PullRequestListRead {
         let host = Self.listHost
         guard await hasAccount(for: host, source: source) else { return .noAccount }
         let found = await attempt(host: host, source: source) { api, token in
-            try await api.searchPullRequests(host: host, token: token)
+            try await api.searchPullRequests(host: host, token: token, states: states)
         }
         return found.map(PullRequestListRead.found) ?? .failed
     }

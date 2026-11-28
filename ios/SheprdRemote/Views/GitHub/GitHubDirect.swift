@@ -47,7 +47,17 @@ final class GitHubDirect {
     private(set) var ownLogin: String?
     @ObservationIgnored private var watching: Task<Void, Never>?
     @ObservationIgnored private var readingBadges = false
-    @ObservationIgnored private var readingLists = false
+    /// The lists' read under way, by what its answer depends on.
+    @ObservationIgnored private let listReads = LatestRead<ListRead>()
+
+    /// What a lists read's answer depends on: the states asked for, and the
+    /// account read with, so signing in or out replaces a read under way
+    /// rather than joining it.
+    private struct ListRead: Equatable {
+        var states: Set<PullRequestFilter.State>
+        var login: String?
+        var signOuts: Int
+    }
     /// Bumped when signing out, so reads begun before it keep nothing.
     /// Screens holding their own GitHub answers stamp them with it, and
     /// drop and read again those stamped before a sign-out.
@@ -127,18 +137,21 @@ final class GitHubDirect {
         if next != badges { badges = next }
     }
 
-    /// Reads the pull request lists; `shown` when the person is waiting on
-    /// it, so the lists say they are loading.
-    func refreshLists(source: Lenders, shown: Bool = false) async {
-        guard !readingLists else { return }
-        readingLists = true
+    /// Reads the pull request lists in `states`; `shown` when the person
+    /// is waiting on it, so the lists say they are loading. A read of the
+    /// same states with the same account under way is joined; one from
+    /// before the filter or the account changed is dropped for this one.
+    func refreshLists(source: Lenders, states: Set<PullRequestFilter.State>, shown: Bool = false) async {
         if shown { loadingLists = true }
-        defer {
-            readingLists = false
-            loadingLists = false
+        await listReads.run(ListRead(states: states, login: ownLogin, signOuts: signOuts)) { [weak self] in
+            await self?.readLists(source: source, states: states)
         }
+        if !listReads.isRunning { loadingLists = false }
+    }
+
+    private func readLists(source: Lenders, states: Set<PullRequestFilter.State>) async {
         let mine = signOuts
-        let read = await reader.pullRequestLists(source: source)
+        let read = await reader.pullRequestLists(source: source, states: states)
         guard mine == signOuts, !Task.isCancelled else { return }
         switch read {
         case let .found(found):
@@ -187,19 +200,22 @@ extension Fleet {
 private struct GitHubRefresh: ViewModifier {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var phase
+    @AppStorage(PullRequestFilter.key) private var filter = PullRequestFilter()
     var showsLists: Bool
 
     private struct Key: Equatable {
         var active: Bool
         var lists: Bool
         var login: String?
+        /// The states the lists read: a change reads them again at once.
+        var states: Set<PullRequestFilter.State>?
     }
 
     func body(content: Content) -> some View {
         let direct = GitHubDirect.shared
         content
             .onAppear { direct.watchSignIn() }
-            .task(id: Key(active: phase == .active, lists: showsLists, login: direct.ownLogin)) {
+            .task(id: Key(active: phase == .active, lists: showsLists, login: direct.ownLogin, states: showsLists ? filter.states : nil)) {
                 guard phase == .active else { return }
                 #if DEBUG
                 if GitHubSample.enabled {
@@ -215,7 +231,7 @@ private struct GitHubRefresh: ViewModifier {
                 while !Task.isCancelled {
                     let source = model.fleet.gitHubLenders
                     if showsLists {
-                        await direct.refreshLists(source: source, shown: first)
+                        await direct.refreshLists(source: source, states: filter.states, shown: first)
                         first = false
                     } else {
                         let shown = model.fleet.visibleWorkspaces { model.collapsed.computers.contains($0) }

@@ -68,6 +68,7 @@ struct SettingsView: View {
             } footer: {
                 Text("Terminals stay dark in either appearance.")
             }
+            DeveloperSettingsSection()
             Section {
                 LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")
             }

@@ -510,16 +510,17 @@ async fn bootstrap_credentials_are_grant_scoped_and_removed_on_revocation() {
     closed(&mut peer.tunnel).await;
     let dial = p256::ecdsa::SigningKey::from_slice(offer.bootstrap.expose_secret()).unwrap();
     tokio::time::timeout(Duration::from_secs(2), async {
-        loop {
-            match client::dial(&s.connection, offer.route, &dial).await {
-                Err(client::Error::Refused(sheprd_relay::wire::Status::Offline)) => {
-                    break;
-                }
-                Ok(stream) => drop(stream),
-                other => panic!("unexpected relay answer: {other:?}"),
-            }
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }
+        // Closing the live viewer can precede the relay's key update. A dial
+        // racing that update can legitimately be reset with REVOKED.
+        let mut ready = s.route.ready.subscribe();
+        ready
+            .wait_for(|grants| grants.as_slice() == [s.invite.grant])
+            .await
+            .unwrap();
+        assert!(matches!(
+            client::dial(&s.connection, offer.route, &dial).await,
+            Err(client::Error::Refused(sheprd_relay::wire::Status::Offline))
+        ));
     })
     .await
     .unwrap();

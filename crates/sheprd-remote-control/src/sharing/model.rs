@@ -12,13 +12,7 @@ pub const MAX_GRANTS: usize = 16;
 pub const MAX_VIEWERS: usize = 16;
 pub const MAX_LIFETIME: Duration = Duration::from_secs(60 * 60);
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct ShareId(pub Uuid);
-
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct GrantId(pub Uuid);
+pub use sheprd_chat_protocol::sharing::admission::{GrantId, ShareId};
 
 /// Supplied by the host, never by a recipient. Both clocks must advance.
 #[derive(Clone, Copy, Debug)]

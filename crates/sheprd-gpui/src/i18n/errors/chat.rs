@@ -29,6 +29,7 @@ impl Localize for Error {
             Self::Handshake => fl!("error-chat-handshake"),
             Self::MirrorConfig => fl!("error-chat-mirror-config"),
             Self::NoEndpointDir => fl!("error-chat-no-endpoint-dir"),
+            Self::NoSharedLogin => fl!("error-chat-no-shared-login"),
             Self::NotAttached => fl!("error-chat-not-attached"),
             Self::Overflow => fl!("error-chat-overflow"),
             Self::Pasted(error) => error.localize(),
@@ -226,6 +227,10 @@ impl Localize for sheprd_chat_protocol::Rejection {
             Self::QueueFull => fl!("error-chat-rejection-queue-full"),
             Self::UnknownFile => fl!("error-chat-rejection-unknown-file"),
             Self::Unsupported => fl!("error-chat-rejection-unsupported"),
+            Self::Denied => fl!("error-chat-rejection-denied"),
+            Self::GuestOnly => fl!("error-chat-rejection-guest-only"),
+            Self::InvalidGuest => fl!("error-chat-rejection-invalid-guest"),
+            Self::HiddenText => fl!("error-chat-rejection-hidden-text"),
             Self::Other => fl!("error-chat-rejection-other"),
         }
     }

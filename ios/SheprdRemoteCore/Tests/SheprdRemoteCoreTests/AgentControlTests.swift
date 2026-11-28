@@ -110,4 +110,51 @@ struct AgentControlTests {
             #expect(try event(#"{"type":"drive","id":9,\#(command)}"#) == .drive(id: 9, command: .unknown))
         }
     }
+
+    @Test func decodesALuauPushAndASnapshotAndAnswersThem() throws {
+        #expect(try event(#"{"type":"drive","id":3,"command":"luau","screen":"pull-requests","files":{"main.luau":"return 1"}}"#)
+            == .drive(id: 3, command: .luau(screen: "pull-requests", files: ["main.luau": "return 1"])))
+        #expect(try event(#"{"type":"drive","id":3,"command":"luau","screen":"pull-requests","files":{}}"#)
+            == .drive(id: 3, command: .luau(screen: "pull-requests", files: [:])))
+        #expect(try event(#"{"type":"drive","id":4,"command":"snapshot"}"#) == .drive(id: 4, command: .snapshot))
+
+        let report = AgentLuauReport(shown: true, problems: ["main.luau:2: oops"], logs: (1...20).map { "line \($0)" })
+        #expect(report.logs.count == AgentLuauReport.maxLines)
+        #expect(report.logs.last == "line 20", "the latest lines are kept")
+        let loaded = try object(.driven(id: 3, outcome: .luau(report)))
+        #expect(loaded["outcome"] as? String == "luau")
+        let sent = try #require(loaded["report"] as? NSDictionary)
+        #expect(sent["shown"] as? Bool == true)
+        #expect(sent["problems"] as? [String] == ["main.luau:2: oops"])
+        let shot = try object(.driven(id: 4, outcome: .snapshot(upload: "u1")))
+        #expect(shot == (try object(#"{"type":"driven","id":4,"outcome":"snapshot","upload":"u1"}"#)))
+    }
+
+    @Test func aReportFitsTheLiveSocket() throws {
+        let long = String(repeating: "x", count: 1000)
+        let report = AgentLuauReport(
+            shown: true, problems: Array(repeating: long, count: 50), warnings: Array(repeating: long, count: 50),
+            logs: Array(repeating: long, count: 50)
+        )
+        let data = try JSONEncoder().encode(LiveRequest.driven(id: 1, outcome: .luau(report)))
+        // The computer closes a socket on a message over 4 KiB.
+        #expect(data.count < 4 * 1024)
+        #expect(report.problems.count > 5, "problems go first")
+    }
+
+    @Test func aReportOfEscapedLinesFitsTheLiveSocket() throws {
+        // Each of these grows six times as JSON.
+        let control = String(repeating: "\u{01}", count: 160)
+        let quoted = String(repeating: "\"\\/", count: 60)
+        let report = AgentLuauReport(
+            shown: true, problems: Array(repeating: control, count: 12), warnings: Array(repeating: quoted, count: 12),
+            logs: Array(repeating: control, count: 12)
+        )
+        let data = try JSONEncoder().encode(LiveRequest.driven(id: UInt64.max, outcome: .luau(report)))
+        #expect(data.count < 4 * 1024)
+        #expect(!report.problems.isEmpty)
+        for line in [control, quoted, "plain"] {
+            #expect(AgentLuauReport.encodedSize(line) == (try JSONEncoder().encode(line)).count)
+        }
+    }
 }

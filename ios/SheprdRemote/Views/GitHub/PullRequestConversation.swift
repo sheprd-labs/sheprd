@@ -7,15 +7,29 @@ import SwiftUI
 /// events, each beside its author's initial on a line that joins them.
 struct PullRequestConversation: View {
     let detail: PullRequestDetail
+    var pendingReactions: Set<PullRequestDetail.ReactionContent> = []
+    var reactionError: String? = nil
+    var onToggleReaction: ((PullRequestDetail.ReactionContent) -> Void)? = nil
 
     var body: some View {
         Section {
             TimelineRow(actor: detail.author, title: "\(detail.author ?? "Someone") opened this",
                         date: detail.createdAt, last: detail.timeline.isEmpty && detail.earlierItems == 0) {
-                if detail.body.isEmpty {
-                    Text("No description provided.").font(.subheadline).foregroundStyle(.secondary).italic()
-                } else {
-                    MarkdownView(text: detail.body).font(.subheadline)
+                VStack(alignment: .leading, spacing: 8) {
+                    if detail.body.isEmpty {
+                        Text("No description provided.").font(.subheadline).foregroundStyle(.secondary).italic()
+                    } else {
+                        MarkdownView(text: detail.body).font(.subheadline)
+                    }
+                    if !detail.reactions.isEmpty || (detail.canReact && onToggleReaction != nil) {
+                        PullRequestReactions(
+                            reactions: detail.reactions,
+                            canReact: detail.canReact,
+                            pending: pendingReactions,
+                            error: reactionError,
+                            onToggle: onToggleReaction
+                        )
+                    }
                 }
             }
             if detail.earlierItems > 0 {

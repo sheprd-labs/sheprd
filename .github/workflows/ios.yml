@@ -62,7 +62,9 @@ jobs:
     # GitHub's Xcode 27 image (macOS 27, arm64): macos-26 tops out at the
     # iOS 26 SDK, which App Store Connect stops accepting in April 2027.
     runs-on: xcode-27
-    timeout-minutes: 30
+    # The job takes 24 to 29 minutes, and the MoonLive audit alone 5 to 8,
+    # so 30 cancelled runs that were passing.
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -104,6 +106,8 @@ jobs:
           xcodebuild -project SheprdRemote.xcodeproj -scheme SheprdRemote \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO -quiet build
+      - name: The store app carries no live editing (MoonLive)
+        run: sh ios/tools/luau_store_audit.sh
 
   testflight:
     name: TestFlight upload

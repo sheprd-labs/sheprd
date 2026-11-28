@@ -84,6 +84,8 @@ pub struct Stats {
     pub sessions: Vec<SessionRow>,
     pub totals: Totals,
     pub version: &'static str,
+    /// The commit the relay was built from, when the build named one.
+    pub commit: Option<&'static str>,
 }
 
 /// The limits the operator set, as the page shows them.
@@ -115,5 +117,6 @@ pub fn snapshot(hub: &Hub, history: Vec<Sample>) -> Stats {
         sessions: hub.sessions(),
         totals: hub.metrics.totals(),
         version: env!("CARGO_PKG_VERSION"),
+        commit: crate::commit(),
     }
 }

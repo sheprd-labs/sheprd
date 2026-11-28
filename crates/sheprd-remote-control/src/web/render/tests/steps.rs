@@ -24,6 +24,7 @@ fn a_sub_agents_own_steps_stay_inside_its_call() {
         entry(
             1,
             EntryKind::User {
+                guest: None,
                 text: "delegate".into(),
                 files: 0,
                 note: None,

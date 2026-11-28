@@ -8,6 +8,7 @@ fn prompt(id: u64, text: &str, note: Option<&str>) -> Entry {
     Entry {
         id: EntryId(id),
         kind: EntryKind::User {
+            guest: None,
             text: text.into(),
             files: 0,
             note: note.map(str::to_owned),

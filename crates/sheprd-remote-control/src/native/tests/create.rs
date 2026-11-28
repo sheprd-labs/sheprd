@@ -166,3 +166,29 @@ fn the_forms_json_matches_the_fixtures() {
         },
     );
 }
+
+#[test]
+fn the_sources_json_matches_the_fixture() {
+    use crate::native::create::sources::{Listed, Repository, Sources};
+    fixtures::check(
+        "new_sources",
+        &Sources {
+            branches: vec!["fix-menus".into(), "release/2".into()],
+            checkouts: vec![
+                Listed {
+                    path: "/Users/me/.herdr/worktrees/app/side".into(),
+                    branch: Some("side".into()),
+                },
+                Listed {
+                    path: "/Users/me/.herdr/worktrees/app/bisect".into(),
+                    branch: None,
+                },
+            ],
+            repository: Some(Repository {
+                host: "github.com".into(),
+                owner: "acme".into(),
+                repo: "app".into(),
+            }),
+        },
+    );
+}

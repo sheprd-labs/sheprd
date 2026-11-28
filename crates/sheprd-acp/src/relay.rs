@@ -39,7 +39,7 @@ pub(crate) fn run(id: &EndpointId) -> Result<()> {
 }
 
 /// Copies until either side ends, flushing after every read.
-fn pump(mut from: impl Read, mut to: impl Write) -> io::Result<()> {
+pub(crate) fn pump(mut from: impl Read, mut to: impl Write) -> io::Result<()> {
     let mut buffer = vec![0; CHUNK];
     loop {
         let read = match from.read(&mut buffer) {

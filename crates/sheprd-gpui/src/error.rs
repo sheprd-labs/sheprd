@@ -16,6 +16,8 @@ pub enum Error {
         source: io::Error,
     },
     #[error(transparent)]
+    AgentInteractions(#[from] crate::agent_interactions::error::Error),
+    #[error(transparent)]
     Automations(#[from] crate::automations::Error),
     #[error(transparent)]
     Backdrop(#[from] crate::backdrop::Error),

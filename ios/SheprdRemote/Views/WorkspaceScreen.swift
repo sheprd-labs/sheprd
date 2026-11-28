@@ -28,6 +28,8 @@ struct WorkspaceScreen: View {
     @State private var pendingName: String?
     /// What a row's swipe asked to close, waiting for confirmation.
     @State private var closing: CloseTarget?
+    /// The repository's worktrees are open, for the simulator loop.
+    @State private var showsWorktrees = false
     /// The agent asked for a name, shown with a spinner until it answers.
     @State private var askedAgent: String?
     /// The pictures in the workspace's chats, its tabs combined.
@@ -62,7 +64,11 @@ struct WorkspaceScreen: View {
             .max { ($0.lastAnswer ?? .distantPast) < ($1.lastAnswer ?? .distantPast) }
         return endingDialogs(List {
             Section {
-                Summary(workspace: workspace)
+                NavigationLink {
+                    WorktreesScreen(key: key).makesRoomForConnectionToast()
+                } label: {
+                    WorkspaceRowLabel { Summary(workspace: workspace) }
+                }
                 NavigationLink {
                     ComputerScreen(device: key.device).makesRoomForConnectionToast()
                 } label: {
@@ -182,6 +188,8 @@ struct WorkspaceScreen: View {
             if UserDefaults.standard.bool(forKey: "otherAgents") { showsOthers = true }
             // `-openChanges YES` opens the workspace's changes.
             if UserDefaults.standard.bool(forKey: "openChanges"), opened == nil { opened = .changes(key) }
+            // `-openWorktrees YES` opens the repository's worktrees.
+            if UserDefaults.standard.bool(forKey: "openWorktrees") { showsWorktrees = true }
             // `-summarizeFirst YES` asks for the summary of the first chat
             // with a reply, as its row's swipe does.
             if UserDefaults.standard.bool(forKey: "summarizeFirst"),
@@ -197,6 +205,7 @@ struct WorkspaceScreen: View {
             #endif
         }
         // This screen is right behind what it opens, so Back is the way here.
+        .navigationDestination(isPresented: $showsWorktrees) { WorktreesScreen(key: key).makesRoomForConnectionToast() }
         .navigationDestination(item: $opened) { $0.screen.makesRoomForConnectionToast().environment(\.workspaceDestination, .dismiss) }
         // Keyed on the whole status, so a link that comes back at another
         // address loads again: a phone waking from sleep still shows the

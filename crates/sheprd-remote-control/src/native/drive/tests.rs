@@ -334,3 +334,85 @@ fn guidance_validates_text_and_routes_named_settings_without_a_pane() {
         );
     }
 }
+
+#[test]
+fn a_luau_push_and_a_snapshot_cross_the_live_socket_as_json() {
+    let files = std::collections::BTreeMap::from([("main.luau".to_owned(), "return 1".to_owned())]);
+    let push = ServerMessage::Drive {
+        id: 3,
+        drive: Drive::Luau {
+            screen: "pull-requests".into(),
+            files,
+        },
+    };
+    assert_eq!(
+        serde_json::to_value(&push).unwrap(),
+        json!({"type": "drive", "id": 3, "command": "luau", "screen": "pull-requests", "files": {"main.luau": "return 1"}})
+    );
+    let loaded: ClientMessage = serde_json::from_value(json!({
+        "type": "driven", "id": 3, "outcome": "luau",
+        "report": {"shown": true, "problems": ["main.luau:2: oops"]}
+    }))
+    .unwrap();
+    let ClientMessage::Driven {
+        outcome: Outcome::Luau { report },
+        ..
+    } = loaded
+    else {
+        panic!("not a report: {loaded:?}");
+    };
+    assert!(report.shown);
+    assert_eq!(report.problems, ["main.luau:2: oops"]);
+    assert!(report.logs.is_empty());
+    let shot: ClientMessage = serde_json::from_value(
+        json!({"type": "driven", "id": 4, "outcome": "snapshot", "upload": "u1"}),
+    )
+    .unwrap();
+    assert_eq!(
+        shot,
+        ClientMessage::Driven {
+            id: 4,
+            outcome: Outcome::Snapshot {
+                upload: "u1".into()
+            },
+        }
+    );
+}
+
+#[test]
+fn a_luau_push_out_of_bounds_is_never_sent() {
+    let dir = tempfile::tempdir().unwrap();
+    let state = state(dir.path());
+    let push = |screen: &str, path: &str, text: String| {
+        resolve(
+            &state,
+            Command::Luau {
+                screen: screen.into(),
+                files: std::collections::BTreeMap::from([(path.to_owned(), text)]),
+            },
+        )
+    };
+    assert!(push("pull-requests", "components/row.luau", "return 1".into()).is_ok());
+    assert_eq!(
+        push("Pull Requests", "main.luau", String::new()),
+        Err(Answer::Invalid)
+    );
+    assert_eq!(
+        push("prs", "../main.luau", String::new()),
+        Err(Answer::Invalid)
+    );
+    assert_eq!(
+        push("prs", "/etc/main.luau", String::new()),
+        Err(Answer::Invalid)
+    );
+    assert_eq!(push("prs", "main.lua", String::new()), Err(Answer::Invalid));
+    assert_eq!(
+        push("prs", "a/b/c/d.luau", String::new()),
+        Err(Answer::Invalid)
+    );
+    assert_eq!(
+        push("prs", "main.luau", "x".repeat(phone::MAX_LUAU_BYTES)),
+        Err(Answer::Invalid)
+    );
+    assert_eq!(resolve(&state, Command::Snapshot), Ok(Drive::Snapshot));
+}

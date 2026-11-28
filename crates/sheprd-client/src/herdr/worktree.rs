@@ -45,8 +45,59 @@ pub fn add(
     root: &Path,
     give_up: impl Fn() -> bool,
 ) -> Result<PathBuf, Error> {
-    let common = git(
+    add_checkout(repository, branch, Some(base), root, &give_up)
+}
+
+/// A checkout [`add_or_checkout`] made.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Added {
+    pub checkout: PathBuf,
+    /// Whether the branch is new, and so [`remove`] may delete it again.
+    pub new_branch: bool,
+}
+
+/// As [`add`], but a `branch` that already exists locally is checked out as
+/// it is and `base` is ignored, as Herdr 1's `worktree.create` does.
+pub fn add_or_checkout(
+    repository: &Path,
+    branch: &str,
+    base: &str,
+    root: &Path,
+    give_up: impl Fn() -> bool,
+) -> Result<Added, Error> {
+    let existing = format!("refs/heads/{branch}");
+    // `show-ref` fails for a missing ref; any other failure shows again
+    // in the add, with Git's own words.
+    let exists = git(
         &give_up,
+        repository,
+        [
+            OsStr::new("show-ref"),
+            OsStr::new("--verify"),
+            OsStr::new("--quiet"),
+            OsStr::new(&existing),
+        ],
+    )
+    .is_ok();
+    let base = (!exists).then_some(base);
+    let checkout = add_checkout(repository, branch, base, root, &give_up)?;
+    Ok(Added {
+        checkout,
+        new_branch: !exists,
+    })
+}
+
+/// A new checkout of `branch` under `root`: a new branch from `base`, or
+/// the existing branch when `base` is `None`.
+fn add_checkout(
+    repository: &Path,
+    branch: &str,
+    base: Option<&str>,
+    root: &Path,
+    give_up: &dyn Fn() -> bool,
+) -> Result<PathBuf, Error> {
+    let common = git(
+        give_up,
         repository,
         [
             OsStr::new("rev-parse"),
@@ -55,30 +106,79 @@ pub fn add(
         ],
     )?;
     let checkout = root.join(folder(Path::new(common.trim()), branch)?);
-    git(
-        &give_up,
-        repository,
-        [
-            OsStr::new("worktree"),
-            OsStr::new("add"),
+    let mut args = vec![OsStr::new("worktree"), OsStr::new("add")];
+    match base {
+        Some(base) => args.extend([
             OsStr::new("-b"),
             OsStr::new(branch),
             checkout.as_os_str(),
             // A base that looks like an option is a ref, never a flag.
             OsStr::new("--end-of-options"),
             OsStr::new(base),
-        ],
-    )?;
+        ]),
+        None => args.extend([
+            checkout.as_os_str(),
+            OsStr::new("--end-of-options"),
+            OsStr::new(branch),
+        ]),
+    }
+    git(give_up, repository, args)?;
     Ok(checkout)
+}
+
+/// Fetches `refspec` from `remote` into `repository`, never asking for
+/// credentials, until `give_up` says to stop.
+pub fn fetch(
+    repository: &Path,
+    remote: &str,
+    refspec: &str,
+    give_up: impl Fn() -> bool,
+) -> Result<(), Error> {
+    let mut command = new_command("git");
+    command
+        .current_dir(repository)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .args([
+            "-c",
+            "core.fsmonitor=false",
+            "fetch",
+            "--no-tags",
+            "--quiet",
+        ])
+        .args(["--end-of-options", remote, refspec]);
+    match run(&give_up, command) {
+        Err(Error::Refused(complaint)) => Err(Error::Fetch(complaint)),
+        other => other.map(drop),
+    }
 }
 
 /// Undoes [`add`] for a checkout nothing started in, so asking again finds
 /// the branch free. Only for what `add` just made: the checkout and branch
 /// are removed whatever they hold.
 pub fn remove(repository: &Path, checkout: &Path, branch: &str) -> Result<(), Error> {
-    let never = || false;
+    remove_checkout(repository, checkout)?;
     git(
-        &never,
+        &|| false,
+        repository,
+        [OsStr::new("branch"), OsStr::new("-D"), OsStr::new(branch)],
+    )?;
+    Ok(())
+}
+
+/// Undoes [`add_or_checkout`] for a checkout nothing started in: the
+/// checkout goes whatever it holds, and its branch too only when the add
+/// made it.
+pub fn remove_added(repository: &Path, added: &Added, branch: &str) -> Result<(), Error> {
+    if added.new_branch {
+        remove(repository, &added.checkout, branch)
+    } else {
+        remove_checkout(repository, &added.checkout)
+    }
+}
+
+fn remove_checkout(repository: &Path, checkout: &Path) -> Result<(), Error> {
+    git(
+        &|| false,
         repository,
         [
             OsStr::new("worktree"),
@@ -86,11 +186,6 @@ pub fn remove(repository: &Path, checkout: &Path, branch: &str) -> Result<(), Er
             OsStr::new("--force"),
             checkout.as_os_str(),
         ],
-    )?;
-    git(
-        &never,
-        repository,
-        [OsStr::new("branch"), OsStr::new("-D"), OsStr::new(branch)],
     )?;
     Ok(())
 }
@@ -134,9 +229,14 @@ fn git<'a>(
     repository: &Path,
     args: impl IntoIterator<Item = &'a OsStr>,
 ) -> Result<String, Error> {
-    let mut child = new_command("git")
-        .current_dir(repository)
-        .args(args)
+    let mut command = new_command("git");
+    command.current_dir(repository).args(args);
+    run(give_up, command)
+}
+
+/// Runs Git as `command` says, answering what it wrote.
+fn run(give_up: &dyn Fn() -> bool, mut command: std::process::Command) -> Result<String, Error> {
+    let mut child = command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

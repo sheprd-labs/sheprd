@@ -170,7 +170,7 @@ impl Service {
             feed_task.abort();
             return Err(ServiceError::NotReady);
         }
-        let connection = match client::reach(&relay).await {
+        let connection = match client::reach_share(&relay, relays.pin(&relay)).await {
             Ok(connection) => connection,
             Err(error) => {
                 feed_task.abort();

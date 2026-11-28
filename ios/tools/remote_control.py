@@ -4,6 +4,9 @@ as Sheprd's pairing dialog does, for the simulator loop.
 
     remote_control.py STATE_DIR pair      # prints the pairing link
     remote_control.py STATE_DIR approve   # approves the claimed pairing
+    remote_control.py STATE_DIR phone COMMAND_JSON
+        # drives the paired phone as `sheprd phone` does, as
+        # '{"command":"state"}' or '{"command":"snapshot"}'
 
 Frames are little-endian u32 lengths then JSON (sheprd_chat_protocol::frame).
 """
@@ -48,6 +51,10 @@ def main() -> int:
             time.sleep(0.5)
         print(f"never claimed: {state}", file=sys.stderr)
         return 1
+    if sys.argv[2] == "phone":
+        command = json.loads(sys.argv[3])
+        print(json.dumps(request(state_dir, {"request": "phone", "ask": "drive", "command": command}), indent=2))
+        return 0
     print(__doc__, file=sys.stderr)
     return 2
 

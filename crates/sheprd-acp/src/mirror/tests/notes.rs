@@ -7,6 +7,7 @@ fn said(text: &str, note: Option<&str>) -> Entry {
     Entry {
         id: EntryId(1),
         kind: EntryKind::User {
+            guest: None,
             text: text.to_owned(),
             files: 0,
             note: note.map(str::to_owned),

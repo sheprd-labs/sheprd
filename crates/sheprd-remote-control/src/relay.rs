@@ -231,7 +231,7 @@ impl Relays {
 
     /// The QUIC certificate pin `endpoint`'s listener must find, when
     /// `[remote] relays` gives one.
-    fn pin(&self, endpoint: &Endpoint) -> Option<[u8; 32]> {
+    pub(crate) fn pin(&self, endpoint: &Endpoint) -> Option<[u8; 32]> {
         self.pins.get(&endpoint.to_string()).copied()
     }
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Adds a processed build to every existing external TestFlight group.
+"""Adds a processed build to every existing external TestFlight group and
+submits it for Beta App Review, without which external testers never get it.
 
 Usage: python3 testflight_distribution.py BUNDLE_ID BUILD_NUMBER
 """
@@ -15,6 +16,16 @@ POLL_SECONDS = 30
 MAX_PAGE_SIZE = 200
 RETRYABLE_STATUSES = {404, 409, 429}
 FAILED_STATES = {"FAILED", "INVALID"}
+# A build's external TestFlight state once it has been submitted: in review,
+# or approved and testable. Nothing more to do for these.
+SUBMITTED_STATES = {
+    "WAITING_FOR_BETA_REVIEW",
+    "IN_BETA_REVIEW",
+    "IN_EXPORT_COMPLIANCE_REVIEW",
+    "BETA_APPROVED",
+    "READY_FOR_BETA_TESTING",
+    "IN_BETA_TESTING",
+}
 
 
 def retryable(error: urllib.error.URLError) -> bool:
@@ -93,6 +104,58 @@ def external_groups(app_id: str, bearer: str) -> list:
     ]
 
 
+def external_state(build_id: str, bearer: str):
+    detail = asc.get(
+        f"builds/{build_id}/buildBetaDetail",
+        {"fields[buildBetaDetails]": "externalBuildState"},
+        bearer,
+    )["data"]
+    return detail.get("attributes", {}).get("externalBuildState")
+
+
+def submit_for_review(build_id: str, build_number: str, sleep=time.sleep, clock=time.monotonic) -> None:
+    """Submits the build for Beta App Review once App Store Connect is ready
+    for it. Builds of a version Apple has already approved are usually
+    approved within minutes."""
+    deadline = clock() + BUILD_TIMEOUT
+    while True:
+        try:
+            state = external_state(build_id, asc.bearer_from_env())
+        except urllib.error.URLError as error:
+            if not retryable(error):
+                raise
+            state = "PROCESSING"
+        if state in SUBMITTED_STATES:
+            print(f"Build {build_number} is already submitted ({state}).")
+            return
+        if state == "READY_FOR_BETA_SUBMISSION":
+            break
+        if state != "PROCESSING":
+            sys.exit(
+                f"testflight-distribution: build {build_number} cannot be "
+                f"submitted for review: its external state is {state!r}"
+            )
+        if clock() >= deadline:
+            sys.exit(
+                f"testflight-distribution: gave up waiting for build {build_number} "
+                "to be ready for review"
+            )
+        sleep(POLL_SECONDS)
+
+    print(f"Submitting build {build_number} for Beta App Review…", flush=True)
+    asc.send(
+        "POST",
+        "betaAppReviewSubmissions",
+        {
+            "data": {
+                "type": "betaAppReviewSubmissions",
+                "relationships": {"build": {"data": {"type": "builds", "id": build_id}}},
+            }
+        },
+        asc.bearer_from_env(),
+    )
+
+
 def distribute(bundle_id: str, build_number: str, sleep=time.sleep, clock=time.monotonic) -> None:
     app = asc.app_id(bundle_id, asc.bearer_from_env())
     if app is None:
@@ -113,6 +176,7 @@ def distribute(bundle_id: str, build_number: str, sleep=time.sleep, clock=time.m
         {"data": [{"type": "betaGroups", "id": group["id"]} for group in groups]},
         asc.bearer_from_env(),
     )
+    submit_for_review(build["id"], build_number, sleep=sleep, clock=clock)
 
 
 def main() -> None:

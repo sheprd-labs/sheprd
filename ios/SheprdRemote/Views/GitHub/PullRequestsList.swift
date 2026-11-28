@@ -17,6 +17,7 @@ struct PullRequestsList: View {
     /// must hold to be listed.
     @State private var query = ""
     @AppStorage(PullRequestSort.key) private var sort = PullRequestSort.updated
+    @AppStorage(PullRequestFilter.key) private var filter = PullRequestFilter()
 
     /// Where each section's header is, so a jump from the edge index can
     /// clear the search field, as on Home.
@@ -45,9 +46,9 @@ struct PullRequestsList: View {
         var id: String { part.row(pull) }
     }
 
-    /// The lists as shown: searched, then sorted.
+    /// The lists as shown: filtered, searched, then sorted.
     private var shown: PullRequestLists? {
-        direct.lists.lists?.matching(query).sorted(sort)
+        direct.lists.lists?.filtered(filter).matching(query).sorted(sort)
     }
 
     var body: some View {
@@ -69,6 +70,9 @@ struct PullRequestsList: View {
         #endif
         .toolbar {
             ToolbarItem(placement: .topBarLeading) { PullRequestSortMenu(sort: $sort) }
+            ToolbarItem(placement: .topBarLeading) {
+                PullRequestFilterMenu(filter: $filter, owners: direct.lists.lists?.owners ?? [])
+            }
         }
         .gitHubRefresh(showsLists: true)
         .navigationDestination(for: PullRequestRoute.self) { route in
@@ -97,7 +101,7 @@ struct PullRequestsList: View {
         }
         .listStyle(.insetGrouped)
         .listSectionSpacing(14)
-        .refreshable { await direct.refreshLists(source: model.fleet.gitHubLenders) }
+        .refreshable { await direct.refreshLists(source: model.fleet.gitHubLenders, states: filter.states) }
         .overlay { empty }
     }
 
@@ -176,13 +180,32 @@ struct PullRequestsList: View {
     }
 
     @ViewBuilder private var empty: some View {
-        if let lists = direct.lists.lists, !lists.isEmpty, lists.matching(query).isEmpty {
+        if let lists = direct.lists.lists, lists.filtered(filter).isEmpty, lists.states != filter.states, direct.loadingLists {
+            // Read for other states, as just after the filter changed. Even
+            // a read of more states says little: its 50 open pull requests
+            // may hold none of the older drafts a narrower read finds.
+            LoadingPullRequests()
+        } else if let lists = direct.lists.lists, lists.filtered(filter).isEmpty, !lists.isEmpty || !filter.isStandard {
+            unmatched
+        } else if let lists = direct.lists.lists?.filtered(filter), !lists.isEmpty, lists.matching(query).isEmpty {
             ContentUnavailableView.search(text: query)
         } else if direct.loadingLists, direct.lists.lists == nil {
             // Rather than what an earlier read said, while a new one runs.
             LoadingPullRequests()
         } else {
             unloaded
+        }
+    }
+
+    /// Nothing the filter lists, of what was read for it.
+    private var unmatched: some View {
+        ContentUnavailableView {
+            Label("No pull requests", systemImage: "line.3.horizontal.decrease.circle")
+        } description: {
+            Text("None match the filter.")
+        } actions: {
+            Button("Show Open Pull Requests") { withAnimation(.snappy) { filter = PullRequestFilter() } }
+                .buttonStyle(.bordered)
         }
     }
 

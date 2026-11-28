@@ -10,6 +10,8 @@ import Testing
             switch part {
             case let .markdown(blocks): "text:" + blocks.map(Self.words).joined(separator: " ")
             case let .bubble(effect, _): "bubble:\(effect.rawValue)"
+            case let .interaction(item): "interaction:\(item.directive.rawValue)"
+            case let .cue(cue): "cue:\(cue.rawValue)"
             }
         }
         return parts + (message.screen.map { ["screen:\($0.rawValue)"] } ?? [])

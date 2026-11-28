@@ -8,7 +8,6 @@ use super::{
     super::{Hues, agent_icon},
     ChatLayout, ComposerParts, Look, Row, Side, side, summary_row,
 };
-use crate::i18n::fl;
 use crate::{config::corners, notifications::safe_text};
 use gpui::{prelude::*, *};
 use sheprd_chat_protocol::{Entry, EntryKind, NoticeLevel, ToolStatus};
@@ -47,13 +46,14 @@ impl ChatLayout for Timeline {
                     .w(px(1.))
                     .when(row.next.is_some(), |segment| segment.bg(line)),
             );
+        let selector = row.speaker_selector();
         let label = speaker.then(|| {
             let name = match this_side {
-                Side::User => fl!("chat-you"),
+                Side::User => row.user_name(),
                 Side::Agent => safe_text(row.agent, 80),
             };
             div()
-                .debug_selector(|| "chat-speaker".into())
+                .debug_selector(move || selector.clone())
                 .font_weight(FontWeight::SEMIBOLD)
                 .child(name)
         });

@@ -105,6 +105,9 @@ async fn a_worktree_of_a_herdr_1_repository_is_made_there_with_its_chat_in_its_r
     hub.worktrees = None;
     let created = hub
         .create_workspace(NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent: Agent::Claude,
             branch: Some("topic"),
             cwd,
@@ -145,6 +148,9 @@ async fn a_new_core_workspace_carries_its_title_for_sheprd_to_keep() {
     hub.core = Some(source.clone());
     hub.program = Some(PathBuf::from("/bin/sheprd-acp"));
     hub.create_workspace(NewWorkspace {
+        base: None,
+        checkout: None,
+        shell: false,
         agent: Agent::Claude,
         branch: None,
         cwd: "/code/one",

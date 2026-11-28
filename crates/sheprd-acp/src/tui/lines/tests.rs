@@ -98,6 +98,7 @@ fn no_line_is_wider_than_asked() {
     let item = Entry {
         id: EntryId(1),
         kind: EntryKind::User {
+            guest: None,
             text: "a fairly long prompt that has to wrap more than once".to_owned(),
             files: 0,
             note: None,
@@ -106,6 +107,20 @@ fn no_line_is_wider_than_asked() {
     for line in plain(&entry(&item, 12)) {
         assert!(line.chars().count() <= 12, "{line}");
     }
+}
+
+#[test]
+fn a_guests_prompt_is_named_above_its_words() {
+    let item = Entry {
+        id: EntryId(1),
+        kind: EntryKind::User {
+            guest: Some(sheprd_chat_protocol::Guest::new("Bob", "tma")),
+            text: "hi".to_owned(),
+            files: 0,
+            note: None,
+        },
+    };
+    assert_eq!(plain(&entry(&item, 40)), ["Bob via tma · guest", "hi", ""]);
 }
 
 #[test]
@@ -132,5 +147,23 @@ fn effect_lines_are_left_out_but_their_text_stays() {
             .filter(|line| line.ends_with("::confetti"))
             .count(),
         1
+    );
+}
+
+#[test]
+fn interaction_directives_keep_their_title_and_body_in_terminals() {
+    let entry = Entry {
+        id: EntryId(2),
+        kind: EntryKind::Agent {
+            text: ":::urgent Tap your YubiKey\nWaiting on git push\n:::\n::cue yubikey".to_owned(),
+        },
+    };
+    let shown = plain(&super::entry(&entry, 40));
+    let shown: Vec<&str> = shown.iter().map(|line| line.trim()).collect();
+    assert!(shown.contains(&"Tap your YubiKey"), "{shown:?}");
+    assert!(shown.contains(&"Waiting on git push"), "{shown:?}");
+    assert!(
+        !shown.iter().any(|line| line.starts_with("::")),
+        "{shown:?}"
     );
 }

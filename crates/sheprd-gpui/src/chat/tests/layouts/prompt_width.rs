@@ -25,6 +25,7 @@ fn rich_user_prompts_use_the_narrow_column_without_inflating_short_bubbles(
                 vec![Entry {
                     id: EntryId(1),
                     kind: EntryKind::User {
+                        guest: None,
                         text: text.into(),
                         files: 0,
                         note: None,

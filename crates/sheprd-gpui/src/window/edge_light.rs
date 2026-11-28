@@ -24,6 +24,30 @@ pub(super) fn frame(status: AgentStatus, settings: EdgeLight, rounded: bool) -> 
     .into_any_element()
 }
 
+/// Edge Light cue pattern for an active agent interaction (`yubikey`,
+/// `decision`, `secret`, `countdown`, `done`).
+pub(super) fn frame_for_cue(
+    cue: sheprd_control_protocol::protocol::modal::CueKind,
+    mut settings: EdgeLight,
+    rounded: bool,
+) -> AnyElement {
+    use sheprd_control_protocol::protocol::modal::CueKind;
+    let (status, color) = match cue {
+        CueKind::Yubikey => (AgentStatus::Blocked, 0xe59a24),
+        CueKind::Decision => (AgentStatus::Working, 0x5b8af5),
+        CueKind::Secret => (AgentStatus::Working, 0x8b6cf6),
+        CueKind::Countdown => (AgentStatus::Blocked, 0xe05a5a),
+        CueKind::Done => (AgentStatus::Done, 0x3ea866),
+    };
+    settings.color = Some(color);
+    Layer {
+        status,
+        settings,
+        rounded,
+    }
+    .into_any_element()
+}
+
 #[derive(Clone, Copy, PartialEq, IntoElement)]
 struct Layer {
     status: AgentStatus,

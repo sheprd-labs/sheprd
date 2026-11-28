@@ -333,6 +333,11 @@ read from standard input. Paired phones learn the relay from the computer.
   refusals, live and read-only, when `RELAY_DASHBOARD_TOKEN` is set. Sign in
   with the token; three wrong tries block that address for 15 minutes.
 - `https://DOMAIN/healthz` answers `ok` for an uptime check.
+- Which build runs: `sheprd_relay_build_info` in `/metrics` names the commit
+  the image was built from (`curl -s 127.0.0.1:9090/metrics | grep
+  build_info` on the droplet), as do the dashboard's title and the
+  relay's first log line. `/v1/info` names only the major and minor
+  version, as anyone may read it.
 
 Logs hold no addresses, routes, or payloads.
 

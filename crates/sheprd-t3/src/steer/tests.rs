@@ -406,3 +406,23 @@ fn a_permission_keeps_its_entrys_id() {
 }
 
 mod recorded;
+
+#[test]
+fn a_guests_words_never_reach_t3_however_they_are_sent() {
+    let guest = sheprd_chat_protocol::Guest::new("Bob", "tma");
+    let relayed = Command::GuestPrompt {
+        text: "hi".to_owned(),
+        guest: guest.clone(),
+    };
+    let named = Command::Prompt {
+        text: "hi".to_owned(),
+        attachments: Vec::new(),
+        origin: Some(Origin::guest(guest)),
+    };
+    for command in [relayed, named] {
+        assert_eq!(
+            dispatch(&idle(), &[], id(1), &command),
+            Err(Rejection::Unsupported)
+        );
+    }
+}

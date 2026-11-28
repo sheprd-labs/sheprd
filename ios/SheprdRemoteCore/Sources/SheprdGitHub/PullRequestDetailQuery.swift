@@ -38,7 +38,9 @@ struct PullRequestDetailQuery: Sendable, Equatable {
       repository(owner: $owner, name: $repo) {
         nameWithOwner
         pullRequest(number: $number) {
-          number title url state isDraft reviewDecision body createdAt
+          id number title url state isDraft reviewDecision body createdAt
+          viewerCanReact
+          reactionGroups { content viewerHasReacted reactors { totalCount } }
           additions deletions changedFiles baseRefName headRefName
           author { login }
           reviewRequests(first: \(reviewerLimit)) { nodes { requestedReviewer { \(reviewee) } } }
@@ -121,7 +123,42 @@ enum PullRequestDetailAnswer {
         var all: [Element] { (nodes ?? []).compactMap { $0 } }
     }
 
+    struct ReactionGroupNode: Decodable {
+        var content: String?
+        var viewerHasReacted: Bool?
+        var reactors: Reactors?
+
+        struct Reactors: Decodable {
+            var totalCount: Int?
+        }
+    }
+
+    /// Parses reaction groups from GitHub, keeping only known emojis with a
+    /// positive count and deduplicating by content.
+    static func parseReactions(_ groups: [ReactionGroupNode?]?) -> [PullRequestDetail.ReactionGroup] {
+        var seen = Set<PullRequestDetail.ReactionContent>()
+        var parsed: [PullRequestDetail.ReactionGroup] = []
+        for node in (groups ?? []).compactMap({ $0 }) {
+            guard let raw = node.content,
+                  let content = PullRequestDetail.ReactionContent(rawValue: raw),
+                  let count = node.reactors?.totalCount, count > 0,
+                  seen.insert(content).inserted
+            else { continue }
+            parsed.append(.init(content: content, count: count, viewerHasReacted: node.viewerHasReacted ?? false))
+        }
+        return parsed
+    }
+
+    /// Validates a GitHub GraphQL node ID before keeping it for mutations.
+    static func nodeID(_ raw: String?) -> String {
+        guard let raw, !raw.isEmpty, raw.count <= 256,
+              raw.unicodeScalars.allSatisfy({ $0.isASCII && $0.value > 0x20 && $0.value < 0x7F })
+        else { return "" }
+        return raw
+    }
+
     struct Node: Decodable {
+        var id: String?
         var number: UInt64
         var title: String
         var url: String
@@ -129,6 +166,8 @@ enum PullRequestDetailAnswer {
         var isDraft: Bool?
         var reviewDecision: String?
         var body: String?
+        var viewerCanReact: Bool?
+        var reactionGroups: [ReactionGroupNode?]?
         var createdAt: String?
         var additions: Int?
         var deletions: Int?
@@ -164,6 +203,7 @@ enum PullRequestDetailAnswer {
             let earlier = timelineItems?.pageInfo?.hasPreviousPage == true
                 ? max((timelineItems?.totalCount ?? 0) - items.count, 0) : 0
             return PullRequestDetail(
+                id: PullRequestDetailAnswer.nodeID(id),
                 number: number,
                 title: PullRequestAnswer.clean(title),
                 url: PullRequestAnswer.linkable(url) ? url : "",
@@ -173,6 +213,8 @@ enum PullRequestDetailAnswer {
                 reviewDecision: reviewDecision.flatMap(GitHubPullRequest.ReviewDecision.init(rawValue:)) ?? .none,
                 author: author.map { PullRequestAnswer.clean($0.login) },
                 body: RemoteText.body(body ?? "", limit: PullRequestDetailQuery.bodyLimit),
+                viewerCanReact: viewerCanReact ?? false,
+                reactions: PullRequestDetailAnswer.parseReactions(reactionGroups),
                 baseRef: PullRequestAnswer.clean(baseRefName ?? ""),
                 headRef: PullRequestAnswer.clean(headRefName ?? ""),
                 createdAt: RemoteText.date(createdAt),

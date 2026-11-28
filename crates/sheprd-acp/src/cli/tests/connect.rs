@@ -26,3 +26,12 @@ fn agents_takes_nothing_more() {
         Err(Error::UnknownOption(_))
     ));
 }
+
+#[test]
+fn multiplex_takes_nothing_more() {
+    assert_eq!(parse(args(&["multiplex"])), Ok(Parsed::Multiplex));
+    assert!(matches!(
+        parse(args(&["multiplex", "x"])),
+        Err(Error::UnknownOption(_))
+    ));
+}

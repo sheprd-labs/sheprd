@@ -70,6 +70,7 @@ fn with_files(id: u64, text: &str, files: usize) -> Entry {
     Entry {
         id: EntryId(id),
         kind: EntryKind::User {
+            guest: None,
             text: text.to_owned(),
             files,
             note: None,
@@ -86,6 +87,7 @@ fn history_recalls_prompts_from_every_client_and_the_queue() {
         with_files(3, "\u{1f4ce} only.png", 1),
     ];
     transcript.queued = vec![Queued {
+        guest: None,
         attachments: Vec::new(),
         id: CommandId::random(),
         held: false,
@@ -171,6 +173,7 @@ fn history_knows_a_sent_prompts_echo_after_the_transcript_trims() {
 #[test]
 fn history_knows_a_sent_prompt_that_waits_in_the_queue() {
     let waiting = |text: &str| Queued {
+        guest: None,
         attachments: Vec::new(),
         id: CommandId::random(),
         held: false,

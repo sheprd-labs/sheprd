@@ -116,6 +116,15 @@ pub(crate) struct Detail {
     /// Tool calls the turn made so far.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) steps: Option<u32>,
+    /// Explicit 0..=100 progress percent emitted by `:::progress`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) progress_percent: Option<u8>,
+    /// Active urgent blocker title (e.g. "Tap your YubiKey") for Dynamic Island / Lock Screen.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) blocker_title: Option<String>,
+    /// Optional urgent blocker kind (`yubikey`, `otp`, `secret`, `countdown`, `oauth`, `urgent`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) blocker_kind: Option<String>,
 }
 
 /// The activity's fixed part, set when it starts.
@@ -225,11 +234,11 @@ pub(crate) struct Live {
 }
 
 impl Live {
-    /// Whether the push must reach the phone now: a question does, and
-    /// counts against the app's budget; anything else can wait for a
+    /// Whether the push must reach the phone now: a question or urgent blocker
+    /// does, and counts against the app's budget; anything else can wait for a
     /// convenient moment.
     pub(crate) fn urgent(&self) -> bool {
-        self.state.phase == Phase::Question
+        self.state.phase == Phase::Question || self.state.detail.blocker_title.is_some()
     }
 
     pub(crate) fn priority(&self) -> Priority {

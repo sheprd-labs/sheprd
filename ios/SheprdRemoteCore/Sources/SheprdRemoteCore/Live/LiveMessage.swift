@@ -37,7 +37,7 @@ public enum LiveRequest: Encodable, Hashable, Sendable {
     /// What the app did with the `drive` numbered `id`.
     case driven(id: UInt64, outcome: AgentOutcome)
 
-    enum CodingKeys: String, CodingKey { case type, view, pane, since, size, lines, background, allowed, id, outcome, state, reason }
+    enum CodingKeys: String, CodingKey { case type, view, pane, since, size, lines, background, allowed, id, outcome, state, reason, report, upload }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -71,6 +71,12 @@ public enum LiveRequest: Encodable, Hashable, Sendable {
             case let .refused(reason):
                 try c.encode("refused", forKey: .outcome)
                 try c.encode(reason, forKey: .reason)
+            case let .luau(report):
+                try c.encode("luau", forKey: .outcome)
+                try c.encode(report, forKey: .report)
+            case let .snapshot(upload):
+                try c.encode("snapshot", forKey: .outcome)
+                try c.encode(upload, forKey: .upload)
             }
             return
         }

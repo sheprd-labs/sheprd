@@ -180,6 +180,7 @@ fn a_continued_thread_goes_on_in_its_segment_after_its_entries() {
     let earlier = sheprd_chat_protocol::Entry {
         id: EntryId(40),
         kind: EntryKind::User {
+            guest: None,
             text: "Earlier".to_owned(),
             files: 0,
             note: None,
@@ -271,6 +272,7 @@ fn user_entry(id: u64, text: &str) -> sheprd_chat_protocol::Entry {
     sheprd_chat_protocol::Entry {
         id: EntryId(id),
         kind: EntryKind::User {
+            guest: None,
             text: text.to_owned(),
             files: 0,
             note: None,

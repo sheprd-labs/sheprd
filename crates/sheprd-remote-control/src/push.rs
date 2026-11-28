@@ -9,7 +9,7 @@
 //! refuses endpoints outside the known push services, so a paired device
 //! cannot make the daemon post to an arbitrary host.
 
-mod directives;
+pub(crate) mod directives;
 mod encrypt;
 mod event;
 mod finish;

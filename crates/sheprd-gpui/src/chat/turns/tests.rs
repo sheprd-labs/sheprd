@@ -4,6 +4,7 @@ fn user(id: u64, text: &str) -> Entry {
     Entry {
         id: EntryId(id),
         kind: EntryKind::User {
+            guest: None,
             text: text.into(),
             files: 0,
             note: None,
@@ -47,6 +48,7 @@ fn a_long_prompt_is_cut_and_its_attachments_left_out() {
     let files = Entry {
         id: EntryId(9),
         kind: EntryKind::User {
+            guest: None,
             text: format!("look\n{}a.png", sheprd_chat_protocol::ATTACHED),
             files: 1,
             note: None,
@@ -77,6 +79,7 @@ fn a_prompt_of_attachments_alone_is_named_by_them() {
     let files = Entry {
         id: EntryId(1),
         kind: EntryKind::User {
+            guest: None,
             text: format!("{}a.png", sheprd_chat_protocol::ATTACHED),
             files: 1,
             note: None,

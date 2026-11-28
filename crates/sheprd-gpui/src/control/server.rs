@@ -10,6 +10,7 @@ mod events;
 mod fleet;
 mod hosts;
 mod links;
+mod modal;
 mod mods;
 mod phone;
 mod relay;
@@ -292,6 +293,7 @@ fn named_window(request: &Request) -> Option<u64> {
         Request::Cloud(call) => call.caller.window,
         Request::Remote(call) => call.caller.window,
         Request::Mod(call) => call.caller.window,
+        Request::Modal(call) => call.caller.window,
         Request::Fleet(call) => call.caller.window,
         Request::Phone(call) => call.caller.window,
     }
@@ -363,6 +365,7 @@ fn serve(incoming: socket::Incoming, state: &mut State, cx: &mut App) {
         Request::Fleet(call) => fleet::serve(call, incoming, &mut state.watches, cx),
         Request::Phone(call) => phone::serve(call, incoming, &mut state.watches, cx),
         Request::Mod(call) => incoming.respond(mods::serve(call, cx)),
+        Request::Modal(call) => incoming.respond(modal::serve(call, cx)),
     }
 }
 

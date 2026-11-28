@@ -18,7 +18,9 @@ mod title;
 mod wire;
 
 pub(crate) use convert::convert;
-pub(crate) use create::{create_workspace, new_options, new_terminal, start_chat};
+pub(crate) use create::{
+    SourceError, create_workspace, new_options, new_sources, new_terminal, start_chat,
+};
 pub(crate) use project::create_project;
 pub(crate) use search::search;
 pub(crate) use summarize::summarize;

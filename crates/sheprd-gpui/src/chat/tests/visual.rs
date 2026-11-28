@@ -55,6 +55,8 @@ pub(super) fn message(text: &str) -> (Prepared, Vec<String>) {
             },
             Part::Bubble(effect, _) => format!("bubble:{}", effect.name()),
             Part::Screen(effect) => format!("screen:{}", effect.name()),
+            Part::Interaction(item) => format!("interaction:{}", item.directive.kind_name()),
+            Part::Cue(cue) => format!("cue:{}", cue.name()),
             Part::File { destination, .. } => format!("file:{destination}"),
             Part::Widget(_) => "widget".to_owned(),
             Part::Diagram(..) => "diagram".to_owned(),

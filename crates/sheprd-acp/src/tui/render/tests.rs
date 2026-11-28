@@ -8,6 +8,8 @@ use sheprd_chat_protocol::{
 
 use super::*;
 
+mod guests;
+
 fn screen(view: &mut View, width: u16, height: u16) -> String {
     let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
     terminal.draw(|frame| draw(frame, view, 0)).unwrap();
@@ -30,6 +32,7 @@ fn busy() -> View {
         Entry {
             id: EntryId(1),
             kind: EntryKind::User {
+                guest: None,
                 text: "please fix the failing test in the parser module".to_owned(),
                 files: 0,
                 note: None,
@@ -43,6 +46,7 @@ fn busy() -> View {
         },
     ];
     transcript.permissions = vec![Permission {
+        guest: None,
         call_id: None,
         id: PermissionId(1),
         options: vec![PermissionOption {
@@ -54,6 +58,7 @@ fn busy() -> View {
         title: "Run cargo test -p parser".to_owned(),
     }];
     transcript.queued = vec![Queued {
+        guest: None,
         attachments: Vec::new(),
         id: sheprd_chat_protocol::CommandId::random(),
         held: false,

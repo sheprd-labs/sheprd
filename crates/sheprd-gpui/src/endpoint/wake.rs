@@ -30,6 +30,12 @@ const SLEEP_GAP: Duration = Duration::from_secs(5);
 /// settling reports several changes in a burst; the first recovers at once,
 /// and the rest wait out this gap and recover once more for the final path.
 const NETWORK_SETTLE: Duration = Duration::from_secs(1);
+/// The fewest seconds between two recoveries that path changes alone start.
+/// A flapping network, such as hotel Wi-Fi under a VPN that renegotiates
+/// whenever it stalls, reports a new path every few seconds; probing live
+/// links on each one keeps dropping links that were only retransmitting.
+/// The network coming back and a sleep still recover after the short gap.
+const PATH_SETTLE: Duration = Duration::from_secs(20);
 
 /// What made connections suspect, weakest first: a stronger trigger does
 /// everything a weaker one does.
@@ -69,7 +75,8 @@ pub(crate) struct WakeClock {
     /// The strongest network change seen but not yet recovered from, held
     /// back by `NETWORK_SETTLE`.
     pending: Option<Trigger>,
-    recovered: Option<Instant>,
+    /// When connections were last recovered, and why.
+    recovered: Option<(Instant, Trigger)>,
 }
 
 impl WakeClock {
@@ -120,16 +127,21 @@ impl WakeClock {
         let trigger = if slept {
             Trigger::Sleep
         } else if let Some(pending) = self.pending
-            && self
-                .recovered
-                .is_none_or(|at| instant.saturating_duration_since(at) >= NETWORK_SETTLE)
+            && self.recovered.is_none_or(|(at, last)| {
+                let gap = if pending == Trigger::PathChanged && last == Trigger::PathChanged {
+                    PATH_SETTLE
+                } else {
+                    NETWORK_SETTLE
+                };
+                instant.saturating_duration_since(at) >= gap
+            })
         {
             pending
         } else {
             return None;
         };
         self.pending = None;
-        self.recovered = Some(instant);
+        self.recovered = Some((instant, trigger));
         Some(trigger)
     }
 }

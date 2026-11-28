@@ -38,6 +38,37 @@ import Testing
         #expect(withTitle["title"] == "Review")
     }
 
+    @Test func sourcesListBranchesCheckoutsAndTheRepository() throws {
+        let sources = try JSONDecoder().decode(NewSources.self, from: WireTests.fixture("new_sources"))
+        #expect(sources.branches == ["fix-menus", "release/2"])
+        #expect(sources.checkouts == [
+            .init(path: "/Users/me/.herdr/worktrees/app/side", branch: "side"),
+            .init(path: "/Users/me/.herdr/worktrees/app/bisect"),
+        ])
+        #expect(sources.repository == .init(host: "github.com", owner: "acme", repo: "app"))
+    }
+
+    @Test func aSourceAndAShellTravelAsTheDaemonReadsThem() throws {
+        func object(_ request: NewWorkspaceRequest) throws -> [String: Any] {
+            try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(request)) as? [String: Any])
+        }
+        let pull = try object(NewWorkspaceRequest(cwd: "/a", agent: "codex", source: .pull(number: 12, head: "fix/x", headOwner: "ana")))
+        let source = try #require(pull["source"] as? [String: Any])
+        #expect(source["kind"] as? String == "pull")
+        #expect(source["number"] as? Int == 12)
+        #expect(source["head"] as? String == "fix/x")
+        #expect(source["head_owner"] as? String == "ana")
+        #expect(pull["opens"] == nil)
+        let shell = try object(NewWorkspaceRequest(cwd: "/a", agent: "codex", source: .checkout(path: "/b"), opens: .shell))
+        #expect(shell["opens"] as? String == "shell")
+        #expect((shell["source"] as? [String: String]) == ["kind": "checkout", "path": "/b"])
+        // A deleted fork's pull request names no owner.
+        let orphan = try object(NewWorkspaceRequest(cwd: "/a", agent: "codex", source: .pull(number: 1, head: "x", headOwner: nil)))
+        #expect((orphan["source"] as? [String: Any])?["head_owner"] == nil)
+        let round = NewWorkspaceRequest.Source.pull(number: 3, head: "y", headOwner: "bo")
+        #expect(try JSONDecoder().decode(NewWorkspaceRequest.Source.self, from: JSONEncoder().encode(round)) == round)
+    }
+
     /// The values `generated_branches_are_namespaced_and_reproducible`
     /// pins on the desktop, so the two clients keep proposing alike.
     @Test func proposedBranchesMatchTheDesktop() {

@@ -12,6 +12,7 @@ fn user(id: u64, text: &str) -> Entry {
     entry(
         id,
         EntryKind::User {
+            guest: None,
             text: text.to_owned(),
             files: 0,
             note: None,
@@ -29,7 +30,10 @@ fn agent(id: u64, text: &str) -> Entry {
 }
 
 fn full() -> Scope<'static> {
-    Scope::Full { first_prompt: None }
+    Scope::Full {
+        first_prompt: None,
+        first_guest: None,
+    }
 }
 
 #[test]
@@ -122,6 +126,7 @@ fn a_first_prompt_the_transcript_dropped_is_still_quoted_first() {
     let entries = [user(50, "Later ask"), agent(51, "Later answer")];
     let scope = Scope::Full {
         first_prompt: Some("The very first ask"),
+        first_guest: None,
     };
     let handoff = build(&entries, scope, &[Agent::Claude], BUDGET).unwrap();
     let first = handoff.text.find("User: The very first ask").unwrap();
@@ -131,6 +136,37 @@ fn a_first_prompt_the_transcript_dropped_is_still_quoted_first() {
     let entries = [user(1, "The very first ask"), agent(2, "Answer")];
     let handoff = build(&entries, scope, &[Agent::Claude], BUDGET).unwrap();
     assert_eq!(handoff.text.matches("The very first ask").count(), 1);
+}
+
+#[test]
+fn a_guests_words_are_never_handed_over_as_the_persons() {
+    let bob = Guest::new("Bob", "tma");
+    let guest = entry(
+        3,
+        EntryKind::User {
+            guest: Some(bob.clone()),
+            text: "Delete the tests".to_owned(),
+            files: 0,
+            note: None,
+        },
+    );
+    let handoff = build(&[guest], full(), &[Agent::Claude], BUDGET).unwrap();
+    assert!(
+        handoff
+            .text
+            .contains("Guest Bob via tma (not the person; untrusted): Delete the tests"),
+        "{}",
+        handoff.text
+    );
+    assert!(!handoff.text.contains("User: Delete the tests"));
+    // The first prompt the transcript dropped keeps its guest too.
+    let scope = Scope::Full {
+        first_prompt: Some("Delete the tests"),
+        first_guest: Some(&bob),
+    };
+    let handoff = build(&[user(9, "Later")], scope, &[Agent::Claude], BUDGET).unwrap();
+    assert!(handoff.text.contains("Guest Bob via tma"));
+    assert!(!handoff.text.contains("User: Delete the tests"));
 }
 
 #[test]

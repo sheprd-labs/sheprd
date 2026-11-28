@@ -203,6 +203,7 @@ fn a_sent_prompt_shows_whole_with_its_delivered_note(cx: &mut TestAppContext) {
                 entry: Entry {
                     id: EntryId(41),
                     kind: EntryKind::User {
+                        guest: None,
                         text: "another".into(),
                         files: 0,
                         note: None,

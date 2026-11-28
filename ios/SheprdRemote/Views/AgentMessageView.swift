@@ -8,10 +8,13 @@ import SwiftUI
 struct AgentMessageView: View {
     let id: EntryId
     let text: String
+    /// Pre-parsed message from `ChatRowCache` when available, avoiding a
+    /// second `AgentMessage.parse` pass.
+    var parsed: AgentMessage?
     @Environment(\.chatEffects) private var effects
 
     var body: some View {
-        let message = AgentMessage.parse(text)
+        let message = parsed ?? AgentMessage.parse(text)
         let bubbles = bubbleOrders(message)
         VStack(alignment: .leading, spacing: 10) {
             ForEach(Array(message.parts.enumerated()), id: \.offset) { index, part in
@@ -27,6 +30,10 @@ struct AgentMessageView: View {
                     ) {
                         MarkdownView(blocks: blocks)
                     }
+                case let .interaction(interaction):
+                    AgentInteractionCard(interaction: interaction)
+                case .cue:
+                    EmptyView()
                 }
             }
             if let screen = message.screen, let effects {

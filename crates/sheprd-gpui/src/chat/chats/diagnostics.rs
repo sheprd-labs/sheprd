@@ -75,7 +75,7 @@ impl Chats {
             reason,
             transport,
             targets = self.panes.len(),
-            limit = MAX_CHATS,
+            limit = route.map_or(MAX_CHATS, Route::max_chats),
             "Focused pane chat attachment"
         );
         self.diagnostic = Some(Decision {

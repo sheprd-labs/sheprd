@@ -201,6 +201,11 @@ pub(crate) enum Part {
     /// The pane effect an agent's message asks for, as a `::confetti` line
     /// does; it draws as the link that plays it again.
     Screen(super::effects::Screen),
+    /// A persistent interaction block (`:::modal`, `:::urgent`, `:::secret`,
+    /// `:::progress`, `:::runbook`, `:::diff`, `:::spotlight`, `:::drop`, etc.).
+    Interaction(Rc<crate::agent_interactions::ParsedInteraction>),
+    /// A semantic audio + Edge Light cue (`::cue yubikey`).
+    Cue(sheprd_control_protocol::protocol::modal::CueKind),
     Widget(Rc<super::widgets::Document>),
     /// A Mermaid fence, with its source as code lines for when it cannot be
     /// drawn.
@@ -255,9 +260,12 @@ impl Body {
                     Part::Html { code } => (Some(code.id), &[]),
                     Part::File { id, blocks, .. } => (Some(*id), &blocks[..]),
                     Part::Rich(blocks) | Part::Bubble(_, blocks) => (None, blocks),
-                    Part::Text(_) | Part::Widget(_) | Part::Picture { .. } | Part::Screen(_) => {
-                        (None, &[])
-                    }
+                    Part::Text(_)
+                    | Part::Widget(_)
+                    | Part::Picture { .. }
+                    | Part::Screen(_)
+                    | Part::Interaction(_)
+                    | Part::Cue(_) => (None, &[]),
                 };
                 own.into_iter()
                     .chain(blocks.iter().flat_map(super::rich::Block::visuals))
@@ -621,6 +629,29 @@ fn message(text: &str, author: Author, visuals: &mut Visuals) -> Vec<Part> {
             // Only the first pane effect plays; later ones are dropped too.
             if let Some(effect) = super::effects::screen_line(line) {
                 screen = screen.or(Some(effect));
+                continue;
+            }
+            if let Some(cue) = crate::agent_interactions::parse::cue_line(line) {
+                flush(&mut markdown, &mut parts, visuals);
+                parts.push(Part::Cue(cue));
+                continue;
+            }
+            if let Some((directive, title)) = crate::agent_interactions::parse::opening(line) {
+                flush(&mut markdown, &mut parts, visuals);
+                let mut inner = String::new();
+                let mut code: Option<Fence<'_>> = None;
+                for line in lines.by_ref() {
+                    match &code {
+                        Some(fence) if fence.closes(line) => code = None,
+                        Some(_) => {}
+                        None if super::effects::bubble_closing(line) => break,
+                        None => code = Fence::open(line),
+                    }
+                    inner.push_str(line);
+                }
+                let parsed =
+                    crate::agent_interactions::parse::parse_block(directive, &title, &inner);
+                parts.push(Part::Interaction(Rc::new(parsed)));
                 continue;
             }
             if let Some(effect) = super::effects::bubble_opening(line)

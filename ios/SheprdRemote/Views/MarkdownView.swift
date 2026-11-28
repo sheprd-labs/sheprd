@@ -49,11 +49,12 @@ struct BlockView: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         marker(ordered: ordered, number: start + index, item: item)
-                        SizedMarkdown(text: item.text).textSelection(.enabled)
+                        SizedMarkdown(text: item.text)
                     }
                     .padding(.leading, CGFloat(item.depth) * 18)
                 }
             }
+            .textSelection(.enabled)
             .copyable(items.map(\.text).joined(separator: "\n"))
         case let .quote(text):
             HStack(spacing: 10) {

@@ -11,6 +11,7 @@ use super::{
     prepared::Prepared,
     session::Session,
 };
+use crate::i18n::Localize;
 use crate::multiline_input::MultilineInput;
 use crate::search_input::SearchInput;
 use gpui::{App, Entity, FocusHandle, ListAlignment, ListState, Window, px};
@@ -31,7 +32,8 @@ pub(crate) type Connect<'a> =
 
 /// The connector the app uses: the program's endpoint by the id its pane
 /// reported, a socket in this user's private directory or a named pipe, or
-/// for a chat on an SSH host, `herdr-acp connect` run there over `ssh`. An
+/// for a chat on an SSH host, a stream of the host's multiplexer, or
+/// `herdr-acp connect` run there over `ssh` where it has none. An
 /// existing agent on this machine is observed by `program`, the same
 /// `herdr-acp` new chats start with.
 pub(crate) fn connect(
@@ -93,10 +95,7 @@ pub(crate) fn connect(
         super::Route::Local => Dial::Socket(
             sheprd_chat_protocol::endpoint_address(&target.endpoint).ok_or(Error::NoEndpointDir)?,
         ),
-        super::Route::Ssh(host) => Dial::Ssh(
-            host.clone(),
-            super::remote_program_script(&format!("connect {}", target.endpoint)),
-        ),
+        super::Route::Ssh(host) => Dial::Mux(host.clone(), target.endpoint.clone()),
     };
     Link::start(dial, since, resend)
 }
@@ -649,6 +648,9 @@ pub(crate) struct Chats {
     pub(crate) active_visual_jobs: usize,
     /// The agents installed on each host new chats may start on.
     pub(crate) agents: super::harnesses::Harnesses,
+    /// Stream epochs already offered the opt-in policy. Kept across detach
+    /// and reconnect so a later manual toggle wins for that session.
+    auto_accepted: HashSet<uuid::Uuid>,
     /// New terminal agents `[chat] auto_convert` moves into chats.
     pub(crate) auto_convert: super::auto_convert::Tracker,
     /// The brief of the chat being started by the call in progress; set
@@ -901,6 +903,33 @@ impl Chats {
         self.panes
             .iter_mut()
             .fold(false, |changed, pane| pane.poll(now) | changed)
+    }
+
+    /// Applies the opt-in policy once the first live transcript arrives.
+    /// The wire epoch identifies a session even before ACP supplies its ID,
+    /// and changes on reload, but not on reconnect or ordinary updates.
+    pub(crate) fn auto_accept(&mut self, enabled: bool) -> bool {
+        if !enabled {
+            return false;
+        }
+        let mut changed = false;
+        for pane in &mut self.panes {
+            if !pane.attached() || pane.session.transcript().read_only {
+                continue;
+            }
+            let Some(cursor) = pane.session.since() else {
+                continue;
+            };
+            if !self.auto_accepted.insert(cursor.epoch) || pane.session.transcript().auto_accept {
+                continue;
+            }
+            pane.error = pane
+                .send(Command::SetAutoAccept { on: true })
+                .err()
+                .map(|error| error.localize());
+            changed = true;
+        }
+        changed
     }
 
     /// Chat pages whose panes went away.

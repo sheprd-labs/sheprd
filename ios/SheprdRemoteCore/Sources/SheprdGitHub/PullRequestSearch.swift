@@ -1,42 +1,83 @@
 import Foundation
 
-/// The open pull requests the signed-in account wrote, and those asking for
-/// its review, on any repository it can read: two GitHub searches in one
-/// GraphQL query, each bounded to `limit` results. The searches travel as
+/// The pull requests the signed-in account wrote, and those asking for its
+/// review, on any repository it can read: GitHub searches in one GraphQL
+/// query, each bounded to `limit` results. The searches travel as
 /// variables, never inside the query text.
-enum PullRequestSearchQuery {
-    /// Pull requests read per list.
+///
+/// Open ones are one search per list and closed ones another, read only
+/// when the filter lists them, so the open ones never make room for a
+/// pile of old closed ones.
+struct PullRequestSearchQuery {
+    /// Pull requests read per search.
     static let limit = 50
 
-    static let mine = "is:pr is:open author:@me archived:false sort:updated-desc"
-    static let reviewRequested = "is:pr is:open review-requested:@me archived:false sort:updated-desc"
+    /// A pair of searches, one per list, named by `suffix`.
+    struct Group: Hashable {
+        var suffix: String
+        var qualifier: String
+
+        var mine: String { "is:pr \(qualifier) author:@me archived:false sort:updated-desc" }
+        var review: String { "is:pr \(qualifier) review-requested:@me archived:false sort:updated-desc" }
+    }
+
+    let groups: [Group]
+
+    init(states: Set<PullRequestFilter.State> = PullRequestFilter.openStates) {
+        let open = switch (states.contains(.open), states.contains(.draft)) {
+        case (true, true): "is:open"
+        case (true, false): "is:open draft:false"
+        case (false, true): "is:open draft:true"
+        case (false, false): nil as String?
+        }
+        let closed = switch (states.contains(.merged), states.contains(.closed)) {
+        case (true, true): "is:closed"
+        case (true, false): "is:merged"
+        case (false, true): "is:closed is:unmerged"
+        case (false, false): nil as String?
+        }
+        let groups = [open.map { Group(suffix: "", qualifier: $0) }, closed.map { Group(suffix: "Closed", qualifier: $0) }]
+            .compactMap { $0 }
+        self.groups = groups.isEmpty ? [Group(suffix: "", qualifier: "is:open")] : groups
+    }
 
     /// The checks are counted by state rather than listed, so fifty pull
     /// requests stay a small answer.
-    static let text = """
-    query($mine: String!, $review: String!) {
-      mine: search(type: ISSUE, query: $mine, first: \(limit)) { issueCount nodes { ...SearchedPullRequest } }
-      review: search(type: ISSUE, query: $review, first: \(limit)) { issueCount nodes { ...SearchedPullRequest } }
+    var text: String {
+        let variables = groups.map { "$mine\($0.suffix): String!, $review\($0.suffix): String!" }.joined(separator: ", ")
+        let searches = groups.map { group in
+            ["mine", "review"].map { list in
+                "  \(list)\(group.suffix): search(type: ISSUE, query: $\(list)\(group.suffix), first: \(Self.limit)) "
+                    + "{ issueCount nodes { ...SearchedPullRequest } }"
+            }
+            .joined(separator: "\n")
+        }
+        return """
+        query(\(variables)) {
+        \(searches.joined(separator: "\n"))
+        }
+        fragment SearchedPullRequest on PullRequest {
+          number title state isDraft reviewDecision updatedAt headRefName
+          author { login }
+          headRepositoryOwner { login }
+          repository { name owner { login } }
+          commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 1) {
+            checkRunCountsByState { state count }
+            statusContextCountsByState { state count }
+          } } } } }
+        }
+        """
     }
-    fragment SearchedPullRequest on PullRequest {
-      number title state isDraft reviewDecision updatedAt headRefName
-      author { login }
-      headRepositoryOwner { login }
-      repository { name owner { login } }
-      commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 1) {
-        checkRunCountsByState { state count }
-        statusContextCountsByState { state count }
-      } } } } }
-    }
-    """
 
     /// The JSON body of the request.
-    static var body: Data {
+    var body: Data {
         get throws {
-            try JSONSerialization.data(
-                withJSONObject: ["query": text, "variables": ["mine": mine, "review": reviewRequested]],
-                options: [.sortedKeys]
-            )
+            var variables: [String: String] = [:]
+            for group in groups {
+                variables["mine\(group.suffix)"] = group.mine
+                variables["review\(group.suffix)"] = group.review
+            }
+            return try JSONSerialization.data(withJSONObject: ["query": text, "variables": variables], options: [.sortedKeys])
         }
     }
 }
@@ -116,13 +157,24 @@ public struct PullRequestLists: Hashable, Sendable, Codable {
     public var reviewRequested: [GitHubSearchPull]
     public var mineTotal: Int
     public var reviewRequestedTotal: Int
+    /// The states they were read for; nil, in a cache from before the
+    /// filter, for the open ones.
+    var readStates: Set<PullRequestFilter.State>?
 
-    public init(mine: [GitHubSearchPull] = [], reviewRequested: [GitHubSearchPull] = [], mineTotal: Int? = nil, reviewRequestedTotal: Int? = nil) {
+    public init(
+        mine: [GitHubSearchPull] = [], reviewRequested: [GitHubSearchPull] = [], mineTotal: Int? = nil, reviewRequestedTotal: Int? = nil,
+        states: Set<PullRequestFilter.State> = PullRequestFilter.openStates
+    ) {
         self.mine = mine
         self.reviewRequested = reviewRequested
         self.mineTotal = mineTotal ?? mine.count
         self.reviewRequestedTotal = reviewRequestedTotal ?? reviewRequested.count
+        readStates = states
     }
+
+    /// The states they were read for: what a filter with others still
+    /// waits to read.
+    public var states: Set<PullRequestFilter.State> { readStates ?? PullRequestFilter.openStates }
 
     public var isEmpty: Bool { mine.isEmpty && reviewRequested.isEmpty }
 
@@ -137,7 +189,7 @@ public struct PullRequestLists: Hashable, Sendable, Codable {
             let fields = [pull.title, pull.repository, "\(pull.number)", pull.author ?? "", pull.headRefName]
             return words.allSatisfy { word in fields.contains { $0.localizedCaseInsensitiveContains(word) } }
         }
-        return PullRequestLists(mine: mine.filter(matches), reviewRequested: reviewRequested.filter(matches))
+        return PullRequestLists(mine: mine.filter(matches), reviewRequested: reviewRequested.filter(matches), states: states)
     }
 }
 
@@ -145,20 +197,36 @@ public struct PullRequestLists: Hashable, Sendable, Codable {
 /// text: names must look like GitHub's, titles lose control and direction
 /// characters, and nothing past the bounds is kept.
 enum PullRequestSearchAnswer {
-    static func parse(_ response: GitHubResponse, host: GitHubHost, now: Date) throws(GitHubError) -> PullRequestLists {
+    static func parse(
+        _ response: GitHubResponse, host: GitHubHost, now: Date, query: PullRequestSearchQuery = PullRequestSearchQuery(),
+        states: Set<PullRequestFilter.State> = PullRequestFilter.openStates
+    ) throws(GitHubError) -> PullRequestLists {
         guard let answer = try? JSONDecoder().decode(Answer.self, from: response.body) else { throw .malformed }
-        guard let data = answer.data, let mine = data.mine, let review = data.review else {
-            throw PullRequestAnswer.failure(answer.errors ?? [], response: response, now: now)
+        var mine: [Search] = []
+        var review: [Search] = []
+        for group in query.groups {
+            guard let found = answer.data?["mine\(group.suffix)"] ?? nil, let asked = answer.data?["review\(group.suffix)"] ?? nil else {
+                throw PullRequestAnswer.failure(answer.errors ?? [], response: response, now: now)
+            }
+            mine.append(found)
+            review.append(asked)
         }
         return PullRequestLists(
             mine: pulls(mine, host: host), reviewRequested: pulls(review, host: host),
-            mineTotal: max(mine.issueCount ?? 0, 0), reviewRequestedTotal: max(review.issueCount ?? 0, 0)
+            mineTotal: total(mine), reviewRequestedTotal: total(review), states: states
         )
     }
 
-    private static func pulls(_ search: Search, host: GitHubHost) -> [GitHubSearchPull] {
+    /// One list's pull requests across its searches, each bounded, with no
+    /// pull request twice.
+    private static func pulls(_ searches: [Search], host: GitHubHost) -> [GitHubSearchPull] {
         var seen = Set<String>()
-        return search.nodes.prefix(PullRequestSearchQuery.limit).compactMap { $0?.pull(host: host) }.filter { seen.insert($0.id).inserted }
+        return searches.flatMap { $0.nodes.prefix(PullRequestSearchQuery.limit).compactMap { $0?.pull(host: host) } }
+            .filter { seen.insert($0.id).inserted }
+    }
+
+    private static func total(_ searches: [Search]) -> Int {
+        searches.reduce(0) { $0 + min(max($1.issueCount ?? 0, 0), 1_000_000) }
     }
 
     /// A GitHub login or repository name: letters, digits, `-`, `_`, `.`.
@@ -192,14 +260,10 @@ enum PullRequestSearchAnswer {
         return counts
     }
 
+    /// Its searches by name, as `PullRequestSearchQuery.groups` named them.
     struct Answer: Decodable {
-        var data: DataField?
+        var data: [String: Search?]?
         var errors: [PullRequestAnswer.Answer.Failure]?
-
-        struct DataField: Decodable {
-            var mine: Search?
-            var review: Search?
-        }
     }
 
     struct Search: Decodable {
@@ -280,16 +344,19 @@ enum PullRequestSearchAnswer {
 }
 
 extension GitHubAPI {
-    /// The account's open pull requests and those asking for its review on
-    /// `host`, in one query.
-    func searchPullRequests(host: GitHubHost, token: GitHubToken) async throws -> PullRequestLists {
+    /// The account's pull requests in `states` and those asking for its
+    /// review on `host`, in one query.
+    func searchPullRequests(
+        host: GitHubHost, token: GitHubToken, states: Set<PullRequestFilter.State> = PullRequestFilter.openStates
+    ) async throws -> PullRequestLists {
+        let query = PullRequestSearchQuery(states: states)
         var request = GitHubHTTP.request(host.graphQL, token: token, method: "POST")
-        request.httpBody = try PullRequestSearchQuery.body
+        request.httpBody = try query.body
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let response = try await send(request, host: host, limit: .whole(max: Self.graphQLLimit))
         guard response.status == 200 else { throw GitHubHTTP.failure(response, now: now()) }
         do {
-            return try PullRequestSearchAnswer.parse(response, host: host, now: now())
+            return try PullRequestSearchAnswer.parse(response, host: host, now: now(), query: query, states: states)
         } catch {
             // GraphQL says to wait with a 200, as the branch reads hear it.
             if case let .rateLimited(until) = error { paused[host] = until }

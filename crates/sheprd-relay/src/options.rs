@@ -42,6 +42,8 @@ Every option is optional, and each can also be set as a RELAY_* variable
                                  proofs are checked against it, never against a
                                  request's Host header; without it the
                                  WebSocket fallback is off. QUIC needs nothing.
+  --share-viewer on|off          Serve browser invitations at /share/ (default off;
+                                 requires --public-host and a QUIC listener for the host)
   --behind-proxy                 Take the caller's address from the last entry
                                  of the last X-Forwarded-For line. Only when
                                  nothing reaches the relay but that proxy, and
@@ -154,6 +156,7 @@ pub const SETTINGS: &[(&str, Kind)] = &[
     ("quic-identity-dir", Kind::Text),
     ("quic-port", Kind::Port),
     ("session-bandwidth", Kind::Bytes),
+    ("share-viewer", Kind::Text),
     ("total-bandwidth", Kind::Bytes),
     // keep-sorted end
 ];
@@ -177,6 +180,7 @@ pub struct Options {
     /// A file of ranges banned by hand, re-read every 30 seconds.
     pub ban_file: Option<PathBuf>,
     pub behind_proxy: bool,
+    pub share_viewer: bool,
     /// The header the proxy in front puts the caller's address in.
     pub client_ip_header: Option<String>,
     /// The dashboard's access token; without one, the dashboard is off.
@@ -207,6 +211,7 @@ impl Default for Options {
             bans: Vec::new(),
             ban_file: None,
             behind_proxy: false,
+            share_viewer: false,
             client_ip_header: None,
             dashboard_token: None,
             limits: Limits::default(),
@@ -317,6 +322,11 @@ impl Options {
             return Ok(());
         }
         let text = text.ok_or_else(invalid)?;
+        let toggle = || match text.trim() {
+            "on" | "1" | "true" => Ok(true),
+            "off" | "0" | "false" => Ok(false),
+            _ => Err(invalid()),
+        };
         let count = || {
             text.parse::<usize>()
                 .ok()
@@ -338,13 +348,8 @@ impl Options {
         let limits = &mut self.limits;
         match name {
             "accept-timeout" => limits.accept_timeout = duration()?,
-            "auto-ban" => {
-                limits.auto_ban = match text.trim() {
-                    "on" | "1" | "true" => true,
-                    "off" | "0" | "false" => false,
-                    _ => return Err(invalid()),
-                }
-            }
+            "auto-ban" => limits.auto_ban = toggle()?,
+            "share-viewer" => self.share_viewer = toggle()?,
             "ban" => {
                 let (ranges, bad) = crate::guard::parse_list(text);
                 if !bad.is_empty() {

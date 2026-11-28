@@ -286,6 +286,7 @@ impl Projection {
         }
         let kind = match role {
             Role::User => EntryKind::User {
+                guest: None,
                 text: crate::project::shown(&text).to_owned(),
                 files: 0,
                 note: None,

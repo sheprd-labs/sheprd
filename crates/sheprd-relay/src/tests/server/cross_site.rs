@@ -81,6 +81,7 @@ fn shared(source: Source) -> Shared {
     Shared {
         hub: Arc::new(Hub::new(Limits::default(), crate::hub::Access::Open)),
         public_host: None,
+        share_viewer: false,
         quic: None,
         source,
     }

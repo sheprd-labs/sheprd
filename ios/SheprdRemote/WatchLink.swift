@@ -20,8 +20,9 @@ final class WatchLink: NSObject, WCSessionDelegate, @unchecked Sendable {
 
     /// Sends the latest summary; WatchConnectivity keeps only the newest.
     func publish(_ summary: WidgetSummary) {
+        guard WCSession.isSupported() else { return }
         let session = WCSession.default
-        guard WCSession.isSupported(), session.activationState == .activated, session.isPaired, session.isWatchAppInstalled,
+        guard session.activationState == .activated, session.isPaired, session.isWatchAppInstalled,
               let data = try? JSONEncoder().encode(summary)
         else { return }
         try? session.updateApplicationContext(["summary": data])

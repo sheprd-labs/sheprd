@@ -208,9 +208,34 @@ final class RemoteClient: Sendable {
         return answer.id
     }
 
+    /// Uploads a picture of the app's window an agent on the computer asked
+    /// for (`sheprd phone snapshot`); answers the id its answer names.
+    func snapshot(_ image: Data, bearer: String) async throws -> String {
+        struct Answer: Decodable { let id: String }
+        guard let url = URL(string: origin + "/api/agent/snapshot") else { throw RemoteError.unreachable }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 30
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await session.upload(for: Self.tagged(request), from: image)
+        let answer: Answer = try decode(data, response)
+        return answer.id
+    }
+
     /// The agents and folders a new workspace or chat may use.
     func newOptions(bearer: String) async throws -> NewOptions {
         try await send("GET", "/api/v2/new", bearer: bearer)
+    }
+
+    /// What a new worktree of `cwd`'s repository may start from; nil from
+    /// a computer too old to say, which offers only a new branch.
+    func newSources(cwd: String, bearer: String) async throws -> NewSources? {
+        do {
+            return try await send("GET", "/api/v2/new/sources?\(Self.query(["cwd": cwd]))", bearer: bearer, timeout: Self.askTimeout)
+        } catch RemoteError.status(404, _) {
+            return nil
+        }
     }
 
     func createProject(_ project: NewProjectRequest, bearer: String) async throws -> String {
@@ -220,8 +245,11 @@ final class RemoteClient: Sendable {
     }
 
     /// Creating waits up to ten seconds for the chat's program to report in.
+    /// A pull request's head is fetched first, for up to a minute
+    /// (`FETCH_WAIT` in the daemon's `sources.rs`), so that waits longer.
     func createWorkspace(_ request: NewWorkspaceRequest, bearer: String) async throws -> Created {
-        try await send("POST", "/api/v2/workspaces", body: request, bearer: bearer, timeout: 30)
+        let fetches = if case .pull = request.source { true } else { false }
+        return try await send("POST", "/api/v2/workspaces", body: request, bearer: bearer, timeout: fetches ? 100 : 30)
     }
 
     func startChat(_ request: NewChatRequest, workspace: String, bearer: String) async throws -> Created {

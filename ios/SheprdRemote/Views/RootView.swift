@@ -64,7 +64,9 @@ struct RootView: View {
             }
         }
         // The split view presents it itself, over whichever sheet is open.
-        .sheet(isPresented: Binding(get: { window.pairing && !wide }, set: { window.pairing = $0 })) { PairView() }
+        .sheet(isPresented: Binding(get: { window.pairing && !wide }, set: { window.pairing = $0 })) {
+            PairView().environment(model)
+        }
         .alert(model.noticeTitle ?? "Not sent", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil; model.noticeTitle = nil } })) {
         } message: {
             Text(model.notice ?? "")
@@ -72,13 +74,13 @@ struct RootView: View {
         // A panel's sheet presents it over itself, as here it would be
         // behind it.
         .sheet(item: Binding(get: { window.panelOpen ? nil : model.creating }, set: { model.creating = $0 })) {
-            CreatingSheet(creating: $0)
+            CreatingSheet(creating: $0).environment(model)
         }
         .sheet(item: Bindable(model).voice, onDismiss: nil) { session in
-            VoiceSheet(session: session)
+            VoiceSheet(session: session).environment(model)
         }
         .sheet(item: Bindable(model).pendingPullRequest) { route in
-            PullRequestSheet(route: route)
+            PullRequestSheet(route: route).environment(model)
         }
         // A panel's sheet draws it instead, as here it would be behind it.
         .nearbyCard(window, when: !window.panelOpen)
@@ -209,7 +211,7 @@ struct RootView: View {
                     .connectionToast(pairing: $window.pairing)
             }
             Tab("PRs", systemImage: "arrow.triangle.pull", value: RootTab.pullRequests) {
-                NavigationStack { PullRequestsList().makesRoomForConnectionToast() }
+                NavigationStack { PullRequestsTab().makesRoomForConnectionToast() }
                     .connectionToast(pairing: $window.pairing)
             }
             Tab("Settings", systemImage: "gearshape", value: RootTab.settings) {
@@ -308,6 +310,7 @@ extension RootView {
                 model.pendingRoute = .term(PaneKey(device: item.computer.device, pane: pane), title: item.terminal.label)
             }
         }
+        await PullRequestsBench.runIfAsked(model: model)
     }
 }
 #endif

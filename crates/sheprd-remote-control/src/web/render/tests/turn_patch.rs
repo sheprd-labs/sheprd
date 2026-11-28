@@ -22,6 +22,7 @@ fn user(id: u64, text: &str) -> Entry {
     entry(
         id,
         EntryKind::User {
+            guest: None,
             text: text.into(),
             files: 0,
             note: None,
@@ -94,6 +95,7 @@ fn a_changed_extra_sends_the_extras_region() {
     let before = turn(vec![user(1, "hi")]);
     let now = turn_of(vec![user(1, "hi")], |transcript| {
         transcript.queued.push(Queued {
+            guest: None,
             attachments: Vec::new(),
             id: CommandId::random(),
             held: false,

@@ -77,7 +77,6 @@ PATH=/usr/bin:/bin:/usr/sbin:/sbin xcodebuild -exportArchive -archivePath "$work
     $auth -quiet
 echo "Uploaded build $build. Setting its notes once App Store Connect has it (up to 30 minutes)…"
 python3 tools/testflight_notes.py publish "$bundle_id" "$build" "$work/notes.txt"
-echo "Adding build $build to every external TestFlight group…"
+echo "Adding build $build to every external TestFlight group and submitting it for review…"
 python3 tools/testflight_distribution.py "$bundle_id" "$build"
-echo "Build $build has its notes and is assigned to the external groups."
-echo "Apple review may still be required before testers can install it."
+echo "Build $build has its notes, is in the external groups, and is submitted for Beta App Review."

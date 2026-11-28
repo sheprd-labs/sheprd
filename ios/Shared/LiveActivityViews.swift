@@ -22,9 +22,22 @@ struct LockScreenView: View {
             if style != .standard && style != .complete {
                 AgentProgressLine(state: state, style: style)
             }
+            if style != .private, let blocker = state.blockerTitle, !blocker.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "key.fill")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Palette.question)
+                    Text(blocker)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                }
+            } else if let pct = state.progressPercent {
+                ProgressView(value: Double(min(100, max(0, pct))), total: 100)
+                    .tint(Palette.working)
+            }
         }
         .padding(14)
-        .background(state.phase == .question ? Palette.question.opacity(0.18) : Color.clear)
+        .background((state.phase == .question || state.blockerTitle != nil) ? Palette.question.opacity(0.18) : Color.clear)
     }
 }
 

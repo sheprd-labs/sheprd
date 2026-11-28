@@ -102,6 +102,48 @@ impl SettingsWindow {
                     cx,
                 )),
             )
+            .child(
+                ui::row(
+                    theme,
+                    "chat-agent-modals",
+                    fl!("settings-chat-agent-modals"),
+                )
+                .description(fl!("settings-chat-agent-modals-description"))
+                .switch(self.preference_toggle(
+                    "chat-agent-modals-toggle",
+                    chat.agent_modals,
+                    Preference::ChatAgentModals(!chat.agent_modals),
+                    cx,
+                )),
+            )
+            .child(
+                ui::row(
+                    theme,
+                    "chat-global-modals",
+                    fl!("settings-chat-global-modals"),
+                )
+                .description(fl!("settings-chat-global-modals-description"))
+                .switch(self.preference_toggle(
+                    "chat-global-modals-toggle",
+                    chat.global_modals,
+                    Preference::ChatGlobalModals(!chat.global_modals),
+                    cx,
+                )),
+            )
+            .child(
+                ui::row(
+                    theme,
+                    "chat-progress-pill",
+                    fl!("settings-chat-progress-pill"),
+                )
+                .description(fl!("settings-chat-progress-pill-description"))
+                .switch(self.preference_toggle(
+                    "chat-progress-pill-toggle",
+                    chat.progress_pill,
+                    Preference::ChatProgressPill(!chat.progress_pill),
+                    cx,
+                )),
+            )
             .child(ui::section(theme, &fl!("settings-chat-section-code"), None))
             .child(
                 ui::row(theme, "chat-wrap-code", fl!("settings-chat-wrap-code"))

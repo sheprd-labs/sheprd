@@ -68,6 +68,7 @@ struct TerminalKeysView: View {
         }
         .sheet(item: $editing) { editing in
             KeyEditor(key: editing.key, row: editing.row, isNew: editing.isNew) { store.layout.put($0, in: $1) }
+                .environment(model)
         }
         // Where the rows sit in a terminal, as wide, so what does not fit
         // scrolls there the same way.

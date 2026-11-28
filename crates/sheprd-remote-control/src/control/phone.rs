@@ -12,9 +12,15 @@
 
 use crate::control::DeviceId;
 
+mod luau;
 mod settings;
+pub use luau::{
+    LuauReport, MAX_LUAU_BYTES, MAX_LUAU_FILES, MAX_REPORT_LINES, valid_files, valid_path,
+    valid_screen,
+};
 use serde::{Deserialize, Serialize};
 pub use settings::{Highlight, SettingsPage};
+use std::collections::BTreeMap;
 
 /// The longest note `show` puts on a phone, in characters.
 pub const MAX_TEXT_CHARS: usize = 500;
@@ -118,6 +124,15 @@ pub enum Command {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         from: Option<String>,
     },
+    /// Lays `files` over the Luau screen `screen`'s bundled ones and
+    /// reloads it; no files goes back to the bundled ones. A debug build
+    /// of the app only ([`luau`]).
+    Luau {
+        screen: String,
+        files: BTreeMap<String, String>,
+    },
+    /// A picture of what the phone shows.
+    Snapshot,
 }
 
 /// What the daemon tells a phone to do, on the live socket as
@@ -149,6 +164,13 @@ pub enum Drive {
         from: Option<Screen>,
     },
     ClearGuide,
+    Luau {
+        screen: String,
+        files: BTreeMap<String, String>,
+    },
+    /// The phone uploads a picture of its window (`/api/agent/snapshot`)
+    /// and answers with its upload's id.
+    Snapshot,
 }
 
 /// What the phone shows, as it reports it.
@@ -175,6 +197,15 @@ pub enum Outcome {
     },
     Refused {
         reason: Refusal,
+    },
+    /// What loading a Luau push found.
+    Luau {
+        /// Boxed, as answers are passed by value and this is the largest.
+        report: Box<LuauReport>,
+    },
+    /// The picture the phone uploaded, by its upload's id.
+    Snapshot {
+        upload: String,
     },
 }
 
@@ -228,6 +259,11 @@ pub enum Answer {
     Driven {
         phone: Phone,
         outcome: Outcome,
+    },
+    /// The picture the phone took, as a PNG or JPEG file on this computer.
+    Snapshot {
+        phone: Phone,
+        path: String,
     },
     /// No phone agents may drive is connected, or none by that name.
     NoPhone,

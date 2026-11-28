@@ -180,6 +180,15 @@ pub(crate) fn answer(state: &State, ask: Ask) -> Answer {
         Err(answer) => return answer,
     };
     match state.drivers.drive(socket, drive, ASK_WAIT) {
+        // The phone names its picture by upload; the path is this
+        // computer's to say, and only to Sheprd.
+        Some(Outcome::Snapshot { upload }) => match state.uploads.path(&upload, now_ms()) {
+            Ok(path) => Answer::Snapshot {
+                phone,
+                path: path.display().to_string(),
+            },
+            Err(_) => Answer::NoAnswer { phone },
+        },
         Some(outcome) => Answer::Driven { phone, outcome },
         None => Answer::NoAnswer { phone },
     }
@@ -226,6 +235,13 @@ fn resolve(state: &State, command: Command) -> Result<Drive, Answer> {
             });
         }
         Command::ClearGuide => return Ok(Drive::ClearGuide),
+        Command::Luau { screen, files }
+            if phone::valid_screen(&screen) && phone::valid_files(&files) =>
+        {
+            return Ok(Drive::Luau { screen, files });
+        }
+        Command::Luau { .. } => return Err(Answer::Invalid),
+        Command::Snapshot => return Ok(Drive::Snapshot),
         Command::Show { text, from } if phone::valid_text(&text) => {
             return Ok(Drive::Show {
                 text,

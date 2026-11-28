@@ -83,6 +83,7 @@ fn a_turn_start_has_no_previous_steps() {
     before.entries.push(Entry {
         id: EntryId(3),
         kind: EntryKind::User {
+            guest: None,
             text: "next".to_owned(),
             files: 0,
             note: None,

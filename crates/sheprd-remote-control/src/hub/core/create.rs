@@ -7,13 +7,25 @@
 //! the endpoint is chosen here and kept as a label.
 
 use super::{Error, HubError, Result, Source, lock, pane_id, worktree};
-use crate::hub::{Launcher, Layout};
+use crate::hub::{Launcher, Layout, new_workspace::Landing};
 use serde_json::{Value, json};
 use sheprd_chat_protocol::{Agent, ENDPOINT_ENV, EndpointId, TOKEN};
 use sheprd_core_client::wire::Run;
 use sheprd_session::{
     Labelled, NEW_WORKSPACE_LABEL, NEW_WORKSPACE_TITLE_LABEL, SESSION_LABEL, WORKSPACE_LABEL,
 };
+
+/// A worktree to make for new work from a phone.
+#[derive(Clone, Copy, Debug)]
+pub(in crate::hub) struct NewCheckout<'a> {
+    /// A folder of the repository.
+    pub(in crate::hub) repository: &'a str,
+    pub(in crate::hub) branch: &'a str,
+    /// Where a new branch starts; unused when the branch exists locally.
+    pub(in crate::hub) base: &'a str,
+    /// Where checkouts go; `None` when this user has no home.
+    pub(in crate::hub) root: Option<&'a Path>,
+}
 
 /// Where new work from a phone belongs, which Sheprd gives it a tab in.
 #[derive(Clone, Copy, Debug)]
@@ -75,36 +87,50 @@ impl Source {
         })
     }
 
-    /// A chat as [`Self::open_chat`], in a new worktree of `cwd` on `branch`
-    /// under `root`. Answers its pane and the new checkout's folder.
-    pub(in crate::hub) fn open_worktree_chat(
+    /// A chat with `agent`, or a shell, in `cwd`.
+    pub(in crate::hub) fn open_landing(
         &self,
-        agent: Agent,
-        launcher: &Launcher,
+        landing: &Landing,
         cwd: &str,
-        branch: &str,
+        place: Option<Place<'_>>,
+    ) -> Result<String> {
+        match landing {
+            Landing::Chat(agent, launcher) => self.open_chat(*agent, launcher, cwd, place),
+            Landing::Shell => self.open_shell(cwd, place),
+        }
+    }
+
+    /// [`Self::open_landing`] in a worktree of `new.repository` on
+    /// `new.branch` under `new.root`: a new branch from `new.base`, or the
+    /// local branch as it is. Answers its pane and the checkout's folder.
+    pub(in crate::hub) fn open_worktree(
+        &self,
+        landing: &Landing,
+        new: NewCheckout<'_>,
         title: Option<&str>,
-        root: Option<&Path>,
     ) -> Result<(String, String)> {
-        let root = root.ok_or(worktree::Error::NoHome).map_err(Error::from)?;
-        let repository = Path::new(cwd);
-        let checkout =
-            worktree::add(repository, branch, "HEAD", root, || false).map_err(Error::from)?;
+        let root = new
+            .root
+            .ok_or(worktree::Error::NoHome)
+            .map_err(Error::from)?;
+        let repository = Path::new(new.repository);
+        let added = worktree::add_or_checkout(repository, new.branch, new.base, root, || false)
+            .map_err(Error::from)?;
         // A new workspace of its own, in the new checkout.
-        let checkout = checkout.to_string_lossy().into_owned();
+        let checkout = added.checkout.to_string_lossy().into_owned();
         let place = Place::New {
             cwd: &checkout,
             title,
         };
-        let started = self.open_chat(agent, launcher, &checkout, Some(place));
-        let folder = Path::new(&checkout);
+        let started = self.open_landing(landing, &checkout, Some(place));
         if let Err(error) = &started {
+            let branch = new.branch;
             // A retry must find the branch free, but only a start that
             // surely ran nothing may go: a chat may be working in the
             // checkout after any other failure.
             if !ran_nothing(error) {
                 tracing::warn!(%error, %branch, "A worktree stayed: its chat may have started");
-            } else if let Err(error) = worktree::remove(repository, folder, branch) {
+            } else if let Err(error) = worktree::remove_added(repository, &added, branch) {
                 tracing::warn!(%error, %branch, "A worktree without a chat stayed");
             }
         }

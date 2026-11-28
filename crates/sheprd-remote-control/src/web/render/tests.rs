@@ -52,6 +52,7 @@ pub(super) fn workspace(chats: Vec<ChatRow>) -> Workspace {
 
 pub(super) fn question(title: &str) -> Permission {
     Permission {
+        guest: None,
         call_id: None,
         id: PermissionId(7),
         question: None,

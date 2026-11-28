@@ -9,6 +9,7 @@ mod briefs;
 mod carry;
 mod checkpoint;
 mod commands;
+mod guests;
 mod harness;
 mod keep;
 mod known;
@@ -239,6 +240,8 @@ pub(crate) struct Session<R: FnMut(Update)> {
     /// agent it switches to; `None` until then.
     divider: Option<Option<sheprd_chat_protocol::EntryId>>,
     epoch: Uuid,
+    /// Guest prompts waiting for the person, and the connections relaying them.
+    guests: guests::Guests,
     handled: VecDeque<(CommandId, Option<Rejection>)>,
     /// The agent process heard now.
     harness: HarnessId,
@@ -375,6 +378,7 @@ impl<R: FnMut(Update)> Session<R> {
             deferred: Vec::new(),
             divider: None,
             epoch: Uuid::new_v4(),
+            guests: guests::Guests::default(),
             handled: VecDeque::new(),
             harness: HarnessId::default(),
             keep,
@@ -735,6 +739,7 @@ impl<R: FnMut(Update)> Session<R> {
     }
 
     fn detach(&mut self, conn: ConnId) {
+        self.guests.detached(conn);
         let before = self.remote_clients();
         self.subscribers
             .retain(|subscriber| subscriber.conn != conn);
@@ -792,6 +797,7 @@ impl<R: FnMut(Update)> Session<R> {
             message: message.to_owned(),
         });
         self.clear_queue();
+        self.drop_guests(Rejection::NotReady);
     }
 
     fn clear_queue(&mut self) {

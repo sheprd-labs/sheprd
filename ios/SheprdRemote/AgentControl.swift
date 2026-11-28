@@ -119,6 +119,29 @@ final class AgentControl {
         case let .show(text, from):
             banner = Banner(computer: model.displayName(computer), text: text, note: true, from: from, device: computer.device)
             answer(.done(state(for: computer, model: model)))
+        case let .luau(screen, files):
+            #if DEBUG
+            let report = LuauLive.shared.apply(screen: screen, files: files)
+            log.notice("an agent on \(computer.name, privacy: .public) changed the Luau of \(screen, privacy: .public)")
+            banner = Banner(
+                computer: model.displayName(computer),
+                text: files.isEmpty ? "\(screen) is back to its bundled Luau" : "\(screen)'s Luau changed by an agent on \(model.displayName(computer))",
+                note: false
+            )
+            answer(.luau(report))
+            #else
+            // Only a debug build runs Luau it did not ship with.
+            answer(.refused(.other))
+            #endif
+        case .snapshot:
+            #if DEBUG
+            // A picture shows more than `state` says: only what is all
+            // this computer's goes to it.
+            guard showsOnlyItsOwn(computer, model: model) else { return answer(.refused(.other)) }
+            snapshot(computer, model: model, answer: answer)
+            #else
+            answer(.refused(.other))
+            #endif
         case let .open(screen):
             guard open(screen, on: computer.device, model: model) else { return answer(.refused(.notFound)) }
             log.notice("an agent on \(computer.name, privacy: .public) opened \(String(describing: screen), privacy: .public)")
@@ -145,6 +168,29 @@ final class AgentControl {
         model.pendingPullRequest = nil
         _ = open(from, on: computer.device, model: model)
     }
+
+    #if DEBUG
+    /// Uploads a picture of the window to `computer` for its agent, and
+    /// says so on the screen afterwards, so the picture never has the note
+    /// in it and the person still sees one was taken.
+    private func snapshot(_ computer: Computer, model: AppModel, answer: @escaping (AgentOutcome) -> Void) {
+        guard let picture = LuauLive.snapshot() else { return answer(.refused(.other)) }
+        Task {
+            do {
+                let session = try await model.sessions.session(for: computer)
+                let upload = try await session.client.snapshot(picture, bearer: session.token)
+                log.notice("an agent on \(computer.name, privacy: .public) took a snapshot")
+                self.banner = Banner(
+                    computer: model.displayName(computer), text: "Snapshot taken by an agent on \(model.displayName(computer))",
+                    note: false
+                )
+                answer(.snapshot(upload: upload))
+            } catch {
+                answer(.refused(.other))
+            }
+        }
+    }
+    #endif
 
     private func answerAfterNavigation(_ computer: Computer, model: AppModel, answer: @escaping (AgentOutcome) -> Void) {
         Task {
@@ -245,6 +291,24 @@ final class AgentControl {
         // Nothing shows behind the lock, so nothing is said of it.
         guard !locked else { return AgentPhoneState(screen: nil, locked: true) }
         return AgentPhoneState(screen: Self.screen(front, creating: model.creating, voice: model.voice != nil, device: computer.device))
+    }
+
+    /// Whether all the window shows is `computer`'s: one of its chats,
+    /// terminals, or workspaces, or a tab while it is the only computer
+    /// paired, as a tab lists every computer's.
+    func showsOnlyItsOwn(_ computer: Computer, model: AppModel) -> Bool {
+        Self.showsOnly(
+            state(for: computer, model: model).screen, device: computer.device, paired: model.computers.map(\.device)
+        )
+    }
+
+    static func showsOnly(_ screen: AgentScreen?, device: String, paired: [String]) -> Bool {
+        switch screen {
+        case nil: false
+        case .chat, .term, .workspace, .changes: true
+        case .home, .workspaces, .pullRequests, .settings, .settingsPage, .newWorkspace:
+            paired.allSatisfy { $0 == device }
+        }
     }
 
     static func screen(_ front: Front, creating: Creating?, voice: Bool, device: String) -> AgentScreen? {

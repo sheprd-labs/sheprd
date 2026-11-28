@@ -1,10 +1,9 @@
 # Shared-session gateway, draft v0
 
-This is an implemented native reference path through the existing QUIC relay and
-hybrid tunnel, tested on loopback. It is not yet enabled by daemon startup or the
-Share dialog. A host supplies observed source snapshots through a bounded watch;
-no test connects to the user's running agent. The native peer can use credentials decoded from a draft HTTPS link. The
-browser bundle, browser-to-relay proofs and native application UI remain pending.
+The owner listens through QUIC. The native peer dials through QUIC and the
+browser peer dials through same-origin WSS. Both run the same hybrid tunnel
+and v0 admission and read protocol. The Share dialog starts a route on explicit
+owner confirmation and supplies observed source snapshots through a bounded watch.
 
 ## Ownership and lifecycle
 
@@ -78,8 +77,8 @@ and checks the landing URL and embedded relay against it before returning
 credentials. Parsing performs no network access. An anonymous link is a bearer
 credential. The host checks the grant and its stored expiry throughout access.
 The outer fields carry no signature or independent claim of host ownership.
-A browser deployment must still supply the viewer and clear the fragment from
-history before showing the session.
+The bundled viewer removes the fragment with `history.replaceState` before
+revealing the page. A GET fetches only generic static assets.
 
 ## Admission frames
 
@@ -150,7 +149,41 @@ explicit grant capability and newly proved keys.
   interrupts either, so a peer cannot retain access by withholding a frame tail.
 
 These are enforcement bounds, not release performance measurements. Already
-transmitted bytes cannot be recalled. External rendering, deployment headers,
-WSS/browser interoperability and an independent security review remain release
-gates. In particular, these native tests do not prove a safe browser origin or
-safe Markdown/media rendering.
+transmitted bytes cannot be recalled. An independent security review, non-Chromium browser checks
+and representative relay load testing remain release gates.
+
+## Browser transport and deployment
+
+The worker starts after Join. It compares the canonical HTTPS invitation base
+(including prefix and port) to the origin and path serving the landing page.
+Each WSS dial uses the relay's existing `Hello` and `socket::dial_signed`,
+then carries u16-prefixed Noise messages over the WebSocket byte stream.
+Inside the tunnel, the application uses the u32 framing above. A cursor is
+scoped to one admitted viewer. Reconnection creates fresh keys and reads a
+new filtered snapshot. At most three connection attempts run per Join.
+The browser removes visible transcript content when the live connection ends.
+
+The worker understands projected exited/failed status and local link expiry.
+A v0 relay deliberately returns the same offline status for an absent route
+and an unrecognized dial key. After a previously live session loses access,
+the UI names both revocation and host disconnection as possible reasons.
+A guest trusts the relay origin to deliver the viewer code. No transcript or
+credential is written to browser storage. The renderer creates text and
+formatting nodes only, including for links, raw HTML and image syntax.
+
+The relay binary embeds all six static assets. After changing the Rust guest,
+use the repository toolchain with the `wasm32-unknown-unknown` target and
+the wasm-bindgen CLI version in Cargo.lock, then regenerate the two checked-in
+generated assets with `scripts/build-share-viewer.sh`. The normal binary and
+Docker image builds consume those assets directly.
+
+Deploy the relay image built from this revision to a QUIC-enabled relay
+behind HTTPS. Enable `RELAY_SHARE_VIEWER=on` in its environment. Set `RELAY_PUBLIC_HOST` to its public host, including any
+non-default port and stripped path prefix. Forward both `/share/` and WSS
+`/v1/dial/` at that base to the same relay. The supplied Caddy and Compose
+configuration already forwards both paths. A WebSocket-only relay cannot
+accept the current owner's QUIC listener. Check `/v1/info` for
+`share_viewer: true`, `websocket: true` and a QUIC endpoint. Then fetch the
+generic `/share/` page without an invitation. Replacing a running relay
+disconnects active routes; create the screencast invitation after the update.
+See the [signed image deployment instructions](../../deploy/relay/README.md#what-a-droplet-runs).

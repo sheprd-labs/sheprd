@@ -8,6 +8,7 @@ mod alert;
 mod clear;
 mod decide;
 mod delivery;
+mod interactions;
 mod notify_key;
 mod open_pr;
 mod pacer;

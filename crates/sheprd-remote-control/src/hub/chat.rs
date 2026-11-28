@@ -358,6 +358,9 @@ impl Chat {
         &self,
         command: Command,
     ) -> Result<Option<sheprd_chat_protocol::Rejection>> {
+        if relays_guest(&command) {
+            return Ok(Some(sheprd_chat_protocol::Rejection::Unsupported));
+        }
         let id = CommandId::random();
         let (sender, receiver) = oneshot::channel();
         {
@@ -547,4 +550,17 @@ fn write(
         }
     }
     closer.close();
+}
+
+/// Whether `command` relays a guest's words. Phones speak for the person,
+/// and every phone shares this one connection, which the chat program
+/// would keep to guest prompts from then on: none go through it.
+pub(crate) fn relays_guest(command: &Command) -> bool {
+    match command {
+        Command::GuestPrompt { .. } => true,
+        Command::Prompt { origin, .. } => {
+            origin.as_ref().is_some_and(|origin| origin.guest.is_some())
+        }
+        _ => false,
+    }
 }

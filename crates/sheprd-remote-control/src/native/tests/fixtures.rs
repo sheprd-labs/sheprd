@@ -64,6 +64,7 @@ fn transcript() -> Transcript {
         Entry {
             id: EntryId(1),
             kind: EntryKind::User {
+                guest: None,
                 text: "Make it even out nested splits too.".into(),
                 files: 0,
                 note: None,

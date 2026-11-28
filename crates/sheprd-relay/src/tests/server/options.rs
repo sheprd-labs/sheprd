@@ -74,7 +74,7 @@ fn every_setting_is_read_from_its_variable() {
             Kind::Flag => "1",
             Kind::Port => "443",
             Kind::Text => match *name {
-                "auto-ban" => "off",
+                "auto-ban" | "share-viewer" => "off",
                 "ban" => "203.0.113.0/24, 2001:db8::/32",
                 "client-ip-header" => "do-connecting-ip",
                 _ => "operator",

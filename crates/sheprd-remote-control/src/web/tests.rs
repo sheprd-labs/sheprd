@@ -235,11 +235,11 @@ fn a_bearer_token_is_read_from_its_header() {
 #[test]
 fn branch_names_follow_gits_rules() {
     for good in ["feat/remote", "fix-1.2", "a_b"] {
-        assert!(api::valid_branch(good), "{good}");
+        assert!(valid_branch(good), "{good}");
     }
     for bad in [
         "-x", "a..b", "a b", "a/", "x.lock", "a@{1}", "/a", "a//b", "a;rm",
     ] {
-        assert!(!api::valid_branch(bad), "{bad}");
+        assert!(!valid_branch(bad), "{bad}");
     }
 }

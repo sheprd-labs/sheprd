@@ -13,6 +13,7 @@ mod machine_agent;
 #[cfg(feature = "mcp")]
 mod mcp;
 mod memory;
+mod modal;
 mod mods;
 mod phone;
 mod remote;
@@ -38,6 +39,7 @@ pub use hosts::{
 #[cfg(feature = "mcp")]
 pub use mcp::{McpClient, McpCommand};
 pub use memory::{MemoryAdd, MemoryCommand};
+pub use modal::ModalCommand;
 pub use mods::ModCommand;
 pub use phone::{PhoneCommand, PhoneTarget};
 pub use remote::RemoteCommand;
@@ -124,6 +126,8 @@ pub enum ControlCommand {
     Fleet(FleetCommand),
     /// The mods the window runs; `check` runs here.
     Mod(ModCommand),
+    /// Persistent window/global modals, secret vault, progress pill, runbooks, and cues.
+    Modal(ModalCommand),
     /// Agents driving a paired phone's app.
     Phone(PhoneCommand),
     Search {
@@ -278,6 +282,10 @@ pub const FAMILIES: &[(&str, &str)] = &[
     (
         "mod",
         "Mods: list, reload, read logs, or check a mod folder",
+    ),
+    (
+        "modal",
+        "Persistent window/global modals, secret vault, progress pill, runbooks, and cues",
     ),
     ("search", "Find a symbol or a file in the focused checkout"),
     ("config", "Sheprd settings: path, get, set, reload, check"),
@@ -454,6 +462,7 @@ fn command(family: &'static str, args: &mut Args) -> Result<ControlCommand, CliE
         "fleet" => ControlCommand::Fleet(fleet::fleet(args)?),
         "phone" => ControlCommand::Phone(phone::phone(args)?),
         "mod" => ControlCommand::Mod(mods::command(args)?),
+        "modal" => ControlCommand::Modal(modal::command(args)?),
         "search" => {
             let files = match args.verb().as_ref().and_then(|verb| verb.to_str()) {
                 Some("symbol" | "symbols") => false,

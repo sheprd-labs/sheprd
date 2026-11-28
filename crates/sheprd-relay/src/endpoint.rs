@@ -286,6 +286,9 @@ impl<'de> Deserialize<'de> for Endpoint {
 /// saving it, and learn how to reach it over QUIC.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Info {
+    /// This relay serves the same-origin v0 browser guest.
+    #[serde(default)]
+    pub share_viewer: bool,
     /// Whether listeners must present the operator's token. Dialers never
     /// need one.
     pub listen_token: bool,

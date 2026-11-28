@@ -55,6 +55,7 @@ pub mod bucket;
 pub mod client;
 #[cfg(feature = "client-ws")]
 pub mod client_ws;
+mod commit;
 #[cfg(feature = "dashboard")]
 pub mod dashboard;
 pub mod endpoint;
@@ -86,10 +87,13 @@ pub mod socket;
 pub mod splice;
 #[cfg(feature = "testing")]
 pub mod testing;
+#[cfg(feature = "server")]
+mod viewer;
 #[cfg(feature = "websocket-server")]
 pub mod web;
 pub mod wire;
 
+pub use commit::commit;
 pub use endpoint::Endpoint;
 pub use error::{Error, Result};
 #[cfg(feature = "websocket-server")]

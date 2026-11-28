@@ -184,7 +184,7 @@ All settings are flags or `RELAY_*` variables (`sheprd-relay --help`).
 | `max-listeners-per-ip` | 16 | Per IPv4 address or IPv6 /64; a /24 or /48 holds 16 times this |
 | `max-sessions` | 5,000 | Sessions and waiting dials |
 | `max-sessions-per-ip` | 64 | Per dialing address; a /24 or /48 holds 16 times this |
-| `max-sessions-per-key` | 4 | Per dial key, so a stolen key cannot take every slot of its computer |
+| `max-sessions-per-key` | 4 | Per dial key, so a stolen key cannot take every slot of its computer; with listen tokens, a device the computer named may hold half of `max-sessions-per-route` |
 | `max-sessions-per-route` | 32 | Per computer |
 | `max-buffer` | 512 MiB | What QUIC peers may make the relay hold, across connections |
 | `session-bandwidth` | 4 MiB/s | Each way, per session; 0 is unlimited |

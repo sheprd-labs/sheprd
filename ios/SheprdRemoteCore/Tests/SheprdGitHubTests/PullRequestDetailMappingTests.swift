@@ -10,6 +10,8 @@ struct PullRequestDetailMappingTests {
 
     @Test func theSummaryIsReadAndCleaned() throws {
         let detail = try parse("pr_detail")
+        #expect(detail.id == "PR_kwDOtest42")
+        #expect(detail.canReact)
         #expect(detail.number == 42)
         #expect(detail.title == "Read pull requests on the phone")
         #expect(detail.url == "https://github.com/acme/app/pull/42")
@@ -20,6 +22,26 @@ struct PullRequestDetailMappingTests {
         #expect((detail.baseRef, detail.headRef) == ("main", "feature"))
         #expect((detail.additions, detail.deletions, detail.changedFiles) == (619, 50, 5))
         #expect(detail.createdAt == (try? Date("2026-11-14T09:00:00Z", strategy: .iso8601)))
+    }
+
+    @Test func reactionsKeepKnownPositiveCountsOnly() throws {
+        let detail = try parse("pr_detail")
+        #expect(detail.reactions == [
+            .init(content: .thumbsUp, count: 3, viewerHasReacted: true),
+            .init(content: .rocket, count: 1, viewerHasReacted: false),
+        ])
+    }
+
+    @Test func optimisticToggleAddsIncrementsDecrementsAndDropsZero() throws {
+        let base = try parse("pr_detail")
+        let added = base.togglingReaction(.heart)
+        #expect(added.reactions.last == .init(content: .heart, count: 1, viewerHasReacted: true))
+        let incremented = added.togglingReaction(.rocket)
+        #expect(incremented.reactions[1] == .init(content: .rocket, count: 2, viewerHasReacted: true))
+        let decremented = incremented.togglingReaction(.thumbsUp)
+        #expect(decremented.reactions[0] == .init(content: .thumbsUp, count: 2, viewerHasReacted: false))
+        let dropped = decremented.togglingReaction(.heart)
+        #expect(!dropped.reactions.contains { $0.content == .heart })
     }
 
     @Test func theDescriptionKeepsItsLinesButNoOtherControls() throws {
@@ -59,6 +81,9 @@ struct PullRequestDetailMappingTests {
 
     @Test func anEmptyPullRequestHasNoBodyReviewersOrUnsafeLink() throws {
         let detail = try parse("pr_detail_empty")
+        #expect(detail.id.isEmpty)
+        #expect(!detail.canReact)
+        #expect(detail.reactions.isEmpty)
         #expect(detail.body.isEmpty)
         #expect(detail.reviewers.isEmpty)
         #expect(detail.timeline.isEmpty)
@@ -67,6 +92,17 @@ struct PullRequestDetailMappingTests {
         #expect(detail.reviewDecision == .none)
         // Only `https` pages are offered.
         #expect(detail.url.isEmpty)
+    }
+
+    @Test func malformedNodeIDDisablesReacting() throws {
+        let pull: [String: Any] = [
+            "id": "PR_bad id\n", "number": 1, "title": "Bad", "url": "https://github.com/acme/app/pull/1",
+            "state": "OPEN", "viewerCanReact": true,
+        ]
+        let body = try JSONSerialization.data(withJSONObject: ["data": ["repository": ["nameWithOwner": "acme/app", "pullRequest": pull]]])
+        let detail = try PullRequestDetailAnswer.parse(GitHubResponse(status: 200, body: body), now: GitHubFixtures.start)
+        #expect(detail.id.isEmpty)
+        #expect(!detail.canReact)
     }
 
     @Test func manyItemsAreBoundedAndCounted() throws {
@@ -111,5 +147,7 @@ struct PullRequestDetailMappingTests {
         #expect(!text.contains("acme"))
         #expect(text.contains("timelineItems(last: 50"))
         #expect(text.contains("comments(first: 10)"))
+        #expect(text.contains("viewerCanReact"))
+        #expect(text.contains("reactionGroups"))
     }
 }

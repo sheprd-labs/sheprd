@@ -113,7 +113,7 @@ struct WorkspacesTab: View {
                         Section {
                             ForEach(repository.workspaces) { workspace in
                                 NavigationLink(value: WorkspaceKey(device: machine.id, workspace: workspace.id)) {
-                                    WorkspaceRow(workspace: workspace, repository: repository)
+                                    WorkspaceRow(workspace: workspace, repositoryLabel: repository.label)
                                 }
                             }
                         } header: {
@@ -343,9 +343,9 @@ struct RepositoryAvatar: View {
 
 /// A workspace in its repository's section: the checkout's branch, or the
 /// worktree's name, its agents, and its pull request.
-private struct WorkspaceRow: View {
+struct WorkspaceRow: View {
     var workspace: Home.Workspace
-    var repository: Repository
+    var repositoryLabel: String
 
     var body: some View {
         HStack(spacing: 10) {
@@ -367,7 +367,7 @@ private struct WorkspaceRow: View {
     /// A repository's own checkout named after it shows its branch, as the
     /// desktop shows `main` under the repository.
     private var ownBranch: String? {
-        guard workspace.worktree?.linked != true, workspace.label == repository.label else { return nil }
+        guard workspace.worktree?.linked != true, workspace.label == repositoryLabel else { return nil }
         return workspace.branch
     }
 

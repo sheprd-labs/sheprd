@@ -64,7 +64,7 @@ function label(text) {
 function render(stats) {
   const totals = stats.totals;
   const limits = stats.limits;
-  setText("version", stats.version);
+  setText("version", stats.commit ? `${stats.version} (${stats.commit})` : stats.version);
   setText("sessions", count(totals.sessions));
   setText("sessions-limit", `${limit(limits.max_sessions)} · ${count(totals.pending)} waiting`);
   setText("listeners", count(totals.listeners));

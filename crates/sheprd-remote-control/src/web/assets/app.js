@@ -554,7 +554,15 @@ function handleEvent(block) {
       echoScreen();
       continue;
     }
+    // A box being read, such as a guest's prompt, stays where it was read
+    // to when redrawn for the same request.
+    const kept = [...(element.querySelectorAll?.("[data-keep-scroll]") || [])]
+      .map((box) => [box.dataset.keepScroll, box.scrollTop]);
     element.outerHTML = html;
+    for (const [key, top] of kept) {
+      const box = document.querySelector(`[data-keep-scroll="${CSS.escape(key)}"]`);
+      if (box) box.scrollTop = top;
+    }
     if (id === "term-screen") {
       fitTerminal();
       echoScreen();

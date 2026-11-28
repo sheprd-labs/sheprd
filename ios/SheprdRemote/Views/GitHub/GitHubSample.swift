@@ -16,17 +16,19 @@ enum GitHubSample {
 
     private static func pull(
         _ owner: String, _ repo: String, _ number: UInt64, _ title: String, ago: TimeInterval,
-        draft: Bool = false, review: GitHubPullRequest.ReviewDecision = .none, author: String = "octocat",
+        state: GitHubPullRequest.State = .open, draft: Bool = false, review: GitHubPullRequest.ReviewDecision = .none,
+        author: String = "octocat",
         branch: String, checks: GitHubSearchPull.CheckCounts
     ) -> GitHubSearchPull {
         GitHubSearchPull(
-            host: host, owner: owner, repo: repo, number: number, title: title, isDraft: draft, reviewDecision: review,
+            host: host, owner: owner, repo: repo, number: number, title: title, state: state, isDraft: draft, reviewDecision: review,
             author: author, updatedAt: .now.addingTimeInterval(-ago), headRefName: branch, headOwner: owner, checks: checks
         )
     }
 
     static var lists: PullRequestLists {
-        PullRequestLists(
+        if let bench = PullRequestsBench.lists { return bench }
+        return PullRequestLists(
             mine: [
                 pull("sheprd-labs", "sheprd", 1342, "Read pull requests on the phone with a lent GitHub sign-in", ago: 2400,
                      review: .changesRequested, branch: "feat/ios-native-github", checks: .init(failing: 2, pending: 1, passed: 5)),
@@ -36,6 +38,11 @@ enum GitHubSample {
                      branch: "docs/phone", checks: .init(pending: 2)),
                 pull("sheprd-labs", "sheprd", 1301, "Group tabs by worktree in the iPad sidebar", ago: 2 * 86400,
                      review: .approved, branch: "feat/ipad-groups", checks: .init(passed: 14)),
+                // Listed when the filter asks for merged or closed ones.
+                pull("sheprd-labs", "sheprd", 1297, "Try a second relay per region", ago: 4 * 86400, state: .closed,
+                     branch: "relay-pair", checks: .init(failing: 2, passed: 9)),
+                pull("sheprd-labs", "herdr-site", 209, "Docs: pairing with a QR code", ago: 6 * 86400, state: .merged,
+                     review: .approved, branch: "docs/qr", checks: .init(passed: 4)),
             ],
             reviewRequested: [
                 pull("sheprd-labs", "sheprd", 1345, "Teleport: carry checkpoints across hosts", ago: 720, author: "hubot",
@@ -44,7 +51,8 @@ enum GitHubSample {
                      branch: "rotate-token", checks: .init(failing: 1, passed: 6)),
                 pull("octo-org", "infra", 902, "Bump relay droplets to 2 vCPU", ago: 5 * 3600, author: "dependabot",
                      branch: "dependabot/droplets", checks: .init(passed: 4)),
-            ]
+            ],
+            states: Set(PullRequestFilter.State.allCases)
         )
     }
 

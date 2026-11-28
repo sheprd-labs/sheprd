@@ -1,0 +1,281 @@
+/* iOS / iPadOS Sheprd Remote mockup styles (Liquid Glass + Dynamic Island + Lock Screen) */
+
+.platform-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hk-border);
+}
+.platform-switcher-label {
+  font: 600 10px/1 var(--hk-mono);
+  letter-spacing: 0.06em;
+  color: var(--hk-muted);
+  text-transform: uppercase;
+}
+.platform-switcher .seg-group { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
+.platform-switcher .seg-group button { padding: 6px 4px; font-size: 11px; text-align: center; }
+
+/* View mode filtering */
+body.view-desktop .ios-panel { display: none !important; }
+body.view-ios .desktop-only-block { display: none !important; }
+body.view-ios .cap-body-split { grid-template-columns: 1fr !important; }
+
+/* Two-column Desktop + iOS layout inside each section */
+.cap-body-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 292px;
+  gap: 18px;
+  align-items: start;
+}
+.cap-desktop-col { min-width: 0; }
+
+/* iOS Companion Panel */
+.ios-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--hk-surface);
+  border: 1px solid var(--hk-border);
+  border-radius: 12px;
+  padding: 12px 12px 14px;
+}
+.ios-panel-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.ios-chip {
+  font: 700 10px/1 var(--hk-mono);
+  letter-spacing: 0.05em;
+  color: var(--hk-accent);
+  background: color-mix(in srgb, var(--hk-accent) 13%, transparent);
+  padding: 3px 7px;
+  border-radius: 5px;
+}
+.ios-subtag {
+  font: 500 10px/1 var(--hk-mono);
+  color: var(--hk-muted);
+}
+
+/* Realistic iPhone Frame */
+.iphone-shell {
+  width: 262px;
+  border-radius: 34px;
+  padding: 9px;
+  background: linear-gradient(160deg, #2b2f3a, #171a22);
+  box-shadow: 0 14px 32px rgb(0 0 0 / 0.36), inset 0 0 0 1px rgb(255 255 255 / 0.14);
+  color: #f2f4fa;
+  position: relative;
+}
+.iphone-screen {
+  position: relative;
+  border-radius: 26px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #131722 0%, #0d1018 100%);
+  min-height: 326px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px 12px;
+  font-size: 11.5px;
+}
+.iphone-screen.lockscreen {
+  background: radial-gradient(circle at 30% 18%, #283656, #141927 58%, #0e1018 100%);
+}
+.iphone-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: 600 10px/1 var(--hk-font);
+  padding: 2px 6px 6px;
+  color: #e4e8f2;
+}
+
+/* Dynamic Island */
+.di-pill {
+  margin: 0 auto 8px;
+  background: #000;
+  color: #f4f6fc;
+  border-radius: 99px;
+  padding: 5px 10px;
+  min-width: 92px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  transition: all 220ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.di-pill.expanded {
+  width: 100%;
+  border-radius: 20px;
+  padding: 10px 11px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.di-pill.amber {
+  border-color: rgb(229 154 36 / 0.7);
+  box-shadow: 0 0 18px rgb(229 154 36 / 0.28);
+}
+.di-pill.green {
+  border-color: rgb(62 168 102 / 0.7);
+}
+.di-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.di-progress { height: 4px; border-radius: 99px; background: rgb(255 255 255 / 0.16); overflow: hidden; }
+.di-progress i { display: block; height: 100%; background: #64b5ff; }
+
+/* Liquid Glass iOS Cards & Sheets */
+.ios-glass {
+  background: rgb(34 39 51 / 0.78);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 18px;
+  padding: 10px 11px;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.35);
+}
+.ios-glass.amber {
+  border-color: rgb(229 154 36 / 0.65);
+  background: linear-gradient(180deg, rgb(229 154 36 / 0.18), rgb(30 34 45 / 0.88));
+}
+.ios-glass.violet {
+  border-color: rgb(139 108 246 / 0.65);
+  background: linear-gradient(180deg, rgb(139 108 246 / 0.18), rgb(28 31 44 / 0.9));
+}
+.ios-glass.green {
+  border-color: rgb(62 168 102 / 0.6);
+}
+
+.ios-sheet {
+  margin-top: auto;
+  background: #1c202a;
+  border: 1px solid rgb(255 255 255 / 0.13);
+  border-radius: 20px 20px 18px 18px;
+  padding: 9px 11px 11px;
+  box-shadow: 0 -8px 26px rgb(0 0 0 / 0.45);
+}
+.ios-grabber {
+  width: 32px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgb(255 255 255 / 0.24);
+  margin: 0 auto 8px;
+}
+.ios-kicker {
+  font: 700 9px/1 var(--hk-mono);
+  letter-spacing: 0.05em;
+  color: #9ba5ba;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.ios-title { font-size: 12.5px; font-weight: 650; color: #fff; line-height: 1.25; margin-bottom: 4px; }
+.ios-copy { font-size: 10.5px; color: #b7c0d3; line-height: 1.4; margin-bottom: 8px; }
+.ios-copy code { background: rgb(255 255 255 / 0.1); padding: 1px 4px; border-radius: 4px; color: #eef2ff; }
+
+.ios-btn-row { display: flex; gap: 6px; }
+.ios-btn {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  padding: 7px 8px;
+  font: 600 10.5px/1 var(--hk-font);
+  cursor: pointer;
+  text-align: center;
+}
+.ios-btn.primary { background: #4a78e6; color: #fff; }
+.ios-btn.violet { background: var(--violet); color: #fff; }
+.ios-btn.amber { background: var(--amber); color: #14120c; }
+.ios-btn.subtle { background: rgb(255 255 255 / 0.1); color: #e4e8f2; }
+.ios-btn.danger { background: rgb(224 90 90 / 0.22); color: #ffb4b4; }
+
+.ios-lock-clock {
+  text-align: center;
+  margin: 4px 0 10px;
+}
+.ios-lock-clock .date { font-size: 10px; color: #b9c3d8; }
+.ios-lock-clock .time { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; }
+
+.ios-bg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  opacity: 0.52;
+  margin: 6px 0;
+}
+.ios-bg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.06);
+  font-size: 10.5px;
+}
+.ios-bg-row.lit {
+  opacity: 1;
+  background: rgb(122 162 247 / 0.22);
+  border: 1px solid #7aa2f7;
+  color: #fff;
+}
+
+.ios-haptic-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border-radius: 99px;
+  background: rgb(255 255 255 / 0.08);
+  font: 500 10px/1 var(--hk-mono);
+  color: #cfd6e8;
+}
+.ios-note {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--hk-muted);
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* iPhone edge-glow for #8 */
+.iphone-screen.ios-cue-yubikey { box-shadow: inset 0 0 0 2.5px var(--amber), inset 0 0 26px rgb(229 154 36 / 0.45); }
+.iphone-screen.ios-cue-decision { box-shadow: inset 0 0 0 2.5px #5b8af5, inset 0 0 24px rgb(91 138 245 / 0.4); }
+.iphone-screen.ios-cue-secret { box-shadow: inset 0 0 0 2.5px var(--violet), inset 0 0 26px rgb(139 108 246 / 0.45); }
+.iphone-screen.ios-cue-countdown { box-shadow: inset 0 0 0 2.5px var(--red), inset 0 0 24px rgb(224 90 90 / 0.45); }
+.iphone-screen.ios-cue-done { box-shadow: inset 0 0 0 2.5px var(--green), inset 0 0 24px rgb(62 168 102 / 0.45); }
+
+.ios-check-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 7px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.05);
+  margin-bottom: 5px;
+  font-size: 10.5px;
+}
+.ios-check-item.active {
+  background: rgb(229 154 36 / 0.18);
+  border: 1px solid rgb(229 154 36 / 0.55);
+}
+
+.ios-feedback {
+  margin-top: 7px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgb(62 168 102 / 0.2);
+  border: 1px solid var(--green);
+  color: #bdf5d1;
+  font-size: 10px;
+  text-align: center;
+}
+
+@media (max-width: 1040px) {
+  .cap-body-split { grid-template-columns: 1fr; }
+}

@@ -19,7 +19,11 @@ not a claim that all runtime/platform checks have passed.
   installer, then searches the host's user bins, app bundles and PATH.
   The existing core start queue supplies the remote cwd and tab/workspace
   association. A kept workspace without a driven tab starts a new core tab.
-- SSH attach uses the existing `sheprd-acp connect ENDPOINT` stream. Cloud
+- SSH attach carries every chat on a host over one channel: the app runs
+  `sheprd-acp multiplex` there once and opens a stream per chat
+  (`sheprd_chat_protocol::mux`, bounded per stream by credit). A host whose
+  `sheprd-acp` predates it falls back to one `sheprd-acp connect ENDPOINT`
+  stream per chat, as before. Cloud
   and WSL use `chat/remote_route.rs`: provider credentials remain alive for
   the entire stream; WSL uses the system WSL executable and the selected
   distribution's shell. Endpoint IDs are validated, never treated as paths.

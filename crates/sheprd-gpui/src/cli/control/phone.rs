@@ -1,6 +1,7 @@
 //! `phone`: agents driving a paired phone's app.
 use crate::cli::control::{Args, CliError, unknown};
 use sheprd_remote_control::control::phone::{self, Screen};
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PhoneCommand {
@@ -31,6 +32,24 @@ pub enum PhoneCommand {
     Show {
         device: Option<String>,
         text: String,
+    },
+    /// A Luau screen's files, laid over its bundled ones on the phone; or,
+    /// with `reset`, the bundled ones again.
+    Luau {
+        device: Option<String>,
+        dir: PathBuf,
+        /// The screen's name in the app (`pull-requests`); the folder's by
+        /// default.
+        screen: Option<String>,
+        /// Push again each time a file changes, until stopped.
+        watch: bool,
+        reset: bool,
+    },
+    /// A picture of what the phone shows, written to `out`, else to the
+    /// path printed.
+    Snapshot {
+        device: Option<String>,
+        out: Option<PathBuf>,
     },
 }
 
@@ -101,6 +120,35 @@ pub(super) fn phone(args: &mut Args) -> Result<PhoneCommand, CliError> {
             }
             PhoneCommand::Show { device, text }
         }
+        Some("luau") => {
+            let screen = args.text_option("--screen")?;
+            let watch = args.flag("--watch");
+            let reset = args.flag("--reset");
+            let dir = PathBuf::from(args.required("DIR")?);
+            if let Some(screen) = &screen
+                && !phone::valid_screen(screen)
+            {
+                return Err(CliError::InvalidValue(
+                    "--screen: a-z, 0-9 and -, as the app's folder of the screen is named",
+                ));
+            }
+            if watch && reset {
+                return Err(CliError::InvalidValue(
+                    "--watch and --reset: one or the other",
+                ));
+            }
+            PhoneCommand::Luau {
+                device,
+                dir,
+                screen,
+                watch,
+                reset,
+            }
+        }
+        Some("snapshot" | "screenshot") => PhoneCommand::Snapshot {
+            device,
+            out: args.option("--out")?.map(PathBuf::from),
+        },
         _ => return Err(unknown("phone", verb)),
     })
 }

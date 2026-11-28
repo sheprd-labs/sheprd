@@ -116,6 +116,8 @@ impl TestRelay {
             hub: Arc::clone(&hub),
             public_host: Some(Arc::from(address.to_string())),
             quic: None,
+            // The viewer needs QUIC, which a test relay does not run.
+            share_viewer: false,
             source: Source::Peer,
         };
         let router = web::router(shared.clone()).layer(axum::middleware::from_fn_with_state(

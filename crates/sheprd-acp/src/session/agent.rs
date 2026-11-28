@@ -508,7 +508,12 @@ impl<R: FnMut(Update)> Session<R> {
         for change in &mut changes {
             if let Change::Push { entry } = change {
                 let note = self.replayed_note.take();
-                if let sheprd_chat_protocol::EntryKind::User { note: kept, .. } = &mut entry.kind {
+                if let sheprd_chat_protocol::EntryKind::User {
+                    guest, note: kept, ..
+                } = &mut entry.kind
+                {
+                    // A guest's words stay theirs when replayed.
+                    *guest = note.as_deref().and_then(crate::context::guest_of);
                     *kept = note.map(project::bounded);
                 }
             }
@@ -588,6 +593,7 @@ impl<R: FnMut(Update)> Session<R> {
         );
         self.emit(Change::PermissionAsked {
             permission: Permission {
+                guest: None,
                 call_id: Some(call_id),
                 id: permission,
                 options,
@@ -714,6 +720,7 @@ impl<R: FnMut(Update)> Session<R> {
             message.push_str(&stderr.join("\n"));
         }
         self.asked.clear();
+        self.drop_guests(sheprd_chat_protocol::Rejection::NotReady);
         let pending: Vec<PermissionId> = self.transcript.permissions.iter().map(|p| p.id).collect();
         for id in pending {
             self.emit(Change::PermissionResolved { id });

@@ -28,7 +28,7 @@ impl<R: FnMut(Update)> Session<R> {
         let mut next = queued.remove(index);
         next.held = false;
         if self.steers_now() {
-            let origin = self.queued_origins.get(&id).cloned();
+            let origin = self.queued_origin(&next);
             next.steered = self.steer(id, &next.text, &next.attachments, origin);
         }
         let steered = next.steered;
@@ -135,6 +135,7 @@ impl<R: FnMut(Update)> Session<R> {
             outgoing.files,
             outgoing.sent,
             outgoing.images,
+            outgoing.guest,
         );
         (self.report)(Update::Prompt(outgoing.shown));
     }

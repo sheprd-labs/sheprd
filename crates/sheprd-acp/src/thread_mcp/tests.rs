@@ -30,6 +30,7 @@ fn reader() -> (tempfile::TempDir, Reader) {
         .map(|(at, text)| Entry {
             id: EntryId(at as u64 + 1),
             kind: EntryKind::User {
+                guest: None,
                 text: (*text).to_owned(),
                 files: 0,
                 note: None,

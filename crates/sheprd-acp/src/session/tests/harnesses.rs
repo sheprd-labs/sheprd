@@ -59,7 +59,7 @@ pub(super) fn launch(harness: &mut Harness) -> Receiver<Vec<u8>> {
 }
 
 /// Answers request `id` as the agent started second.
-fn respond_second(harness: &mut Harness, id: i64, result: Value) {
+pub(super) fn respond_second(harness: &mut Harness, id: i64, result: Value) {
     harness.input(Input::Agent(
         HarnessId(1),
         Inbound::Response {

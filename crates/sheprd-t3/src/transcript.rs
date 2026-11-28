@@ -49,6 +49,7 @@ pub fn transcript(thread: &Thread, agent: &str) -> Transcript {
 fn entry(thread: &Thread, item: &TurnItem) -> Option<EntryKind> {
     let kind = match &item.kind {
         TurnKind::UserMessage { message_id, text } => EntryKind::User {
+            guest: None,
             text: text_of(thread, message_id, text.as_deref()),
             files: 0,
             note: None,
@@ -163,6 +164,7 @@ pub fn permissions(thread: &Thread) -> Vec<Permission> {
                     reason,
                     request_id: Some(request),
                 } if thread.pending(request) => Some(Permission {
+                    guest: None,
                     call_id: None,
                     id: permission,
                     options: approval_options(options),
@@ -178,6 +180,7 @@ pub fn permissions(thread: &Thread) -> Vec<Permission> {
                     request_id: Some(request),
                 } if thread.pending(request) => match questions.as_slice() {
                     [question] => Some(Permission {
+                        guest: None,
                         call_id: None,
                         id: permission,
                         options: Vec::new(),

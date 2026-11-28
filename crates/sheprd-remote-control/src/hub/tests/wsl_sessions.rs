@@ -139,6 +139,9 @@ async fn a_new_workspace_is_refused_in_a_distribution() {
     let hub = Hub::offline(Layout::default());
     let refused = hub
         .create_workspace(NewWorkspace {
+            base: None,
+            checkout: None,
+            shell: false,
             agent: Agent::Codex,
             branch: None,
             cwd: "/home/me/repo",

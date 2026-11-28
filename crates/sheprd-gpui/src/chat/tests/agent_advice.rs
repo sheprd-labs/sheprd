@@ -97,6 +97,7 @@ fn talking(agent: Agent) -> ServerMessage {
     transcript.entries.push(Entry {
         id: EntryId(1),
         kind: EntryKind::User {
+            guest: None,
             text: "hello".to_owned(),
             files: 0,
             note: None,

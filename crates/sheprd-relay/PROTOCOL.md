@@ -54,6 +54,7 @@ from it but a stable pseudonym, so making one per relay is better still.
 | `listen_token` | Listeners must present the operator's token (dialers never do) |
 | `quic` | `null` or absent when QUIC is off; else the UDP `port` on the same host, and `pin`, the base64url SHA-256 of the relay's QUIC certificate (DER) |
 | `websocket` | Whether the WebSocket transport answers (it needs the relay to know its public name) |
+| `share_viewer` | Optional, `false` when absent: the relay also serves a browser viewer page on the same origin. Clients that do not use it ignore it |
 
 `GET /healthz` answers `ok`, for uptime checks.
 

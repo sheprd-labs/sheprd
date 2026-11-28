@@ -52,7 +52,7 @@ struct IPadRoot: View {
         }
         .animation(.snappy, value: sidebarShown)
         .background { ChatKeys(selection: $selection, tab: $tab, sidebarShown: $sidebarShown) }
-        .sheet(isPresented: $pairing) { PairView() }
+        .sheet(isPresented: $pairing) { PairView().environment(model) }
         .onChange(of: model.pendingTab) { _, wanted in
             guard let wanted else { return }
             // An agent's open shows the tab itself, not a page beside it.
@@ -97,7 +97,8 @@ struct IPadRoot: View {
             .connectionToast(pairing: $pairing)
             // Forms it opens, such as a new tab with a first prompt, and the
             // nearby card, go over it rather than behind it.
-            .sheet(item: Bindable(model).creating) { CreatingSheet(creating: $0) }
+            .sheet(item: Bindable(model).creating) { CreatingSheet(creating: $0).environment(model) }
+            .environment(model)
             .nearbyCard(window)
             .onAppear { window?.panelOpen = true }
             .onDisappear { window?.panelOpen = false }
@@ -170,7 +171,7 @@ struct IPadRoot: View {
                     .connectionToast(pairing: $pairing)
             }
             Tab("PRs", systemImage: "arrow.triangle.pull", value: SidebarTab.pullRequests) {
-                NavigationStack { PullRequestsList().toolbar { hideSidebar }.makesRoomForConnectionToast() }
+                NavigationStack { PullRequestsTab().toolbar { hideSidebar }.makesRoomForConnectionToast() }
                     .connectionToast(pairing: $pairing)
             }
             Tab("Settings", systemImage: "gearshape", value: SidebarTab.settings) {

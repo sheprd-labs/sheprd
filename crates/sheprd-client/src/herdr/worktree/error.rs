@@ -3,6 +3,8 @@ use std::io;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     // keep-sorted start
+    #[error("Git could not fetch: {0}")]
+    Fetch(String),
     #[error("The new worktree was abandoned: its caller stopped or ran out of time")]
     GaveUp,
     #[error("This computer has no home folder for new worktrees")]

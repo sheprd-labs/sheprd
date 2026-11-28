@@ -1,6 +1,19 @@
 {
   "version": 1,
-  "serial": 1794506367,
-  "expires": 1826042367,
-  "relays": []
+  "serial": 1795766487,
+  "expires": 1827302485,
+  "relays": [
+    {
+      "endpoint": "https://sfo3.relay.sheprd.org",
+      "region": "sfo3",
+      "name": "San Francisco",
+      "quic_pin": "CwavFJ088phCb422oqSczCoLrBYTe4rOm1L5pvaSmj4"
+    },
+    {
+      "endpoint": "https://ams3.relay.sheprd.org",
+      "region": "ams3",
+      "name": "Amsterdam",
+      "quic_pin": "EPheL3TQ_cfMtzIEHjaV1lPx2Ynm-ygKbPRJcyfoj5U"
+    }
+  ]
 }

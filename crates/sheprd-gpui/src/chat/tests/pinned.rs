@@ -19,6 +19,7 @@ fn opened(view: &Entity<SheprdWindow>, program: &Program, cx: &mut VisualTestCon
     let prompt = Entry {
         id: EntryId(1),
         kind: EntryKind::User {
+            guest: None,
             text: "Why does the sidebar flicker?".into(),
             files: 0,
             note: None,

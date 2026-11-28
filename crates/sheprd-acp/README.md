@@ -424,7 +424,8 @@ how long it took and the tokens it used. Settings the agent offers through
 ACP's session config options (model, thinking level, mode, and any others)
 change from **Ctrl+O** here and from the header's buttons in Sheprd; the
 agent's slash commands complete after `/`, and Up and Down step through the
-session's earlier prompts, whichever client sent them.
+session's earlier prompts, whichever client sent them. PgUp/PgDn and the mouse
+wheel scroll back through the transcript without changing the prompt.
 
 ## Choosing the agent
 
@@ -532,6 +533,11 @@ handoff is built by `sheprd_chat_protocol::handoff`.
   socket in `$XDG_STATE_HOME/herdr/acp` (or `~/.local/state/herdr/acp`), on
   Windows the named pipe `\\.\pipe\herdr-acp-<id>`, either one reachable by
   this user alone, so only from a Sheprd on the same machine.
+- Sheprd on another machine reaches these endpoints over SSH as this user:
+  it runs `sheprd-acp multiplex` once per host, whose standard streams carry
+  up to 64 chat connections at once, each bounded to 256 KiB in flight per
+  direction (`sheprd_chat_protocol::mux`). Older Sheprd releases, and Sheprd
+  facing an older `sheprd-acp`, run `sheprd-acp connect ID` once per chat.
 - A chat that is killed rather than quit leaves its Unix socket file behind;
   the next chat to start removes sockets nothing answers on. A pipe goes away
   with its process.

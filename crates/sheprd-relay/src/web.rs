@@ -74,6 +74,7 @@ pub struct Shared {
     /// relay's challenge through could claim its own name in it. `None`
     /// turns the WebSocket fallback off.
     pub public_host: Option<Arc<str>>,
+    pub share_viewer: bool,
     /// What `/v1/info` says about QUIC, when it runs.
     pub quic: Option<crate::endpoint::QuicInfo>,
     pub source: Source,
@@ -129,6 +130,7 @@ async fn refuse_cross_site(request: Request, next: Next) -> Response {
 
 async fn info(State(shared): State<Shared>) -> Json<Info> {
     Json(Info {
+        share_viewer: shared.share_viewer,
         listen_token: shared.hub.access.requires_token(),
         protocol: PROTOCOL,
         quic: shared.quic.clone(),

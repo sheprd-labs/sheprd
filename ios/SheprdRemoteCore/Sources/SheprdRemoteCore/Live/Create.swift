@@ -39,8 +39,52 @@ public struct AgentChoice: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
-/// `POST /api/v2/workspaces`: a workspace in `cwd`, on a new worktree
-/// when `branch` is not empty, with a chat running `agent`.
+/// `GET /api/v2/new/sources?cwd=`: what a new worktree of the folder's
+/// repository may start from besides a new branch. A computer too old to
+/// say answers 404, and offers only a new branch.
+public struct NewSources: Codable, Hashable, Sendable {
+    /// Local branches no checkout has, most recently committed first.
+    public var branches: [String]
+    /// Checkouts of the repository no workspace has open.
+    public var checkouts: [Checkout]
+    /// Where its pull requests and issues are listed; `nil` when no
+    /// `upstream` or `origin` remote names one.
+    public var repository: Repository?
+
+    public struct Checkout: Codable, Hashable, Sendable, Identifiable {
+        public var path: String
+        /// `nil` on a detached HEAD.
+        public var branch: String?
+        public var id: String { path }
+
+        public init(path: String, branch: String? = nil) {
+            self.path = path
+            self.branch = branch
+        }
+    }
+
+    public struct Repository: Codable, Hashable, Sendable {
+        public var host: String
+        public var owner: String
+        public var repo: String
+
+        public init(host: String, owner: String, repo: String) {
+            self.host = host
+            self.owner = owner
+            self.repo = repo
+        }
+    }
+
+    public init(branches: [String] = [], checkouts: [Checkout] = [], repository: Repository? = nil) {
+        self.branches = branches
+        self.checkouts = checkouts
+        self.repository = repository
+    }
+}
+
+/// `POST /api/v2/workspaces`: a workspace in `cwd`, on a worktree when
+/// `branch` is not empty (a local branch is checked out as it is) or
+/// `source` names one, with a chat running `agent` or a shell.
 public struct NewWorkspaceRequest: Codable, Hashable, Sendable {
     public var cwd: String
     public var branch: String
@@ -54,8 +98,56 @@ public struct NewWorkspaceRequest: Codable, Hashable, Sendable {
     public var session: String?
     /// The workspace's name; left out, it is named for its folder or branch.
     public var title: String?
+    /// Where the worktree comes from instead of `branch`.
+    public var source: Source?
+    /// What the first pane runs; left out, a chat.
+    public var opens: Opens?
 
-    public init(cwd: String, branch: String = "", agent: String, prompt: String = "", start: ChatStart? = nil, session: String? = nil, title: String? = nil) {
+    /// A worktree the computer finds: a pull request of
+    /// `NewSources.repository`, whose head it fetches, or a checkout
+    /// `NewSources.checkouts` listed.
+    public enum Source: Codable, Hashable, Sendable {
+        case pull(number: Int, head: String, headOwner: String?)
+        case checkout(path: String)
+
+        private enum CodingKeys: String, CodingKey {
+            case kind, number, head, path
+            case headOwner = "head_owner"
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            switch try c.decode(String.self, forKey: .kind) {
+            case "pull":
+                self = try .pull(number: c.decode(Int.self, forKey: .number), head: c.decode(String.self, forKey: .head), headOwner: c.decodeIfPresent(String.self, forKey: .headOwner))
+            case "checkout":
+                self = try .checkout(path: c.decode(String.self, forKey: .path))
+            default:
+                throw DecodingError.dataCorruptedError(forKey: .kind, in: c, debugDescription: "unknown source")
+            }
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            switch self {
+            case let .pull(number, head, headOwner):
+                try c.encode("pull", forKey: .kind)
+                try c.encode(number, forKey: .number)
+                try c.encode(head, forKey: .head)
+                try c.encodeIfPresent(headOwner, forKey: .headOwner)
+            case let .checkout(path):
+                try c.encode("checkout", forKey: .kind)
+                try c.encode(path, forKey: .path)
+            }
+        }
+    }
+
+    /// What the new workspace's first pane runs, as the desktop's "Opens in".
+    public enum Opens: String, Codable, Hashable, Sendable {
+        case chat, shell
+    }
+
+    public init(cwd: String, branch: String = "", agent: String, prompt: String = "", start: ChatStart? = nil, session: String? = nil, title: String? = nil, source: Source? = nil, opens: Opens? = nil) {
         self.cwd = cwd
         self.branch = branch
         self.agent = agent
@@ -63,6 +155,8 @@ public struct NewWorkspaceRequest: Codable, Hashable, Sendable {
         self.start = start
         self.session = session
         self.title = title
+        self.source = source
+        self.opens = opens
     }
 
     /// The branch proposed for `seed`, the same one the desktop's new

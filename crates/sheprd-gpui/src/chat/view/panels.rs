@@ -79,11 +79,12 @@ impl SheprdWindow {
                     .border_1()
                     .border_color(rgb(hues.yellow))
                     .bg(rgb(theme.surface))
-                    .child(
-                        div()
+                    .child(match &permission.guest {
+                        Some(prompt) => self.render_chat_guest_ask(permission.id.0, prompt),
+                        None => div()
                             .font_weight(FontWeight::SEMIBOLD)
                             .child(safe_text(&permission.title, 400)),
-                    )
+                    })
                     .child(div().flex().flex_wrap().gap(px(6.)).children(buttons))
             })
             .collect()
@@ -95,6 +96,7 @@ impl SheprdWindow {
         cx: &mut Context<Self>,
     ) -> Option<Stateful<Div>> {
         let theme = &self.theme;
+        let hues = Hues::of(theme);
         let transcript = chat.session.transcript();
         let queued = &transcript.queued;
         let steer = transcript.turn.is_some()
@@ -202,6 +204,12 @@ impl SheprdWindow {
                     .rounded(px(corners::SMALL))
                     .bg(rgb(theme.surface))
                     .child(div().flex_none().text_color(rgb(theme.muted)).child(label))
+                    .children(queued.guest.as_ref().map(|guest| {
+                        div()
+                            .flex_none()
+                            .text_color(rgb(hues.purple))
+                            .child(safe_text(&guest.label(), 100))
+                    }))
                     .child(
                         div()
                             .flex_1()
