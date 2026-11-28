@@ -72,6 +72,11 @@ pub(super) fn now_ms() -> u64 {
             u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
         })
 }
+
+/// Milliseconds since `since`, for the timings the log records.
+pub(super) fn millis_since(since: std::time::Instant) -> u64 {
+    u64::try_from(since.elapsed().as_millis()).unwrap_or(u64::MAX)
+}
 pub(crate) use convert::Error as ConvertError;
 pub(crate) use pick::short_text;
 pub(crate) use start::{
@@ -81,13 +86,21 @@ pub(crate) use start::{
 use sheprd_chat_protocol::{ByeReason, EndpointId};
 use std::io;
 
-/// Chat panes attached at once; more are left to their terminal views.
-const MAX_CHATS: usize = 16;
-/// Chat panes attached at once on an SSH host: as many as the host's shared
-/// stream connections carry (`sheprd_client::SshLane::Stream`, two of 8).
-/// Past it each chat would log in on its own, and through a relay, which
-/// holds each device's key to a few sessions, those are refused.
+/// Chat panes attached at once; more rest ([`chats`]) or show their terminal.
+/// A chat off screen costs a socket, two threads, and its transcript: its
+/// list and text are prepared only once it shows, so switching to any of
+/// them is instant.
+const MAX_CHATS: usize = 256;
+/// Chat panes attached at once on an SSH host whose multiplexer is down: as
+/// many as the host's shared stream connections carry
+/// (`sheprd_client::SshLane::Stream`, two of 8). Past it each chat would log
+/// in on its own, and through a relay, which holds each device's key to a
+/// few sessions, those are refused. With the multiplexer up, all of them
+/// share one channel, and the host takes [`sheprd_chat_protocol::mux::MAX_STREAMS`].
 const MAX_SSH_CHATS: usize = 16;
+/// Chat panes attached at once on a cloud machine or WSL distribution, each
+/// of which runs a process of its own through the machine's connector.
+const MAX_REMOTE_CHATS: usize = 16;
 /// Commands waiting for their acknowledgement, per pane.
 const MAX_PENDING: usize = 32;
 /// Messages a worker holds for the window before it gives the connection up
@@ -254,8 +267,10 @@ impl Route {
     /// How many chats attach at once over this route.
     pub(crate) fn max_chats(&self) -> usize {
         match self {
+            Self::Ssh(host) if link::multiplexed(host) => sheprd_chat_protocol::mux::MAX_STREAMS,
             Self::Ssh(_) => MAX_SSH_CHATS,
-            Self::Local | Self::Remote(_) => MAX_CHATS,
+            Self::Remote(_) => MAX_REMOTE_CHATS,
+            Self::Local => MAX_CHATS,
         }
     }
 

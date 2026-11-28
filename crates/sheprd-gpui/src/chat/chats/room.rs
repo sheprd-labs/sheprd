@@ -155,6 +155,11 @@ impl ChatPane {
         self.menu = None;
         self.menu_search = None;
         self.session.lost(&Error::Overflow);
+        // Workers still running for it finish into a pane no longer
+        // attached, so their tickets would never come back and would hold
+        // its worker slots. A new generation drops their results instead;
+        // the textures were already released when it was set aside.
+        self.prepared.visuals = Default::default();
     }
 }
 
@@ -222,4 +227,5 @@ impl Seen {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests;

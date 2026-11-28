@@ -38,3 +38,22 @@ fn a_chat_just_left_ranks_above_one_never_seen() {
     assert_eq!(rank("never"), u8::MAX);
     assert_eq!(seen.rank("now", None, &[], &[]), 3);
 }
+
+#[test]
+fn a_resting_chat_starts_its_visual_workers_afresh() {
+    let target = Target {
+        endpoint: "0123456789abcdef0123456789abcdef".parse().unwrap(),
+        existing: None,
+        pane_id: "p1".into(),
+        route: crate::chat::Route::Local,
+        surface: crate::chat::Surface::Herdr,
+    };
+    let mut pane = ChatPane::new(target);
+    let before = pane.prepared.visuals.generation.clone();
+    pane.rest();
+    // A job of the old generation finishing later finds no match.
+    assert!(!std::rc::Rc::ptr_eq(
+        &before,
+        &pane.prepared.visuals.generation
+    ));
+}
