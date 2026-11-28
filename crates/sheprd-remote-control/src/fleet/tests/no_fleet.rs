@@ -14,12 +14,24 @@ async fn a_computer_in_no_fleet_answers_an_empty_fleet() {
     };
     let applied = b.fleet.apply(&asked, now_ms()).unwrap();
     assert_eq!(applied, sync::Applied::default());
-    // Through the daemon, as `fleet apply` asks it.
+    // Through the daemon, as `fleet apply` asks it: still signs the nonce
+    // with its CA so a member that already admitted it can recognize it.
     let Answer::Applied(applied) = b.ask(Ask::Apply(asked)) else {
         panic!("not applied");
     };
     assert!(applied.fleet.is_empty());
     assert!(applied.ops.is_empty());
+    let host = b.fleet.host.unwrap().to_string();
+    assert_eq!(
+        sync::proven_host(&applied, "nonce", std::slice::from_ref(&host)).as_deref(),
+        Some(host.as_str())
+    );
+    // And `Ask::Status` still reports this computer's member id.
+    let Answer::Status { view, me } = b.ask(Ask::Status) else {
+        panic!("not status");
+    };
+    assert!(view.is_none());
+    assert_eq!(me.as_deref(), Some(b.me().as_str()));
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -137,6 +137,15 @@ impl Bundle {
         Some(writer.into_bytes())
     }
 
+    /// Checks `signature`, the joiner's signature over [`Bundle::join_message`].
+    pub fn verify_join(&self, fleet: &super::FleetId, signature: &RawSignature) -> Result<()> {
+        let message = self.join_message(fleet).ok_or(Error::Invalid)?;
+        let signature = Signature::from_slice(signature).map_err(|_| Error::JoinSignature)?;
+        self.verifying_key()?
+            .verify(&message, &signature)
+            .map_err(|_| Error::JoinSignature)
+    }
+
     pub(super) fn check(&self) -> Result<()> {
         point(&self.key)?;
         point(&self.dial)?;

@@ -301,18 +301,9 @@ impl<'g, 'a> Folder<'g, 'a> {
                 {
                     return Err(Error::Full);
                 }
-                let message = admit
+                admit
                     .bundle
-                    .join_message(&self.fleet)
-                    .ok_or(Error::Invalid)?;
-                let signature = p256::ecdsa::Signature::from_slice(&admit.joiner_signature)
-                    .map_err(|_| Error::JoinSignature)?;
-                p256::ecdsa::signature::Verifier::verify(
-                    &admit.bundle.verifying_key()?,
-                    &message,
-                    &signature,
-                )
-                .map_err(|_| Error::JoinSignature)
+                    .verify_join(&self.fleet, &admit.joiner_signature)
             }
             Body::Remove(remove) => {
                 let mut seen = BTreeSet::new();

@@ -124,3 +124,124 @@ fn sheprd_in_no_fleet_stays_a_plain_host_of_this_one() {
         assert_eq!(beside_daemon(plain), Standing::Outside);
     }
 }
+
+#[test]
+fn a_reached_member_that_already_lists_this_computer_is_recognized() {
+    let mut view = fleet_view(&["h1"]);
+    view.me = "studio".into();
+    view.members = vec![member("studio"), member("m4max")];
+    let offer = crate::fleet::join::already_admitted(&view, Some("m4max")).unwrap();
+    assert_eq!(offer.fleet, view.fleet);
+    assert_eq!(
+        crate::fleet::join::already_admitted(&view, Some("other")),
+        None
+    );
+    assert_eq!(crate::fleet::join::already_admitted(&view, None), None);
+    // A shared host (not a member itself) cannot offer or heal.
+    view.me = "host".into();
+    assert_eq!(
+        crate::fleet::join::already_admitted(&view, Some("m4max")),
+        None
+    );
+}
+
+#[test]
+fn status_keeps_this_computers_member_id_even_in_no_fleet() {
+    let mut fleet = Fleet {
+        reads: 1,
+        ..Fleet::default()
+    };
+    assert!(fleet.answered_status(1, Ok((None, Some("m4max-id".into())))));
+    assert_eq!(fleet.me.as_deref(), Some("m4max-id"));
+    assert!(fleet.view.is_none());
+}
+
+#[test]
+fn a_proven_live_host_with_no_log_triggers_handover_while_removed_hosts_do_not() {
+    use crate::fleet::flows::{Asked, classify_answer_with};
+    use sheprd_remote_control::control::fleet::sync::{Applied, Proof};
+
+    let host = "ab".repeat(32);
+    let our_fleet = "f".repeat(64);
+    let applied = |fleet: &str, heads: Vec<String>, signer: Option<&str>| Applied {
+        fleet: fleet.to_owned(),
+        heads,
+        ops: Vec::new(),
+        refused: 0,
+        more: false,
+        proof: signer.map(|id| Proof {
+            certificate: id.to_owned(),
+            key: String::new(),
+            signature: String::new(),
+        }),
+    };
+    let prove = |theirs: &Applied, _nonce: &str, hosts: &[String]| {
+        let id = &theirs.proof.as_ref()?.certificate;
+        hosts.contains(id).then(|| id.clone())
+    };
+    // Live host answering with no fleet yet -> MissingLog(host).
+    let empty = applied("", Vec::new(), Some(&host));
+    assert_eq!(
+        classify_answer_with(
+            empty.clone(),
+            "n1",
+            &our_fleet,
+            std::slice::from_ref(&host),
+            &[],
+            prove,
+        )
+        .unwrap(),
+        Asked::MissingLog(host.clone())
+    );
+    // Removed host answering with no fleet -> NotInFleet (never handed log).
+    assert!(matches!(
+        classify_answer_with(
+            empty.clone(),
+            "n1",
+            &our_fleet,
+            &[],
+            std::slice::from_ref(&host),
+            prove,
+        ),
+        Err(Error::NotInFleet)
+    ));
+    // Stranger answering with no fleet -> NotInFleet.
+    assert!(matches!(
+        classify_answer_with(empty, "n1", &our_fleet, &["other".into()], &[], prove),
+        Err(Error::NotInFleet)
+    ));
+    // Live host answering for our fleet -> Fleet.
+    let joined = applied(&our_fleet, vec!["h1".into()], Some(&host));
+    assert_eq!(
+        classify_answer_with(
+            joined.clone(),
+            "n2",
+            &our_fleet,
+            std::slice::from_ref(&host),
+            &[],
+            prove,
+        )
+        .unwrap(),
+        Asked::Fleet(joined, host.clone())
+    );
+    // Unproven host claiming our fleet -> Unproven.
+    let unproven = applied(&our_fleet, vec!["h1".into()], None);
+    assert_eq!(
+        classify_answer_with(
+            unproven,
+            "n2",
+            &our_fleet,
+            std::slice::from_ref(&host),
+            &[],
+            prove,
+        )
+        .unwrap(),
+        Asked::Unproven
+    );
+    // Another fleet -> OtherFleet.
+    let elsewhere = applied(&"e".repeat(64), vec!["h2".into()], Some(&host));
+    assert!(matches!(
+        classify_answer_with(elsewhere, "n3", &our_fleet, &[host], &[], prove),
+        Err(Error::OtherFleet)
+    ));
+}

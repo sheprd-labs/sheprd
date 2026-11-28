@@ -89,6 +89,7 @@ fn daemon(_: &Path, request: &Request) -> Result<Response, control::Error> {
                 }
                 Box::new(view)
             }),
+            me: Some("a".into()),
         },
         Ask::Joins => Answer::Joins {
             joins: JOINS.lock().unwrap().clone(),

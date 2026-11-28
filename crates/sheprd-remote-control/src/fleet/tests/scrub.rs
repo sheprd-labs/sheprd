@@ -132,7 +132,7 @@ async fn a_scrub_that_cannot_delete_the_log_keeps_the_fleet() {
         matches!(
             error,
             Error::Desktop(crate::desktop::Error::File {
-                operation: "remove",
+                operation: "write" | "remove",
                 ..
             })
         ),
@@ -140,6 +140,23 @@ async fn a_scrub_that_cannot_delete_the_log_keeps_the_fleet() {
     );
     // The daemon still holds the fleet its next start reads.
     assert!(ask::view(&b.fleet).is_some());
+    assert!(folder.join("log.bin").exists());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_scrub_that_cannot_save_its_guard_keeps_the_log_and_fails() {
+    let (_, b, records) = joined().await;
+    let folder = b.dir.path().join("fleet");
+    // Block writing `fleet/scrubbed` while `fleet/` itself stays writable.
+    std::fs::create_dir_all(folder.join("scrubbed")).unwrap();
+    assert!(b.fleet.scrub(None).is_err());
+    assert!(ask::view(&b.fleet).is_some());
+    assert!(folder.join("log.bin").exists());
+    // The unloaded/on-disk scrub path also keeps `log.bin`, still cuts off
+    // SSH access, and reports the failure.
+    assert!(crate::fleet::scrub::unloaded(&b.state).is_err());
+    assert!(b.lines().is_empty());
+    assert_eq!(records.read_dir().unwrap().count(), 0);
     assert!(folder.join("log.bin").exists());
 }
 

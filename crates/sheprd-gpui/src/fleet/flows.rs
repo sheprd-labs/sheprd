@@ -10,7 +10,7 @@ use sheprd_client::ConnectTarget;
 use sheprd_remote_control::control::{
     Request, Response,
     fleet::{
-        HostKind, Method, saved,
+        Bundle, HostIntro, HostKind, Method, saved,
         sync::{self, Answer, Applied, Apply, Ask},
     },
 };
@@ -49,19 +49,69 @@ pub(super) async fn applied(
 /// one answer at a time, and one more.
 pub(super) const MAX_PARTS: usize = saved::MAX_SAVED.div_ceil(sync::MAX_ANSWER_BYTES) + 1;
 
+/// What a probed machine answered when asked for its fleet with a nonce.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum Asked {
+    /// Answered for our fleet and proved with its CA to be one of our hosts
+    /// (live or removed).
+    Fleet(Applied, String),
+    /// Answered with no fleet yet, and proved with its CA to be one of our
+    /// live hosts (never a removed one): its initial handover never landed.
+    MissingLog(String),
+    /// Answered for our fleet without proving to be one of our hosts.
+    Unproven,
+}
+
+/// Classifies a machine's `fleet apply` probe answer `theirs` against
+/// `nonce`, our `fleet`, our `live_hosts`, and our `removed` hosts.
+fn classify_answer(
+    theirs: Applied,
+    nonce: &str,
+    fleet: &str,
+    live_hosts: &[String],
+    removed: &[String],
+) -> Result<Asked, Error> {
+    classify_answer_with(theirs, nonce, fleet, live_hosts, removed, sync::proven_host)
+}
+
+pub(super) fn classify_answer_with(
+    theirs: Applied,
+    nonce: &str,
+    fleet: &str,
+    live_hosts: &[String],
+    removed: &[String],
+    prove: impl Fn(&Applied, &str, &[String]) -> Option<String>,
+) -> Result<Asked, Error> {
+    if theirs.fleet == fleet {
+        let host = prove(&theirs, nonce, live_hosts).or_else(|| prove(&theirs, nonce, removed));
+        return Ok(match host {
+            Some(host) => Asked::Fleet(theirs, host),
+            None => Asked::Unproven,
+        });
+    }
+    if theirs.fleet.is_empty() {
+        return match prove(&theirs, nonce, live_hosts) {
+            Some(host) => Ok(Asked::MissingLog(host)),
+            None => Err(Error::NotInFleet),
+        };
+    }
+    Err(Error::OtherFleet)
+}
+
 /// Asks `target` for what this computer lacks, from `heads`, naming no
-/// fleet and with a fresh nonce: its answer, when it proves it is one of
-/// `hosts` (the fleet's computers and Sheprd hosts) in `fleet`, with the
-/// host it proved to be; `None` for one that does not prove it, which
-/// learns nothing; [`Error::NotInFleet`] for a machine in no fleet, and
-/// [`Error::OtherFleet`] for one in another.
+/// fleet and with a fresh nonce: [`Asked::Fleet`] when it answers for
+/// `fleet` and proves to be one of `live_hosts` or `removed`;
+/// [`Asked::MissingLog`] when it holds no fleet yet and proves to be one of
+/// `live_hosts`; [`Asked::Unproven`] or [`Error::NotInFleet`] otherwise,
+/// which learns nothing; and [`Error::OtherFleet`] for another fleet.
 async fn ask_proven(
     executor: &BackgroundExecutor,
     target: &ConnectTarget,
     heads: Vec<String>,
     fleet: &str,
-    hosts: &[String],
-) -> Result<Option<(Applied, String)>, Error> {
+    live_hosts: &[String],
+    removed: &[String],
+) -> Result<Asked, Error> {
     let nonce = uuid::Uuid::new_v4().simple().to_string();
     let ask = Apply {
         fleet: None,
@@ -70,18 +120,10 @@ async fn ask_proven(
         ..Apply::default()
     };
     let target = target.clone();
-    match executor
+    let theirs = executor
         .spawn(async move { remote::apply(&target, &ask, &AtomicBool::new(false)) })
-        .await
-    {
-        Ok(theirs) if theirs.fleet == fleet => {
-            Ok(sync::proven_host(&theirs, &nonce, hosts).map(|host| (theirs, host)))
-        }
-        Ok(theirs) if theirs.fleet.is_empty() => Err(Error::NotInFleet),
-        Ok(_) => Err(Error::OtherFleet),
-        // A machine with no Sheprd daemon: the caller decides.
-        Err(error) => Err(error),
-    }
+        .await?;
+    classify_answer(theirs, &nonce, fleet, live_hosts, removed)
 }
 
 /// Hands this computer's whole log to `target`, which is in no fleet yet,
@@ -94,6 +136,22 @@ pub(super) async fn hand_over(
     executor: &BackgroundExecutor,
     target: &ConnectTarget,
     fleet: &str,
+    peer: Option<&str>,
+) -> Result<(), Error> {
+    hand_over_with(client, executor, target, fleet, peer, false).await
+}
+
+/// Hands this computer's whole log to `target` one answer at a time,
+/// enforcing `peer` on every local export when named (so the daemon stops
+/// exporting if that host is removed mid-handover), and setting `rejoin`
+/// only for an explicit host share.
+async fn hand_over_with(
+    client: &crate::remote::supervisor::Client,
+    executor: &BackgroundExecutor,
+    target: &ConnectTarget,
+    fleet: &str,
+    peer: Option<&str>,
+    rejoin: bool,
 ) -> Result<(), Error> {
     let mut theirs = Vec::new();
     for _ in 0..MAX_PARTS {
@@ -102,6 +160,7 @@ pub(super) async fn hand_over(
             Apply {
                 fleet: Some(fleet.to_owned()),
                 heads: theirs,
+                peer: peer.map(str::to_owned),
                 ..Apply::default()
             },
         )
@@ -114,6 +173,7 @@ pub(super) async fn hand_over(
             fleet: Some(fleet.to_owned()),
             heads: part.heads,
             ops: part.ops,
+            rejoin,
             ..Apply::default()
         };
         let target = target.clone();
@@ -195,13 +255,15 @@ pub(super) fn sync(cx: &mut App, id: String, machine: Machine, fleet: String) {
         let mut proven_as = None;
         let outcome = async {
             let view = match daemon(&client, Ask::Status).await? {
-                Answer::Status { view: Some(view) } if view.fleet == fleet => view,
+                Answer::Status {
+                    view: Some(view), ..
+                } if view.fleet == fleet => view,
                 _ => return Ok((Standing::Outside, Vec::new(), Vec::new())),
             };
             // Hosts that sign with a certificate authority: computers in
             // the fleet and Sheprd hosts. Only one of them may prove it is
             // the machine answering.
-            let mut hosts: Vec<String> = view
+            let live_hosts: Vec<String> = view
                 .hosts
                 .iter()
                 .filter(|host| host.kind != HostKind::Agent)
@@ -213,47 +275,89 @@ pub(super) fn sync(cx: &mut App, id: String, machine: Machine, fleet: String) {
                 Ok(Answer::Hosts { hosts }) => hosts,
                 _ => Vec::new(),
             };
-            hosts.extend(removed.iter().cloned());
             let target = &machine.target;
-            let answered =
-                match ask_proven(&executor, target, view.heads.clone(), &fleet, &hosts).await {
-                    // No Sheprd daemon: perhaps a plain host of this fleet.
-                    Err(Error::NoProgram) => {
-                        let (standing, host) =
-                            super::plain::sync(&client, &executor, &machine, &view).await?;
-                        // The host its agent serves: what a removal and a
-                        // later share again are recognized by.
-                        proven_as = host;
-                        return Ok((standing, Vec::new(), view.heads.clone()));
+            let (mut theirs, proven) = match ask_proven(
+                &executor,
+                target,
+                view.heads.clone(),
+                &fleet,
+                &live_hosts,
+                &removed,
+            )
+            .await
+            {
+                // No Sheprd daemon: perhaps a plain host of this fleet.
+                Err(Error::NoProgram) => {
+                    let (standing, host) =
+                        super::plain::sync(&client, &executor, &machine, &view).await?;
+                    // The host its agent serves: what a removal and a
+                    // later share again are recognized by.
+                    proven_as = host;
+                    return Ok((standing, Vec::new(), view.heads.clone()));
+                }
+                // Live host of our fleet that holds no log yet (e.g. its
+                // initial Bluetooth or SSH handover was cut off): hand the
+                // log over now, naming `proven` as `peer` on every local
+                // export so removal mid-handover stops exporting at once.
+                // A host that explicitly scrubbed the fleet refuses the
+                // handover and falls through as Outside.
+                Ok(Asked::MissingLog(proven)) => {
+                    match hand_over_with(&client, &executor, target, &fleet, Some(&proven), false)
+                        .await
+                    {
+                        Ok(()) => {
+                            if let Ok(Asked::Fleet(after, again)) = ask_proven(
+                                &executor,
+                                target,
+                                view.heads.clone(),
+                                &fleet,
+                                &live_hosts,
+                                &removed,
+                            )
+                            .await
+                                && again == proven
+                            {
+                                proven_as = Some(proven);
+                                return Ok((Standing::Member, after.heads, view.heads.clone()));
+                            }
+                        }
+                        Err(Error::NoProgram) => {}
+                        Err(error) => return Err(error),
                     }
-                    // Sheprd in no fleet: a computer to invite, unless it
-                    // is also a plain host of this fleet, whose agent is
-                    // still kept current.
-                    Err(Error::NotInFleet) => {
-                        let (standing, host) =
-                            super::plain::sync(&client, &executor, &machine, &view).await?;
-                        proven_as = host;
-                        return Ok((beside_daemon(standing), Vec::new(), view.heads.clone()));
-                    }
-                    // A host the fleet removed that is in another fleet
-                    // now has forgotten this one.
-                    Err(Error::OtherFleet) => {
-                        let standing = if was.as_ref().is_some_and(|host| removed.contains(host)) {
-                            Standing::Removed
-                        } else {
-                            Standing::Elsewhere
-                        };
-                        return Ok((standing, Vec::new(), Vec::new()));
-                    }
-                    answered => answered?,
-                };
-            let Some((mut theirs, proven)) = answered else {
-                let standing = if was.as_ref().is_some_and(|host| removed.contains(host)) {
-                    Standing::Removed
-                } else {
-                    Standing::Outside
-                };
-                return Ok((standing, Vec::new(), Vec::new()));
+                    let (standing, host) =
+                        super::plain::sync(&client, &executor, &machine, &view).await?;
+                    proven_as = host;
+                    return Ok((beside_daemon(standing), Vec::new(), view.heads.clone()));
+                }
+                // Sheprd in no fleet: a computer to invite, unless it
+                // is also a plain host of this fleet, whose agent is
+                // still kept current.
+                Err(Error::NotInFleet) => {
+                    let (standing, host) =
+                        super::plain::sync(&client, &executor, &machine, &view).await?;
+                    proven_as = host;
+                    return Ok((beside_daemon(standing), Vec::new(), view.heads.clone()));
+                }
+                // A host the fleet removed that is in another fleet
+                // now has forgotten this one.
+                Err(Error::OtherFleet) => {
+                    let standing = if was.as_ref().is_some_and(|host| removed.contains(host)) {
+                        Standing::Removed
+                    } else {
+                        Standing::Elsewhere
+                    };
+                    return Ok((standing, Vec::new(), Vec::new()));
+                }
+                Ok(Asked::Unproven) => {
+                    let standing = if was.as_ref().is_some_and(|host| removed.contains(host)) {
+                        Standing::Removed
+                    } else {
+                        Standing::Outside
+                    };
+                    return Ok((standing, Vec::new(), Vec::new()));
+                }
+                Ok(Asked::Fleet(theirs, proven)) => (theirs, proven),
+                Err(error) => return Err(error),
             };
             proven_as = Some(proven.clone());
             if removed.contains(&proven) {
@@ -281,15 +385,23 @@ pub(super) fn sync(cx: &mut App, id: String, machine: Machine, fleet: String) {
                     break;
                 }
                 parts += 1;
-                let (next, again) =
-                    match ask_proven(&executor, target, ours.heads.clone(), &fleet, &hosts).await {
-                        Ok(Some(answer)) => answer,
-                        Ok(None)
-                        | Err(Error::NoProgram | Error::NotInFleet | Error::OtherFleet) => {
-                            return Ok((Standing::Outside, Vec::new(), Vec::new()));
-                        }
-                        Err(error) => return Err(error),
-                    };
+                let (next, again) = match ask_proven(
+                    &executor,
+                    target,
+                    ours.heads.clone(),
+                    &fleet,
+                    &live_hosts,
+                    &removed,
+                )
+                .await
+                {
+                    Ok(Asked::Fleet(next, again)) => (next, again),
+                    Ok(Asked::Unproven | Asked::MissingLog(_))
+                    | Err(Error::NoProgram | Error::NotInFleet | Error::OtherFleet) => {
+                        return Ok((Standing::Outside, Vec::new(), Vec::new()));
+                    }
+                    Err(error) => return Err(error),
+                };
                 if again != proven {
                     return Ok((Standing::Outside, Vec::new(), Vec::new()));
                 }
@@ -459,6 +571,11 @@ async fn invite_one(
     let (bundle, signature) = executor
         .spawn(async move { remote::bundle(&target, &named, &AtomicBool::new(false)) })
         .await?;
+    let peer = sync::bytes(&bundle)
+        .ok()
+        .and_then(|bytes| Bundle::from_bytes(&bytes).ok())
+        .and_then(|bundle| bundle.host?.id().ok())
+        .map(|host| host.to_string());
     daemon(
         client,
         Ask::Admit {
@@ -468,7 +585,15 @@ async fn invite_one(
         },
     )
     .await?;
-    hand_over(client, executor, &machine.target, fleet).await
+    hand_over_with(
+        client,
+        executor,
+        &machine.target,
+        fleet,
+        peer.as_deref(),
+        false,
+    )
+    .await
 }
 
 /// Shares the Sheprd host `machine` with the fleet, leaving out the
@@ -498,10 +623,23 @@ pub(crate) fn share(
             let intro = executor
                 .spawn(async move { remote::intro(&target, &AtomicBool::new(false)) })
                 .await?;
+            let peer = sync::bytes(&intro)
+                .ok()
+                .and_then(|bytes| HostIntro::from_bytes(&bytes).ok())
+                .and_then(|intro| intro.id().ok())
+                .map(|host| host.to_string());
             daemon(&client, Ask::AddHost { intro, deny }).await?;
             // The host takes the log because it shares it, then lets in
             // the computers allowed there; syncing keeps it current.
-            hand_over(&client, &executor, &machine.target, &fleet).await?;
+            hand_over_with(
+                &client,
+                &executor,
+                &machine.target,
+                &fleet,
+                peer.as_deref(),
+                true,
+            )
+            .await?;
             Ok::<_, Error>(())
         }
         .await;

@@ -24,8 +24,7 @@ async fn admitted() -> (Node, Node, Apply) {
         fleet: Some(fleet),
         heads: Vec::new(),
         ops: sync::encode_ops(&a.ops()),
-        nonce: None,
-        peer: None,
+        ..Apply::default()
     };
     (a, b, apply)
 }
@@ -82,8 +81,7 @@ async fn concurrent_offline_updates_keep_each_others_operations() {
         fleet: first.fleet.clone(),
         heads: Vec::new(),
         ops: sync::encode_ops(&a.ops()),
-        nonce: None,
-        peer: None,
+        ..Apply::default()
     };
     let dir = b.dir.path().to_owned();
     let updates: Vec<_> = [first, second]

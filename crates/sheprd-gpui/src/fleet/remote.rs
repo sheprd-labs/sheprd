@@ -98,7 +98,7 @@ pub(super) fn status(
 ) -> Result<Option<View>, Error> {
     let output = run(target, "status", b"", cancelled)?;
     match serde_json::from_slice(&output).map_err(Error::Answer)? {
-        Answer::Status { view } => Ok(view.map(|view| *view)),
+        Answer::Status { view, .. } => Ok(view.map(|view| *view)),
         _ => Err(Error::Unexpected),
     }
 }

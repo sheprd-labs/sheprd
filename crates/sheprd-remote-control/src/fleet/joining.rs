@@ -7,7 +7,7 @@
 //! None grants anything until it admits this computer, or shares it as a
 //! host the fleet holds; then it becomes the log and the rest are dropped.
 
-use super::{Error, Fleet, Inner, Result, store};
+use super::{Error, Fleet, Inner, Result, Scrubbed, store};
 use crate::control::fleet::{Body, FleetId, Log, Op, OpId, sync};
 use std::{collections::BTreeMap, sync::atomic::Ordering};
 
@@ -46,6 +46,7 @@ impl Fleet {
         inner: &mut Inner,
         ops: Vec<Op>,
         caller: &[OpId],
+        rejoin: Option<FleetId>,
         now_ms: u64,
     ) -> Result<Option<(Log, usize)>> {
         let mut by_fleet: BTreeMap<FleetId, Vec<Op>> = BTreeMap::new();
@@ -53,12 +54,24 @@ impl Fleet {
             by_fleet.entry(fleet_of(&op)).or_default().push(op);
         }
         let mut refused = BTreeMap::new();
+        let mut approve_host = None;
         for (fleet, ops) in by_fleet {
+            let explicit_host = rejoin == Some(fleet);
+            let blocked = inner
+                .scrubbed
+                .is_some_and(|scrubbed| scrubbed.blocks_host(fleet));
+            if blocked && !explicit_host {
+                refused.insert(fleet, ops.len());
+                continue;
+            }
             let count = ops.len();
             let kept = inner.joining.remove(&fleet).map(|joining| joining.log);
             match join(kept, ops, now_ms) {
                 Ok((log, failed)) => {
                     refused.insert(fleet, failed);
+                    if explicit_host && blocked {
+                        approve_host = Some(fleet);
+                    }
                     inner.joining.insert(
                         fleet,
                         Joining {
@@ -88,12 +101,23 @@ impl Fleet {
         let admitted = inner
             .joining
             .iter()
+            .filter(|(fleet, _)| {
+                !inner
+                    .scrubbed
+                    .is_some_and(|scrubbed| scrubbed.blocks_member(**fleet))
+            })
             .find(|(_, joining)| sync::admits(&joining.log, &self.me))
             .map(|(fleet, _)| (*fleet, false));
         let shared = || {
             inner
                 .joining
                 .iter()
+                .filter(|(fleet, _)| {
+                    rejoin == Some(**fleet)
+                        || !inner
+                            .scrubbed
+                            .is_some_and(|scrubbed| scrubbed.blocks_host(**fleet))
+                })
                 .find(|(_, joining)| {
                     !caller.is_empty()
                         && caller.iter().all(|head| joining.log.get(head).is_some())
@@ -104,6 +128,16 @@ impl Fleet {
                 .map(|(fleet, _)| (*fleet, true))
         };
         let Some((fleet, hosted)) = admitted.or_else(shared) else {
+            if let Some(fleet) = approve_host
+                && inner.joining.contains_key(&fleet)
+            {
+                let next = Scrubbed::ExceptHost(fleet);
+                if let Err(error) = store::save_scrubbed(&self.state_dir, next) {
+                    inner.joining.remove(&fleet);
+                    return Err(error);
+                }
+                inner.scrubbed = Some(next);
+            }
             return Ok(None);
         };
         let Some(joining) = inner.joining.remove(&fleet) else {

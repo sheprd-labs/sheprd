@@ -31,6 +31,7 @@ fn fleet_requests_keep_their_wire_names() {
             ops: Vec::new(),
             nonce: None,
             peer: None,
+            rejoin: false,
         })))
     );
     assert_eq!(
@@ -38,8 +39,20 @@ fn fleet_requests_keep_their_wire_names() {
         json!({"response": "fleet", "answer": "done"})
     );
     assert_eq!(
-        serde_json::to_value(Response::Fleet(Box::new(Answer::Status { view: None }))).unwrap(),
+        serde_json::to_value(Response::Fleet(Box::new(Answer::Status {
+            view: None,
+            me: None,
+        })))
+        .unwrap(),
         json!({"response": "fleet", "answer": "status"})
+    );
+    assert_eq!(
+        serde_json::to_value(Response::Fleet(Box::new(Answer::Status {
+            view: None,
+            me: Some("ab".repeat(32)),
+        })))
+        .unwrap(),
+        json!({"response": "fleet", "answer": "status", "me": "ab".repeat(32)})
     );
 }
 

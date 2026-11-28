@@ -94,7 +94,7 @@ pub(super) fn serve(
     let task = cx.spawn(async move |cx| {
         let (view, error) = match request.await {
             Ok(sheprd_remote_control::control::Response::Fleet(answer)) => match *answer {
-                Answer::Status { view } => (view, None),
+                Answer::Status { view, .. } => (view, None),
                 _ => (None, Some(crate::remote::Error::Unexpected.to_string())),
             },
             Ok(sheprd_remote_control::control::Response::Error { message, .. }) => {

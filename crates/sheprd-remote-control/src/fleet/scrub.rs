@@ -107,10 +107,17 @@ fn on_disk(
     revoke: impl FnOnce(&[[u8; 32]]) -> Result<()>,
 ) -> Result<()> {
     // Read before anything goes; a peers file that does not read is kept,
-    // and reported once the rest is gone.
+    // and reported once the rest is gone. Persist the scrub marker before
+    // deleting the log so a full disk never leaves neither log nor guard.
     let proven = store::proven_keys(state_dir);
-    let removed = store::remove_log(state_dir);
+    let scrubbed = store::save_scrubbed(state_dir, super::Scrubbed::All);
+    let removed = if scrubbed.is_ok() {
+        store::remove_log(state_dir)
+    } else {
+        Ok(())
+    };
     forget_access(keys, state_dir)?;
+    scrubbed?;
     removed?;
     revoke(&proven?)?;
     store::remove_peers(state_dir)

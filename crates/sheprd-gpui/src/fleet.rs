@@ -169,6 +169,9 @@ struct Reached {
 #[derive(Default)]
 pub(crate) struct Fleet {
     view: Option<View>,
+    /// This computer's member id, hex, as the daemon reported it even when
+    /// it is in no fleet yet.
+    me: Option<String>,
     /// The daemon answered: `view` is `None` because this computer is in
     /// no fleet, not because nothing was asked yet.
     read: bool,
@@ -212,6 +215,15 @@ impl Fleet {
     /// The fleet as this computer's daemon last said.
     pub(crate) fn view(cx: &App) -> Option<&View> {
         cx.try_global::<Self>()?.view.as_ref()
+    }
+
+    /// This computer's member id, hex, when the daemon reported it.
+    pub(crate) fn me(cx: &App) -> Option<String> {
+        let fleet = cx.try_global::<Self>()?;
+        fleet
+            .me
+            .clone()
+            .or_else(|| fleet.view.as_ref().map(|view| view.me.clone()))
     }
 
     /// This computer's fleet, while it is a member.
@@ -367,17 +379,17 @@ impl Fleet {
         cx.spawn(async move |cx| {
             let answer = task.await;
             cx.update(|cx| {
-                let view = match answer {
+                let status = match answer {
                     Ok(Response::Fleet(answer)) => match *answer {
-                        Answer::Status { view } => Ok(view.map(|view| *view)),
+                        Answer::Status { view, me } => Ok((view.map(|view| *view), me)),
                         _ => Err(None),
                     },
                     Ok(Response::Error { message, .. }) => Err(Some(message)),
                     Ok(_) => Err(None),
                     Err(error) => Err(Some(error.to_string())),
                 };
-                let member = matches!(&view, Ok(Some(view)) if view.members.iter().any(|member| member.id == view.me));
-                let changed = cx.update_global::<Self, _>(|this, _| this.answered(read, view));
+                let member = matches!(&status, Ok((Some(view), _)) if view.members.iter().any(|member| member.id == view.me));
+                let changed = cx.update_global::<Self, _>(|this, _| this.answered_status(read, status));
                 if member {
                     Self::read_joins(cx);
                 }
@@ -389,6 +401,28 @@ impl Fleet {
             });
         })
         .detach();
+    }
+
+    /// Takes the answer to the `read`th status read, keeping `me` even when
+    /// this computer is in no fleet.
+    fn answered_status(
+        &mut self,
+        read: u64,
+        status: Result<(Option<View>, Option<String>), Option<String>>,
+    ) -> bool {
+        if read != self.reads {
+            return false;
+        }
+        let view = match status {
+            Ok((view, me)) => {
+                if let Some(me) = me.or_else(|| view.as_ref().map(|view| view.me.clone())) {
+                    self.me = Some(me);
+                }
+                Ok(view)
+            }
+            Err(error) => Err(error),
+        };
+        self.answered(read, view)
     }
 
     /// Takes the answer to the `read`th read: whether the view changed. An

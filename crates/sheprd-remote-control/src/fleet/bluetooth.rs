@@ -193,6 +193,7 @@ pub(crate) fn allowed(
                 return Err(super::Error::InFleet);
             }
             let id = invited.id()?;
+            fleet.allow_rejoin(id)?;
             let bundle = me::bundle(state, fleet, now_ms)?;
             Ok(ApprovedFleet::Joining(joining(
                 fleet.key(),

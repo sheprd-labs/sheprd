@@ -193,32 +193,88 @@ impl Fleet {
     }
 }
 
+/// What `view` offers when it already lists this computer (`me`) as a live
+/// member, as after a pairing or invitation whose log handover failed.
+pub(super) fn already_admitted(view: &View, me: Option<&str>) -> Option<Offer> {
+    let offer = Offer::of(view)?;
+    let me = me?;
+    view.members
+        .iter()
+        .any(|member| member.id == me)
+        .then_some(offer)
+}
+
 /// Asks `machine` which fleet it is a member of, for this computer in
-/// none.
+/// none. If that fleet already lists this computer as a live member (e.g.
+/// an earlier pairing or invitation admitted it before the log arrived),
+/// pulls the log at once so this computer catches up without re-inviting.
 fn discover(cx: &mut App, id: String, machine: Machine) {
     Fleet::set_link(cx, &id, |link| {
         link.running = true;
         link.last = Some(Instant::now());
     });
-    let task = cx.background_executor().spawn(async move {
-        match strict_target(&machine.target) {
+    let me = Fleet::me(cx);
+    let client = Supervisor::client(cx);
+    let executor = cx.background_executor().clone();
+    let target = machine.target.clone();
+    let task = executor.spawn(async move {
+        match strict_target(&target) {
             Ok(_) => {}
-            Err(Error::Unchecked) => return Ok((Standing::Unchecked, None)),
-            Err(_) => return Ok((Standing::Outside, None)),
+            Err(Error::Unchecked) => return Ok((Standing::Unchecked, None, None)),
+            Err(_) => return Ok((Standing::Outside, None, None)),
         }
-        match remote::status(&machine.target, &AtomicBool::new(false)) {
-            Ok(view) => Ok((Standing::Outside, view.as_ref().and_then(Offer::of))),
-            Err(Error::NoProgram) => Ok((Standing::NoDaemon, None)),
+        match remote::status(&target, &AtomicBool::new(false)) {
+            Ok(view) => {
+                let offer = view.as_ref().and_then(Offer::of);
+                let heal = view
+                    .as_ref()
+                    .and_then(|view| already_admitted(view, me.as_deref()));
+                Ok((Standing::Outside, offer, heal))
+            }
+            Err(Error::NoProgram) => Ok((Standing::NoDaemon, None, None)),
             Err(error) => Err::<_, Error>(error),
         }
     });
     cx.spawn(async move |cx| {
         let outcome = task.await;
+        if let (Ok((_, _, Some(heal))), Some(client)) = (&outcome, client) {
+            let started = cx.update(|cx| {
+                if Fleet::busy(cx) || Fleet::view(cx).is_some() {
+                    return false;
+                }
+                Fleet::set_acting(cx, &id, true);
+                true
+            });
+            if started {
+                let healed = match take_log(&client, &executor, &machine, &heal.fleet).await {
+                    Ok(()) => matches!(
+                        daemon(&client, Ask::Status).await,
+                        Ok(Answer::Status { view: Some(view), .. }) if view.fleet == heal.fleet
+                    ),
+                    Err(error) => {
+                        tracing::debug!(%error, "Could not pull an admitted fleet's log");
+                        false
+                    }
+                };
+                if healed {
+                    cx.update(|cx| {
+                        Fleet::set_acting(cx, &id, false);
+                        Fleet::set_link(cx, &id, |link| link.running = false);
+                        cx.update_global::<Fleet, _>(|this, _| {
+                            this.links.values_mut().for_each(Link::restart);
+                        });
+                        Fleet::refresh(cx);
+                    });
+                    return;
+                }
+                cx.update(|cx| Fleet::set_acting(cx, &id, false));
+            }
+        }
         cx.update(|cx| {
             Fleet::set_link(cx, &id, |link| {
                 link.running = false;
                 match outcome {
-                    Ok((standing, offer)) => {
+                    Ok((standing, offer, _)) => {
                         link.standing = standing;
                         link.offer = offer;
                     }

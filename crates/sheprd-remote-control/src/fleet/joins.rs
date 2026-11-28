@@ -15,7 +15,6 @@ use crate::control::{
     DeviceId,
     fleet::{Bundle, Kind, Log, MemberId, sync},
 };
-use p256::ecdsa::{Signature, VerifyingKey, signature::Verifier};
 use std::collections::{BTreeMap, HashSet};
 
 /// Joins waiting at once.
@@ -68,12 +67,8 @@ impl Joins {
         if log.state().tombstones.contains(&member) {
             return Err(Error::Removed);
         }
-        let message = bundle
-            .join_message(&log.fleet())
-            .ok_or(crate::control::fleet::Error::Invalid)?;
-        let key = VerifyingKey::from_sec1_bytes(&bundle.key).map_err(|_| Error::Signature)?;
-        let parsed = Signature::from_slice(&signature).map_err(|_| Error::Signature)?;
-        key.verify(&message, &parsed)
+        bundle
+            .verify_join(&log.fleet(), &signature)
             .map_err(|_| Error::Signature)?;
         if log.is_member(&member) {
             return Ok(Standing::Member);
